@@ -10,7 +10,7 @@ import argparse
 import json
 import os
 
-# Components to evaluate (skip metadata fields and manually-computed R&D fields)
+# Components to evaluate
 EVAL_COMPONENTS = [
     "revenue_q", "cogs_q", "operating_income_q", "rd_expense_q",
     "income_tax_expense_q", "pretax_income_q", "net_income_q",
@@ -22,6 +22,14 @@ EVAL_COMPONENTS = [
     "cfo_q", "capex_q", "dna_q", "acquisitions_q", "sbc_q",
     "diluted_shares_q",
 ]
+
+# R&D and employee fields (mapped from golden names to extracted names)
+EVAL_COMPUTED = {
+    "rd_amortization_q_manual": "rd_amortization_q",
+    "rd_asset_q_manual": "rd_asset_q",
+    "rd_OI_Adjustment": "rd_OI_adjustment_q",
+    "employee_count_annual_manual": "employee_count",
+}
 
 
 def load_golden(ticker: str) -> list:
@@ -70,13 +78,18 @@ def evaluate(golden: list, extracted: list, verbose: bool = False):
         fp = g["fiscal_period"]
         quarter_label = f"FY{fy} {fp}"
 
-        for comp in EVAL_COMPONENTS:
-            golden_val = g.get(comp)
-            extract_val = e.get(comp)
+        # Build field list: direct components + computed (golden_name -> extracted_name)
+        fields = [(comp, comp) for comp in EVAL_COMPONENTS]
+        fields += [(gname, ename) for gname, ename in EVAL_COMPUTED.items()]
+
+        for golden_key, extract_key in fields:
+            golden_val = g.get(golden_key)
+            extract_val = e.get(extract_key)
 
             if golden_val is None:
                 continue
 
+            comp = golden_key  # for display
             total_fields += 1
 
             if extract_val is None:
