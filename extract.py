@@ -1,29 +1,30 @@
 """
-Master extraction script: fetches XBRL companyfacts from SEC EDGAR
-and extracts quarterly financial components.
+Master extraction script: parses locally-stored XBRL filings and extracts
+quarterly financial components.
+
+Requires filings to be downloaded first via fetch.py.
 
 Usage:
-    python3 extract.py --cik 0001045810 --ticker NVDA
-    python3 extract.py --cik 0001045810 --ticker NVDA --fy-start 2024 --fy-end 2026
+    python3 extract.py --ticker NVDA
+    python3 extract.py --ticker NVDA --fy-start 2024 --fy-end 2026
 """
 
 import argparse
 import json
 import os
-import urllib.request
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from importlib import import_module
 
-USER_AGENT = "Arrow research@arrow.dev"
+DATA_DIR = "data/filings"
 
 # ── Component definitions ──────────────────────────────────────────────────────
-# Each component maps to one or more XBRL concept names (tried in order).
-# type: "stock" = balance sheet point-in-time, "flow" = income/cash flow period
-# statement: "is" = income statement, "cf" = cash flow statement
-# negate: True if the golden convention is opposite sign from XBRL
+# type: "stock" = balance sheet, "flow" = income/cash flow, "per_period" = discrete only
+# statement: "is" = income statement (has discrete quarterly), "cf" = cash flow (YTD only)
+# negate: True if golden convention is opposite sign from XBRL
 
 COMPONENTS = {
-    # Income Statement
+    # Income Statement (flow, discrete quarterly available)
     "revenue_q": {
         "concepts": ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax"],
         "type": "flow", "statement": "is",
@@ -60,7 +61,7 @@ COMPONENTS = {
         "type": "flow", "statement": "is", "negate": True,
     },
 
-    # Balance Sheet
+    # Balance Sheet (stock, instant values)
     "equity_q": {
         "concepts": ["StockholdersEquity"],
         "type": "stock",
@@ -103,7 +104,7 @@ COMPONENTS = {
         "type": "stock",
     },
 
-    # Cash Flow Statement
+    # Cash Flow Statement (flow, YTD only — no discrete quarterly in XBRL)
     "cfo_q": {
         "concepts": ["NetCashProvidedByUsedInOperatingActivities"],
         "type": "flow", "statement": "cf",
@@ -128,7 +129,7 @@ COMPONENTS = {
         "type": "flow", "statement": "cf",
     },
 
-    # Per-period (not cumulative — use discrete entry, not YTD derivation)
+    # Per-period (use discrete quarterly entry, not YTD)
     "diluted_shares_q": {
         "concepts": ["WeightedAverageNumberOfDilutedSharesOutstanding"],
         "type": "per_period",
@@ -136,340 +137,413 @@ COMPONENTS = {
 }
 
 
-# ── SEC data fetching ──────────────────────────────────────────────────────────
-
-def fetch_company_facts(cik: str) -> dict:
-    """Fetch companyfacts JSON from SEC EDGAR."""
-    cik_padded = cik.lstrip("0").zfill(10)
-    url = f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik_padded}.json"
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
-
-
-def get_concept_entries(facts: dict, concept_name: str) -> list:
-    """Get all USD entries for a concept from companyfacts."""
-    for ns in ("us-gaap", "dei", "ifrs-full"):
-        ns_facts = facts.get("facts", {}).get(ns, {})
-        if concept_name in ns_facts:
-            units = ns_facts[concept_name].get("units", {})
-            # Try USD first, then shares
-            for unit_key in ("USD", "shares"):
-                if unit_key in units:
-                    return units[unit_key]
-    return []
-
-
-# ── Quarter discovery ──────────────────────────────────────────────────────────
+# ── XBRL parsing ───────────────────────────────────────────────────────────────
 
 def parse_date(s: str) -> datetime:
     return datetime.strptime(s, "%Y-%m-%d")
 
 
-def period_days(start: str, end: str) -> int:
-    return (parse_date(end) - parse_date(start)).days
+def date_str(d: datetime) -> str:
+    return d.strftime("%Y-%m-%d")
 
 
-def discover_quarters(facts: dict, fy_start: int = None, fy_end: int = None) -> list:
+def parse_xbrl(filepath: str) -> tuple[dict, dict, dict]:
     """
-    Discover available quarters from the companyfacts data.
-    Returns a sorted list of quarter dicts with fiscal year, period, and dates.
+    Parse an XBRL instance document.
+    Returns (contexts, facts, nsmap).
+    - contexts: {context_id: {type, date/start/end, days, has_dimensions}}
+    - facts: {(namespace, local_name): [(context_id, value), ...]}
+    - nsmap: {prefix: uri}
     """
-    # Use a reliable concept to find filing periods
-    for concept in ["Revenues", "Assets", "NetIncomeLoss"]:
-        entries = get_concept_entries(facts, concept)
-        if entries:
-            break
+    nsmap = {}
+    for _, elem in ET.iterparse(filepath, events=["start-ns"]):
+        prefix, uri = elem
+        nsmap[prefix] = uri
 
-    # Collect unique (fy, fp) from 10-Q/10-K filings.
-    # A Q1 10-Q has fp=Q1 form=10-Q; a 10-K has fp=FY form=10-K.
-    # Later filings (e.g., next year's 10-K) restate data with the same (fy, fp)
-    # but different accession. We want the ORIGINAL filing for each quarter:
-    # - Q1/Q2/Q3: the 10-Q with matching fp
-    # - Q4: the 10-K with fp=FY
-    filings = {}
-    for e in entries:
-        form = e.get("form")
-        if form not in ("10-Q", "10-K"):
+    tree = ET.parse(filepath)
+    root = tree.getroot()
+
+    xbrli = nsmap.get("", "http://www.xbrl.org/2003/instance")
+
+    # Parse contexts
+    contexts = {}
+    for ctx in root.findall(f"{{{xbrli}}}context"):
+        ctx_id = ctx.get("id")
+        period = ctx.find(f"{{{xbrli}}}period")
+        entity = ctx.find(f"{{{xbrli}}}entity")
+        segment = entity.find(f"{{{xbrli}}}segment") if entity is not None else None
+        has_dims = segment is not None and len(segment) > 0
+
+        instant = period.find(f"{{{xbrli}}}instant")
+        start = period.find(f"{{{xbrli}}}startDate")
+        end = period.find(f"{{{xbrli}}}endDate")
+
+        info = {"id": ctx_id, "has_dimensions": has_dims}
+        if instant is not None:
+            info["type"] = "instant"
+            info["date"] = instant.text
+        elif start is not None and end is not None:
+            info["type"] = "duration"
+            info["start"] = start.text
+            info["end"] = end.text
+            info["days"] = (parse_date(end.text) - parse_date(start.text)).days
+
+        contexts[ctx_id] = info
+
+    # Parse facts — collect all elements under the root that have contextRef
+    facts = {}
+    for elem in root:
+        ctx_ref = elem.get("contextRef")
+        if ctx_ref is None:
             continue
-        fy = e.get("fy")
-        fp = e.get("fp")
-        if fy is None or fp is None:
-            continue
-        if fy_start and fy < fy_start:
-            continue
-        if fy_end and fy > fy_end:
+        # Skip dimensioned contexts
+        ctx = contexts.get(ctx_ref)
+        if ctx is None or ctx.get("has_dimensions"):
             continue
 
-        # Only accept the original filing for this quarter
-        # Q1/Q2/Q3: must be from a 10-Q with matching fp
-        # Q4/FY: must be from the 10-K
-        if fp in ("Q1", "Q2", "Q3") and form != "10-Q":
+        tag = elem.tag  # e.g., {http://fasb.org/us-gaap/2024}Revenues
+        if "}" in tag:
+            ns_uri = tag[1:tag.index("}")]
+            local = tag[tag.index("}") + 1:]
+        else:
             continue
-        if fp == "FY" and form != "10-K":
+
+        try:
+            val = int(float(elem.text))
+        except (TypeError, ValueError):
             continue
 
-        actual_fp = "Q4" if fp == "FY" else fp
-        key = (fy, actual_fp)
-        if key not in filings:
-            filings[key] = {
-                "fiscal_year": fy,
-                "fiscal_period": actual_fp,
-                "form": form,
-                "accession": e.get("accn", ""),
-                "filed": e.get("filed", ""),
-            }
+        key = local  # use just the local name, we'll match by concept name
+        if key not in facts:
+            facts[key] = []
+        # Deduplicate: same context + same value
+        entry = (ctx_ref, val)
+        if entry not in facts[key]:
+            facts[key].append(entry)
 
-    # Now find period_end dates from balance sheet data
-    bs_entries = get_concept_entries(facts, "Assets")
-    # Map (fy, fp) -> period_end using the current-period BS entry
-    # Take the LATEST end date per (fy, fp) from the matching accession,
-    # since each filing contains comparative (older) and current (newer) BS entries.
-    for e in bs_entries:
-        if e.get("form") not in ("10-Q", "10-K"):
+    return contexts, facts, nsmap
+
+
+def classify_contexts(contexts: dict, report_date: str) -> dict:
+    """
+    Identify key contexts for a filing based on its report date.
+    Returns dict with keys like 'current_instant', 'current_discrete',
+    'current_ytd', 'prior_instant', etc.
+    """
+    report_dt = parse_date(report_date)
+    classified = {}
+
+    for ctx_id, ctx in contexts.items():
+        if ctx.get("has_dimensions"):
             continue
-        fy = e.get("fy")
-        fp = e.get("fp")
-        if fp == "FY":
-            fp = "Q4"
-        key = (fy, fp)
-        if key in filings and e.get("accn") == filings[key]["accession"]:
-            if "period_end" not in filings[key] or e["end"] > filings[key]["period_end"]:
-                filings[key]["period_end"] = e["end"]
 
-    # Determine fiscal year start dates from flow entries
-    flow_entries = get_concept_entries(facts, "Revenues") or get_concept_entries(facts, "NetIncomeLoss")
-    fy_starts = {}  # fy -> start date of that fiscal year
-    for e in flow_entries:
-        if e.get("form") not in ("10-Q", "10-K"):
-            continue
-        fp = e.get("fp")
-        fy = e.get("fy")
-        start = e.get("start")
-        end = e.get("end")
-        if not start or not end or not fy:
-            continue
-        # Q1 entries with ~90 day period give us the FY start
-        days = period_days(start, end)
-        if fp == "Q1" and 60 <= days <= 120:
-            if fy not in fy_starts:
-                fy_starts[fy] = start
+        if ctx["type"] == "instant":
+            dt = parse_date(ctx["date"])
+            diff = abs((dt - report_dt).days)
+            if diff <= 3:  # current quarter-end (within 3 days of report date)
+                classified["current_instant"] = ctx_id
 
-        # FY entries also give us the start
-        if fp == "FY" and days > 300:
-            fy_starts[fy] = start
+        elif ctx["type"] == "duration":
+            end_dt = parse_date(ctx["end"])
+            diff = abs((end_dt - report_dt).days)
+            if diff > 3:
+                continue  # not ending at current quarter
 
-    # Attach FY start dates and compute period_start
-    for key, info in filings.items():
-        fy = info["fiscal_year"]
-        fp = info["fiscal_period"]
-        if fy in fy_starts:
-            info["fy_start"] = fy_starts[fy]
+            days = ctx["days"]
+            if 60 <= days <= 120:
+                classified["current_discrete"] = ctx_id
+            elif 150 <= days <= 210:
+                classified["current_ytd_h1"] = ctx_id
+            elif 240 <= days <= 300:
+                classified["current_ytd_9m"] = ctx_id
+            elif days > 340:
+                classified["current_fy"] = ctx_id
 
-        # Compute period_start from prior quarter's end + 1 day
-        if fp == "Q1" and fy in fy_starts:
-            info["period_start"] = fy_starts[fy]
+            # fy_start: prefer the longest context's start (most accurate)
+            if "fy_start" not in classified or days > classified.get("_fy_start_days", 0):
+                classified["fy_start"] = ctx["start"]
+                classified["_fy_start_days"] = days
 
-    # Sort by fiscal year and quarter
-    quarter_order = {"Q1": 1, "Q2": 2, "Q3": 3, "Q4": 4}
-    quarters = sorted(filings.values(),
-                      key=lambda q: (q["fiscal_year"], quarter_order.get(q["fiscal_period"], 0)))
-
-    # Fill in period_start for Q2-Q4 from prior quarter's period_end
-    for i, q in enumerate(quarters):
-        if "period_start" not in q and i > 0:
-            prev = quarters[i - 1]
-            if (prev["fiscal_year"] == q["fiscal_year"] or
-                (prev["fiscal_year"] == q["fiscal_year"] - 1 and prev["fiscal_period"] == "Q4")):
-                if "period_end" in prev:
-                    prev_end = parse_date(prev["period_end"])
-                    q["period_start"] = (prev_end + timedelta(days=1)).strftime("%Y-%m-%d")
-
-    return quarters
-
-
-# ── Value extraction ───────────────────────────────────────────────────────────
-
-def extract_stock_value(entries: list, period_end: str) -> int | None:
-    """Extract a balance-sheet (stock) value at a specific quarter-end date."""
-    candidates = []
-    for e in entries:
-        if e.get("form") not in ("10-Q", "10-K") or e.get("start"):
-            # Stock entries should have no start date (or empty)
-            if e.get("start"):
+    # Also find the prior year-end instant (for BS comparatives)
+    if "fy_start" in classified:
+        fy_start_dt = parse_date(classified["fy_start"])
+        prior_end_dt = fy_start_dt - timedelta(days=1)
+        for ctx_id, ctx in contexts.items():
+            if ctx.get("has_dimensions") or ctx["type"] != "instant":
                 continue
-        if e["end"] == period_end:
-            candidates.append(e)
+            dt = parse_date(ctx["date"])
+            if abs((dt - prior_end_dt).days) <= 3:
+                classified["prior_instant"] = ctx_id
+                break
 
-    if not candidates:
-        # Try entries that DO have start dates (some BS items get tagged oddly)
-        for e in entries:
-            if e.get("form") not in ("10-Q", "10-K"):
-                continue
-            if e["end"] == period_end:
-                candidates.append(e)
-
-    if not candidates:
-        return None
-
-    # Prefer the most recently filed entry (latest restatement)
-    candidates.sort(key=lambda e: e.get("filed", ""), reverse=True)
-    return candidates[0]["val"]
+    return classified
 
 
-def extract_flow_value_ytd(entries: list, quarter: dict, all_quarters: list) -> int | None:
+# ── Filing extraction ──────────────────────────────────────────────────────────
+
+def extract_single_filing(filing_dir: str, components: dict = None) -> dict | None:
     """
-    Extract a flow value for a quarter using YTD derivation.
-
-    Q1: direct 3-month value
-    Q2: H1_YTD - Q1
-    Q3: 9M_YTD - H1_YTD
-    Q4: FY - 9M_YTD
-    """
-    fp = quarter["fiscal_period"]
-    fy = quarter["fiscal_year"]
-    period_end = quarter.get("period_end")
-    fy_start = quarter.get("fy_start")
-
-    if not period_end or not fy_start:
-        return None
-
-    # Build a map of cumulative entries by their end date
-    # Only consider entries that start at the fiscal year start
-    cumulative = {}
-    for e in entries:
-        if e.get("form") not in ("10-Q", "10-K"):
-            continue
-        if not e.get("start"):
-            continue
-        if e["start"] != fy_start:
-            continue
-        end = e["end"]
-        days = period_days(e["start"], end)
-        # Store by end date, preferring most recently filed
-        if end not in cumulative or e.get("filed", "") > cumulative[end].get("filed", ""):
-            cumulative[end] = e
-
-    if fp == "Q1":
-        # Q1: the cumulative entry IS the quarterly value
-        entry = cumulative.get(period_end)
-        return entry["val"] if entry else None
-
-    elif fp == "Q2":
-        # Q2 = H1_YTD - Q1
-        h1_entry = cumulative.get(period_end)
-        if not h1_entry:
-            return None
-        # Find Q1 in the same fiscal year
-        q1 = _find_quarter(all_quarters, fy, "Q1")
-        if not q1 or "period_end" not in q1:
-            return None
-        q1_entry = cumulative.get(q1["period_end"])
-        if not q1_entry:
-            return None
-        return h1_entry["val"] - q1_entry["val"]
-
-    elif fp == "Q3":
-        # Q3 = 9M_YTD - H1_YTD
-        nine_m = cumulative.get(period_end)
-        if not nine_m:
-            return None
-        q2 = _find_quarter(all_quarters, fy, "Q2")
-        if not q2 or "period_end" not in q2:
-            return None
-        h1_entry = cumulative.get(q2["period_end"])
-        if not h1_entry:
-            return None
-        return nine_m["val"] - h1_entry["val"]
-
-    elif fp == "Q4":
-        # Q4 = FY - 9M_YTD
-        fy_entry = cumulative.get(period_end)
-        if not fy_entry:
-            return None
-        q3 = _find_quarter(all_quarters, fy, "Q3")
-        if not q3 or "period_end" not in q3:
-            return None
-        nine_m = cumulative.get(q3["period_end"])
-        if not nine_m:
-            return None
-        return fy_entry["val"] - nine_m["val"]
-
-    return None
-
-
-def extract_per_period_value(entries: list, quarter: dict) -> int | None:
-    """
-    Extract a per-period value (like diluted shares) using the discrete
-    quarterly entry, not YTD derivation.
-
-    Prefers the entry from the ORIGINAL filing (matching accession) to get
-    point-in-time values rather than restated values from later filings.
-    """
-    period_end = quarter.get("period_end")
-    accession = quarter.get("accession", "")
-    if not period_end:
-        return None
-
-    # Find discrete quarterly entries ending at period_end
-    candidates = []
-    for e in entries:
-        if e.get("form") not in ("10-Q", "10-K"):
-            continue
-        if e["end"] != period_end:
-            continue
-        if not e.get("start"):
-            continue
-        days = period_days(e["start"], e["end"])
-        # Discrete quarter: ~60-120 days
-        if 50 <= days <= 130:
-            candidates.append(e)
-
-    if not candidates:
-        # Fallback: try to find any entry ending at period_end with a start date
-        for e in entries:
-            if e.get("form") not in ("10-Q", "10-K"):
-                continue
-            if e["end"] == period_end and e.get("start"):
-                candidates.append(e)
-
-    if not candidates:
-        return None
-
-    # Prefer entry from the original filing (matching accession)
-    for c in candidates:
-        if c.get("accn") == accession:
-            return c["val"]
-
-    # Fallback: most recently filed
-    candidates.sort(key=lambda e: e.get("filed", ""), reverse=True)
-    return candidates[0]["val"]
-
-
-def _find_quarter(quarters: list, fy: int, fp: str) -> dict | None:
-    for q in quarters:
-        if q["fiscal_year"] == fy and q["fiscal_period"] == fp:
-            return q
-    return None
-
-
-# ── Main extraction ────────────────────────────────────────────────────────────
-
-def extract_company(cik: str, ticker: str, components: dict = None,
-                    fy_start: int = None, fy_end: int = None) -> list:
-    """
-    Extract all quarterly components for a company.
-    Returns a list of quarterly records.
+    Extract raw values from a single filing's XBRL.
+    Returns a dict with filing metadata and raw extracted values.
     """
     if components is None:
         components = COMPONENTS
 
-    print(f"Fetching companyfacts for {ticker} (CIK {cik})...")
-    facts = fetch_company_facts(cik)
+    meta_path = os.path.join(filing_dir, "filing_meta.json")
+    if not os.path.exists(meta_path):
+        return None
 
-    print("Discovering quarters...")
-    quarters = discover_quarters(facts, fy_start, fy_end)
-    print(f"Found {len(quarters)} quarters")
+    with open(meta_path) as f:
+        meta = json.load(f)
+
+    # Find the XBRL file
+    xbrl_path = os.path.join(filing_dir, meta["xbrl_filename"])
+    if not os.path.exists(xbrl_path):
+        return None
+
+    contexts, facts, nsmap = parse_xbrl(xbrl_path)
+    classified = classify_contexts(contexts, meta["report_date"])
+
+    record = {
+        "accession": meta["accession"],
+        "form": meta["form"],
+        "report_date": meta["report_date"],
+        "filing_date": meta["filing_date"],
+        "fy_start": classified.get("fy_start"),
+        "classified_contexts": classified,
+    }
+
+    # Determine fiscal year and period from the filing
+    # Q1 10-Q: has current_discrete only (~90 days)
+    # Q2 10-Q: has current_discrete + current_ytd_h1
+    # Q3 10-Q: has current_discrete + current_ytd_9m
+    # 10-K: has current_fy only
+    if meta["form"] == "10-K":
+        record["fiscal_period"] = "Q4"
+    elif "current_ytd_9m" in classified:
+        record["fiscal_period"] = "Q3"
+    elif "current_ytd_h1" in classified:
+        record["fiscal_period"] = "Q2"
+    else:
+        record["fiscal_period"] = "Q1"
+
+    # Determine fiscal year from fy_start
+    if classified.get("fy_start"):
+        fy_start_dt = parse_date(classified["fy_start"])
+        # Fiscal year is typically named by the calendar year of the FY end
+        # e.g., FY2025 starts Jan 29, 2024 → FY end is Jan 2025 → FY=2025
+        report_dt = parse_date(meta["report_date"])
+        if meta["form"] == "10-K":
+            # The report_date IS the FY end
+            fy_end_dt = report_dt
+        else:
+            # Estimate FY end: fy_start + ~365 days
+            fy_end_dt = fy_start_dt + timedelta(days=365)
+        record["fiscal_year"] = fy_end_dt.year
+
+    # Extract values for each component
+    values = {}
+    for comp_name, comp_def in components.items():
+        comp_values = {}
+
+        for concept in comp_def["concepts"]:
+            if concept not in facts:
+                continue
+
+            entries = facts[concept]
+
+            if comp_def["type"] == "stock":
+                # Balance sheet: use current instant
+                ctx_id = classified.get("current_instant")
+                if ctx_id:
+                    for cref, val in entries:
+                        if cref == ctx_id:
+                            comp_values["instant"] = val
+                            break
+
+            elif comp_def["type"] == "per_period":
+                # Diluted shares etc: use discrete quarterly context
+                ctx_id = classified.get("current_discrete")
+                if ctx_id:
+                    for cref, val in entries:
+                        if cref == ctx_id:
+                            comp_values["discrete"] = val
+                            break
+                # Fallback: for 10-K (Q4), use FY context if discrete not found
+                if "discrete" not in comp_values:
+                    fy_ctx = classified.get("current_fy")
+                    if fy_ctx:
+                        for cref, val in entries:
+                            if cref == fy_ctx:
+                                comp_values["discrete"] = val
+                                break
+
+            elif comp_def["type"] == "flow":
+                # Flow items: extract both discrete and YTD where available
+                discrete_ctx = classified.get("current_discrete")
+                if discrete_ctx:
+                    for cref, val in entries:
+                        if cref == discrete_ctx:
+                            comp_values["discrete"] = val
+                            break
+
+                # YTD contexts (try all available)
+                for ytd_key in ["current_ytd_h1", "current_ytd_9m", "current_fy"]:
+                    ytd_ctx = classified.get(ytd_key)
+                    if ytd_ctx:
+                        for cref, val in entries:
+                            if cref == ytd_ctx:
+                                comp_values["ytd"] = val
+                                comp_values["ytd_type"] = ytd_key
+                                break
+
+                # For Q1, the discrete IS the YTD
+                if record["fiscal_period"] == "Q1" and "discrete" in comp_values:
+                    comp_values["ytd"] = comp_values["discrete"]
+                    comp_values["ytd_type"] = "q1_discrete"
+
+            if comp_values:
+                break  # Found values for this concept, stop trying alternatives
+
+        values[comp_name] = comp_values
+
+    record["values"] = values
+    return record
+
+
+# ── Quarterly derivation ───────────────────────────────────────────────────────
+
+def derive_quarterly_values(filing_extractions: list, components: dict = None) -> list:
+    """
+    Given raw filing extractions (one per filing), derive quarterly values.
+
+    For IS items: use discrete quarterly values from Q1/Q2/Q3, derive Q4 from FY - 9M_YTD.
+    For CF items: derive all from YTD subtraction (Q1 = YTD, Q2 = H1-Q1, Q3 = 9M-H1, Q4 = FY-9M).
+    For BS items: use instant values directly.
+    For per_period: use discrete values directly.
+    """
+    if components is None:
+        components = COMPONENTS
+
+    # Sort by fiscal year and period
+    period_order = {"Q1": 1, "Q2": 2, "Q3": 3, "Q4": 4}
+    filing_extractions.sort(
+        key=lambda f: (f.get("fiscal_year", 0), period_order.get(f.get("fiscal_period", ""), 0))
+    )
+
+    # Group by fiscal year
+    by_fy = {}
+    for f in filing_extractions:
+        fy = f.get("fiscal_year")
+        fp = f.get("fiscal_period")
+        if fy and fp:
+            by_fy.setdefault(fy, {})[fp] = f
+
+    results = []
+    for fy in sorted(by_fy.keys()):
+        quarters = by_fy[fy]
+        for fp in ["Q1", "Q2", "Q3", "Q4"]:
+            filing = quarters.get(fp)
+            if not filing:
+                continue
+
+            record = {
+                "ticker": "",  # filled in by caller
+                "fiscal_year": fy,
+                "fiscal_period": fp,
+                "period_end": filing["report_date"],
+                "period_start": filing.get("fy_start") if fp == "Q1" else None,
+                "form": filing["form"],
+                "accession": filing["accession"],
+                "filed": filing["filing_date"],
+            }
+
+            # Fill in period_start for Q2-Q4 from prior quarter's report_date + 1
+            if fp != "Q1":
+                prev_fp = {"Q2": "Q1", "Q3": "Q2", "Q4": "Q3"}[fp]
+                prev = quarters.get(prev_fp)
+                if prev:
+                    prev_end = parse_date(prev["report_date"])
+                    record["period_start"] = date_str(prev_end + timedelta(days=1))
+
+            for comp_name, comp_def in components.items():
+                raw = filing["values"].get(comp_name, {})
+                value = None
+
+                if comp_def["type"] == "stock":
+                    value = raw.get("instant")
+
+                elif comp_def["type"] == "per_period":
+                    value = raw.get("discrete")
+
+                elif comp_def["type"] == "flow":
+                    stmt = comp_def.get("statement", "is")
+
+                    if stmt == "is" and fp != "Q4":
+                        # IS items: use discrete quarterly value for Q1-Q3
+                        value = raw.get("discrete")
+
+                    if value is None:
+                        # CF items or Q4 IS: derive from YTD subtraction
+                        current_ytd = raw.get("ytd")
+                        if current_ytd is not None:
+                            if fp == "Q1":
+                                value = current_ytd
+                            else:
+                                # Get prior quarter's YTD
+                                prior_ytd = _get_prior_ytd(
+                                    quarters, fp, comp_name, comp_def
+                                )
+                                if prior_ytd is not None:
+                                    value = current_ytd - prior_ytd
+
+                if value is not None and comp_def.get("negate"):
+                    value = -value
+
+                if value is None and "default" in comp_def:
+                    value = comp_def["default"]
+
+                record[comp_name] = value
+
+            results.append(record)
+
+    return results
+
+
+def _get_prior_ytd(quarters: dict, current_fp: str, comp_name: str,
+                   comp_def: dict) -> int | None:
+    """Get the YTD value from the prior quarter's filing for subtraction."""
+    if current_fp == "Q2":
+        prior = quarters.get("Q1")
+    elif current_fp == "Q3":
+        prior = quarters.get("Q2")
+    elif current_fp == "Q4":
+        prior = quarters.get("Q3")
+    else:
+        return None
+
+    if not prior:
+        return None
+
+    raw = prior["values"].get(comp_name, {})
+    return raw.get("ytd")
+
+
+# ── Main extraction ────────────────────────────────────────────────────────────
+
+def extract_company(ticker: str, components: dict = None,
+                    fy_start: int = None, fy_end: int = None) -> list:
+    """
+    Extract all quarterly components for a company from downloaded filings.
+    Returns a list of quarterly records.
+    """
+    if components is None:
+        components = dict(COMPONENTS)
+
+    ticker_dir = os.path.join(DATA_DIR, ticker)
+    if not os.path.isdir(ticker_dir):
+        print(f"No filings found for {ticker}. Run fetch.py first.")
+        return []
 
     # Try to load company-specific overrides
     company_module = None
@@ -479,82 +553,65 @@ def extract_company(cik: str, ticker: str, components: dict = None,
     except ImportError:
         pass
 
-    # Let company module override components if needed
     if company_module and hasattr(company_module, "get_components"):
         components = company_module.get_components(components)
 
-    results = []
-    for q in quarters:
-        if "period_end" not in q:
-            print(f"  Skipping {q['fiscal_year']} {q['fiscal_period']}: no period_end")
+    # Parse all filings
+    filing_dirs = sorted(os.listdir(ticker_dir))
+    print(f"Parsing {len(filing_dirs)} filings for {ticker}...")
+
+    extractions = []
+    for dirname in filing_dirs:
+        filing_dir = os.path.join(ticker_dir, dirname)
+        if not os.path.isdir(filing_dir):
             continue
 
-        record = {
-            "ticker": ticker,
-            "cik": cik,
-            "fiscal_year": q["fiscal_year"],
-            "fiscal_period": q["fiscal_period"],
-            "period_end": q["period_end"],
-            "period_start": q.get("period_start"),
-            "form": q["form"],
-            "accession": q["accession"],
-            "filed": q.get("filed"),
-        }
+        extraction = extract_single_filing(filing_dir, components)
+        if extraction is None:
+            continue
 
-        for comp_name, comp_def in components.items():
-            value = None
-            used_concept = None
+        fy = extraction.get("fiscal_year")
+        if fy_start and fy and fy < fy_start:
+            continue
+        if fy_end and fy and fy > fy_end:
+            continue
 
-            for concept in comp_def["concepts"]:
-                entries = get_concept_entries(facts, concept)
-                if not entries:
-                    continue
+        print(f"  {extraction['form']:4s} {extraction['report_date']}  →  FY{fy} {extraction['fiscal_period']}")
+        extractions.append(extraction)
 
-                if comp_def["type"] == "stock":
-                    value = extract_stock_value(entries, q["period_end"])
-                elif comp_def["type"] == "per_period":
-                    value = extract_per_period_value(entries, q)
-                elif comp_def["type"] == "flow":
-                    value = extract_flow_value_ytd(entries, q, quarters)
+    # Derive quarterly values
+    print(f"\nDeriving quarterly values...")
+    results = derive_quarterly_values(extractions, components)
 
-                if value is not None:
-                    used_concept = concept
-                    break
+    # Set ticker on all records
+    for r in results:
+        r["ticker"] = ticker
 
-            if value is not None and comp_def.get("negate"):
-                value = -value
+    # Post-process with company module
+    if company_module and hasattr(company_module, "post_process_all"):
+        results = company_module.post_process_all(results, extractions)
+    elif company_module and hasattr(company_module, "post_process"):
+        for r in results:
+            r = company_module.post_process(r, extractions)
 
-            # Apply default for components that can legitimately be zero when absent
-            if value is None and "default" in comp_def:
-                value = comp_def["default"]
-
-            record[comp_name] = value
-
-        # Let company module post-process
-        if company_module and hasattr(company_module, "post_process"):
-            record = company_module.post_process(record, facts, q, quarters)
-
-        results.append(record)
-        status = f"  {q['fiscal_year']} {q['fiscal_period']}: "
-        extracted = sum(1 for k, v in record.items()
-                        if k in components and v is not None)
+    # Report extraction quality
+    for r in results:
+        extracted = sum(1 for k, v in r.items() if k in components and v is not None)
         total = len(components)
-        status += f"{extracted}/{total} components"
-        print(status)
+        print(f"  FY{r['fiscal_year']} {r['fiscal_period']}: {extracted}/{total} components")
 
     return results
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Extract financial data from SEC XBRL")
-    parser.add_argument("--cik", required=True, help="SEC CIK number")
+    parser = argparse.ArgumentParser(description="Extract financial data from XBRL filings")
     parser.add_argument("--ticker", required=True, help="Stock ticker symbol")
     parser.add_argument("--fy-start", type=int, help="Start fiscal year (inclusive)")
     parser.add_argument("--fy-end", type=int, help="End fiscal year (inclusive)")
     parser.add_argument("--output-dir", default="output", help="Output directory")
     args = parser.parse_args()
 
-    results = extract_company(args.cik, args.ticker, fy_start=args.fy_start, fy_end=args.fy_end)
+    results = extract_company(args.ticker, fy_start=args.fy_start, fy_end=args.fy_end)
 
     os.makedirs(args.output_dir, exist_ok=True)
     output_path = os.path.join(args.output_dir, f"{args.ticker.lower()}.json")
