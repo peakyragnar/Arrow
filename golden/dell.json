@@ -30,7 +30,9 @@
     "rd_amortization_q_manual": 424950000,
     "rd_asset_q_manual": 6025225000,
     "rd_OI_Adjustment": 263050000,
-    "employee_count_annual_manual": 133000
+    "employee_count_annual_manual": 133000,
+    "calendar_year": 2023,
+    "calendar_quarter": "Q2"
   },
   {
     "ticker": "DELL",
@@ -63,7 +65,9 @@
     "rd_amortization_q_manual": 460200000,
     "rd_asset_q_manual": 6305275000,
     "rd_OI_Adjustment": 244800000,
-    "employee_count_annual_manual": 133000
+    "employee_count_annual_manual": 133000,
+    "calendar_year": 2023,
+    "calendar_quarter": "Q3"
   },
   {
     "ticker": "DELL",
@@ -96,7 +100,9 @@
     "rd_amortization_q_manual": 494800000,
     "rd_asset_q_manual": 6537075000,
     "rd_OI_Adjustment": 197200000,
-    "employee_count_annual_manual": 133000
+    "employee_count_annual_manual": 133000,
+    "calendar_year": 2023,
+    "calendar_quarter": "Q4"
   },
   {
     "ticker": "DELL",
@@ -129,7 +135,9 @@
     "rd_amortization_q_manual": 530600000,
     "rd_asset_q_manual": 6758275000,
     "rd_OI_Adjustment": 185400000,
-    "employee_count_annual_manual": 120000
+    "employee_count_annual_manual": 120000,
+    "calendar_year": 2024,
+    "calendar_quarter": "Q1"
   },
   {
     "ticker": "DELL",
@@ -162,7 +170,9 @@
     "rd_amortization_q_manual": 568750000,
     "rd_asset_q_manual": 6990675000,
     "rd_OI_Adjustment": 194250000,
-    "employee_count_annual_manual": 120000
+    "employee_count_annual_manual": 120000,
+    "calendar_year": 2024,
+    "calendar_quarter": "Q2"
   },
   {
     "ticker": "DELL",
@@ -195,7 +205,9 @@
     "rd_amortization_q_manual": 607750000,
     "rd_asset_q_manual": 7201925000,
     "rd_OI_Adjustment": 172250000,
-    "employee_count_annual_manual": 120000
+    "employee_count_annual_manual": 120000,
+    "calendar_year": 2024,
+    "calendar_quarter": "Q3"
   },
   {
     "ticker": "DELL",
@@ -228,7 +240,9 @@
     "rd_amortization_q_manual": 645000000,
     "rd_asset_q_manual": 7339175000,
     "rd_OI_Adjustment": 100000000,
-    "employee_count_annual_manual": 120000
+    "employee_count_annual_manual": 120000,
+    "calendar_year": 2024,
+    "calendar_quarter": "Q4"
   },
   {
     "ticker": "DELL",
@@ -261,7 +275,9 @@
     "rd_amortization_q_manual": 683650000,
     "rd_asset_q_manual": 7467175000,
     "rd_OI_Adjustment": 89350000,
-    "employee_count_annual_manual": 108000
+    "employee_count_annual_manual": 108000,
+    "calendar_year": 2025,
+    "calendar_quarter": "Q1"
   },
   {
     "ticker": "DELL",
@@ -294,7 +310,9 @@
     "rd_amortization_q_manual": 693362500,
     "rd_asset_q_manual": 7591525000,
     "rd_OI_Adjustment": 114637500,
-    "employee_count_annual_manual": 108000
+    "employee_count_annual_manual": 108000,
+    "calendar_year": 2025,
+    "calendar_quarter": "Q2"
   },
   {
     "ticker": "DELL",
@@ -327,7 +345,9 @@
     "rd_amortization_q_manual": 701925000,
     "rd_asset_q_manual": 7683162500,
     "rd_OI_Adjustment": 83075000,
-    "employee_count_annual_manual": 108000
+    "employee_count_annual_manual": 108000,
+    "calendar_year": 2025,
+    "calendar_quarter": "Q3"
   },
   {
     "ticker": "DELL",
@@ -360,7 +380,9 @@
     "rd_amortization_q_manual": 708837500,
     "rd_asset_q_manual": 7733237500,
     "rd_OI_Adjustment": 43162500,
-    "employee_count_annual_manual": 108000
+    "employee_count_annual_manual": 108000,
+    "calendar_year": 2025,
+    "calendar_quarter": "Q4"
   },
   {
     "ticker": "DELL",
@@ -393,6 +415,8 @@
     "rd_amortization_q_manual": 718000000,
     "rd_asset_q_manual": 7821400000,
     "rd_OI_Adjustment": 79000000,
-    "employee_count_annual_manual": 97000
+    "employee_count_annual_manual": 97000,
+    "calendar_year": 2026,
+    "calendar_quarter": "Q1"
   }
 ]
