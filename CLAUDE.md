@@ -83,13 +83,17 @@ Golden eval (`golden_eval.xlsx`) contains manually verified data. Eval checks 28
 - DELL: 336/336 exact
 - PLTR: 336/336 exact
 
+**Golden eval source**: `golden_eval.xlsx` has three tabs: `manual_audit_entry_v1` (the 24 extracted components + employee count), `researchanddevelopment` (R&D capitalization inputs), and `restatements`. The spreadsheet uses strict OOXML format — openpyxl cannot read it, requires a custom XML parser (see `eval.py` pattern). Golden JSON files (`golden/{ticker}.json`) are created from extracted data once extraction accuracy is confirmed, not parsed from the spreadsheet.
+
+**Golden eval window vs extraction output**: The golden eval covers an arbitrary 12-quarter window per company (chosen during manual verification). This is a validation window, not an output constraint. `extract.py` outputs **all** derived quarters from downloaded filings — the eval compares only the overlapping quarters. More extraction output is better: downstream consumers (calculate.py, dashboard, future Layer 4 synthesis) benefit from longer history (TTM needs 4 quarters, YoY needs 8, ROIIC needs more). Once all 20 target companies are validated, the golden eval becomes a regression test — new filings get extracted automatically without golden data, and the eval proves the extraction logic hasn't regressed on known-good data.
+
 ## Financial Metrics (calculate.py)
 
 Reads `output/{ticker}.json`, computes all metrics from `formulas.md`, writes enriched JSON to `dashboard/data/{ticker}.json`. Metrics include ROIC, ROIIC, reinvestment rate, revenue/gross profit growth, margins, cash quality ratios, CCC, net debt, interest coverage, and more. See `formulas.md` for the full canonical metric dictionary.
 
 **Stock split normalization**: Diluted share counts in extraction output are stored as-reported (pre-split for historical periods). `calculate.py` detects splits by looking for >=1.5x (forward) or <=0.67x (reverse) jumps between adjacent quarters, then normalizes all values to the most recent basis in a `diluted_shares_split_adjusted_q` field. Raw extraction data is never modified. This was a deliberate design decision — keep extraction faithful to filings, normalize in the calculations layer.
 
-**Metric availability**: TTM metrics need 4 quarters of history, YoY metrics need 8. With 12 quarters of data (FY2024-FY2026), all metrics are available from FY2025 Q4 onward.
+**Metric availability**: TTM metrics need 4 quarters of history, YoY metrics need 8. With 6 fiscal years of fetched filings, all derived quarters are available for metric computation. The more history, the earlier full metrics become available.
 
 ## Dashboard
 
