@@ -53,29 +53,44 @@ Company-specific overrides (`companies/{ticker}.py`) can replace or extend conce
 
 ## Restatement Rule
 
-**Problem:** Companies sometimes restate prior-period figures. This happens in two ways:
+**Problem:** Companies restate prior-period figures. This can appear as:
 
-1. **Amended filings (10-Q/A, 10-K/A):** Explicitly replaces an earlier filing. Easy to detect from the form type.
+1. **Amended filings (10-Q/A, 10-K/A):** Explicitly replaces an earlier filing.
+2. **Comparative disclosures:** Any filing may include restated values for prior periods — both duration contexts (IS, CF, per-period) and instant contexts (balance sheet). There is no amendment indicator in the XBRL.
 
-2. **Comparative disclosures in 10-K:** A 10-K may include restated quarterly figures for the prior fiscal year as comparative data. These appear as regular ~90-day duration contexts with prior-period dates. There is no amendment indicator in the XBRL — the values simply differ from the original 10-Q.
+**Rule: When any filing contains a value for a period already in our output, the most recently filed document's value wins.**
 
-**Rule: When the same component for the same quarter-period appears in multiple filings, the value from the most recently filed document wins.**
+This applies to **all component types** — flow, stock, and per-period. No type-specific scoping.
 
-This is implemented as a post-derivation override step:
+Implementation (post-derivation override step):
 
-1. After deriving quarterly values from each filing's own data, scan all 10-K filings for prior-period quarterly contexts (discrete ~90-day durations that don't match the 10-K's own quarter).
+1. After deriving quarterly values, scan downloaded filings for prior-period contexts that match output quarters.
+2. **Only apply overrides from filings that are explicitly flagged or amended:**
+   - `DocumentFinStmtErrorCorrectionFlag = true` in the XBRL (standard DEI concept indicating the filing contains error corrections to prior periods)
+   - Amended form types (`10-Q/A`, `10-K/A`)
+3. For duration-based components (flow, per_period): match ~90-day duration contexts whose end date matches an output quarter's period_end.
+4. For instant-based components (stock): match instant contexts whose date matches an output quarter's period_end.
+5. If the filing date is more recent than the original filing for that quarter, override the value.
 
-2. For each prior-period value found, compare the 10-K's filing date to the original filing's date for that quarter.
-
-3. If the 10-K is more recent (it always will be), override the derived value.
+Regular filings (10-Q, 10-K) routinely include prior-period comparative data that is **not** a restatement. Without the error correction flag check, these comparatives would incorrectly override original values (e.g., NVIDIA 10-Q comparative share counts reflecting pre-split figures).
 
 **What this catches:**
-- Dell FY2025 10-K restated all of FY2024 Q1-Q4 for COGS, operating income, tax, pretax income, and net income.
-- Any company that presents restated comparative quarterly data in a 10-K.
+- Restated values in filings with `DocumentFinStmtErrorCorrectionFlag = true` (e.g., Dell FY2025 10-K restating FY2024 quarterly IS and BS values).
+- Amended filings (10-Q/A, 10-K/A) that contain updated XBRL for prior periods.
 
 **What this does NOT catch:**
 - Restatements that only appear in prose (MD&A text) without updated XBRL facts.
-- Restatements filed as separate 10-Q/A or 10-K/A filings (these would need to be fetched and would replace the original filing entirely).
+- Filings that contain corrections but fail to set the `DocumentFinStmtErrorCorrectionFlag`.
+
+## Stock Split Handling
+
+Stock splits cause later filings to contain pre-split share counts as comparative data. Without special handling, the restatement rule would incorrectly override post-split values with pre-split ones.
+
+**Detection:** Scan all filings for the XBRL concept `StockholdersEquityNoteStockSplitConversionRatio1`. This is a standard US GAAP concept that explicitly records the split ratio (e.g., 10 for a 10:1 split). A company may have multiple splits in its history.
+
+**Rule:** When overriding `diluted_shares_q`, if the ratio between the new value and the existing value matches a detected split ratio, the new value is pre-split — skip the override and keep the post-split original.
+
+This only applies to `diluted_shares_q`. We do not calculate EPS; it would be derived from net income and diluted shares downstream.
 
 ## Output Filtering
 

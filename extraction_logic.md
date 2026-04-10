@@ -88,9 +88,24 @@ Each annual R&D figure is divided by 4 to estimate quarterly values for the look
 
 The golden evaluation was built with a 3-year lookback (12 estimated quarters + 12 actual = 24 total). Adding a 4th year changes the amortization calculation and produces mismatches. The 20-quarter window needs at most 8 estimated quarters (20 - 12 = 8, i.e., 2 years), so 3 years provides comfortable coverage with one year of buffer.
 
+## Restatement Overrides
+
+After deriving quarterly values, the pipeline scans filings for prior-period values that should override the original extractions. Overrides only apply from filings that are explicitly flagged:
+
+- **`DocumentFinStmtErrorCorrectionFlag = true`** — a standard DEI concept in the XBRL indicating the filing contains error corrections to prior periods.
+- **Amended form types** — `10-Q/A` or `10-K/A`.
+
+Regular 10-Q and 10-K filings include prior-period comparative data as standard disclosure. These are **not** treated as restatements.
+
+Overrides apply to all component types (flow, stock, per_period). For each matching prior-period context, if the flagged filing was filed after the original filing for that quarter, the new value replaces the old.
+
+## Stock Split Handling
+
+Stock splits are detected from the XBRL concept `StockholdersEquityNoteStockSplitConversionRatio1`. When a split is detected, overrides to `diluted_shares_q` are checked against the split ratio — if the override value differs by exactly the split ratio, it's a pre-split comparative and is skipped.
+
 ## Extract Output Filtering
 
-`extract.py` parses **all** downloaded filings regardless of the `--fy-start`/`--fy-end` arguments. The FY filter is applied **after** quarterly derivation, not before. This ensures derivation dependencies (e.g., Q1 needed for Q2 cash flow subtraction) are always available, even when Q1 falls outside the output window.
+`extract.py` parses **all** downloaded filings regardless of the `--fy-start`/`--fy-end` arguments. The FY filter is applied **after** quarterly derivation and restatement overrides, not before. This ensures derivation dependencies (e.g., Q1 needed for Q2 cash flow subtraction) are always available, even when Q1 falls outside the output window.
 
 ## Evaluation Independence
 

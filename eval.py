@@ -113,7 +113,7 @@ def evaluate(golden: list, extracted: list, verbose: bool = False) -> bool:
 
             if golden_val == extract_val:
                 exact_matches += 1
-            elif golden_val != 0 and abs(extract_val - golden_val) / abs(golden_val) < 0.01:
+            elif golden_val != 0 and abs(extract_val - golden_val) / abs(golden_val) < 0.001:
                 close_matches += 1
                 if verbose:
                     diff = extract_val - golden_val
@@ -136,7 +136,7 @@ def evaluate(golden: list, extracted: list, verbose: bool = False) -> bool:
     if total_fields > 0:
         print(f"Total fields:    {total_fields}")
         print(f"Exact matches:   {exact_matches:>5} ({exact_matches/total_fields*100:.1f}%)")
-        print(f"Close (<1%):     {close_matches:>5} ({close_matches/total_fields*100:.1f}%)")
+        print(f"Close (<0.1%):   {close_matches:>5} ({close_matches/total_fields*100:.1f}%)")
         print(f"Missing:         {missing:>5} ({missing/total_fields*100:.1f}%)")
         print(f"Mismatches:      {len(mismatches):>5} ({len(mismatches)/total_fields*100:.1f}%)")
     print(f"{'='*80}")

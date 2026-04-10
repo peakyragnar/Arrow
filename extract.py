@@ -53,7 +53,7 @@ COMPONENTS = {
         "type": "flow", "statement": "is",
     },
     "net_income_q": {
-        "concepts": ["NetIncomeLoss"],
+        "concepts": ["ProfitLoss", "NetIncomeLoss"],
         "type": "flow", "statement": "is",
     },
     "interest_expense_q": {
@@ -63,7 +63,8 @@ COMPONENTS = {
 
     # Balance Sheet (stock, instant values)
     "equity_q": {
-        "concepts": ["StockholdersEquity"],
+        "concepts": ["StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest",
+                      "StockholdersEquity"],
         "type": "stock",
     },
     "short_term_debt_q": {
@@ -534,12 +535,15 @@ def _get_prior_ytd(quarters: dict, current_fp: str, comp_name: str,
 def apply_restatement_overrides(results: list, ticker: str,
                                 components: dict = None) -> list:
     """
-    Scan all 10-K filings for prior-period quarterly values that supersede
-    the original 10-Q extractions. When a 10-K contains a discrete ~90-day
-    context for a prior quarter, its value overrides the original.
+    Scan all filings for prior-period values that supersede earlier extractions.
+    When any filing contains a value for a period already in our output, the
+    most recently filed document's value wins.
 
-    This handles restatements presented as comparative quarterly data in 10-Ks,
-    which have no explicit amendment indicator in the XBRL.
+    Handles both:
+    - Duration contexts (flow, per_period): ~90-day periods matching output quarters
+    - Instant contexts (stock): dates matching output quarter-end dates
+
+    Applies to all component types. No type-specific scoping.
     """
     if components is None:
         components = COMPONENTS
@@ -548,26 +552,32 @@ def apply_restatement_overrides(results: list, ticker: str,
     if not os.path.isdir(ticker_dir):
         return results
 
-    # Build lookup: (fiscal_year, fiscal_period) -> result record
-    result_map = {}
-    for r in results:
-        key = (r["fiscal_year"], r["fiscal_period"])
-        result_map[key] = r
-
-    # Collect all 10-K filings sorted by filing date (most recent last)
-    ten_ks = []
+    # Collect all filings with metadata, sorted by filing date
+    all_filings = []
     for dirname in sorted(os.listdir(ticker_dir)):
         meta_path = os.path.join(ticker_dir, dirname, "filing_meta.json")
         if not os.path.exists(meta_path):
             continue
         with open(meta_path) as f:
             meta = json.load(f)
-        if meta["form"] == "10-K":
-            ten_ks.append((os.path.join(ticker_dir, dirname), meta))
+        all_filings.append((os.path.join(ticker_dir, dirname), meta))
+
+    # Detect stock splits from XBRL (collect all split ratios)
+    split_ratios = set()
+    for filing_dir, meta in all_filings:
+        xbrl_path = os.path.join(filing_dir, meta["xbrl_filename"])
+        if not os.path.exists(xbrl_path):
+            continue
+        _, split_facts, _ = parse_xbrl(xbrl_path)
+        split_entries = split_facts.get("StockholdersEquityNoteStockSplitConversionRatio1", [])
+        for _, val in split_entries:
+            if val > 1:
+                split_ratios.add(val)
 
     override_count = 0
+    split_skips = 0
 
-    for filing_dir, meta in ten_ks:
+    for filing_dir, meta in all_filings:
         xbrl_path = os.path.join(filing_dir, meta["xbrl_filename"])
         if not os.path.exists(xbrl_path):
             continue
@@ -575,9 +585,33 @@ def apply_restatement_overrides(results: list, ticker: str,
         contexts, facts, nsmap = parse_xbrl(xbrl_path)
         report_dt = parse_date(meta["report_date"])
 
-        # Find all ~90-day (discrete quarter) duration contexts NOT ending
-        # at this 10-K's report date — these are prior-period comparatives
-        prior_quarter_contexts = {}  # ctx_id -> (start, end)
+        # Only apply overrides from filings that contain error corrections
+        # or are amended filings (10-Q/A, 10-K/A)
+        is_amendment = "/A" in meta.get("form", "")
+        has_error_correction = False
+        for ecf_concept in ["DocumentFinStmtErrorCorrectionFlag"]:
+            entries = facts.get(ecf_concept, [])
+            for _, val in entries:
+                if val == 1:  # parsed as int(float("true")) won't work; check raw
+                    has_error_correction = True
+                    break
+
+        # Also check raw XML for the flag since boolean "true" may not parse as int
+        if not has_error_correction:
+            import xml.etree.ElementTree as ET
+            tree = ET.parse(xbrl_path)
+            root = tree.getroot()
+            for elem in root:
+                if "DocumentFinStmtErrorCorrectionFlag" in elem.tag:
+                    if elem.text and elem.text.strip().lower() == "true":
+                        has_error_correction = True
+                    break
+
+        if not is_amendment and not has_error_correction:
+            continue
+
+        # Find prior-period duration contexts (~90-day, not ending at this filing's report date)
+        prior_duration_ctxs = {}  # ctx_id -> end_date
         for ctx_id, ctx in contexts.items():
             if ctx.get("has_dimensions") or ctx.get("type") != "duration":
                 continue
@@ -586,33 +620,62 @@ def apply_restatement_overrides(results: list, ticker: str,
                 continue
             end_dt = parse_date(ctx["end"])
             if abs((end_dt - report_dt).days) <= 3:
-                continue  # this is the 10-K's own quarter, skip
-            prior_quarter_contexts[ctx_id] = (ctx["start"], ctx["end"])
+                continue
+            prior_duration_ctxs[ctx_id] = ctx["end"]
 
-        if not prior_quarter_contexts:
+        # Find prior-period instant contexts (not matching this filing's report date)
+        prior_instant_ctxs = {}  # ctx_id -> date
+        for ctx_id, ctx in contexts.items():
+            if ctx.get("has_dimensions") or ctx.get("type") != "instant":
+                continue
+            dt = parse_date(ctx["date"])
+            if abs((dt - report_dt).days) <= 3:
+                continue
+            prior_instant_ctxs[ctx_id] = ctx["date"]
+
+        if not prior_duration_ctxs and not prior_instant_ctxs:
             continue
 
-        # For each prior-period context, try to match it to a result quarter
-        for ctx_id, (start, end) in prior_quarter_contexts.items():
-            # Find which result quarter this context belongs to
-            target = None
-            for r in results:
-                if r.get("period_end") and abs((parse_date(r["period_end"]) - parse_date(end)).days) <= 3:
-                    target = r
+        # Match prior-period contexts to output quarters and override
+        for r in results:
+            period_end = r.get("period_end")
+            if not period_end:
+                continue
+
+            # Only override if this filing was filed after the original
+            if meta["filing_date"] <= r.get("filed", ""):
+                continue
+
+            period_end_dt = parse_date(period_end)
+
+            # Find matching duration context for this quarter
+            matching_duration = None
+            for ctx_id, end_date in prior_duration_ctxs.items():
+                if abs((parse_date(end_date) - period_end_dt).days) <= 3:
+                    matching_duration = ctx_id
                     break
-            if not target:
+
+            # Find matching instant context for this quarter
+            matching_instant = None
+            for ctx_id, inst_date in prior_instant_ctxs.items():
+                if abs((parse_date(inst_date) - period_end_dt).days) <= 3:
+                    matching_instant = ctx_id
+                    break
+
+            if not matching_duration and not matching_instant:
                 continue
 
-            # Only override if the 10-K was filed after the original filing
-            if meta["filing_date"] <= target.get("filed", ""):
-                continue
-
-            # Extract values for each flow/IS component from this context
             for comp_name, comp_def in components.items():
-                if comp_def["type"] not in ("flow",):
+                comp_type = comp_def["type"]
+
+                # Pick the right context type for this component
+                if comp_type == "stock":
+                    ctx_id = matching_instant
+                else:
+                    ctx_id = matching_duration
+
+                if not ctx_id:
                     continue
-                if comp_def.get("statement") == "cf":
-                    continue  # CF values are YTD-derived, not discrete comparatives
 
                 for concept in comp_def["concepts"]:
                     if concept not in facts:
@@ -625,15 +688,33 @@ def apply_restatement_overrides(results: list, ticker: str,
                         if comp_def.get("negate"):
                             val = -val
 
-                        old_val = target.get(comp_name)
-                        if old_val != val:
-                            target[comp_name] = val
+                        old_val = r.get(comp_name)
+                        if old_val is not None and old_val != val:
+                            # For diluted shares: check if difference is
+                            # due to a stock split (skip pre-split values)
+                            if comp_name == "diluted_shares_q" and split_ratios and old_val != 0:
+                                ratio = val / old_val
+                                if any(abs(ratio - sr) < 0.01 for sr in split_ratios):
+                                    # New value is pre-split, keep post-split original
+                                    split_skips += 1
+                                    break
+
+                            r[comp_name] = val
+                            override_count += 1
+                        elif old_val is None:
+                            r[comp_name] = val
                             override_count += 1
 
                     break  # matched concept, stop trying alternatives
 
+    if split_ratios:
+        ratios_str = ", ".join(f"{int(r)}:1" for r in sorted(split_ratios))
+        print(f"  Detected stock split(s): {ratios_str}")
+        if split_skips:
+            print(f"  Skipped {split_skips} pre-split diluted share overrides")
+
     if override_count > 0:
-        print(f"  Applied {override_count} restatement overrides from 10-K comparatives")
+        print(f"  Applied {override_count} restatement overrides from later filings")
 
     return results
 
