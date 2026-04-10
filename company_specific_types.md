@@ -65,3 +65,15 @@ This document catalogs the types of issues we have encountered across companies.
 **Detection:** A component jumps from 0 to a material value in a single period with no corresponding change in business model, then disappears. Check adjacent filings to confirm it's isolated.
 
 **Fix:** In the company override's `post_process()`, zero out the value for the specific period(s). Scope the override narrowly (exact fiscal_year + fiscal_period) so that if future filings legitimately start reporting the line item, it flows through and gets flagged for review.
+
+### 8. CF Line Items Broken Out vs Rolled Up
+
+**Symptom:** A component (typically D&A) is too low because the company reports sub-components as separate cash flow reconciliation line items with their own XBRL concepts, rather than rolling them into a single line. The master script captures only the primary concept.
+
+**Example:** Palo Alto Networks (PANW) breaks D&A into four separate CF lines: `DepreciationDepletionAndAmortization` (property/equipment), `CapitalizedContractCostAmortization` (deferred contract costs), `AmortizationOfFinancingCostsAndDiscounts` (debt issuance costs), and `AccretionAmortizationOfDiscountsAndPremiumsInvestments` (investment premiums, negative). The master script only captures the first, missing ~60% of total D&A.
+
+**Important:** The same XBRL concept can mean different things depending on the company. Dell tags `CapitalizedContractCostAmortization` in a footnote disclosure, but rolls it into "Other, net" on the CF face — summing it would double-count. Always check the CF statement to confirm whether a concept is a separate line item or a footnote disclosure before adding it to a company's `get_components()`.
+
+**Detection:** D&A (or another flow component) is materially lower than expected. Pull up the company's cash flow statement and count the D&A-related line items. Then search the XBRL for concepts containing "depreci" or "amortiz" on discrete/YTD duration contexts to find the matching concept names.
+
+**Fix:** In the company override's `get_components()`, override the component with `sum_concepts: True` and list all concepts to sum. Use `negate_in_sum` for concepts with reversed sign conventions (e.g., investment premium amortization where positive XBRL = CF reduction). This is a company-specific fix, not a master fix, because the same XBRL concept may be a separate CF line for one company and a footnote disclosure for another.

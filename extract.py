@@ -381,6 +381,50 @@ def extract_single_filing(filing_dir: str, components: dict = None,
             values[comp_name] = comp_values
             continue
 
+        if comp_def.get("sum_concepts") and comp_def["type"] == "flow":
+            # Sum multiple flow concepts (e.g., D&A components on cash flow statement)
+            negate_set = set(comp_def.get("negate_in_sum", []))
+            discrete_ctx = classified.get("current_discrete")
+            if discrete_ctx:
+                total = 0
+                found_any = False
+                for concept in comp_def["concepts"]:
+                    for cref, val in facts.get(concept, []):
+                        if cref == discrete_ctx:
+                            if concept in negate_set:
+                                val = -val
+                            total += val
+                            found_any = True
+                            break
+                if found_any:
+                    comp_values["discrete"] = total
+
+            # YTD contexts
+            for ytd_key in ["current_ytd_h1", "current_ytd_9m", "current_fy"]:
+                ytd_ctx = classified.get(ytd_key)
+                if ytd_ctx:
+                    total = 0
+                    found_any = False
+                    for concept in comp_def["concepts"]:
+                        for cref, val in facts.get(concept, []):
+                            if cref == ytd_ctx:
+                                if concept in negate_set:
+                                    val = -val
+                                total += val
+                                found_any = True
+                                break
+                    if found_any:
+                        comp_values["ytd"] = total
+                        comp_values["ytd_type"] = ytd_key
+
+            # For Q1, the discrete IS the YTD
+            if record["fiscal_period"] == "Q1" and "discrete" in comp_values:
+                comp_values["ytd"] = comp_values["discrete"]
+                comp_values["ytd_type"] = "q1_discrete"
+
+            values[comp_name] = comp_values
+            continue
+
         for concept in comp_def["concepts"]:
             if concept not in facts:
                 continue
