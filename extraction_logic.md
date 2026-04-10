@@ -2,21 +2,53 @@
 
 How the pipeline determines what to fetch, how to extract quarterly values, and how to source R&D lookback data.
 
-## Fiscal Year Detection
+## Extraction Flow
 
-Each company has a fiscal year-end month provided by SEC EDGAR (e.g., `fiscalYearEnd: "0129"` = January). A filing's fiscal year is determined from its report date:
+```
+For each downloaded filing:
+  1. Parse XBRL → contexts + facts
+  2. Read DEI elements → fiscal year, fiscal period
+  3. Classify contexts by period type (discrete, YTD, FY, instant)
+  4. Extract raw values for each component
 
-- If the report date's month is **after** the FY-end month, the filing belongs to the **next** calendar year's fiscal year.
-- Otherwise, it belongs to the **current** calendar year's fiscal year.
+Then:
+  5. Derive quarterly values (YTD subtraction for CF, Q4 derivation, etc.)
+  6. Apply restatement overrides from later filings
+  7. Apply company-specific post-processing (if companies/{ticker}.py exists)
+  8. Output filtered to requested fiscal year range
+```
 
-Example (Dell, FY ends January):
+## Fiscal Year and Period Detection
 
-| Report date  | Month | > 1? | Fiscal year |
-|-------------|-------|------|-------------|
-| 2021-04-30  | 4     | yes  | FY2022      |
-| 2021-07-30  | 7     | yes  | FY2022      |
-| 2021-10-29  | 10    | yes  | FY2022      |
-| 2022-01-28  | 1     | no   | FY2022      |
+Each XBRL filing contains DEI (Document and Entity Information) elements that explicitly identify the fiscal year, fiscal period, and fiscal year-end date:
+
+- **`dei:DocumentFiscalYearFocus`** — e.g., `2025`
+- **`dei:DocumentFiscalPeriodFocus`** — e.g., `Q1`, `Q2`, `Q3`, or `FY` (mapped to `Q4` for 10-Ks)
+- **`dei:CurrentFiscalYearEndDate`** — e.g., `--12-31` or `--01-26`
+- **`dei:DocumentPeriodEndDate`** — the period end date
+
+The extraction uses these directly — no heuristic inference from report dates or context durations. If DEI elements are missing, extraction fails with an error (every valid SEC filing must have them).
+
+Company overrides can implement `fix_dei(dei, meta)` to correct known DEI tagging errors before the values are used. Example: Dell FY2024 Q1-Q2 10-Qs incorrectly tag `DocumentFiscalPeriodFocus` as `FY` instead of `Q1`/`Q2`.
+
+## Calendar Year and Quarter
+
+Each output record includes `calendar_year` and `calendar_quarter` derived from the period end date, for cross-company normalization:
+
+```
+calendar_quarter = (period_end_month - 1) // 3 + 1
+```
+
+Example (NVIDIA, FY ends late January):
+
+| Fiscal    | Period end  | Calendar    |
+|-----------|-------------|-------------|
+| FY2025 Q1 | 2024-04-28  | CY2024 Q2   |
+| FY2025 Q2 | 2024-07-28  | CY2024 Q3   |
+| FY2025 Q3 | 2024-10-27  | CY2024 Q4   |
+| FY2025 Q4 | 2025-01-26  | CY2025 Q1   |
+
+Calendar-year companies (e.g., Palantir) have fiscal and calendar quarters aligned.
 
 ## Fetch Window
 
@@ -30,9 +62,53 @@ Expected filings per company: 6 10-Ks + 18 10-Qs = 24. The current (incomplete) 
 
 `--fy-start` and `--fy-end` remain as optional overrides.
 
-## Quarterly Derivation by Statement Type
+## Component Types
 
-XBRL filings contain different period structures depending on the financial statement. The extraction logic handles each differently.
+Each component has a type that determines how its quarterly value is obtained:
+
+| Type | Source | Derivation |
+|------|--------|------------|
+| `stock` | Balance sheet | Instant value at quarter-end. No derivation. |
+| `flow` + `is` | Income statement | Q1-Q3: discrete quarterly value from 10-Q. Q4: FY minus 9M YTD. |
+| `flow` + `cf` | Cash flow | Always derived from YTD subtraction. Q1 = YTD. Q2 = H1 - Q1. Q3 = 9M - H1. Q4 = FY - 9M. |
+| `per_period` | Per-period metric | Discrete quarterly value. Q4 falls back to FY context. |
+
+### Sign convention
+
+Some components (capex, acquisitions, interest expense) are reported as positive in XBRL but expected as negative in the output (or vice versa). The `negate: true` flag on a component definition flips the sign after extraction.
+
+### Default values
+
+Components with `default: 0` (e.g., short-term debt) return 0 instead of null when no XBRL value is found. Used for line items that are legitimately zero for many companies.
+
+### Summed concepts
+
+Some balance sheet items are reported as current + noncurrent splits rather than a single total. Operating lease liabilities use `sum_concepts: True` to sum `OperatingLeaseLiabilityCurrent` + `OperatingLeaseLiabilityNoncurrent`. This applies to both the initial extraction and restatement overrides. Companies like NVIDIA and Dell tag the total `OperatingLeaseLiability` in addition to the split, but others (e.g., Palantir) only tag the split.
+
+## Context Classification
+
+Each filing's XBRL contexts are classified by their relationship to the filing's report date:
+
+| Context key | Period type | Duration |
+|-------------|-----------|----------|
+| `current_instant` | instant | — (within 3 days of report date) |
+| `current_discrete` | duration | 60-120 days, ending at report date |
+| `current_ytd_h1` | duration | 150-210 days, ending at report date |
+| `current_ytd_9m` | duration | 240-300 days, ending at report date |
+| `current_fy` | duration | >340 days, ending at report date |
+| `prior_instant` | instant | — (day before FY start) |
+
+Only non-dimensioned contexts are used (consolidated totals, not segment breakdowns).
+
+## Concept Resolution
+
+Each component defines a priority-ordered list of XBRL concept names. The extractor tries each in order and uses the first one that has data. This handles companies that use different concept names for the same line item.
+
+Example: CapEx might be `PaymentsToAcquirePropertyPlantAndEquipment` for one company and `PaymentsToAcquireProductiveAssets` for another.
+
+Company-specific overrides (`companies/{ticker}.py`) can replace or extend concept lists via `get_components()`.
+
+## Quarterly Derivation Details
 
 ### Income Statement (IS) — flow items
 
@@ -97,7 +173,7 @@ After deriving quarterly values, the pipeline scans filings for prior-period val
 
 Regular 10-Q and 10-K filings include prior-period comparative data as standard disclosure. These are **not** treated as restatements.
 
-Overrides apply to all component types (flow, stock, per_period). For each matching prior-period context, if the flagged filing was filed after the original filing for that quarter, the new value replaces the old.
+Overrides apply to all component types (flow, stock, per_period) and respect `sum_concepts` for components that require it. For each matching prior-period context, if the flagged filing was filed after the original filing for that quarter, the new value replaces the old.
 
 ## Stock Split Handling
 

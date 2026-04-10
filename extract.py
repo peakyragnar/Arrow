@@ -76,8 +76,9 @@ COMPONENTS = {
         "type": "stock",
     },
     "operating_lease_liabilities_q": {
-        "concepts": ["OperatingLeaseLiability"],
+        "concepts": ["OperatingLeaseLiabilityCurrent", "OperatingLeaseLiabilityNoncurrent"],
         "type": "stock",
+        "sum_concepts": True,
     },
     "cash_q": {
         "concepts": ["CashAndCashEquivalentsAtCarryingValue"],
@@ -362,6 +363,23 @@ def extract_single_filing(filing_dir: str, components: dict = None,
     values = {}
     for comp_name, comp_def in components.items():
         comp_values = {}
+
+        if comp_def.get("sum_concepts") and comp_def["type"] == "stock":
+            # Sum multiple concepts (e.g., current + noncurrent lease liabilities)
+            ctx_id = classified.get("current_instant")
+            if ctx_id:
+                total = 0
+                found_any = False
+                for concept in comp_def["concepts"]:
+                    for cref, val in facts.get(concept, []):
+                        if cref == ctx_id:
+                            total += val
+                            found_any = True
+                            break
+                if found_any:
+                    comp_values["instant"] = total
+            values[comp_name] = comp_values
+            continue
 
         for concept in comp_def["concepts"]:
             if concept not in facts:
@@ -702,35 +720,54 @@ def apply_restatement_overrides(results: list, ticker: str,
                 if not ctx_id:
                     continue
 
-                for concept in comp_def["concepts"]:
-                    if concept not in facts:
-                        continue
-
-                    for cref, val in facts[concept]:
-                        if cref != ctx_id:
-                            continue
-
-                        if comp_def.get("negate"):
-                            val = -val
-
+                if comp_def.get("sum_concepts"):
+                    # Sum all matching concepts for this context
+                    total = 0
+                    found_any = False
+                    for concept in comp_def["concepts"]:
+                        for cref, val in facts.get(concept, []):
+                            if cref == ctx_id:
+                                total += val
+                                found_any = True
+                                break
+                    if found_any:
                         old_val = r.get(comp_name)
-                        if old_val is not None and old_val != val:
-                            # For diluted shares: check if difference is
-                            # due to a stock split (skip pre-split values)
-                            if comp_name == "diluted_shares_q" and split_ratios and old_val != 0:
-                                ratio = val / old_val
-                                if any(abs(ratio - sr) < 0.01 for sr in split_ratios):
-                                    # New value is pre-split, keep post-split original
-                                    split_skips += 1
-                                    break
-
-                            r[comp_name] = val
+                        if old_val is not None and old_val != total:
+                            r[comp_name] = total
                             override_count += 1
                         elif old_val is None:
-                            r[comp_name] = val
+                            r[comp_name] = total
                             override_count += 1
+                else:
+                    for concept in comp_def["concepts"]:
+                        if concept not in facts:
+                            continue
 
-                    break  # matched concept, stop trying alternatives
+                        for cref, val in facts[concept]:
+                            if cref != ctx_id:
+                                continue
+
+                            if comp_def.get("negate"):
+                                val = -val
+
+                            old_val = r.get(comp_name)
+                            if old_val is not None and old_val != val:
+                                # For diluted shares: check if difference is
+                                # due to a stock split (skip pre-split values)
+                                if comp_name == "diluted_shares_q" and split_ratios and old_val != 0:
+                                    ratio = val / old_val
+                                    if any(abs(ratio - sr) < 0.01 for sr in split_ratios):
+                                        # New value is pre-split, keep post-split original
+                                        split_skips += 1
+                                        break
+
+                                r[comp_name] = val
+                                override_count += 1
+                            elif old_val is None:
+                                r[comp_name] = val
+                                override_count += 1
+
+                        break  # matched concept, stop trying alternatives
 
     if split_ratios:
         ratios_str = ", ".join(f"{int(r)}:1" for r in sorted(split_ratios))
