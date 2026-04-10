@@ -166,8 +166,8 @@ def extract_employee_count_from_html(html_path: str) -> int | None:
     text = re.sub(r'<[^>]+>', ' ', html)
     text = re.sub(r'\s+', ' ', text)
 
-    # Find all "N employees" patterns
-    matches = re.findall(r'([\d,]+)\s*employees', text, re.IGNORECASE)
+    # Find all "N employees" or "N full-time employees" patterns
+    matches = re.findall(r'([\d,]+)\s*(?:full-time\s+)?employees', text, re.IGNORECASE)
     if not matches:
         return None
 

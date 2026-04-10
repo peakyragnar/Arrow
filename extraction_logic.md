@@ -50,17 +50,17 @@ Example (NVIDIA, FY ends late January):
 
 Calendar-year companies (e.g., Palantir) have fiscal and calendar quarters aligned.
 
-## Fetch Window
+## Fetch Window and Output Window
 
-Default: **6 fiscal years** ending at the current fiscal year (determined from today's date and the company's FY-end month). No manual `--fy-start`/`--fy-end` required.
+The pipeline has two distinct windows:
 
-6 years provides:
-- **3 fiscal years** of output (12 quarters of extracted data)
-- **3 fiscal years** of support (R&D lookback data embedded in the earlier 10-Ks, plus derivation dependencies for cash flow)
+**Fetch window (6 fiscal years):** `fetch.py` downloads 6 fiscal years of filings ending at the current fiscal year. This provides the full data needed for derivation dependencies and R&D lookback. Expected: 6 10-Ks + 18 10-Qs = 24 filings. The current (incomplete) fiscal year will have fewer.
 
-Expected filings per company: 6 10-Ks + 18 10-Qs = 24. The current (incomplete) fiscal year will have fewer — the pipeline reports expected vs actual counts and flags shortfalls.
+**Output window (3 fiscal years):** `extract.py` outputs the **3 most recent complete fiscal years** (12 quarters). A fiscal year is complete when all 4 quarters (Q1-Q4) have been derived. The remaining 3 fiscal years from the fetch window are used only as support data — R&D lookback history, cash flow derivation dependencies, and employee count baselines. They do not appear in the output.
 
-`--fy-start` and `--fy-end` remain as optional overrides.
+This separation is critical. The R&D capitalization lookback in `compute.py` anchors to the first quarter in the output, not the first fetched quarter. If the output window is wrong, the lookback grabs the wrong years and all R&D calculations are off.
+
+**Do not use `--fy-start`/`--fy-end` overrides.** The defaults handle the alignment correctly for any company regardless of fiscal year-end date. Manual overrides risk misaligning the output window with the lookback data.
 
 ## Component Types
 
@@ -181,7 +181,9 @@ Stock splits are detected from the XBRL concept `StockholdersEquityNoteStockSpli
 
 ## Extract Output Filtering
 
-`extract.py` parses **all** downloaded filings regardless of the `--fy-start`/`--fy-end` arguments. The FY filter is applied **after** quarterly derivation and restatement overrides, not before. This ensures derivation dependencies (e.g., Q1 needed for Q2 cash flow subtraction) are always available, even when Q1 falls outside the output window.
+`extract.py` parses **all** downloaded filings regardless of the output window. Derivation and restatement overrides run on the full filing set. The output filter is applied **last** — only the 3 most recent complete fiscal years (12 quarters) are written to the output JSON. This ensures derivation dependencies (e.g., Q1 needed for Q2 cash flow subtraction) are always available, even when Q1 falls outside the output window.
+
+The default output window is determined automatically: find all fiscal years with 4 derived quarters, take the 3 most recent. This works identically for offset fiscal year companies (NVIDIA, Dell) and calendar fiscal year companies (Palantir).
 
 ## Evaluation Independence
 

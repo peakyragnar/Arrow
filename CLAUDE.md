@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Arrow is a financial data extraction and synthesis system. It collects structured financial data, qualitative text, and market data, then uses a frontier model (Claude) to generate forward revenue/earnings estimates with reasoning.
 
-**Current status**: Layer 1 (financial data extraction) is built and working for NVIDIA and Dell. Metric calculations and a web dashboard are built on top. Layers 2-4 are planned but not yet implemented. Storage is JSON files per company for now; PostgreSQL later.
+**Current status**: Layer 1 (financial data extraction) is built and working for NVIDIA, Dell, and Palantir. Metric calculations and a web dashboard are built on top. Layers 2-4 are planned but not yet implemented. Storage is JSON files per company for now; PostgreSQL later.
 
 ## Architecture: 4 Layers
 
@@ -25,13 +25,13 @@ Arrow is a financial data extraction and synthesis system. It collects structure
 
 ```bash
 # 1. Download filings from SEC EDGAR (XBRL + HTML)
-python3 fetch.py --cik 0001045810 --ticker NVDA --fy-start 2024 --fy-end 2026
+python3 fetch.py --cik 0001045810 --ticker NVDA
 
 # 2. Extract 24 quarterly components from local XBRL files
-python3 extract.py --ticker NVDA --fy-start 2024 --fy-end 2026
+python3 extract.py --ticker NVDA
 
 # 3. Compute R&D capitalization + employee count
-python3 compute.py --ticker NVDA --fy-start 2024 --fy-end 2026
+python3 compute.py --ticker NVDA
 
 # 4. Evaluate against golden data
 python3 eval.py --ticker NVDA --verbose
@@ -43,6 +43,8 @@ python3 calculate.py --all
 # 6. Serve dashboard (then open http://localhost:8080)
 python3 -m http.server 8080 --directory dashboard
 ```
+
+**Do not use `--fy-start`/`--fy-end` overrides.** The defaults handle everything correctly: `fetch.py` downloads 6 fiscal years of filings (3 for output + 3 for R&D lookback and derivation dependencies). `extract.py` outputs the 3 most recent complete fiscal years (12 quarters). Manual overrides risk misaligning the output window with the lookback data.
 
 ## File Structure
 

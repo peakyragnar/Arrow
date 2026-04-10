@@ -845,11 +845,26 @@ def extract_company(ticker: str, components: dict = None,
         for r in results:
             r = company_module.post_process(r, extractions)
 
-    # Filter to requested fiscal year range (after all derivation and overrides)
-    if fy_start:
-        results = [r for r in results if r["fiscal_year"] >= fy_start]
-    if fy_end:
-        results = [r for r in results if r["fiscal_year"] <= fy_end]
+    # Filter to output fiscal year range (after all derivation and overrides)
+    # Default: 3 most recent complete fiscal years (12 quarters)
+    if not fy_start or not fy_end:
+        # Find complete fiscal years (those with all 4 quarters)
+        from collections import Counter
+        fy_counts = Counter(r["fiscal_year"] for r in results)
+        complete_fys = sorted(fy for fy, count in fy_counts.items() if count == 4)
+        if len(complete_fys) >= 3:
+            default_start = complete_fys[-3]
+            default_end = complete_fys[-1]
+        elif complete_fys:
+            default_start = complete_fys[0]
+            default_end = complete_fys[-1]
+        else:
+            default_start = min(r["fiscal_year"] for r in results)
+            default_end = max(r["fiscal_year"] for r in results)
+        fy_start = fy_start or default_start
+        fy_end = fy_end or default_end
+
+    results = [r for r in results if fy_start <= r["fiscal_year"] <= fy_end]
 
     # Report extraction quality
     for r in results:
