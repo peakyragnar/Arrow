@@ -56,8 +56,10 @@ python3 -m http.server 8080 --directory dashboard
 - `dashboard/index.html` — Single-file web dashboard (HTML + JS + Chart.js) for viewing metrics
 - `dashboard/data/` — Generated metric JSON files (gitignored, regenerate with `calculate.py --all`)
 - `companies/{ticker}.py` — Per-company concept overrides and post-processing
-- `golden/{ticker}.json` — Golden eval data exported from `golden_eval.xlsx`
-- `golden_eval.xlsx` — Source of truth for evaluation (manually verified data)
+- `golden/{ticker}.json` — Golden eval data (exported from `golden_eval.xlsx` via parser)
+- `golden_eval.xlsx` — Source of truth for evaluation (manually verified data, strict OOXML format — requires custom parser, openpyxl cannot read it)
+- `extraction_logic.md` — Master extraction logic: fiscal year detection, fetch/output windows, derivation, restatements
+- `company_specific_types.md` — Catalog of per-company issue types and fix patterns
 - `formulas.md` — Canonical metric dictionary (ROIC, reinvestment rate, etc.)
 - `rd_capitalization_reference.md` — R&D amortization schedule formula reference
 - `data/filings/{TICKER}/{ACCESSION}/` — Downloaded filings (gitignored)
@@ -75,11 +77,13 @@ We parse actual XBRL instance documents from each filing, NOT the SEC companyfac
 - **Diluted shares**: Per-period metric. Use discrete quarterly entry; fall back to FY context for Q4.
 
 **XBRL parsing notes:**
+- Fiscal year and period are read from DEI elements (`DocumentFiscalYearFocus`, `DocumentFiscalPeriodFocus`) — no heuristic inference
 - Contexts can be `instant` (BS) or `duration` (IS/CF), with or without dimension segments
 - Only use non-dimensioned contexts for consolidated totals
 - iXBRL HTML files contain duplicate fact entries for the same context — parser deduplicates
 - Classify contexts by period length: ~90 days = quarterly, ~180 = H1, ~270 = 9M, ~365 = FY
-- The prior-period 10-K must be fetched for R&D annual history and employee count baseline
+- Operating lease liabilities sum `OperatingLeaseLiabilityCurrent` + `OperatingLeaseLiabilityNoncurrent` (`sum_concepts` flag) — some companies only tag the split, not the total
+- Each output record includes `calendar_year` and `calendar_quarter` derived from period end date for cross-company normalization
 
 ## R&D Capitalization (compute.py)
 
@@ -92,16 +96,17 @@ Data source: 3 prior fiscal years of annual R&D from the 10-K before our extract
 
 ## Employee Count (compute.py)
 
-Not available in XBRL structured data. Extracted from 10-K HTML by finding the largest number matching the pattern `N employees`. Carried forward from the most recent 10-K until the next annual filing.
+Not available in XBRL structured data. Extracted from 10-K HTML by finding the largest number matching the pattern `N employees` or `N full-time employees`. Carried forward from the most recent 10-K until the next annual filing.
 
 ## Company Script Pattern
 
 Master script handles ~70-80% of components for any company. Per-company scripts in `companies/{ticker}.py` handle:
-- **Concept name overrides**: Companies use different XBRL concept names (e.g., NVIDIA changed CapEx concept between fiscal years)
-- **Post-processing**: Fix edge cases like multiple acquisition lines (NVIDIA Groq), concept reclassifications
+- **DEI fixes** (`fix_dei`): Correct incorrect fiscal year/period tagging in XBRL DEI elements (e.g., Dell FY2024 Q1-Q2 tagged as `FY`)
+- **Concept name overrides** (`get_components`): Companies use different XBRL concept names (e.g., NVIDIA changed CapEx concept between fiscal years)
+- **Post-processing** (`post_process`): Fix edge cases like multiple acquisition lines (NVIDIA Groq), concept reclassifications, restated Q4 derivation
 - Over time, common fixes get promoted into the master script
 
-See `companies/nvda.py` for the reference implementation.
+See `companies/nvda.py` for the reference implementation. See `company_specific_types.md` for the catalog of known issue types and fix patterns.
 
 ## Evaluation
 
@@ -110,7 +115,10 @@ Golden eval (`golden_eval.xlsx`) contains manually verified data. Eval checks 28
 - 3 R&D capitalization fields (amortization, asset, OI adjustment)
 - 1 employee count
 
-"Close" match = within 1%, typically $1M from Q4 YTD rounding. Current NVDA: 336/336 fields, 0 mismatches.
+"Close" match = within 0.1%, typically $1M from Q4 YTD rounding. Current results (all 0 mismatches):
+- NVDA: 303 exact + 33 close (Q4 rounding)
+- DELL: 336/336 exact
+- PLTR: 336/336 exact
 
 ## Financial Metrics (calculate.py)
 
