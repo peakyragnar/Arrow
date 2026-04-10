@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arrow — Financial Metrics</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #12151a;
+    --surface-hover: #1a1e25;
+    --surface-active: #1f2530;
+    --border: #252a33;
+    --border-subtle: #1a1e25;
+    --text: #c8cdd5;
+    --text-dim: #6b7280;
+    --text-muted: #3d4450;
+    --accent: #4fd1c5;
+    --accent-dim: rgba(79, 209, 197, 0.12);
+    --red: #f87171;
+    --green: #6ee7b7;
+    --amber: #fbbf24;
+    --font-mono: 'DM Mono', 'SF Mono', 'Fira Code', monospace;
+    --font-serif: 'Instrument Serif', Georgia, serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 32px;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: var(--font-serif);
+    font-size: 28px;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+    font-style: italic;
+    user-select: none;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .controls label {
+    color: var(--text-dim);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+
+  select {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 6px 28px 6px 10px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 4px;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    transition: border-color 0.15s;
+  }
+  select:hover { border-color: var(--accent); }
+  select:focus { outline: none; border-color: var(--accent); }
+
+  .meta {
+    margin-left: auto;
+    color: var(--text-muted);
+    font-size: 10px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Table container ── */
+  .table-wrap {
+    overflow-x: auto;
+    padding: 0 32px;
+    margin-top: 4px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    min-width: 900px;
+  }
+
+  /* Section headers */
+  tr.section-header td {
+    padding: 18px 0 4px 0;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    font-weight: 500;
+  }
+
+  /* Sticky first column */
+  th, td { text-align: right; white-space: nowrap; }
+
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    padding: 10px 12px;
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  th:first-child {
+    text-align: left;
+    position: sticky;
+    left: 0;
+    z-index: 20;
+    background: var(--bg);
+    min-width: 240px;
+    width: 240px;
+  }
+
+  td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border-subtle);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+  }
+
+  td:first-child {
+    text-align: left;
+    position: sticky;
+    left: 0;
+    background: var(--bg);
+    z-index: 5;
+    color: var(--text-dim);
+    font-size: 11px;
+    padding-left: 16px;
+    min-width: 240px;
+    width: 240px;
+  }
+
+  tr.metric-row { cursor: pointer; transition: background 0.1s; }
+  tr.metric-row:hover { background: var(--surface-hover); }
+  tr.metric-row:hover td:first-child { background: var(--surface-hover); color: var(--text); }
+  tr.metric-row.active { background: var(--surface-active); }
+  tr.metric-row.active td:first-child {
+    background: var(--surface-active);
+    color: var(--accent);
+    border-left: 2px solid var(--accent);
+    padding-left: 14px;
+  }
+
+  .val-pos { color: var(--green); }
+  .val-neg { color: var(--red); }
+  .val-null { color: var(--text-muted); }
+  .val-neutral { color: var(--text); }
+
+  /* ── Chart area ── */
+  .chart-section {
+    padding: 24px 32px 40px;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+    display: none;
+  }
+  .chart-section.visible { display: block; }
+
+  .chart-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .chart-title {
+    font-family: var(--font-serif);
+    font-size: 22px;
+    color: var(--text);
+    font-style: italic;
+  }
+
+  .chart-subtitle {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+
+  .chart-container {
+    position: relative;
+    height: 280px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+  }
+
+  /* ── Loading ── */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: var(--text-muted);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .loading::after {
+    content: '';
+    width: 4px; height: 4px;
+    background: var(--accent);
+    border-radius: 50%;
+    margin-left: 8px;
+    animation: pulse 1s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 1; }
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { height: 6px; width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Arrow</div>
+  <div class="controls">
+    <label for="ticker-select">Company</label>
+    <select id="ticker-select"></select>
+  </div>
+  <div class="meta" id="meta-info"></div>
+</header>
+
+<div class="table-wrap">
+  <div class="loading" id="loading">Loading</div>
+  <table id="metrics-table" style="display:none">
+    <thead><tr id="header-row"></tr></thead>
+    <tbody id="table-body"></tbody>
+  </table>
+</div>
+
+<div class="chart-section" id="chart-section">
+  <div class="chart-header">
+    <div class="chart-title" id="chart-title"></div>
+    <div class="chart-subtitle" id="chart-subtitle"></div>
+  </div>
+  <div class="chart-container">
+    <canvas id="chart-canvas"></canvas>
+  </div>
+</div>
+
+<script>
+// ── Metric definitions ──────────────────────────────────────────────────────
+
+const METRICS = [
+  { section: "Returns" },
+  { key: "roic_adjusted",       label: "ROIC (Adjusted)",           format: "pct" },
+  { key: "roiic",               label: "ROIIC",                     format: "pct" },
+  { key: "reinvestment_rate",   label: "Reinvestment Rate",         format: "pct" },
+
+  { section: "Growth" },
+  { key: "revenue_growth_yoy",           label: "Revenue Growth YoY",           format: "pct" },
+  { key: "revenue_growth_qoq_ann",       label: "Revenue Growth QoQ Ann.",      format: "pct" },
+  { key: "gross_profit_ttm_growth",      label: "Gross Profit Growth TTM",      format: "pct" },
+
+  { section: "Margins" },
+  { key: "nopat_margin",                 label: "NOPAT Margin",                 format: "pct" },
+  { key: "incremental_gross_margin",     label: "Incr. Gross Margin",           format: "pct" },
+  { key: "incremental_operating_margin", label: "Incr. Operating Margin",       format: "pct" },
+
+  { section: "Cash Quality" },
+  { key: "cfo_over_nopat",     label: "CFO / NOPAT",               format: "ratio" },
+  { key: "fcf_over_nopat",     label: "FCF / NOPAT",               format: "ratio" },
+  { key: "accruals_ratio",     label: "Accruals Ratio",            format: "pct" },
+  { key: "unlevered_fcf",      label: "Unlevered FCF",             format: "dollars" },
+
+  { section: "Balance Sheet" },
+  { key: "net_debt",           label: "Net Debt / (Cash)",         format: "dollars" },
+  { key: "net_debt_ebitda",    label: "Net Debt / EBITDA",         format: "ratio" },
+  { key: "interest_coverage",  label: "Interest Coverage",         format: "ratio" },
+
+  { section: "Efficiency" },
+  { key: "cash_conversion_cycle",    label: "Cash Conversion Cycle",   format: "days" },
+  { key: "dso",                      label: "DSO",                     format: "days" },
+  { key: "dio",                      label: "DIO",                     format: "days" },
+  { key: "dpo",                      label: "DPO",                     format: "days" },
+  { key: "working_capital_intensity", label: "Working Capital Intensity", format: "pct" },
+  { key: "sbc_pct_revenue",         label: "SBC % Revenue",           format: "pct" },
+  { key: "diluted_share_growth",     label: "Diluted Share Growth",    format: "pct" },
+  { key: "revenue_per_employee",     label: "Revenue / Employee",      format: "dollars" },
+];
+
+// ── Formatters ───────────────────────────────────────────────────────────────
+
+function formatVal(val, format) {
+  if (val === null || val === undefined) return { text: "\u2014", cls: "val-null" };
+
+  let text, cls = "val-neutral";
+
+  switch (format) {
+    case "pct":
+      text = (val * 100).toFixed(1) + "%";
+      if (val > 0.001) cls = "val-pos";
+      else if (val < -0.001) cls = "val-neg";
+      break;
+    case "ratio":
+      text = val.toFixed(2) + "x";
+      break;
+    case "dollars":
+      cls = val >= 0 ? "val-pos" : "val-neg";
+      const abs = Math.abs(val);
+      if (abs >= 1e9) text = (val / 1e9).toFixed(1) + "B";
+      else if (abs >= 1e6) text = (val / 1e6).toFixed(0) + "M";
+      else text = val.toLocaleString();
+      break;
+    case "days":
+      text = Math.round(val) + "d";
+      break;
+    case "count":
+      text = val.toLocaleString();
+      break;
+    default:
+      text = String(val);
+  }
+
+  return { text, cls };
+}
+
+function formatChartVal(val, format) {
+  if (val === null || val === undefined) return "";
+  switch (format) {
+    case "pct": return (val * 100).toFixed(1) + "%";
+    case "ratio": return val.toFixed(2) + "x";
+    case "dollars":
+      const abs = Math.abs(val);
+      if (abs >= 1e9) return (val / 1e9).toFixed(1) + "B";
+      if (abs >= 1e6) return (val / 1e6).toFixed(0) + "M";
+      return val.toLocaleString();
+    case "days": return Math.round(val) + "d";
+    default: return String(val);
+  }
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+
+let companyData = null;
+let activeMetric = null;
+let chartInstance = null;
+
+// ── Rendering ────────────────────────────────────────────────────────────────
+
+function renderTable(records) {
+  const headerRow = document.getElementById("header-row");
+  const tbody = document.getElementById("table-body");
+  headerRow.innerHTML = "";
+  tbody.innerHTML = "";
+
+  // Header
+  const th0 = document.createElement("th");
+  th0.textContent = "Metric";
+  headerRow.appendChild(th0);
+
+  for (const r of records) {
+    const th = document.createElement("th");
+    th.textContent = `FY${r.fiscal_year} ${r.fiscal_period}`;
+    headerRow.appendChild(th);
+  }
+
+  // Rows
+  for (const m of METRICS) {
+    if (m.section) {
+      const tr = document.createElement("tr");
+      tr.className = "section-header";
+      const td = document.createElement("td");
+      td.colSpan = records.length + 1;
+      td.textContent = m.section;
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      continue;
+    }
+
+    const tr = document.createElement("tr");
+    tr.className = "metric-row";
+    tr.dataset.key = m.key;
+
+    const tdLabel = document.createElement("td");
+    tdLabel.textContent = m.label;
+    tr.appendChild(tdLabel);
+
+    for (const r of records) {
+      const td = document.createElement("td");
+      const { text, cls } = formatVal(r[m.key], m.format);
+      td.textContent = text;
+      td.className = cls;
+      tr.appendChild(td);
+    }
+
+    tr.addEventListener("click", () => selectMetric(m));
+    tbody.appendChild(tr);
+  }
+
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("metrics-table").style.display = "";
+
+  // Update meta
+  const first = records[0], last = records[records.length - 1];
+  document.getElementById("meta-info").textContent =
+    `${records.length} quarters \u00B7 FY${first.fiscal_year} ${first.fiscal_period} \u2013 FY${last.fiscal_year} ${last.fiscal_period}`;
+}
+
+function selectMetric(m) {
+  activeMetric = m;
+
+  // Highlight active row
+  document.querySelectorAll(".metric-row").forEach(tr => {
+    tr.classList.toggle("active", tr.dataset.key === m.key);
+  });
+
+  // Show chart
+  const section = document.getElementById("chart-section");
+  section.classList.add("visible");
+  document.getElementById("chart-title").textContent = m.label;
+
+  const grainMap = {
+    pct: "percentage", ratio: "ratio", dollars: "USD", days: "days", count: "count"
+  };
+  document.getElementById("chart-subtitle").textContent = grainMap[m.format] || "";
+
+  renderChart(m);
+}
+
+function renderChart(m) {
+  const records = companyData;
+  const labels = records.map(r => `FY${r.fiscal_year} ${r.fiscal_period}`);
+  const raw = records.map(r => r[m.key]);
+
+  // Chart.js needs null-gap handling
+  const data = raw.map(v => (v === null || v === undefined) ? null : v);
+
+  if (chartInstance) chartInstance.destroy();
+
+  const ctx = document.getElementById("chart-canvas").getContext("2d");
+
+  // Gradient fill
+  const gradient = ctx.createLinearGradient(0, 0, 0, 260);
+  gradient.addColorStop(0, "rgba(79, 209, 197, 0.18)");
+  gradient.addColorStop(1, "rgba(79, 209, 197, 0.0)");
+
+  chartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        data,
+        borderColor: "#4fd1c5",
+        backgroundColor: gradient,
+        borderWidth: 2,
+        pointBackgroundColor: "#4fd1c5",
+        pointBorderColor: "#0a0c0f",
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        fill: true,
+        tension: 0.25,
+        spanGaps: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#1a1e25",
+          borderColor: "#252a33",
+          borderWidth: 1,
+          titleFont: { family: "'DM Mono', monospace", size: 11 },
+          bodyFont: { family: "'DM Mono', monospace", size: 12, weight: "500" },
+          titleColor: "#6b7280",
+          bodyColor: "#4fd1c5",
+          padding: 10,
+          displayColors: false,
+          callbacks: {
+            label: (ctx) => formatChartVal(ctx.parsed.y, m.format),
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: "rgba(37, 42, 51, 0.5)", drawTicks: false },
+          ticks: {
+            font: { family: "'DM Mono', monospace", size: 10 },
+            color: "#3d4450",
+            padding: 8,
+          },
+          border: { display: false },
+        },
+        y: {
+          grid: { color: "rgba(37, 42, 51, 0.5)", drawTicks: false },
+          ticks: {
+            font: { family: "'DM Mono', monospace", size: 10 },
+            color: "#6b7280",
+            padding: 12,
+            callback: (val) => formatChartVal(val, m.format),
+          },
+          border: { display: false },
+        }
+      },
+      interaction: {
+        intersect: false,
+        mode: "index",
+      },
+    }
+  });
+}
+
+// ── Data loading ─────────────────────────────────────────────────────────────
+
+async function loadManifest() {
+  const resp = await fetch("data/manifest.json");
+  return await resp.json();
+}
+
+async function loadCompany(ticker) {
+  document.getElementById("loading").style.display = "";
+  document.getElementById("metrics-table").style.display = "none";
+  document.getElementById("chart-section").classList.remove("visible");
+  activeMetric = null;
+
+  const resp = await fetch(`data/${ticker}.json`);
+  companyData = await resp.json();
+  renderTable(companyData);
+}
+
+async function init() {
+  const tickers = await loadManifest();
+  const select = document.getElementById("ticker-select");
+
+  for (const t of tickers) {
+    const opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = t.toUpperCase();
+    select.appendChild(opt);
+  }
+
+  select.addEventListener("change", () => loadCompany(select.value));
+
+  if (tickers.length > 0) {
+    loadCompany(tickers[0]);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
