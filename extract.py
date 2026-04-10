@@ -529,6 +529,115 @@ def _get_prior_ytd(quarters: dict, current_fp: str, comp_name: str,
     return raw.get("ytd")
 
 
+# ── Restatement overrides ────────────────────────────────────────────────────
+
+def apply_restatement_overrides(results: list, ticker: str,
+                                components: dict = None) -> list:
+    """
+    Scan all 10-K filings for prior-period quarterly values that supersede
+    the original 10-Q extractions. When a 10-K contains a discrete ~90-day
+    context for a prior quarter, its value overrides the original.
+
+    This handles restatements presented as comparative quarterly data in 10-Ks,
+    which have no explicit amendment indicator in the XBRL.
+    """
+    if components is None:
+        components = COMPONENTS
+
+    ticker_dir = os.path.join(DATA_DIR, ticker)
+    if not os.path.isdir(ticker_dir):
+        return results
+
+    # Build lookup: (fiscal_year, fiscal_period) -> result record
+    result_map = {}
+    for r in results:
+        key = (r["fiscal_year"], r["fiscal_period"])
+        result_map[key] = r
+
+    # Collect all 10-K filings sorted by filing date (most recent last)
+    ten_ks = []
+    for dirname in sorted(os.listdir(ticker_dir)):
+        meta_path = os.path.join(ticker_dir, dirname, "filing_meta.json")
+        if not os.path.exists(meta_path):
+            continue
+        with open(meta_path) as f:
+            meta = json.load(f)
+        if meta["form"] == "10-K":
+            ten_ks.append((os.path.join(ticker_dir, dirname), meta))
+
+    override_count = 0
+
+    for filing_dir, meta in ten_ks:
+        xbrl_path = os.path.join(filing_dir, meta["xbrl_filename"])
+        if not os.path.exists(xbrl_path):
+            continue
+
+        contexts, facts, nsmap = parse_xbrl(xbrl_path)
+        report_dt = parse_date(meta["report_date"])
+
+        # Find all ~90-day (discrete quarter) duration contexts NOT ending
+        # at this 10-K's report date — these are prior-period comparatives
+        prior_quarter_contexts = {}  # ctx_id -> (start, end)
+        for ctx_id, ctx in contexts.items():
+            if ctx.get("has_dimensions") or ctx.get("type") != "duration":
+                continue
+            days = ctx.get("days", 0)
+            if not (60 <= days <= 120):
+                continue
+            end_dt = parse_date(ctx["end"])
+            if abs((end_dt - report_dt).days) <= 3:
+                continue  # this is the 10-K's own quarter, skip
+            prior_quarter_contexts[ctx_id] = (ctx["start"], ctx["end"])
+
+        if not prior_quarter_contexts:
+            continue
+
+        # For each prior-period context, try to match it to a result quarter
+        for ctx_id, (start, end) in prior_quarter_contexts.items():
+            # Find which result quarter this context belongs to
+            target = None
+            for r in results:
+                if r.get("period_end") and abs((parse_date(r["period_end"]) - parse_date(end)).days) <= 3:
+                    target = r
+                    break
+            if not target:
+                continue
+
+            # Only override if the 10-K was filed after the original filing
+            if meta["filing_date"] <= target.get("filed", ""):
+                continue
+
+            # Extract values for each flow/IS component from this context
+            for comp_name, comp_def in components.items():
+                if comp_def["type"] not in ("flow",):
+                    continue
+                if comp_def.get("statement") == "cf":
+                    continue  # CF values are YTD-derived, not discrete comparatives
+
+                for concept in comp_def["concepts"]:
+                    if concept not in facts:
+                        continue
+
+                    for cref, val in facts[concept]:
+                        if cref != ctx_id:
+                            continue
+
+                        if comp_def.get("negate"):
+                            val = -val
+
+                        old_val = target.get(comp_name)
+                        if old_val != val:
+                            target[comp_name] = val
+                            override_count += 1
+
+                    break  # matched concept, stop trying alternatives
+
+    if override_count > 0:
+        print(f"  Applied {override_count} restatement overrides from 10-K comparatives")
+
+    return results
+
+
 # ── Main extraction ────────────────────────────────────────────────────────────
 
 def extract_company(ticker: str, components: dict = None,
@@ -571,17 +680,16 @@ def extract_company(ticker: str, components: dict = None,
             continue
 
         fy = extraction.get("fiscal_year")
-        if fy_start and fy and fy < fy_start:
-            continue
-        if fy_end and fy and fy > fy_end:
-            continue
-
         print(f"  {extraction['form']:4s} {extraction['report_date']}  →  FY{fy} {extraction['fiscal_period']}")
         extractions.append(extraction)
 
-    # Derive quarterly values
+    # Derive quarterly values (uses full filing set for derivation dependencies)
     print(f"\nDeriving quarterly values...")
     results = derive_quarterly_values(extractions, components)
+
+    # Apply restatement overrides from 10-K comparative data
+    print(f"Checking for restatement overrides...")
+    results = apply_restatement_overrides(results, ticker, components)
 
     # Set ticker on all records
     for r in results:
@@ -593,6 +701,12 @@ def extract_company(ticker: str, components: dict = None,
     elif company_module and hasattr(company_module, "post_process"):
         for r in results:
             r = company_module.post_process(r, extractions)
+
+    # Filter to requested fiscal year range (after all derivation and overrides)
+    if fy_start:
+        results = [r for r in results if r["fiscal_year"] >= fy_start]
+    if fy_end:
+        results = [r for r in results if r["fiscal_year"] <= fy_end]
 
     # Report extraction quality
     for r in results:
