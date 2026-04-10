@@ -2,6 +2,9 @@
 Dell-specific extraction overrides.
 
 Known quirks:
+- FY2024 Q1-Q2 (10-Qs for 2023-05-05 and 2023-08-04): DEI DocumentFiscalPeriodFocus
+  is incorrectly tagged as "FY" instead of "Q1"/"Q2". Fixed by fix_dei() based on
+  report_date month.
 - FY2024 Q2-Q3: AccountsReceivableNetCurrent and AccountsPayableCurrent are tagged
   with RelatedPartyTransactionsByRelatedPartyAxis dimension only (no non-dimensioned
   total). Need to extract from NonrelatedPartyMember context.
@@ -15,7 +18,26 @@ Known quirks:
 
 import json
 import os
+from datetime import datetime
 from extract import parse_xbrl, DATA_DIR
+
+
+def fix_dei(dei: dict, meta: dict) -> dict:
+    """Fix incorrect DEI fiscal period on Dell 10-Q filings tagged as 'FY'."""
+    if meta["form"] != "10-Q" or dei["DocumentFiscalPeriodFocus"] != "FY":
+        return dei
+
+    # Derive quarter from months elapsed since FY start
+    # Dell FY ends early Feb (e.g. --02-02), so FY starts early Feb prior year
+    fy_end_mmdd = dei["CurrentFiscalYearEndDate"]  # e.g. "--02-02"
+    fy_end_month = int(fy_end_mmdd[2:4])
+    report_dt = datetime.strptime(meta["report_date"], "%Y-%m-%d")
+    # Months from FY start (month after FY end) to report date
+    fy_start_month = fy_end_month % 12 + 1  # Feb end → Mar start
+    months_in = (report_dt.month - fy_start_month) % 12
+    quarter = months_in // 3 + 1
+    dei["DocumentFiscalPeriodFocus"] = f"Q{quarter}"
+    return dei
 
 
 def _get_dimensioned_bs_value(filing_dir: str, meta: dict, concept: str,

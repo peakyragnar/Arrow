@@ -38,7 +38,17 @@ This document catalogs the types of issues we have encountered across companies.
 
 **Fix:** Provide multiple concepts in priority order in `get_components()`, or handle per-period in `post_process()`.
 
-### 5. Q4 Derivation with Restatements
+### 5. Incorrect DEI Fiscal Period Tagging
+
+**Symptom:** Quarters are mislabeled (e.g., Q1 and Q2 both show as Q4). The extraction log shows duplicate fiscal period assignments or impossible labels like a 10-Q mapped to Q4. Downstream, Q4 derivation breaks because the fiscal year grouping can't find the correct prior quarters.
+
+**Example:** Dell FY2024 Q1 and Q2 (10-Qs for 2023-05-05 and 2023-08-04) have `DocumentFiscalPeriodFocus = FY` instead of `Q1`/`Q2`. The master script converts `FY` → `Q4` (correct for 10-Ks), so both filings get labeled Q4.
+
+**Detection:** After extraction, check the log output for duplicate period assignments within a fiscal year, or 10-Q filings labeled as Q4. The DEI values can be inspected directly with `parse_dei()`.
+
+**Fix:** In the company override, implement `fix_dei(dei, meta)` to correct the `DocumentFiscalPeriodFocus` value. Derive the correct quarter from the report date and `CurrentFiscalYearEndDate`. The master script calls `fix_dei` before using DEI values, so the correction flows through to all downstream logic.
+
+### 6. Q4 Derivation with Restatements
 
 **Symptom:** Q4 values are wrong by a consistent amount that matches the restatement delta. Q4 is derived as FY (from 10-K) minus 9M YTD (from Q3 10-Q). If the 10-K restated Q1-Q3 values but the 9M YTD comes from the original Q3 10-Q, the subtraction mixes restated and pre-restatement figures.
 

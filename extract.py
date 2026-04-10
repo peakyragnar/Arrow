@@ -225,6 +225,33 @@ def parse_xbrl(filepath: str) -> tuple[dict, dict, dict]:
     return contexts, facts, nsmap
 
 
+def parse_dei(filepath: str) -> dict:
+    """
+    Extract DEI (Document and Entity Information) elements from an XBRL file.
+    Returns dict with fiscal_year, fiscal_period, period_end_date, fy_end_date.
+    """
+    tree = ET.parse(filepath)
+    root = tree.getroot()
+
+    dei_fields = {
+        "DocumentFiscalYearFocus": None,
+        "DocumentFiscalPeriodFocus": None,
+        "DocumentPeriodEndDate": None,
+        "CurrentFiscalYearEndDate": None,
+    }
+
+    for elem in root:
+        tag = elem.tag
+        if "}" in tag:
+            local = tag[tag.index("}") + 1:]
+        else:
+            continue
+        if local in dei_fields and elem.text:
+            dei_fields[local] = elem.text.strip()
+
+    return dei_fields
+
+
 def classify_contexts(contexts: dict, report_date: str) -> dict:
     """
     Identify key contexts for a filing based on its report date.
@@ -282,7 +309,8 @@ def classify_contexts(contexts: dict, report_date: str) -> dict:
 
 # ── Filing extraction ──────────────────────────────────────────────────────────
 
-def extract_single_filing(filing_dir: str, components: dict = None) -> dict | None:
+def extract_single_filing(filing_dir: str, components: dict = None,
+                          company_module=None) -> dict | None:
     """
     Extract raw values from a single filing's XBRL.
     Returns a dict with filing metadata and raw extracted values.
@@ -305,6 +333,20 @@ def extract_single_filing(filing_dir: str, components: dict = None) -> dict | No
     contexts, facts, nsmap = parse_xbrl(xbrl_path)
     classified = classify_contexts(contexts, meta["report_date"])
 
+    # Get fiscal year, period, and dates from DEI elements in the XBRL
+    dei = parse_dei(xbrl_path)
+    if company_module and hasattr(company_module, "fix_dei"):
+        dei = company_module.fix_dei(dei, meta)
+    if not dei["DocumentFiscalYearFocus"] or not dei["DocumentFiscalPeriodFocus"]:
+        raise ValueError(
+            f"Filing {meta['accession']} missing DEI fiscal year/period elements"
+        )
+
+    fiscal_year = int(dei["DocumentFiscalYearFocus"])
+    fiscal_period = dei["DocumentFiscalPeriodFocus"]
+    if fiscal_period == "FY":
+        fiscal_period = "Q4"
+
     record = {
         "accession": meta["accession"],
         "form": meta["form"],
@@ -312,35 +354,9 @@ def extract_single_filing(filing_dir: str, components: dict = None) -> dict | No
         "filing_date": meta["filing_date"],
         "fy_start": classified.get("fy_start"),
         "classified_contexts": classified,
+        "fiscal_year": fiscal_year,
+        "fiscal_period": fiscal_period,
     }
-
-    # Determine fiscal year and period from the filing
-    # Q1 10-Q: has current_discrete only (~90 days)
-    # Q2 10-Q: has current_discrete + current_ytd_h1
-    # Q3 10-Q: has current_discrete + current_ytd_9m
-    # 10-K: has current_fy only
-    if meta["form"] == "10-K":
-        record["fiscal_period"] = "Q4"
-    elif "current_ytd_9m" in classified:
-        record["fiscal_period"] = "Q3"
-    elif "current_ytd_h1" in classified:
-        record["fiscal_period"] = "Q2"
-    else:
-        record["fiscal_period"] = "Q1"
-
-    # Determine fiscal year from fy_start
-    if classified.get("fy_start"):
-        fy_start_dt = parse_date(classified["fy_start"])
-        # Fiscal year is typically named by the calendar year of the FY end
-        # e.g., FY2025 starts Jan 29, 2024 → FY end is Jan 2025 → FY=2025
-        report_dt = parse_date(meta["report_date"])
-        if meta["form"] == "10-K":
-            # The report_date IS the FY end
-            fy_end_dt = report_dt
-        else:
-            # Estimate FY end: fy_start + ~365 days
-            fy_end_dt = fy_start_dt + timedelta(days=365)
-        record["fiscal_year"] = fy_end_dt.year
 
     # Extract values for each component
     values = {}
@@ -458,6 +474,11 @@ def derive_quarterly_values(filing_extractions: list, components: dict = None) -
                 "accession": filing["accession"],
                 "filed": filing["filing_date"],
             }
+
+            # Calendar year/quarter from period_end for cross-company normalization
+            period_end_dt = parse_date(filing["report_date"])
+            record["calendar_year"] = period_end_dt.year
+            record["calendar_quarter"] = (period_end_dt.month - 1) // 3 + 1
 
             # Fill in period_start for Q2-Q4 from prior quarter's report_date + 1
             if fp != "Q1":
@@ -760,7 +781,7 @@ def extract_company(ticker: str, components: dict = None,
         if not os.path.isdir(filing_dir):
             continue
 
-        extraction = extract_single_filing(filing_dir, components)
+        extraction = extract_single_filing(filing_dir, components, company_module)
         if extraction is None:
             continue
 
