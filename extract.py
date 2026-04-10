@@ -491,18 +491,19 @@ def derive_quarterly_values(filing_extractions: list, components: dict = None) -
                             if fp == "Q1":
                                 value = current_ytd
                             else:
-                                # Get prior quarter's YTD
+                                # Get prior quarter's YTD (0 if not reported)
                                 prior_ytd = _get_prior_ytd(
                                     quarters, fp, comp_name, comp_def
                                 )
-                                if prior_ytd is not None:
-                                    value = current_ytd - prior_ytd
+                                if prior_ytd is None:
+                                    prior_ytd = 0
+                                value = current_ytd - prior_ytd
 
                 if value is not None and comp_def.get("negate"):
                     value = -value
 
-                if value is None and comp_def["type"] == "stock":
-                    value = 0  # missing BS line item = company doesn't have it
+                if value is None and comp_def["type"] in ("stock", "flow"):
+                    value = 0  # missing line item = no activity
 
                 if value is None and "default" in comp_def:
                     value = comp_def["default"]
