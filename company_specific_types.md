@@ -55,3 +55,13 @@ This document catalogs the types of issues we have encountered across companies.
 **Example:** Dell FY2025 Q4 — the 10-K (with `DocumentFinStmtErrorCorrectionFlag=true`) restated FY2024 and FY2025 Q1-Q3. The FY total in the 10-K reflects restated figures, but 9M YTD from the Q3 10-Q does not. Q4 = restated FY - original 9M = wrong.
 
 **Fix:** In the company override's `post_process()`, compute Q4 using the restated quarterly values (FY - restated Q1 - restated Q2 - restated Q3) instead of the standard FY - 9M YTD derivation.
+
+### 7. Spurious XBRL Tags (One-Time Tagging Artifacts)
+
+**Symptom:** A component suddenly appears with a non-zero value for one or two periods when the company has never historically reported that line item, and subsequent filings revert to not tagging it.
+
+**Example:** Palo Alto Networks (PANW) FY2025 Q4 10-K tags `InventoryNet` ($113.4M) for the first and only time across all filings. PANW is a software/services company with no inventory. No prior 10-Q or 10-K includes this concept, and the following FY2026 Q1 and Q2 10-Qs do not include it either. This is an XBRL tagging artifact, not a real balance.
+
+**Detection:** A component jumps from 0 to a material value in a single period with no corresponding change in business model, then disappears. Check adjacent filings to confirm it's isolated.
+
+**Fix:** In the company override's `post_process()`, zero out the value for the specific period(s). Scope the override narrowly (exact fiscal_year + fiscal_period) so that if future filings legitimately start reporting the line item, it flows through and gets flagged for review.
