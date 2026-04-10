@@ -94,6 +94,21 @@ def _get_dimensioned_bs_value(filing_dir: str, meta: dict, concept: str,
     return None
 
 
+def fix_rd_series(quarterly_rd: list, records: list) -> list:
+    """Replace FY2022 Q1-Q4 R&D with annual/4 estimates.
+
+    Dell spun off VMware in Nov 2021 (FY2022 Q3). The original 10-Q filings
+    for Q1-Q3 include VMware R&D, but the 10-K FY annual is post-spin.
+    Q4 derivation (FY - 9M YTD) produces a negative value. Replace all 4
+    quarters with annual/4 = $2,577,000,000 / 4 = $644,250,000.
+    """
+    fixed = list(quarterly_rd)
+    for i, r in enumerate(records):
+        if r["fiscal_year"] == 2022:
+            fixed[i] = 644250000
+    return fixed
+
+
 def post_process(record: dict, extractions: list) -> dict:
     """Post-process extracted record for Dell-specific fixes."""
     fy = record["fiscal_year"]

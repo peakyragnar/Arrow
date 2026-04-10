@@ -16,128 +16,45 @@ import argparse
 import json
 import os
 import re
-from extract import parse_xbrl, classify_contexts, DATA_DIR
+from extract import DATA_DIR
 
 
 # ── R&D Capitalization ─────────────────────────────────────────────────────────
 
-def get_annual_rd_history(ticker: str, first_quarter: dict) -> list[tuple[str, int]]:
+def compute_rd_capitalization(quarterly_rd: list, amort_life: int = 20) -> list[dict]:
     """
-    Extract annual R&D expense for years before the extraction window.
+    Compute R&D amortization, asset, and OI adjustment for each quarter.
 
-    Scans all downloaded 10-Ks, preferring the most recent filing's values
-    (most accurate due to restatements). Returns entries for years whose
-    period ends before the first extraction quarter.
+    Uses actual quarterly R&D values directly. For each quarter, looks back
+    up to amort_life quarters. If fewer quarters of history exist, the
+    missing lags are treated as 0.
 
-    Returns list of (end_date, annual_rd) sorted oldest to newest.
-    """
-    ticker_dir = os.path.join(DATA_DIR, ticker)
-    first_date = first_quarter["period_end"]
-
-    # Collect all 10-Ks, most recent last
-    ten_ks = []
-    for dirname in sorted(os.listdir(ticker_dir)):
-        meta_path = os.path.join(ticker_dir, dirname, "filing_meta.json")
-        if not os.path.exists(meta_path):
-            continue
-        with open(meta_path) as f:
-            meta = json.load(f)
-        if meta["form"] != "10-K":
-            continue
-        meta["dir"] = os.path.join(ticker_dir, dirname)
-        ten_ks.append(meta)
-
-    ten_ks.sort(key=lambda m: m["report_date"])
-
-    # Extract annual R&D from each 10-K, most recent wins (iterate newest first)
-    rd_by_end_date = {}
-    for meta in reversed(ten_ks):
-        xbrl_path = os.path.join(meta["dir"], meta["xbrl_filename"])
-        contexts, facts, nsmap = parse_xbrl(xbrl_path)
-
-        rd_entries = facts.get("ResearchAndDevelopmentExpense", [])
-        for cref, val in rd_entries:
-            ctx = contexts.get(cref, {})
-            if ctx.get("type") != "duration":
-                continue
-            days = ctx.get("days", 0)
-            if 340 < days < 380:
-                end_date = ctx["end"]
-                # Only keep if this year hasn't been set by a more recent 10-K
-                if end_date not in rd_by_end_date:
-                    rd_by_end_date[end_date] = val
-
-    # Filter to years ending before the extraction window, keep most recent 3
-    annual_rd = [(end_date, val) for end_date, val in rd_by_end_date.items()
-                 if end_date < first_date]
-    annual_rd.sort()
-    annual_rd = annual_rd[-3:]
-
-    if annual_rd:
-        for end_date, val in annual_rd:
-            print(f"  R&D lookback: {end_date} = {val:>15,}")
-    else:
-        print("  Warning: no prior annual R&D found in downloaded 10-Ks")
-
-    return annual_rd
-
-
-def build_quarterly_rd_series(annual_rd: list, quarterly_rd: list[int]) -> list[float]:
-    """
-    Build the full quarterly R&D series for the 20-quarter amortization schedule.
-
-    annual_rd: [(end_date, value), ...] from prior 10-K (3 years, oldest first)
     quarterly_rd: [rd_q1, rd_q2, ...] actual quarterly R&D from extraction
-
-    Returns a list where index 0 is the oldest estimated quarter and the last
-    entries are the actual quarterly values.
-    """
-    # Estimated quarterly values from annual (divide by 4)
-    estimated = []
-    for _, annual_val in annual_rd:
-        quarterly_est = annual_val / 4
-        estimated.extend([quarterly_est] * 4)
-
-    # Combine: estimated quarters first, then actual quarters
-    full_series = estimated + quarterly_rd
-    return full_series
-
-
-def compute_rd_capitalization(rd_series: list[float], num_actual_quarters: int,
-                              amort_life: int = 20) -> list[dict]:
-    """
-    Compute R&D amortization, asset, and OI adjustment for each actual quarter.
-
-    rd_series: full quarterly R&D series (estimated + actual)
-    num_actual_quarters: how many actual quarters are at the end of the series
     amort_life: number of quarters for straight-line amortization (default 20)
 
-    Returns list of dicts (one per actual quarter) with:
+    Returns list of dicts (one per quarter) with:
       rd_amortization_q, rd_asset_q, rd_OI_adjustment_q
     """
-    num_estimated = len(rd_series) - num_actual_quarters
     results = []
 
-    for i in range(num_estimated, len(rd_series)):
-        # i is the index of the current quarter in the full series
-        current_rd = rd_series[i]
-
-        amort = 0.0
-        asset = 0.0
+    for i in range(len(quarterly_rd)):
+        current_rd = quarterly_rd[i]
+        # Use integer numerators, divide once at the end to avoid float accumulation
+        amort_num = 0  # sum of rd_j values (divide by amort_life at end)
+        asset_num = 0  # sum of rd_j × (N-1-j) (divide by amort_life at end)
 
         for j in range(amort_life):
             idx = i - j
             if idx < 0:
-                break  # no data that far back, treated as 0
-            rd_j = rd_series[idx]
+                break
+            rd_j = quarterly_rd[idx]
+            amort_num += rd_j
+            weight = amort_life - 1 - j
+            if weight > 0:
+                asset_num += rd_j * weight
 
-            # Amortization: each vintage contributes rd/N per quarter
-            amort += rd_j / amort_life
-
-            # Asset: each vintage weighted by remaining life
-            remaining_weight = (amort_life - j) / amort_life
-            asset += rd_j * remaining_weight
-
+        amort = amort_num / amort_life
+        asset = asset_num / amort_life
         oi_adj = current_rd - amort
 
         results.append({
@@ -263,20 +180,38 @@ def compute_all(ticker: str, fy_start: int = None, fy_end: int = None):
     records.sort(key=lambda r: (r["fiscal_year"], {"Q1": 1, "Q2": 2, "Q3": 3, "Q4": 4}[r["fiscal_period"]]))
 
     # ── R&D Capitalization ──
+    # Default: use the last 20 extracted quarters of R&D expense.
+    # The 20-quarter amortization schedule is fully covered by actual data.
+    # Company scripts can override via fix_rd_series(rd, records) to handle
+    # bad/missing quarters (e.g., Dell VMware spin, Palantir missing IPO quarter).
     print("Computing R&D capitalization...")
-    quarterly_rd = [r.get("rd_expense_q") for r in records]
-    if all(v is not None for v in quarterly_rd):
-        annual_rd = get_annual_rd_history(ticker, records[0])
-        if annual_rd:
-            rd_series = build_quarterly_rd_series(annual_rd, quarterly_rd)
-            rd_results = compute_rd_capitalization(rd_series, len(quarterly_rd))
+    company_module = None
+    try:
+        from importlib import import_module
+        company_module = import_module(f"companies.{ticker.lower()}")
+    except ImportError:
+        pass
 
-            for i, record in enumerate(records):
-                record.update(rd_results[i])
-                print(f"  FY{record['fiscal_year']} {record['fiscal_period']}: "
-                      f"amort={rd_results[i]['rd_amortization_q']:>15,}  "
-                      f"asset={rd_results[i]['rd_asset_q']:>15,}  "
-                      f"OI_adj={rd_results[i]['rd_OI_adjustment_q']:>13,}")
+    # Use last 20 quarters for R&D
+    rd_records = records[-20:] if len(records) > 20 else records
+    quarterly_rd = [r.get("rd_expense_q") for r in rd_records]
+
+    if all(v is not None for v in quarterly_rd):
+        # Allow company module to fix bad R&D values (prepend, replace, etc.)
+        if company_module and hasattr(company_module, "fix_rd_series"):
+            quarterly_rd = company_module.fix_rd_series(quarterly_rd, rd_records)
+
+        rd_results = compute_rd_capitalization(quarterly_rd)
+
+        # Assign results: if fix_rd_series prepended quarters, skip those
+        offset = len(rd_results) - len(rd_records)
+        for i, record in enumerate(rd_records):
+            result = rd_results[offset + i]
+            record.update(result)
+            print(f"  FY{record['fiscal_year']} {record['fiscal_period']}: "
+                  f"amort={result['rd_amortization_q']:>15,}  "
+                  f"asset={result['rd_asset_q']:>15,}  "
+                  f"OI_adj={result['rd_OI_adjustment_q']:>13,}")
     else:
         print("  Skipping: some quarters missing R&D expense data")
 

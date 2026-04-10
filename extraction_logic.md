@@ -142,25 +142,30 @@ Use the discrete quarterly context. For Q4, fall back to the FY context from the
 
 ## R&D Capitalization Lookback
 
-The 20-quarter amortization schedule requires R&D history beyond the 12-quarter output window. The pipeline sources this from **annual R&D figures embedded in downloaded 10-Ks**, not from a separate prior 10-K outside the fetch window.
+The 20-quarter amortization schedule uses **actual quarterly R&D values** from the extraction — no annual/4 estimates by default.
 
 ### How it works
 
-1. Scan **all** downloaded 10-Ks (within the 6-year fetch window).
-2. Extract annual R&D entries from each (each 10-K typically reports 3 years: current + 2 prior).
-3. **Prefer the most recent 10-K's values** for any given year (most accurate due to restatements).
-4. Filter to years ending **before** the first extraction quarter.
-5. Keep the **most recent 3 years** of annual R&D.
+1. Take the **last 20 extracted quarters** of R&D expense.
+2. For each quarter, sum the R&D/20 contribution from each active vintage (all prior quarters in the series).
+3. Amortization = sum of all vintages' R&D/20.
+4. Asset = sum of each vintage's remaining value: R&D × (19 - age) / 20.
+5. OI Adjustment = current quarter R&D - total amortization.
 
-### Why this works
+With 5+ fiscal years of fetched filings (~20-24 extracted quarters), the last 20 quarters fully cover the amortization window with actual data. No estimation needed.
 
-A company's earliest in-window 10-K (e.g., FY2022) contains R&D for FY2022, FY2021, and FY2020. If the output window starts at FY2024, the lookback years are FY2021-FY2023 — all available from 10-Ks already in the window. No extra fetching needed.
+### Company-specific R&D fixes
 
-Each annual R&D figure is divided by 4 to estimate quarterly values for the lookback period. Combined with 12 actual quarters, this produces a 24-quarter series (12 estimated + 12 actual). The 20-quarter amortization window is fully covered.
+Some companies have data quality issues in their R&D series:
 
-### Why cap at 3 years
+- **Dell (VMware spin-off):** FY2022 Q1-Q3 10-Qs include VMware R&D, but the 10-K FY annual is post-spin. Q4 derivation produces a negative value. `companies/dell.py` `fix_rd_series()` replaces FY2022 Q1-Q4 with FY annual/4 = $644,250,000.
+- **Palantir (IPO):** FY2021 Q1 10-Q is not in the fetch window (IPO was Sep 2020). Only 19 quarters available. `companies/pltr.py` `fix_rd_series()` prepends an estimated Q1 using FY2021 annual/4 = $96,871,750.
 
-The golden evaluation was built with a 3-year lookback (12 estimated quarters + 12 actual = 24 total). Adding a 4th year changes the amortization calculation and produces mismatches. The 20-quarter window needs at most 8 estimated quarters (20 - 12 = 8, i.e., 2 years), so 3 years provides comfortable coverage with one year of buffer.
+The `fix_rd_series(quarterly_rd, records)` hook in company scripts takes the R&D list and returns a modified version. It can prepend, replace, or remove values. This runs before the amortization calculation.
+
+### Golden eval R&D verification
+
+The golden eval spreadsheet (`researchanddevelopment` tab) contains the R&D amortization schedule per company. Each company has 20 rows of quarterly R&D with a waterfall of declining asset values per vintage. The Amortization, R&D Asset, and OI Adjustment columns are the totals that feed into the `manual_audit_entry_v1` tab for evaluation. When adding a new company, build the R&D tab with 20 quarters of actual R&D, verify the outputs match `compute.py`, then copy the totals to the eval tab.
 
 ## Restatement Overrides
 

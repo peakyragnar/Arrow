@@ -44,7 +44,7 @@ python3 calculate.py --all
 python3 -m http.server 8080 --directory dashboard
 ```
 
-**Do not use `--fy-start`/`--fy-end` overrides.** The defaults handle everything correctly: `fetch.py` downloads 6 fiscal years of filings (3 for output + 3 for R&D lookback and derivation dependencies). `extract.py` outputs the 3 most recent complete fiscal years (12 quarters). Manual overrides risk misaligning the output window with the lookback data.
+`fetch.py` downloads 6 fiscal years of filings (~20-24 quarters). `extract.py` outputs all derived quarters by default. `compute.py` uses the last 20 extracted quarters for R&D capitalization (20-quarter amortization schedule with actual quarterly R&D, no annual/4 estimates). Company scripts can override bad R&D quarters via `fix_rd_series()`.
 
 ## File Structure
 

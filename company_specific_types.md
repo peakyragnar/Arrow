@@ -77,3 +77,13 @@ This document catalogs the types of issues we have encountered across companies.
 **Detection:** D&A (or another flow component) is materially lower than expected. Pull up the company's cash flow statement and count the D&A-related line items. Then search the XBRL for concepts containing "depreci" or "amortiz" on discrete/YTD duration contexts to find the matching concept names.
 
 **Fix:** In the company override's `get_components()`, override the component with `sum_concepts: True` and list all concepts to sum. Use `negate_in_sum` for concepts with reversed sign conventions (e.g., investment premium amortization where positive XBRL = CF reduction). This is a company-specific fix, not a master fix, because the same XBRL concept may be a separate CF line for one company and a footnote disclosure for another.
+
+### 9. Bad R&D Quarters (Spin-offs, IPOs, Reclassifications)
+
+**Symptom:** R&D capitalization values are wrong because one or more quarterly R&D expense values in the 20-quarter amortization window are bad — negative, missing, or include divested business units.
+
+**Example:** Dell FY2022 Q1-Q3 10-Qs include VMware R&D ($1.3-1.5B/quarter), but the 10-K FY2022 annual is post-VMware-spin ($2.577B). Q4 derivation (FY - 9M YTD) produces -$1.631B. Palantir FY2021 Q1 is missing entirely because the IPO was Sep 2020 and the 10-Q isn't in the fetch window.
+
+**Detection:** R&D capitalization mismatches in eval. Check the quarterly R&D series in the output — look for negative values, sudden jumps/drops that don't match the filing narrative, or missing quarters.
+
+**Fix:** In the company override, implement `fix_rd_series(quarterly_rd, records)`. This receives the R&D list and returns a corrected version. Can replace bad values with annual/4 estimates (Dell) or prepend missing quarters (Palantir). The fix runs before the amortization calculation in `compute.py`.
