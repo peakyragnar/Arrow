@@ -9,6 +9,7 @@ Usage:
 import argparse
 import json
 import os
+import sys
 
 # Components to evaluate
 EVAL_COMPONENTS = [
@@ -44,28 +45,40 @@ def load_extracted(ticker: str) -> list:
         return json.load(f)
 
 
-def match_quarters(golden: list, extracted: list) -> list:
-    """Match golden records to extracted records by fiscal year and period."""
+def match_quarters(golden: list, extracted: list) -> tuple:
+    """Match golden records to extracted records by fiscal year and period.
+    Returns (pairs, missing_from_extracted, extra_in_extracted)."""
+    golden_map = {}
+    for r in golden:
+        key = (r["fiscal_year"], r["fiscal_period"])
+        golden_map[key] = r
+
     ext_map = {}
     for r in extracted:
         key = (r["fiscal_year"], r["fiscal_period"])
         ext_map[key] = r
 
     pairs = []
-    for g in golden:
-        key = (g["fiscal_year"], g["fiscal_period"])
+    missing_quarters = []  # in golden but not extracted
+    for key, g in golden_map.items():
         e = ext_map.get(key)
         if e:
             pairs.append((g, e))
-    return pairs
+        else:
+            missing_quarters.append(key)
+
+    extra_quarters = [k for k in ext_map if k not in golden_map]
+
+    return pairs, sorted(missing_quarters), sorted(extra_quarters)
 
 
-def evaluate(golden: list, extracted: list, verbose: bool = False):
-    pairs = match_quarters(golden, extracted)
+def evaluate(golden: list, extracted: list, verbose: bool = False) -> bool:
+    """Evaluate and print results. Returns True if all checks pass."""
+    pairs, missing_quarters, extra_quarters = match_quarters(golden, extracted)
 
-    if not pairs:
+    if not pairs and not missing_quarters:
         print("No matching quarters found!")
-        return
+        return False
 
     total_fields = 0
     exact_matches = 0
@@ -112,11 +125,20 @@ def evaluate(golden: list, extracted: list, verbose: bool = False):
     print(f"\n{'='*80}")
     print(f"EVALUATION RESULTS: {len(pairs)} quarters matched")
     print(f"{'='*80}")
-    print(f"Total fields:    {total_fields}")
-    print(f"Exact matches:   {exact_matches:>5} ({exact_matches/total_fields*100:.1f}%)")
-    print(f"Close (<1%):     {close_matches:>5} ({close_matches/total_fields*100:.1f}%)")
-    print(f"Missing:         {missing:>5} ({missing/total_fields*100:.1f}%)")
-    print(f"Mismatches:      {len(mismatches):>5} ({len(mismatches)/total_fields*100:.1f}%)")
+
+    if missing_quarters:
+        labels = [f"FY{fy} {fp}" for fy, fp in missing_quarters]
+        print(f"DROPPED QUARTERS ({len(missing_quarters)}): {', '.join(labels)}")
+    if extra_quarters:
+        labels = [f"FY{fy} {fp}" for fy, fp in extra_quarters]
+        print(f"EXTRA QUARTERS ({len(extra_quarters)}):   {', '.join(labels)}")
+
+    if total_fields > 0:
+        print(f"Total fields:    {total_fields}")
+        print(f"Exact matches:   {exact_matches:>5} ({exact_matches/total_fields*100:.1f}%)")
+        print(f"Close (<1%):     {close_matches:>5} ({close_matches/total_fields*100:.1f}%)")
+        print(f"Missing:         {missing:>5} ({missing/total_fields*100:.1f}%)")
+        print(f"Mismatches:      {len(mismatches):>5} ({len(mismatches)/total_fields*100:.1f}%)")
     print(f"{'='*80}")
 
     if mismatches:
@@ -132,6 +154,9 @@ def evaluate(golden: list, extracted: list, verbose: bool = False):
     if missing and verbose:
         print(f"\n(Missing fields shown above with --verbose)")
 
+    passed = len(mismatches) == 0 and missing == 0 and len(missing_quarters) == 0
+    return passed
+
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate extraction against golden data")
@@ -141,7 +166,9 @@ def main():
 
     golden = load_golden(args.ticker)
     extracted = load_extracted(args.ticker)
-    evaluate(golden, extracted, args.verbose)
+    passed = evaluate(golden, extracted, args.verbose)
+    if not passed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

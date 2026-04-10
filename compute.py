@@ -21,18 +21,21 @@ from extract import parse_xbrl, classify_contexts, DATA_DIR
 
 # ── R&D Capitalization ─────────────────────────────────────────────────────────
 
-def get_annual_rd_from_prior_10k(ticker: str, first_quarter: dict) -> list[tuple[int, int]]:
+def get_annual_rd_history(ticker: str, first_quarter: dict) -> list[tuple[str, int]]:
     """
-    Extract 3 years of annual R&D expense from the 10-K filed before the
-    first quarter in our extraction window.
+    Extract annual R&D expense for years before the extraction window.
 
-    Returns list of (fiscal_year_end_year, annual_rd) sorted oldest to newest.
+    Scans all downloaded 10-Ks, preferring the most recent filing's values
+    (most accurate due to restatements). Returns entries for years whose
+    period ends before the first extraction quarter.
+
+    Returns list of (end_date, annual_rd) sorted oldest to newest.
     """
     ticker_dir = os.path.join(DATA_DIR, ticker)
     first_date = first_quarter["period_end"]
 
-    # Find the most recent 10-K filed BEFORE first_date
-    prior_10k = None
+    # Collect all 10-Ks, most recent last
+    ten_ks = []
     for dirname in sorted(os.listdir(ticker_dir)):
         meta_path = os.path.join(ticker_dir, dirname, "filing_meta.json")
         if not os.path.exists(meta_path):
@@ -41,38 +44,41 @@ def get_annual_rd_from_prior_10k(ticker: str, first_quarter: dict) -> list[tuple
             meta = json.load(f)
         if meta["form"] != "10-K":
             continue
-        if meta["report_date"] < first_date:
-            prior_10k = meta
-            prior_10k["dir"] = os.path.join(ticker_dir, dirname)
+        meta["dir"] = os.path.join(ticker_dir, dirname)
+        ten_ks.append(meta)
 
-    if not prior_10k:
-        print("  Warning: no prior 10-K found for R&D history")
-        return []
+    ten_ks.sort(key=lambda m: m["report_date"])
 
-    print(f"  Prior 10-K for R&D history: {prior_10k['report_date']} ({prior_10k['accession']})")
+    # Extract annual R&D from each 10-K, most recent wins (iterate newest first)
+    rd_by_end_date = {}
+    for meta in reversed(ten_ks):
+        xbrl_path = os.path.join(meta["dir"], meta["xbrl_filename"])
+        contexts, facts, nsmap = parse_xbrl(xbrl_path)
 
-    # Parse the XBRL to get R&D expense for all reported years
-    xbrl_path = os.path.join(prior_10k["dir"], prior_10k["xbrl_filename"])
-    contexts, facts, nsmap = parse_xbrl(xbrl_path)
+        rd_entries = facts.get("ResearchAndDevelopmentExpense", [])
+        for cref, val in rd_entries:
+            ctx = contexts.get(cref, {})
+            if ctx.get("type") != "duration":
+                continue
+            days = ctx.get("days", 0)
+            if 340 < days < 380:
+                end_date = ctx["end"]
+                # Only keep if this year hasn't been set by a more recent 10-K
+                if end_date not in rd_by_end_date:
+                    rd_by_end_date[end_date] = val
 
-    rd_entries = facts.get("ResearchAndDevelopmentExpense", [])
-    if not rd_entries:
-        print("  Warning: no ResearchAndDevelopmentExpense in prior 10-K")
-        return []
-
-    # Find annual (FY-length) entries — ~350-370 day durations
-    annual_rd = []
-    for cref, val in rd_entries:
-        ctx = contexts.get(cref, {})
-        if ctx.get("type") != "duration":
-            continue
-        days = ctx.get("days", 0)
-        if 340 < days < 380:
-            end_year = int(ctx["end"][:4])
-            annual_rd.append((ctx["end"], val))
-
-    # Sort by end date (oldest first) and return
+    # Filter to years ending before the extraction window, keep most recent 3
+    annual_rd = [(end_date, val) for end_date, val in rd_by_end_date.items()
+                 if end_date < first_date]
     annual_rd.sort()
+    annual_rd = annual_rd[-3:]
+
+    if annual_rd:
+        for end_date, val in annual_rd:
+            print(f"  R&D lookback: {end_date} = {val:>15,}")
+    else:
+        print("  Warning: no prior annual R&D found in downloaded 10-Ks")
+
     return annual_rd
 
 
@@ -247,7 +253,7 @@ def compute_all(ticker: str, fy_start: int = None, fy_end: int = None):
     print("Computing R&D capitalization...")
     quarterly_rd = [r.get("rd_expense_q") for r in records]
     if all(v is not None for v in quarterly_rd):
-        annual_rd = get_annual_rd_from_prior_10k(ticker, records[0])
+        annual_rd = get_annual_rd_history(ticker, records[0])
         if annual_rd:
             rd_series = build_quarterly_rd_series(annual_rd, quarterly_rd)
             rd_results = compute_rd_capitalization(rd_series, len(quarterly_rd))

@@ -14,10 +14,12 @@ import json
 import os
 import time
 import urllib.request
+from datetime import date
 
 USER_AGENT = "Arrow research@arrow.dev"
 DATA_DIR = "data/filings"
 SEC_RATE_LIMIT = 0.15  # seconds between requests (SEC asks for 10 req/sec max)
+DEFAULT_FY_SPAN = 6  # fetch 6 fiscal years of filings
 
 
 def sec_fetch(url: str) -> bytes:
@@ -36,10 +38,43 @@ def get_filing_list(cik: str) -> dict:
     return data
 
 
-def extract_filings(submission_data: dict, fy_start: int = None, fy_end: int = None) -> list:
+def get_fy_end_month(submission_data: dict) -> int:
+    """Extract fiscal year-end month from SEC submission data (e.g. '0129' -> 1)."""
+    fy_end = submission_data.get("fiscalYearEnd", "")
+    if len(fy_end) == 4:
+        return int(fy_end[:2])
+    return 12  # default to calendar year
+
+
+def report_date_to_fy(report_date: str, fy_end_month: int) -> int:
+    """Determine fiscal year from a filing's report date and the company's FY-end month.
+
+    If the report date's month is after the FY-end month, the filing belongs
+    to the next calendar year's fiscal year. Otherwise it belongs to the
+    current calendar year's fiscal year.
+    """
+    year = int(report_date[:4])
+    month = int(report_date[5:7])
+    if month > fy_end_month:
+        return year + 1
+    return year
+
+
+def compute_fy_range(fy_end_month: int, span: int = DEFAULT_FY_SPAN) -> tuple[int, int]:
+    """Compute (fy_start, fy_end) from today's date and the company's FY-end month."""
+    today = date.today()
+    if today.month > fy_end_month:
+        current_fy = today.year + 1
+    else:
+        current_fy = today.year
+    return (current_fy - span + 1, current_fy)
+
+
+def extract_filings(submission_data: dict, fy_start: int, fy_end: int,
+                    fy_end_month: int) -> list:
     """
     Extract 10-Q and 10-K filing metadata from submission data.
-    Returns list of dicts with accession, form, reportDate, filingDate, primaryDocument.
+    Filters to filings whose fiscal year falls within [fy_start, fy_end].
     """
     recent = submission_data.get("filings", {}).get("recent", {})
     if not recent:
@@ -65,15 +100,11 @@ def extract_filings(submission_data: dict, fy_start: int = None, fy_end: int = N
             "primary_document": primary_docs[i],
         }
 
-        # Filter by fiscal year if specified
-        # report_date is the period end date; use year as rough FY filter
-        if fy_start or fy_end:
-            year = int(filing["report_date"][:4])
-            if fy_start and year < fy_start - 1:
-                continue
-            if fy_end and year > fy_end + 1:
-                continue
+        fy = report_date_to_fy(filing["report_date"], fy_end_month)
+        if fy < fy_start or fy > fy_end:
+            continue
 
+        filing["fiscal_year"] = fy
         filings.append(filing)
 
     return filings
@@ -163,13 +194,32 @@ def fetch_company(cik: str, ticker: str, fy_start: int = None, fy_end: int = Non
     submission_data = get_filing_list(cik)
 
     company_name = submission_data.get("name", ticker)
+    fy_end_month = get_fy_end_month(submission_data)
     print(f"Company: {company_name}")
+    print(f"Fiscal year ends: month {fy_end_month}")
 
-    filings = extract_filings(submission_data, fy_start, fy_end)
-    print(f"Found {len(filings)} 10-Q/10-K filings")
+    if fy_start is None or fy_end is None:
+        auto_start, auto_end = compute_fy_range(fy_end_month)
+        fy_start = fy_start or auto_start
+        fy_end = fy_end or auto_end
+
+    print(f"Fiscal year range: FY{fy_start} – FY{fy_end}")
+
+    filings = extract_filings(submission_data, fy_start, fy_end, fy_end_month)
+
+    # Report what we expect vs what we found
+    expected_10k = fy_end - fy_start + 1
+    expected_10q = expected_10k * 3
+    actual_10k = sum(1 for f in filings if f["form"] == "10-K")
+    actual_10q = sum(1 for f in filings if f["form"] == "10-Q")
+    print(f"Found {len(filings)} filings ({actual_10k} 10-K, {actual_10q} 10-Q)")
+    if actual_10k < expected_10k:
+        print(f"  Note: expected {expected_10k} 10-Ks, got {actual_10k} (FY not yet complete?)")
+    if actual_10q < expected_10q:
+        print(f"  Note: expected {expected_10q} 10-Qs, got {actual_10q} (FY not yet complete?)")
 
     for filing in filings:
-        label = f"{filing['form']} {filing['report_date']} ({filing['accession']})"
+        label = f"FY{filing['fiscal_year']} {filing['form']} {filing['report_date']} ({filing['accession']})"
         print(f"  Downloading {label}...")
         download_filing(cik, ticker, filing)
 
@@ -180,8 +230,8 @@ def main():
     parser = argparse.ArgumentParser(description="Download SEC filings")
     parser.add_argument("--cik", required=True, help="SEC CIK number")
     parser.add_argument("--ticker", required=True, help="Stock ticker")
-    parser.add_argument("--fy-start", type=int, help="Start fiscal year (inclusive)")
-    parser.add_argument("--fy-end", type=int, help="End fiscal year (inclusive)")
+    parser.add_argument("--fy-start", type=int, help="Start fiscal year (inclusive, default: auto from today)")
+    parser.add_argument("--fy-end", type=int, help="End fiscal year (inclusive, default: auto from today)")
     args = parser.parse_args()
 
     fetch_company(args.cik, args.ticker, args.fy_start, args.fy_end)
