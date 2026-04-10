@@ -65,48 +65,11 @@ python3 -m http.server 8080 --directory dashboard
 - `data/filings/{TICKER}/{ACCESSION}/` — Downloaded filings (gitignored)
 - `output/{ticker}.json` — Extraction output (gitignored)
 
-## XBRL Extraction Details
+## Extraction Details
 
-We parse actual XBRL instance documents from each filing, NOT the SEC companyfacts aggregation API. The companyfacts API has rounding issues from YTD value aggregation.
+See `extraction_logic.md` for the full extraction logic: XBRL parsing, DEI-based fiscal year detection, context classification, quarterly derivation, R&D capitalization lookback, restatement overrides, stock split handling, and output filtering.
 
-**Flow item handling by statement type:**
-- **Income statement** (IS): Q1-Q3 have discrete quarterly values in their 10-Q XBRL. Use them directly.
-- **Cash flow** (CF): Only YTD cumulative values exist in 10-Q XBRL. Derive quarterly: Q2 = H1_YTD - Q1, Q3 = 9M_YTD - H1_YTD.
-- **Q4 for both IS and CF**: Derived from FY (10-K) minus 9M YTD (Q3 10-Q). Introduces ~$1M rounding.
-- **Balance sheet**: Instant (point-in-time) values, no derivation needed.
-- **Diluted shares**: Per-period metric. Use discrete quarterly entry; fall back to FY context for Q4.
-
-**XBRL parsing notes:**
-- Fiscal year and period are read from DEI elements (`DocumentFiscalYearFocus`, `DocumentFiscalPeriodFocus`) — no heuristic inference
-- Contexts can be `instant` (BS) or `duration` (IS/CF), with or without dimension segments
-- Only use non-dimensioned contexts for consolidated totals
-- iXBRL HTML files contain duplicate fact entries for the same context — parser deduplicates
-- Classify contexts by period length: ~90 days = quarterly, ~180 = H1, ~270 = 9M, ~365 = FY
-- Operating lease liabilities sum `OperatingLeaseLiabilityCurrent` + `OperatingLeaseLiabilityNoncurrent` (`sum_concepts` flag) — some companies only tag the split, not the total
-- Each output record includes `calendar_year` and `calendar_quarter` derived from period end date for cross-company normalization
-
-## R&D Capitalization (compute.py)
-
-20-quarter straight-line amortization schedule:
-- **Amort(t)** = sum(R&D(t-j) for j=0..19) / 20
-- **Asset(t)** = sum(R&D(t-j) × (20-j)/20 for j=0..19)
-- **OI Adjustment(t)** = R&D(t) - Amort(t)
-
-Data source: 3 prior fiscal years of annual R&D from the 10-K before our extraction window (each divided by 4 for quarterly estimates) + 12 actual quarters = 24-quarter series. Missing quarters in the lookback window are treated as 0 (denominator stays 20).
-
-## Employee Count (compute.py)
-
-Not available in XBRL structured data. Extracted from 10-K HTML by finding the largest number matching the pattern `N employees` or `N full-time employees`. Carried forward from the most recent 10-K until the next annual filing.
-
-## Company Script Pattern
-
-Master script handles ~70-80% of components for any company. Per-company scripts in `companies/{ticker}.py` handle:
-- **DEI fixes** (`fix_dei`): Correct incorrect fiscal year/period tagging in XBRL DEI elements (e.g., Dell FY2024 Q1-Q2 tagged as `FY`)
-- **Concept name overrides** (`get_components`): Companies use different XBRL concept names (e.g., NVIDIA changed CapEx concept between fiscal years)
-- **Post-processing** (`post_process`): Fix edge cases like multiple acquisition lines (NVIDIA Groq), concept reclassifications, restated Q4 derivation
-- Over time, common fixes get promoted into the master script
-
-See `companies/nvda.py` for the reference implementation. See `company_specific_types.md` for the catalog of known issue types and fix patterns.
+See `company_specific_types.md` for the catalog of per-company issue types and fix patterns (alternate concepts, dimensioned contexts, DEI tagging errors, restatements, etc.).
 
 ## Evaluation
 
