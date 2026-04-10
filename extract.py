@@ -501,6 +501,9 @@ def derive_quarterly_values(filing_extractions: list, components: dict = None) -
                 if value is not None and comp_def.get("negate"):
                     value = -value
 
+                if value is None and comp_def["type"] == "stock":
+                    value = 0  # missing BS line item = company doesn't have it
+
                 if value is None and "default" in comp_def:
                     value = comp_def["default"]
 
