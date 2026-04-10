@@ -364,7 +364,7 @@
     "fiscal_year": 2025,
     "fiscal_period": "Q4",
     "quarter_seq": 8,
-    "period_start": "2024-10-30",
+    "period_start": "2024-10-28",
     "period_end": "2025-01-26",
     "income_statement_flow_method": "derived_from_ytd",
     "cash_flow_flow_method": "derived_from_ytd",
