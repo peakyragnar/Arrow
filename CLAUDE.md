@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Arrow is a financial data extraction and synthesis system. It collects structured financial data, qualitative text, and market data, then uses a frontier model (Claude) to generate forward revenue/earnings estimates with reasoning.
 
-**Current status**: Layer 1 (financial data extraction) is built and working for NVIDIA, Dell, and Palantir. Metric calculations and a web dashboard are built on top. Layers 2-4 are planned but not yet implemented. Storage is JSON files per company for now; PostgreSQL later.
+**Current status**: Layer 1 (financial data extraction) is built and working for NVIDIA, Dell, Palantir, and Palo Alto Networks. Metric calculations and a web dashboard are built on top. Layers 2-4 are planned but not yet implemented. Storage is JSON files per company for now; PostgreSQL later.
 
 ## Architecture: 4 Layers
 
@@ -56,7 +56,7 @@ python3 -m http.server 8080 --directory dashboard
 - `dashboard/index.html` — Single-file web dashboard (HTML + JS + Chart.js) for viewing metrics
 - `dashboard/data/` — Generated metric JSON files (gitignored, regenerate with `calculate.py --all`)
 - `companies/{ticker}.py` — Per-company concept overrides and post-processing
-- `golden/{ticker}.json` — Golden eval data (exported from `golden_eval.xlsx` via parser)
+- `golden/{ticker}.json` — Golden eval data (created from confirmed extraction output once accuracy is verified against `golden_eval.xlsx`)
 - `golden_eval.xlsx` — Source of truth for evaluation (manually verified data, strict OOXML format — requires custom parser, openpyxl cannot read it)
 - `extraction_logic.md` — Master extraction logic: fiscal year detection, fetch/output windows, derivation, restatements
 - `company_specific_types.md` — Catalog of per-company issue types and fix patterns
@@ -67,9 +67,9 @@ python3 -m http.server 8080 --directory dashboard
 
 ## Extraction Details
 
-See `extraction_logic.md` for the full extraction logic: XBRL parsing, DEI-based fiscal year detection, context classification, quarterly derivation, R&D capitalization lookback, restatement overrides, stock split handling, and output filtering.
+See `extraction_logic.md` for the full extraction logic: XBRL parsing, DEI-based fiscal year detection, context classification, quarterly derivation, R&D capitalization (20-quarter amortization using actual quarterly data), restatement overrides, stock split handling, employee count extraction, and output filtering.
 
-See `company_specific_types.md` for the catalog of per-company issue types and fix patterns (alternate concepts, dimensioned contexts, DEI tagging errors, restatements, etc.).
+See `company_specific_types.md` for the catalog of per-company issue types and fix patterns (alternate concepts, dimensioned contexts, DEI tagging errors, restatements, spurious XBRL tags, CF line item breakouts, bad R&D quarters, etc.).
 
 ## Evaluation
 
@@ -82,10 +82,21 @@ Golden eval (`golden_eval.xlsx`) contains manually verified data. Eval checks 28
 - NVDA: 303 exact + 33 close (Q4 rounding)
 - DELL: 336/336 exact
 - PLTR: 336/336 exact
+- PANW: 336/336 exact
 
 **Golden eval source**: `golden_eval.xlsx` has three tabs: `manual_audit_entry_v1` (the 24 extracted components + employee count), `researchanddevelopment` (R&D capitalization inputs), and `restatements`. The spreadsheet uses strict OOXML format — openpyxl cannot read it, requires a custom XML parser (see `eval.py` pattern). Golden JSON files (`golden/{ticker}.json`) are created from extracted data once extraction accuracy is confirmed, not parsed from the spreadsheet.
 
 **Golden eval window vs extraction output**: The golden eval covers an arbitrary 12-quarter window per company (chosen during manual verification). This is a validation window, not an output constraint. `extract.py` outputs **all** derived quarters from downloaded filings — the eval compares only the overlapping quarters. More extraction output is better: downstream consumers (calculate.py, dashboard, future Layer 4 synthesis) benefit from longer history (TTM needs 4 quarters, YoY needs 8, ROIIC needs more). Once all 20 target companies are validated, the golden eval becomes a regression test — new filings get extracted automatically without golden data, and the eval proves the extraction logic hasn't regressed on known-good data.
+
+## Adding a New Company
+
+1. `fetch.py --cik <CIK> --ticker <TICKER>` — download filings
+2. `extract.py --ticker <TICKER>` — run master extraction
+3. `compute.py --ticker <TICKER>` — compute R&D capitalization + employee count
+4. Compare extraction output against `golden_eval.xlsx` manually (parse the spreadsheet with the custom XML parser)
+5. Fix mismatches — check `company_specific_types.md` for known issue patterns. Add `companies/{ticker}.py` if needed.
+6. For R&D: build the 20-quarter R&D tab in the spreadsheet, verify amort/asset/OI match compute.py output, copy totals to the main eval tab.
+7. Once all fields match: create `golden/{ticker}.json` from the confirmed extraction output, run `eval.py --ticker <TICKER> --verbose` to confirm 0 mismatches.
 
 ## Financial Metrics (calculate.py)
 
