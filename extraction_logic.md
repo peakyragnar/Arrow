@@ -56,11 +56,9 @@ The pipeline has two distinct windows:
 
 **Fetch window (6 fiscal years):** `fetch.py` downloads 6 fiscal years of filings ending at the current fiscal year. This provides the full data needed for derivation dependencies and R&D lookback. Expected: 6 10-Ks + 18 10-Qs = 24 filings. The current (incomplete) fiscal year will have fewer.
 
-**Output window (3 fiscal years):** `extract.py` outputs the **3 most recent complete fiscal years** (12 quarters). A fiscal year is complete when all 4 quarters (Q1-Q4) have been derived. The remaining 3 fiscal years from the fetch window are used only as support data — R&D lookback history, cash flow derivation dependencies, and employee count baselines. They do not appear in the output.
+**Output window (all derived quarters):** `extract.py` outputs all derived quarters by default. The golden eval covers an arbitrary window per company (chosen during manual verification) — the eval compares only overlapping quarters. Optional `--fy-start`/`--fy-end` flags can narrow the output if needed. More history benefits downstream consumers: calculate.py needs 4 quarters for TTM metrics, 8 for YoY.
 
-This separation is critical. The R&D capitalization lookback in `compute.py` anchors to the first quarter in the output, not the first fetched quarter. If the output window is wrong, the lookback grabs the wrong years and all R&D calculations are off.
-
-**Do not use `--fy-start`/`--fy-end` overrides.** The defaults handle the alignment correctly for any company regardless of fiscal year-end date. Manual overrides risk misaligning the output window with the lookback data.
+The R&D capitalization lookback in `compute.py` anchors to the first quarter in the output, not the first fetched quarter. The 6-year fetch window provides ample lookback data regardless of how many quarters are output.
 
 ## Component Types
 
@@ -132,7 +130,7 @@ Q3 = 9M YTD - H1 YTD
 Q4 = FY (from 10-K) - 9M YTD (from Q3 10-Q)
 ```
 
-This means **Q2 derivation requires Q1's filing**, even if Q1 is not in the output window. The 6-year fetch window ensures these dependencies are always satisfied for the 3-year output window.
+This means **Q2 derivation requires Q1's filing**. The 6-year fetch window ensures these dependencies are always satisfied.
 
 ### Balance Sheet (BS) — stock items
 
@@ -181,9 +179,18 @@ Stock splits are detected from the XBRL concept `StockholdersEquityNoteStockSpli
 
 ## Extract Output Filtering
 
-`extract.py` parses **all** downloaded filings regardless of the output window. Derivation and restatement overrides run on the full filing set. The output filter is applied **last** — only the 3 most recent complete fiscal years (12 quarters) are written to the output JSON. This ensures derivation dependencies (e.g., Q1 needed for Q2 cash flow subtraction) are always available, even when Q1 falls outside the output window.
+`extract.py` parses **all** downloaded filings regardless of output scope. Derivation and restatement overrides run on the full filing set. By default, all derived quarters are written to the output JSON. Optional `--fy-start`/`--fy-end` flags can narrow the range. This ensures derivation dependencies (e.g., Q1 needed for Q2 cash flow subtraction) are always available.
 
-The default output window is determined automatically: find all fiscal years with 4 derived quarters, take the 3 most recent. This works identically for offset fiscal year companies (NVIDIA, Dell) and calendar fiscal year companies (Palantir).
+## Employee Count
+
+Employee counts are extracted from 10-K HTML filings by `compute.py`, not from XBRL. The parser:
+
+1. Removes the `<ix:hidden>` metadata block (contains XBRL member names like `A2012EmployeeStockPurchasePlanMember` that produce false regex matches)
+2. Strips HTML tags and normalizes whitespace (including non-breaking spaces `\xa0`)
+3. Matches multiple patterns: "N employees", "N full-time employees", "workforce of N", "headcount of/was/increased to N"
+4. Takes the largest match ≥ 100 (total headcount > subgroup counts)
+
+Employee count is annual (10-K only). Each quarter is assigned the most recent 10-K's count: Q4 gets the count from its own 10-K, Q1-Q3 carry forward the prior fiscal year's 10-K count until the next 10-K is filed.
 
 ## Evaluation Independence
 

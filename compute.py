@@ -154,7 +154,8 @@ def compute_rd_capitalization(rd_series: list[float], num_actual_quarters: int,
 def extract_employee_count_from_html(html_path: str) -> int | None:
     """
     Extract total employee count from a 10-K HTML filing.
-    Looks for patterns like "26,196 employees" or "approximately 36,000 employees".
+    Looks for patterns like "26,196 employees" or "approximately 36,000 employees"
+    or "workforce of 16,068".
     """
     try:
         with open(html_path, "r", errors="replace") as f:
@@ -162,12 +163,24 @@ def extract_employee_count_from_html(html_path: str) -> int | None:
     except FileNotFoundError:
         return None
 
+    # Remove iXBRL hidden metadata block (contains plan names like
+    # "A2012EmployeeStockPurchasePlanMember" that produce false matches)
+    html = re.sub(r'<ix:hidden>.*?</ix:hidden>', ' ', html, flags=re.DOTALL)
+
     # Strip HTML tags for cleaner text matching
     text = re.sub(r'<[^>]+>', ' ', html)
-    text = re.sub(r'\s+', ' ', text)
+    # Normalize all whitespace including non-breaking spaces (\xa0)
+    text = re.sub(r'[\s\xa0]+', ' ', text)
 
-    # Find all "N employees" or "N full-time employees" patterns
-    matches = re.findall(r'([\d,]+)\s*(?:full-time\s+)?employees', text, re.IGNORECASE)
+    # Find all "N employees" or "N full-time employees" or "workforce of N" patterns
+    patterns = [
+        r'([\d,]+)\s+(?:full-time\s+)?employees',
+        r'workforce\s+of\s+([\d,]+)',
+        r'headcount\s+(?:of|was|increased\s+to)\s+([\d,]+)',
+    ]
+    matches = []
+    for pattern in patterns:
+        matches.extend(re.findall(pattern, text, re.IGNORECASE))
     if not matches:
         return None
 
