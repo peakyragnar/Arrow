@@ -253,14 +253,22 @@ def parse_dei(filepath: str) -> dict:
     return dei_fields
 
 
-def classify_contexts(contexts: dict, report_date: str) -> dict:
+def classify_contexts(contexts: dict, report_date: str,
+                      fy_start_date: str = None) -> dict:
     """
     Identify key contexts for a filing based on its report date.
     Returns dict with keys like 'current_instant', 'current_discrete',
     'current_ytd', 'prior_instant', etc.
+
+    fy_start_date: fiscal year start date from DEI (e.g., "2024-01-01").
+    Used to identify the exact FY context.
     """
     report_dt = parse_date(report_date)
+    fy_start_dt = parse_date(fy_start_date) if fy_start_date else None
     classified = {}
+
+    # Collect candidate FY contexts (duration ending at report date, ~1 year)
+    fy_candidates = []
 
     for ctx_id, ctx in contexts.items():
         if ctx.get("has_dimensions"):
@@ -285,13 +293,22 @@ def classify_contexts(contexts: dict, report_date: str) -> dict:
                 classified["current_ytd_h1"] = ctx_id
             elif 240 <= days <= 300:
                 classified["current_ytd_9m"] = ctx_id
-            elif days > 340:
-                classified["current_fy"] = ctx_id
+            elif 340 <= days <= 380:
+                fy_candidates.append((ctx_id, ctx))
 
-            # fy_start: prefer the longest context's start (most accurate)
-            if "fy_start" not in classified or days > classified.get("_fy_start_days", 0):
-                classified["fy_start"] = ctx["start"]
-                classified["_fy_start_days"] = days
+    # Pick FY context: prefer the one closest to DEI-derived FY start
+    if fy_candidates:
+        if fy_start_dt and len(fy_candidates) > 1:
+            fy_candidates.sort(
+                key=lambda c: abs((parse_date(c[1]["start"]) - fy_start_dt).days)
+            )
+        best_id, best_ctx = fy_candidates[0]
+        classified["current_fy"] = best_id
+        classified["fy_start"] = best_ctx["start"]
+    elif fy_start_dt:
+        # No 340-380 day candidate; shouldn't happen for 10-Ks but
+        # set fy_start from DEI as fallback
+        classified["fy_start"] = fy_start_date
 
     # Also find the prior year-end instant (for BS comparatives)
     if "fy_start" in classified:
@@ -332,9 +349,8 @@ def extract_single_filing(filing_dir: str, components: dict = None,
         return None
 
     contexts, facts, nsmap = parse_xbrl(xbrl_path)
-    classified = classify_contexts(contexts, meta["report_date"])
 
-    # Get fiscal year, period, and dates from DEI elements in the XBRL
+    # Parse DEI first — we need fiscal year dates to classify contexts
     dei = parse_dei(xbrl_path)
     if company_module and hasattr(company_module, "fix_dei"):
         dei = company_module.fix_dei(dei, meta)
@@ -347,6 +363,18 @@ def extract_single_filing(filing_dir: str, components: dict = None,
     fiscal_period = dei["DocumentFiscalPeriodFocus"]
     if fiscal_period == "FY":
         fiscal_period = "Q4"
+
+    # Derive fiscal year start date from DEI
+    fy_end_mmdd = dei.get("CurrentFiscalYearEndDate", "")  # e.g., "--12-31"
+    fy_start_date = None
+    if fy_end_mmdd and len(fy_end_mmdd) >= 5:
+        fy_end_month = int(fy_end_mmdd[2:4])
+        fy_end_day = int(fy_end_mmdd[5:7]) if len(fy_end_mmdd) >= 7 else 31
+        # FY start = day after prior FY end
+        fy_end_prior = datetime(fiscal_year - 1, fy_end_month, fy_end_day)
+        fy_start_date = date_str(fy_end_prior + timedelta(days=1))
+
+    classified = classify_contexts(contexts, meta["report_date"], fy_start_date)
 
     record = {
         "accession": meta["accession"],
