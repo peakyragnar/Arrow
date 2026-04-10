@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Arrow is a financial data extraction and synthesis system. It collects structured financial data, qualitative text, and market data, then uses a frontier model (Claude) to generate forward revenue/earnings estimates with reasoning.
 
-**Current status**: Layer 1 (financial data extraction) is built and working for NVIDIA. Layers 2-4 are planned but not yet implemented. Storage is JSON files per company for now; PostgreSQL later.
+**Current status**: Layer 1 (financial data extraction) is built and working for NVIDIA and Dell. Metric calculations and a web dashboard are built on top. Layers 2-4 are planned but not yet implemented. Storage is JSON files per company for now; PostgreSQL later.
 
 ## Architecture: 4 Layers
 
@@ -35,6 +35,13 @@ python3 compute.py --ticker NVDA --fy-start 2024 --fy-end 2026
 
 # 4. Evaluate against golden data
 python3 eval.py --ticker NVDA --verbose
+
+# 5. Calculate financial metrics (ROIC, growth, margins, etc.)
+python3 calculate.py --ticker NVDA
+python3 calculate.py --all
+
+# 6. Serve dashboard (then open http://localhost:8080)
+python3 -m http.server 8080 --directory dashboard
 ```
 
 ## File Structure
@@ -43,6 +50,9 @@ python3 eval.py --ticker NVDA --verbose
 - `extract.py` — Parses local XBRL instance documents, extracts 24 components per quarter
 - `compute.py` — Post-extraction: R&D capitalization (20-quarter schedule) and employee count from 10-K HTML
 - `eval.py` — Compares extracted data against golden eval (28 fields per quarter)
+- `calculate.py` — Computes 20+ financial metrics (ROIC, growth, margins, etc.) from extracted data
+- `dashboard/index.html` — Single-file web dashboard (HTML + JS + Chart.js) for viewing metrics
+- `dashboard/data/` — Generated metric JSON files (gitignored, regenerate with `calculate.py --all`)
 - `companies/{ticker}.py` — Per-company concept overrides and post-processing
 - `golden/{ticker}.json` — Golden eval data exported from `golden_eval.xlsx`
 - `golden_eval.xlsx` — Source of truth for evaluation (manually verified data)
@@ -99,6 +109,18 @@ Golden eval (`golden_eval.xlsx`) contains manually verified data. Eval checks 28
 - 1 employee count
 
 "Close" match = within 1%, typically $1M from Q4 YTD rounding. Current NVDA: 336/336 fields, 0 mismatches.
+
+## Financial Metrics (calculate.py)
+
+Reads `output/{ticker}.json`, computes all metrics from `formulas.md`, writes enriched JSON to `dashboard/data/{ticker}.json`. Metrics include ROIC, ROIIC, reinvestment rate, revenue/gross profit growth, margins, cash quality ratios, CCC, net debt, interest coverage, and more. See `formulas.md` for the full canonical metric dictionary.
+
+**Stock split normalization**: Diluted share counts in extraction output are stored as-reported (pre-split for historical periods). `calculate.py` detects splits by looking for >=1.5x (forward) or <=0.67x (reverse) jumps between adjacent quarters, then normalizes all values to the most recent basis in a `diluted_shares_split_adjusted_q` field. Raw extraction data is never modified. This was a deliberate design decision — keep extraction faithful to filings, normalize in the calculations layer.
+
+**Metric availability**: TTM metrics need 4 quarters of history, YoY metrics need 8. With 12 quarters of data (FY2024-FY2026), all metrics are available from FY2025 Q4 onward.
+
+## Dashboard
+
+Single-file HTML app (`dashboard/index.html`) with Chart.js. Company selector, metrics table grouped by section, click any row to chart it over time. Served via `python3 -m http.server 8080 --directory dashboard`. The `dashboard/data/` directory is gitignored — run `calculate.py --all` to regenerate after a fresh clone.
 
 ## Key Principles
 
