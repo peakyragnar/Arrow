@@ -68,11 +68,13 @@ COMPONENTS = {
         "type": "stock",
     },
     "short_term_debt_q": {
-        "concepts": ["DebtCurrent", "LongTermDebtCurrent", "ShortTermBorrowings", "ConvertibleDebtCurrent"],
+        "concepts": ["DebtCurrent", "LongTermDebtCurrent", "ShortTermBorrowings", "ConvertibleDebtCurrent",
+                      "LongTermDebtAndCapitalLeaseObligationsCurrent"],
         "type": "stock", "default": 0,
     },
     "long_term_debt_q": {
-        "concepts": ["LongTermDebtNoncurrent", "ConvertibleDebtNoncurrent"],
+        "concepts": ["LongTermDebtNoncurrent", "ConvertibleDebtNoncurrent",
+                      "LongTermDebtAndCapitalLeaseObligations"],
         "type": "stock",
     },
     "operating_lease_liabilities_q": {
