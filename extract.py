@@ -88,7 +88,8 @@ COMPONENTS = {
     },
     "short_term_investments_q": {
         "concepts": ["MarketableSecuritiesCurrent", "ShortTermInvestments",
-                      "AvailableForSaleSecuritiesDebtSecuritiesCurrent"],
+                      "AvailableForSaleSecuritiesDebtSecuritiesCurrent",
+                      "HeldToMaturitySecuritiesCurrent"],
         "type": "stock",
     },
     "accounts_receivable_q": {
