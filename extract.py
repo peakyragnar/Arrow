@@ -125,7 +125,8 @@ COMPONENTS = {
         "type": "flow", "statement": "cf",
     },
     "acquisitions_q": {
-        "concepts": ["PaymentsToAcquireBusinessesNetOfCashAcquired"],
+        "concepts": ["PaymentsToAcquireBusinessesNetOfCashAcquired",
+                      "PaymentsToAcquireAdditionalInterestInSubsidiaries"],
         "type": "flow", "statement": "cf", "negate": True,
     },
     "sbc_q": {
