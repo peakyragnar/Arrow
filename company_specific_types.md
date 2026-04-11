@@ -78,7 +78,17 @@ This document catalogs the types of issues we have encountered across companies.
 
 **Fix:** In the company override's `get_components()`, override the component with `sum_concepts: True` and list all concepts to sum. Use `negate_in_sum` for concepts with reversed sign conventions (e.g., investment premium amortization where positive XBRL = CF reduction). This is a company-specific fix, not a master fix, because the same XBRL concept may be a separate CF line for one company and a footnote disclosure for another.
 
-### 9. Bad R&D Quarters (Spin-offs, IPOs, Reclassifications)
+### 9. Incorrect DEI Fiscal Year Tagging
+
+**Symptom:** A quarter is missing from output while another quarter has wrong values. The extraction log shows a 10-K mapping to the wrong fiscal year (e.g., a 2024-12-31 10-K appearing as FY2023 Q4). The misassigned filing overwrites the correct quarter's data.
+
+**Example:** FCX FY2024 10-K (accession `0000831259-25-000006`, period end 2024-12-31) has `DocumentFiscalYearFocus = 2023` instead of `2024`. The master script trusts this tag, so the filing maps to FY2023 Q4, overwriting the real FY2023 Q4 data from the actual 2023 10-K. FY2024 Q4 is missing entirely.
+
+**Detection:** After extraction, check for missing quarters in the output. Cross-reference the extraction log — if a 10-K's `DocumentPeriodEndDate` doesn't match the fiscal year it was assigned to, the DEI tag is wrong. Also look for Q4 values that are wildly different from adjacent quarters.
+
+**Fix:** In the company override, implement `fix_dei(dei, meta)` to correct `DocumentFiscalYearFocus` for the specific accession. Derive the correct year from `DocumentPeriodEndDate`.
+
+### 10. Bad R&D Quarters (Spin-offs, IPOs, Reclassifications)
 
 **Symptom:** R&D capitalization values are wrong because one or more quarterly R&D expense values in the 20-quarter amortization window are bad — negative, missing, or include divested business units.
 
