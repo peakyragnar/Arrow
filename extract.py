@@ -101,7 +101,7 @@ COMPONENTS = {
         "type": "stock",
     },
     "accounts_payable_q": {
-        "concepts": ["AccountsPayableCurrent"],
+        "concepts": ["AccountsPayableCurrent", "AccountsPayableAndAccruedLiabilitiesCurrent"],
         "type": "stock",
     },
     "total_assets_q": {
