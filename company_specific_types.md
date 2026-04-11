@@ -88,7 +88,27 @@ This document catalogs the types of issues we have encountered across companies.
 
 **Fix:** In the company override, implement `fix_dei(dei, meta)` to correct `DocumentFiscalYearFocus` for the specific accession. Derive the correct year from `DocumentPeriodEndDate`.
 
-### 10. Bad R&D Quarters (Spin-offs, IPOs, Reclassifications)
+### 10. Opposite Sign Convention on Alternate Concept
+
+**Symptom:** A component extracts as 0 because the company uses an XBRL concept with the opposite sign convention from the master script's concepts. The master script's `negate` flag would double-negate the value if the alternate concept were simply added as a fallback.
+
+**Example:** FCX uses `InterestIncomeExpenseNet` (negative in XBRL, -70M) instead of `InterestExpense` (positive in XBRL, 70M). The master script has `negate: True` on interest expense to flip positive XBRL values to negative. Adding `InterestIncomeExpenseNet` as a fallback would negate it to +70M — wrong sign. The override removes `negate` since the concept is already in the correct sign convention.
+
+**Detection:** Component is 0 across all quarters. Search the XBRL for related concepts — if found under a different name, check whether its XBRL sign matches the golden convention or is opposite.
+
+**Fix:** In the company override's `get_components()`, override the component definition with the alternate concept and adjust/remove the `negate` flag to match the concept's native sign convention.
+
+### 11. 10-K vs 10-Q Concept Availability (Balance Sheet)
+
+**Symptom:** A balance sheet component is correct in Q4 (from 10-K) but 0 in Q1-Q3 (from 10-Qs), or vice versa. The 10-K breaks out a sub-concept that the master script prefers, while the 10-Qs only report a combined concept.
+
+**Example:** FCX 10-Ks tag both `AccountsPayableCurrent` (trade AP, 2,948M) and `AccountsPayableAndAccruedLiabilitiesCurrent` (combined, 4,565M). The 10-Qs only tag the combined concept. The master script picks `AccountsPayableCurrent` first (more specific), causing Q4 to use the narrower value while Q1-Q3 use the combined value. Similarly, FCX only discloses `OperatingLeaseLiabilityCurrent`/`OperatingLeaseLiabilityNoncurrent` in 10-Ks, not 10-Qs.
+
+**Detection:** A balance sheet value drops or jumps sharply in Q4 relative to Q1-Q3, or is 0 in Q1-Q3 but non-zero in Q4. Check whether the 10-K has a more granular concept breakdown than the 10-Qs.
+
+**Fix:** For concept preference issues, override `get_components()` in the company script to use the concept that's consistent across all filing types. For missing-in-10-Q issues, forward-fill in `calculate.py` (carries the most recent non-zero value into subsequent quarters).
+
+### 12. Bad R&D Quarters (Spin-offs, IPOs, Reclassifications)
 
 **Symptom:** R&D capitalization values are wrong because one or more quarterly R&D expense values in the 20-quarter amortization window are bad — negative, missing, or include divested business units.
 
