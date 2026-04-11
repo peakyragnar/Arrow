@@ -8,6 +8,8 @@ Known quirks:
 - Inventory is split across three mining-specific XBRL concepts that must be
   summed: Product (finished goods), InventoryRawMaterialsAndSuppliesNetOfReserves
   (raw materials), InventoryMillandStockpilesonLeachPadsCurrent (in-process ore).
+- Interest expense: FCX does not tag InterestExpense. Only InterestIncomeExpenseNet
+  is available (already negative in XBRL, no negate needed).
 """
 
 
@@ -21,6 +23,12 @@ def fix_dei(dei: dict, meta: dict) -> dict:
 def get_components(base_components: dict) -> dict:
     """Override concept mappings for FCX."""
     components = dict(base_components)
+
+    components["interest_expense_q"] = {
+        "concepts": ["InterestExpense", "InterestExpenseNonoperating",
+                      "InterestExpenseDebt", "InterestIncomeExpenseNet"],
+        "type": "flow", "statement": "is",
+    }
 
     components["inventory_q"] = {
         "concepts": ["Product",
