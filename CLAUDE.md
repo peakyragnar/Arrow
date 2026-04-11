@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Arrow is a financial data extraction and synthesis system. It collects structured financial data, qualitative text, and market data, then uses a frontier model (Claude) to generate forward revenue/earnings estimates with reasoning.
 
-**Current status**: Layer 1 (financial data extraction) is built and working for NVIDIA, Dell, Palantir, and Palo Alto Networks. Metric calculations and a web dashboard are built on top. Layers 2-4 are planned but not yet implemented. Storage is JSON files per company for now; PostgreSQL later.
+**Current status**: Layer 1 (financial data extraction) is built and working for NVIDIA, Dell, Palantir, Palo Alto Networks, and Union Pacific. Metric calculations and a web dashboard are built on top. Layers 2-4 are planned but not yet implemented. Storage is JSON files per company for now; PostgreSQL later.
 
 ## Architecture: 4 Layers
 
@@ -83,6 +83,7 @@ Golden eval (`golden_eval.xlsx`) contains manually verified data. Eval checks 28
 - DELL: 336/336 exact
 - PLTR: 336/336 exact
 - PANW: 336/336 exact
+- UNP: 480/480 exact (no company-specific script needed)
 
 **Golden eval source**: `golden_eval.xlsx` has three tabs: `manual_audit_entry_v1` (the 24 extracted components + employee count), `researchanddevelopment` (R&D capitalization inputs), and `restatements`. The spreadsheet uses strict OOXML format — openpyxl cannot read it, requires a custom XML parser (see `eval.py` pattern). Golden JSON files (`golden/{ticker}.json`) are created from extracted data once extraction accuracy is confirmed, not parsed from the spreadsheet.
 
