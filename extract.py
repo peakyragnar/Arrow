@@ -96,7 +96,7 @@ COMPONENTS = {
         "type": "stock",
     },
     "inventory_q": {
-        "concepts": ["InventoryNet"],
+        "concepts": ["InventoryNet", "MaterialsSuppliesAndOther"],
         "type": "stock",
     },
     "accounts_payable_q": {
