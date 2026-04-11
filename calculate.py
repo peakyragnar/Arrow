@@ -489,12 +489,34 @@ METRIC_FUNCS = [
 ]
 
 
+def forward_fill_lease_liabilities(records):
+    """Forward-fill operating lease liabilities across quarters.
+
+    Some companies (e.g. FCX) only disclose lease liabilities in 10-K filings,
+    leaving 10-Q quarters as 0. Carry the most recent non-zero value forward
+    so metrics like ROIC and Net Debt don't have quarterly discontinuities.
+    """
+    last_value = 0
+    filled = 0
+    for r in records:
+        val = r.get("operating_lease_liabilities_q", 0) or 0
+        if val != 0:
+            last_value = val
+        elif last_value != 0:
+            r["operating_lease_liabilities_q"] = last_value
+            filled += 1
+    if filled:
+        print(f"  Forward-filled operating_lease_liabilities_q for {filled} quarters")
+
+
 def calculate_all_metrics(records):
     """Compute all metrics for a sorted list of quarterly records."""
     records.sort(key=lambda r: (r["fiscal_year"], PERIOD_ORDER[r["fiscal_period"]]))
 
     print("Normalizing share counts for splits...")
     normalize_splits(records)
+
+    forward_fill_lease_liabilities(records)
 
     print("Computing metrics...")
     for idx, record in enumerate(records):
