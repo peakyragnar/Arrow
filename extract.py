@@ -120,7 +120,7 @@ COMPONENTS = {
     },
     "dna_q": {
         "concepts": ["DepreciationDepletionAndAmortization",
-                      "DepreciationAndAmortization"],
+                      "DepreciationAndAmortization", "Depreciation"],
         "type": "flow", "statement": "cf",
     },
     "acquisitions_q": {
