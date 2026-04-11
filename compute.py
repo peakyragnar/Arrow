@@ -13,6 +13,7 @@ Usage:
 """
 
 import argparse
+import html as html_module
 import json
 import os
 import re
@@ -86,6 +87,8 @@ def extract_employee_count_from_html(html_path: str) -> int | None:
 
     # Strip HTML tags for cleaner text matching
     text = re.sub(r'<[^>]+>', ' ', html)
+    # Decode HTML entities (e.g., &#160; -> actual non-breaking space)
+    text = html_module.unescape(text)
     # Normalize all whitespace including non-breaking spaces (\xa0)
     text = re.sub(r'[\s\xa0]+', ' ', text)
 
