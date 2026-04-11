@@ -10,6 +10,9 @@ Known quirks:
   (raw materials), InventoryMillandStockpilesonLeachPadsCurrent (in-process ore).
 - Interest expense: FCX does not tag InterestExpense. Only InterestIncomeExpenseNet
   is available (already negative in XBRL, no negate needed).
+- Accounts payable: 10-Qs only have AccountsPayableAndAccruedLiabilitiesCurrent
+  (combined). 10-Ks also break out AccountsPayableCurrent (trade AP only).
+  Override to use the combined concept consistently across all filings.
 """
 
 
@@ -28,6 +31,11 @@ def get_components(base_components: dict) -> dict:
         "concepts": ["InterestExpense", "InterestExpenseNonoperating",
                       "InterestExpenseDebt", "InterestIncomeExpenseNet"],
         "type": "flow", "statement": "is",
+    }
+
+    components["accounts_payable_q"] = {
+        "concepts": ["AccountsPayableAndAccruedLiabilitiesCurrent"],
+        "type": "stock",
     }
 
     components["inventory_q"] = {
