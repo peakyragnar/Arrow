@@ -84,7 +84,7 @@ Golden eval (`golden_eval.xlsx`) contains manually verified data. Eval checks 28
 - PLTR: 336/336 exact
 - PANW: 336/336 exact
 - UNP: 480/480 exact (no company-specific script needed)
-- FCX: 324/324 exact
+- FCX: 480/480 exact
 
 **Golden eval source**: `golden_eval.xlsx` has three tabs: `manual_audit_entry_v1` (the 24 extracted components + employee count), `researchanddevelopment` (R&D capitalization inputs), and `restatements`. The spreadsheet uses strict OOXML format — openpyxl cannot read it, requires a custom XML parser (see `eval.py` pattern). Golden JSON files (`golden/{ticker}.json`) are created from extracted data once extraction accuracy is confirmed, not parsed from the spreadsheet.
 
