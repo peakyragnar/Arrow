@@ -114,5 +114,6 @@ Single-file HTML app (`dashboard/index.html`) with Chart.js. Company selector, m
 - Trained models own: qualitative curation (text extraction, transcript filtering, news classification)
 - Frontier model owns: synthesis, forward estimation, thesis generation
 - Per-company work is unavoidable for financial extraction — capture it and reuse it
+- Master script concept lists should include every standard US-GAAP concept for a line item. If it's a standard concept for the same component, it goes in master — not in a company override. Company scripts are for truly bespoke issues (dimensioned contexts, sign flips, summation quirks). The goal is for company #7 through #100 to work without per-company scripts wherever possible.
 - Don't trust AI output without verified inputs — Layers 1-3 exist to give the frontier model data you trust
 - Measure everything — gold audit for financials, field-by-field scoring for extraction models
