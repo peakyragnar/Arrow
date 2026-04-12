@@ -117,3 +117,13 @@ This document catalogs the types of issues we have encountered across companies.
 **Detection:** R&D capitalization mismatches in eval. Check the quarterly R&D series in the output — look for negative values, sudden jumps/drops that don't match the filing narrative, or missing quarters.
 
 **Fix:** In the company override, implement `fix_rd_series(quarterly_rd, records)`. This receives the R&D list and returns a corrected version. Can replace bad values with annual/4 estimates (Dell) or prepend missing quarters (Palantir). The fix runs before the amortization calculation in `compute.py`.
+
+### 13. Company Extension Concepts (Non-US-GAAP)
+
+**Symptom:** Component returns 0 across all quarters. The value exists in the filing under the company's own XBRL extension namespace (e.g., `http://www.microsoft.com/`) rather than under the standard `us-gaap` namespace. The master script only searches US-GAAP concepts by default.
+
+**Example:** Microsoft uses `AcquisitionsNetOfCashAcquiredAndPurchasesOfIntangibleAndOtherAssets` (namespace `microsoft.com`) instead of `PaymentsToAcquireBusinessesNetOfCashAcquired`. This custom concept bundles acquisitions with intangible asset purchases into a single CF line. The master script's US-GAAP concepts find nothing.
+
+**Detection:** Component is 0 but the filing clearly reports the line item. Search the XBRL for keywords (e.g., "acqui") — if the matching tag has the company's namespace instead of `us-gaap`, it's an extension concept.
+
+**Fix:** In the company override's `get_components()`, override the component with the extension concept name. Ensure `negate` and other flags match the concept's sign convention. This is always a company-specific fix since extension concepts are unique to each filer.
