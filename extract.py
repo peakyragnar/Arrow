@@ -117,7 +117,8 @@ COMPONENTS = {
     },
     "capex_q": {
         "concepts": ["PaymentsToAcquirePropertyPlantAndEquipment",
-                      "PaymentsToAcquireProductiveAssets"],
+                      "PaymentsToAcquireProductiveAssets",
+                      "PaymentsToAcquirePropertyPlantAndEquipmentAndDevelopSoftware"],
         "type": "flow", "statement": "cf", "negate": True,
     },
     "dna_q": {
@@ -127,6 +128,7 @@ COMPONENTS = {
     },
     "acquisitions_q": {
         "concepts": ["PaymentsToAcquireBusinessesNetOfCashAcquired",
+                      "PaymentsToAcquireBusinessesGross",
                       "PaymentsToAcquireAdditionalInterestInSubsidiaries",
                       "PaymentsToAcquireInterestInJointVenture",
                       "PaymentsToAcquireEquityMethodInvestments"],
