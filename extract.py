@@ -153,13 +153,16 @@ def date_str(d: datetime) -> str:
     return d.strftime("%Y-%m-%d")
 
 
-def parse_xbrl(filepath: str) -> tuple[dict, dict, dict]:
+def parse_xbrl(filepath: str) -> tuple[dict, dict, dict, dict]:
     """
     Parse an XBRL instance document.
-    Returns (contexts, facts, nsmap).
-    - contexts: {context_id: {type, date/start/end, days, has_dimensions}}
-    - facts: {(namespace, local_name): [(context_id, value), ...]}
+    Returns (contexts, facts, nsmap, continuing_ops_facts).
+    - contexts: {context_id: {type, date/start/end, days, has_dimensions, members}}
+    - facts: {local_name: [(context_id, value), ...]} — undimensioned only
     - nsmap: {prefix: uri}
+    - continuing_ops_facts: {local_name: [(context_id, value), ...]} — from
+      SegmentContinuingOperationsMember contexts only (fallback for companies
+      that only tag certain items under continuing operations dimensions)
     """
     nsmap = {}
     for _, elem in ET.iterparse(filepath, events=["start-ns"]):
@@ -180,11 +183,21 @@ def parse_xbrl(filepath: str) -> tuple[dict, dict, dict]:
         segment = entity.find(f"{{{xbrli}}}segment") if entity is not None else None
         has_dims = segment is not None and len(segment) > 0
 
+        # Extract dimension member names (e.g., "SegmentContinuingOperationsMember")
+        members = set()
+        if segment is not None:
+            for dim_elem in segment:
+                text = dim_elem.text or ""
+                if ":" in text:
+                    members.add(text.split(":")[-1])
+                elif text:
+                    members.add(text)
+
         instant = period.find(f"{{{xbrli}}}instant")
         start = period.find(f"{{{xbrli}}}startDate")
         end = period.find(f"{{{xbrli}}}endDate")
 
-        info = {"id": ctx_id, "has_dimensions": has_dims}
+        info = {"id": ctx_id, "has_dimensions": has_dims, "members": members}
         if instant is not None:
             info["type"] = "instant"
             info["date"] = instant.text
@@ -227,7 +240,39 @@ def parse_xbrl(filepath: str) -> tuple[dict, dict, dict]:
         if entry not in facts[key]:
             facts[key].append(entry)
 
-    return contexts, facts, nsmap
+    # Collect facts from SegmentContinuingOperationsMember contexts as fallback
+    continuing_ops_facts = {}
+    for elem in root:
+        ctx_ref = elem.get("contextRef")
+        if ctx_ref is None:
+            continue
+        ctx = contexts.get(ctx_ref)
+        if ctx is None or not ctx.get("has_dimensions"):
+            continue
+        if "SegmentContinuingOperationsMember" not in ctx.get("members", set()):
+            continue
+        # Only single-dimension contexts (continuing ops only, no other axes)
+        if len(ctx.get("members", set())) != 1:
+            continue
+
+        tag = elem.tag
+        if "}" in tag:
+            local = tag[tag.index("}") + 1:]
+        else:
+            continue
+
+        try:
+            val = int(float(elem.text))
+        except (TypeError, ValueError):
+            continue
+
+        if local not in continuing_ops_facts:
+            continuing_ops_facts[local] = []
+        entry = (ctx_ref, val)
+        if entry not in continuing_ops_facts[local]:
+            continuing_ops_facts[local].append(entry)
+
+    return contexts, facts, nsmap, continuing_ops_facts
 
 
 def parse_dei(filepath: str) -> dict:
@@ -352,7 +397,7 @@ def extract_single_filing(filing_dir: str, components: dict = None,
     if not os.path.exists(xbrl_path):
         return None
 
-    contexts, facts, nsmap = parse_xbrl(xbrl_path)
+    contexts, facts, nsmap, continuing_ops_facts = parse_xbrl(xbrl_path)
 
     # Parse DEI first — we need fiscal year dates to classify contexts
     dei = parse_dei(xbrl_path)
@@ -515,6 +560,29 @@ def extract_single_filing(filing_dir: str, components: dict = None,
 
             if comp_values:
                 break  # Found values for this concept, stop trying alternatives
+
+        # Fallback: continuing operations dimension for per_period components
+        # (e.g., LYB only tags diluted shares under SegmentContinuingOperationsMember)
+        if comp_def["type"] == "per_period" and "discrete" not in comp_values and continuing_ops_facts:
+            # Try matching discrete context first, then FY (for Q4/10-K)
+            ref_candidates = []
+            for key in ["current_discrete", "current_fy"]:
+                ctx_id = classified.get(key)
+                if ctx_id:
+                    ref_candidates.append(contexts[ctx_id])
+            for ref_ctx in ref_candidates:
+                for concept in comp_def["concepts"]:
+                    co_entries = continuing_ops_facts.get(concept, [])
+                    for cref, val in co_entries:
+                        co_ctx = contexts.get(cref, {})
+                        if (co_ctx.get("start") == ref_ctx.get("start") and
+                                co_ctx.get("end") == ref_ctx.get("end")):
+                            comp_values["discrete"] = val
+                            break
+                    if "discrete" in comp_values:
+                        break
+                if "discrete" in comp_values:
+                    break
 
         values[comp_name] = comp_values
 
@@ -687,7 +755,7 @@ def apply_restatement_overrides(results: list, ticker: str,
         xbrl_path = os.path.join(filing_dir, meta["xbrl_filename"])
         if not os.path.exists(xbrl_path):
             continue
-        _, split_facts, _ = parse_xbrl(xbrl_path)
+        _, split_facts, _, _ = parse_xbrl(xbrl_path)
         split_entries = split_facts.get("StockholdersEquityNoteStockSplitConversionRatio1", [])
         for _, val in split_entries:
             if val > 1:
@@ -701,7 +769,7 @@ def apply_restatement_overrides(results: list, ticker: str,
         if not os.path.exists(xbrl_path):
             continue
 
-        contexts, facts, nsmap = parse_xbrl(xbrl_path)
+        contexts, facts, nsmap, _ = parse_xbrl(xbrl_path)
         report_dt = parse_date(meta["report_date"])
 
         # Only apply overrides from filings that contain error corrections

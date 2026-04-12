@@ -73,7 +73,7 @@ def _fix_fy2026_q4_acquisitions(record, extractions):
         meta = json.load(f)
 
     xbrl_path = os.path.join(filing_dir, meta["xbrl_filename"])
-    contexts, facts, nsmap = parse_xbrl(xbrl_path)
+    contexts, facts, nsmap, _ = parse_xbrl(xbrl_path)
     classified = classify_contexts(contexts, meta["report_date"])
 
     # Get the FY value for PaymentsToAcquireBusinessTwoNetOfCashAcquired

@@ -47,7 +47,7 @@ def _get_dimensioned_bs_value(filing_dir: str, meta: dict, concept: str,
     if not os.path.exists(xbrl_path):
         return None
 
-    contexts, facts, nsmap = parse_xbrl(xbrl_path)
+    contexts, facts, nsmap, _ = parse_xbrl(xbrl_path)
 
     # Find instant contexts with the target dimension member
     import xml.etree.ElementTree as ET
@@ -184,7 +184,7 @@ def _fix_restated_q4(record: dict, extractions: list):
 
     filing_dir, meta = fy2025_10k
     xbrl_path = os.path.join(filing_dir, meta["xbrl_filename"])
-    contexts, facts, nsmap = parse_xbrl(xbrl_path)
+    contexts, facts, nsmap, _ = parse_xbrl(xbrl_path)
     from extract import parse_date, classify_contexts
     classified = classify_contexts(contexts, meta["report_date"])
 
