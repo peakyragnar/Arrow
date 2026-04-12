@@ -89,7 +89,7 @@ Each filing's XBRL contexts are classified by their relationship to the filing's
 
 | Context key | Period type | Duration |
 |-------------|-----------|----------|
-| `current_instant` | instant | — (within 3 days of report date) |
+| `current_instant` | instant | — (closest to report date within 3-day window) |
 | `current_discrete` | duration | 60-120 days, ending at report date |
 | `current_ytd_h1` | duration | 150-210 days, ending at report date |
 | `current_ytd_9m` | duration | 240-300 days, ending at report date |
@@ -97,6 +97,8 @@ Each filing's XBRL contexts are classified by their relationship to the filing's
 | `prior_instant` | instant | — (day before FY start) |
 
 Only non-dimensioned contexts are used (consolidated totals, not segment breakdowns).
+
+**Instant context tie-breaking**: Some filings contain multiple non-dimensioned instant contexts within the 3-day window (e.g., SYM FY2023 Q2 had contexts on both 2023-03-24 and 2023-03-25). When this happens, the context closest to the report date wins. The off-by-one context typically has only a few DEI/metadata facts, while the correct one has all the balance sheet data.
 
 ## Concept Resolution
 
@@ -173,6 +175,8 @@ After deriving quarterly values, the pipeline scans filings for prior-period val
 
 - **`DocumentFinStmtErrorCorrectionFlag = true`** — a standard DEI concept in the XBRL indicating the filing contains error corrections to prior periods.
 - **Amended form types** — `10-Q/A` or `10-K/A`.
+
+`fetch.py` downloads amended filings (10-Q/A, 10-K/A) alongside the originals. When an amended filing covers the same period as an original, the extraction processes both — the amended filing's current-period values replace the original's during normal extraction (later filing wins for same quarter), and its prior-period comparatives feed the restatement override logic.
 
 Regular 10-Q and 10-K filings include prior-period comparative data as standard disclosure. These are **not** treated as restatements.
 
