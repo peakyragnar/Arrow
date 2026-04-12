@@ -71,7 +71,7 @@
     "cfo_q": 2395000000,
     "capex_q": -433000000,
     "dna_q": 483000000,
-    "acquisitions_q": 0,
+    "acquisitions_q": -33000000,
     "sbc_q": 15000000,
     "diluted_shares_q": 1483000000,
     "rd_amortization_q": 0,
