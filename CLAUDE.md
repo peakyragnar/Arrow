@@ -62,6 +62,8 @@ python3 -m http.server 8080 --directory dashboard
 - `company_specific_types.md` — Catalog of per-company issue types and fix patterns
 - `formulas.md` — Canonical metric dictionary (ROIC, reinvestment rate, etc.)
 - `rd_capitalization_reference.md` — R&D amortization schedule formula reference
+- `ai_extract/` — Experimental AI-powered extraction: deterministic XBRL→JSON parser + Claude maps facts to 24 standard fields (no per-company scripts)
+- `gemini-extract-design.md` — Design document for XBRL extraction architecture (taxonomy resolution, linkbase traversal, prompt design)
 - `data/filings/{TICKER}/{ACCESSION}/` — Downloaded filings (gitignored)
 - `output/{ticker}.json` — Extraction output (gitignored)
 
@@ -78,13 +80,7 @@ Golden eval (`golden_eval.xlsx`) contains manually verified data. Eval checks 28
 - 3 R&D capitalization fields (amortization, asset, OI adjustment)
 - 1 employee count
 
-"Close" match = within 0.1%, typically $1M from Q4 YTD rounding. Current results (all 0 mismatches):
-- NVDA: 303 exact + 33 close (Q4 rounding)
-- DELL: 336/336 exact
-- PLTR: 336/336 exact
-- PANW: 336/336 exact
-- UNP: 480/480 exact (no company-specific script needed)
-- FCX: 480/480 exact
+"Close" match = within 0.1%, typically $1M from Q4 YTD rounding. All companies currently at 0 mismatches. Run `python3 eval.py --ticker <TICKER> --verbose` for live results.
 
 **Golden eval source**: `golden_eval.xlsx` has three tabs: `manual_audit_entry_v1` (the 24 extracted components + employee count), `researchanddevelopment` (R&D capitalization inputs), and `restatements`. The spreadsheet uses strict OOXML format — openpyxl cannot read it, requires a custom XML parser (see `eval.py` pattern). Golden JSON files (`golden/{ticker}.json`) are created from extracted data once extraction accuracy is confirmed, not parsed from the spreadsheet.
 
