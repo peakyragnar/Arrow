@@ -89,7 +89,7 @@ def extract_filings(submission_data: dict, fy_start: int, fy_end: int,
     filings = []
     for i in range(len(forms)):
         form = forms[i]
-        if form not in ("10-Q", "10-K"):
+        if form not in ("10-Q", "10-K", "10-Q/A", "10-K/A"):
             continue
 
         filing = {
