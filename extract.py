@@ -89,6 +89,7 @@ COMPONENTS = {
     "short_term_investments_q": {
         "concepts": ["MarketableSecuritiesCurrent", "ShortTermInvestments",
                       "AvailableForSaleSecuritiesDebtSecuritiesCurrent",
+                      "DebtSecuritiesAvailableForSaleExcludingAccruedInterestCurrent",
                       "HeldToMaturitySecuritiesCurrent"],
         "type": "stock",
     },
@@ -329,7 +330,13 @@ def classify_contexts(contexts: dict, report_date: str,
             dt = parse_date(ctx["date"])
             diff = abs((dt - report_dt).days)
             if diff <= 3:  # current quarter-end (within 3 days of report date)
-                classified["current_instant"] = ctx_id
+                # Prefer the context closest to report date
+                if "current_instant" not in classified:
+                    classified["current_instant"] = ctx_id
+                    classified["_current_instant_diff"] = diff
+                elif diff < classified.get("_current_instant_diff", 999):
+                    classified["current_instant"] = ctx_id
+                    classified["_current_instant_diff"] = diff
 
         elif ctx["type"] == "duration":
             end_dt = parse_date(ctx["end"])
