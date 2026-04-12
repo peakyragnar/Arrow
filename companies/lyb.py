@@ -7,10 +7,12 @@ Known quirks:
   LYB states: "marketable securities classified as Cash and cash equivalents."
   The master script picks this up as short_term_investments_q, which double-counts
   since the amount is already included in cash_q. Override to zero.
-- From FY2023 Q3 onward, AccountsPayableTradeCurrent is tagged only under
-  NonrelatedPartyMember dimension (no non-dimensioned total). 10-Ks use
-  AccountsPayableCurrentAndNoncurrent, also dimensioned. Need to extract
+- From FY2023 Q3 onward, AccountsReceivableNetCurrent and AccountsPayableTradeCurrent
+  are tagged only under NonrelatedPartyMember dimension (no non-dimensioned total).
+  10-Ks use AccountsPayableCurrentAndNoncurrent, also dimensioned. Need to extract
   from the dimensioned context.
+- FY2025 Q4: 10-K's DepreciationDepletionAndAmortization includes $139M of
+  impairments that the 10-Q 9M YTD does not. Override with pure D&A value.
 """
 
 import json
@@ -71,15 +73,20 @@ def post_process(record: dict, all_extractions: list) -> dict:
     """Zero out short_term_investments_q — it's a subset of cash, not a separate line."""
     record["short_term_investments_q"] = 0
 
-    # Fix AP from dimensioned contexts when master script returns 0
-    if record.get("accounts_payable_q", 0) == 0:
-        _fix_dimensioned_ap(record)
+    # Fix AR/AP from dimensioned contexts when master script returns 0
+    _fix_dimensioned_bs(record)
+
+    # FY2025 Q4: 10-K's DepreciationDepletionAndAmortization ($1,390M) includes
+    # $139M of impairments that the 10-Q 9M YTD ($1,005M) does not. Override
+    # with the pure D&A value from the filing.
+    if record.get("fiscal_year") == 2025 and record.get("fiscal_period") == "Q4":
+        record["dna_q"] = 246000000
 
     return record
 
 
-def _fix_dimensioned_ap(record: dict):
-    """Fix AP for quarters where LYB only tags it with dimensions."""
+def _fix_dimensioned_bs(record: dict):
+    """Fix AR and AP for quarters where LYB only tags them with dimensions."""
     ticker_dir = os.path.join(DATA_DIR, "LYB")
     accession = record.get("accession")
     if not accession:
@@ -93,11 +100,18 @@ def _fix_dimensioned_ap(record: dict):
     with open(meta_path) as f:
         meta = json.load(f)
 
-    # Try trade AP (10-Qs) then current+noncurrent (10-Ks) then standard current
-    val = _get_dimensioned_bs_value(
-        filing_dir, meta,
-        ["AccountsPayableTradeCurrent", "AccountsPayableCurrentAndNoncurrent",
-         "AccountsPayableCurrent"],
-        "NonrelatedPartyMember")
-    if val is not None:
-        record["accounts_payable_q"] = val
+    member = "NonrelatedPartyMember"
+
+    if record.get("accounts_receivable_q", 0) == 0:
+        val = _get_dimensioned_bs_value(
+            filing_dir, meta, ["AccountsReceivableNetCurrent"], member)
+        if val is not None:
+            record["accounts_receivable_q"] = val
+
+    if record.get("accounts_payable_q", 0) == 0:
+        val = _get_dimensioned_bs_value(
+            filing_dir, meta,
+            ["AccountsPayableTradeCurrent", "AccountsPayableCurrentAndNoncurrent",
+             "AccountsPayableCurrent"], member)
+        if val is not None:
+            record["accounts_payable_q"] = val

@@ -57,7 +57,7 @@ COMPONENTS = {
         "type": "flow", "statement": "is",
     },
     "interest_expense_q": {
-        "concepts": ["InterestExpense", "InterestExpenseNonoperating", "InterestExpenseDebt"],
+        "concepts": ["InterestExpense", "InterestExpenseNonoperating", "InterestExpenseDebt", "InterestExpenseOperating"],
         "type": "flow", "statement": "is", "negate": True,
     },
 
@@ -126,7 +126,9 @@ COMPONENTS = {
     },
     "acquisitions_q": {
         "concepts": ["PaymentsToAcquireBusinessesNetOfCashAcquired",
-                      "PaymentsToAcquireAdditionalInterestInSubsidiaries"],
+                      "PaymentsToAcquireAdditionalInterestInSubsidiaries",
+                      "PaymentsToAcquireInterestInJointVenture",
+                      "PaymentsToAcquireEquityMethodInvestments"],
         "type": "flow", "statement": "cf", "negate": True,
     },
     "sbc_q": {
