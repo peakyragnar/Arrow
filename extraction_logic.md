@@ -32,6 +32,19 @@ The extraction uses these directly — no heuristic inference from report dates 
 
 Company overrides can implement `fix_dei(dei, meta)` to correct known DEI tagging errors before the values are used. Example: Dell FY2024 Q1-Q2 10-Qs incorrectly tag `DocumentFiscalPeriodFocus` as `FY` instead of `Q1`/`Q2`.
 
+### Master DEI Validation
+
+After any company `fix_dei()` runs, the master script validates `DocumentFiscalYearFocus` and `DocumentFiscalPeriodFocus` against three reliable inputs that filers never get wrong: `DocumentPeriodEndDate`, `CurrentFiscalYearEndDate`, and the form type from SEC EDGAR.
+
+**Expected fiscal year:** The FY is named after the year it ends in. If the period end month is after the FY end month, the expected FY is `period_end_year + 1`; otherwise `period_end_year`.
+
+**Expected fiscal period (10-Q only):** Compute months elapsed from FY start month to period end month, then `quarter = ceil(months / 3)`, clamped to 1-3. `ceil` (not `round`) handles companies with near-Saturday quarter-end dates that spill into the next month (e.g., NUE Q2 ending July 1 = 6 months from Jan start → `ceil(6/3)` = Q2). For 10-K filings, the expected period is always Q4.
+
+If either DEI value disagrees with the computed expectation, the master script prints a warning and auto-corrects. This catches errors like:
+- **NUE FY2023 Q2** tagged as FY2022 Q3 (both year and period wrong)
+- **FCX FY2024 10-K** tagged as FY2023 (year wrong)
+- **Dell FY2024 Q1-Q2** tagged as FY (period wrong)
+
 ## Calendar Year and Quarter
 
 Each output record includes `calendar_year` and `calendar_quarter` derived from the period end date, for cross-company normalization:

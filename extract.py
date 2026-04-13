@@ -15,6 +15,7 @@ import os
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from importlib import import_module
+from math import ceil
 
 DATA_DIR = "data/filings"
 
@@ -309,6 +310,64 @@ def parse_dei(filepath: str) -> dict:
     return dei_fields
 
 
+def validate_dei(dei: dict, meta: dict) -> dict:
+    """
+    Validate DEI fiscal year/period against DocumentPeriodEndDate and
+    CurrentFiscalYearEndDate. Auto-corrects if they disagree, since
+    filers sometimes tag these wrong (e.g., NUE FY2023 Q2 tagged as
+    FY2022 Q3, Dell 10-Qs tagged as FY, FCX 10-K year off by one).
+    """
+    period_end = dei.get("DocumentPeriodEndDate")
+    fy_end_mmdd = dei.get("CurrentFiscalYearEndDate", "")
+    if not period_end or not fy_end_mmdd or len(fy_end_mmdd) < 5:
+        return dei
+
+    period_end_dt = parse_date(period_end)
+    fy_end_month = int(fy_end_mmdd[2:4])
+    form = meta.get("form", "")
+
+    # Expected fiscal year: FY is named after the year it ends in.
+    # If period_end month is after FY end month, we're in the next FY.
+    if period_end_dt.month > fy_end_month:
+        expected_fy = period_end_dt.year + 1
+    else:
+        expected_fy = period_end_dt.year
+
+    # Expected fiscal period
+    if form == "10-K":
+        expected_fp = "Q4"
+    else:
+        # Months elapsed from FY start to period end
+        fy_start_month = (fy_end_month % 12) + 1
+        if period_end_dt.month >= fy_start_month:
+            months = period_end_dt.month - fy_start_month
+        else:
+            months = 12 - fy_start_month + period_end_dt.month
+        expected_q = ceil(months / 3) if months > 0 else 1
+        expected_q = min(3, expected_q)
+        expected_fp = f"Q{expected_q}"
+
+    dei_fy = dei.get("DocumentFiscalYearFocus")
+    dei_fp = dei.get("DocumentFiscalPeriodFocus")
+    # Normalize FY→Q4 for comparison
+    dei_fp_cmp = "Q4" if dei_fp == "FY" else dei_fp
+
+    corrected = False
+    if dei_fy and int(dei_fy) != expected_fy:
+        print(f"  WARNING: DEI FiscalYearFocus={dei_fy} but expected {expected_fy} "
+              f"(period_end={period_end}, fy_end={fy_end_mmdd}) — correcting")
+        dei["DocumentFiscalYearFocus"] = str(expected_fy)
+        corrected = True
+
+    if dei_fp_cmp != expected_fp:
+        print(f"  WARNING: DEI FiscalPeriodFocus={dei_fp} but expected {expected_fp} "
+              f"(period_end={period_end}, form={form}) — correcting")
+        dei["DocumentFiscalPeriodFocus"] = expected_fp
+        corrected = True
+
+    return dei
+
+
 def classify_contexts(contexts: dict, report_date: str,
                       fy_start_date: str = None) -> dict:
     """
@@ -436,6 +495,7 @@ def extract_single_filing(filing_dir: str, components: dict = None,
     dei = parse_dei(xbrl_path)
     if company_module and hasattr(company_module, "fix_dei"):
         dei = company_module.fix_dei(dei, meta)
+    dei = validate_dei(dei, meta)
     if not dei["DocumentFiscalYearFocus"] or not dei["DocumentFiscalPeriodFocus"]:
         raise ValueError(
             f"Filing {meta['accession']} missing DEI fiscal year/period elements"
