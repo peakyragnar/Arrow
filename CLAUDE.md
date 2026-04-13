@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Arrow is a financial data extraction and synthesis system. It collects structured financial data, qualitative text, and market data, then uses a frontier model (Claude) to generate forward revenue/earnings estimates with reasoning.
 
-**Current status**: Layer 1 (financial data extraction) is built and working for NVIDIA, Dell, Palantir, Palo Alto Networks, Union Pacific, Freeport-McMoRan, LyondellBasell, and Symbotic. Metric calculations and a web dashboard are built on top. Layers 2-4 are planned but not yet implemented. Storage is JSON files per company for now; PostgreSQL later.
+**Current status**: Layer 1 (financial data extraction) is built and working for NVIDIA, Dell, Palantir, Palo Alto Networks, Union Pacific, Freeport-McMoRan, LyondellBasell, Symbotic, and Microsoft. Metric calculations and a web dashboard are built on top. Layers 2-4 are planned but not yet implemented. Storage is JSON files per company for now; PostgreSQL later.
 
 ## Architecture: 4 Layers
 
