@@ -8,14 +8,15 @@ How the pipeline determines what to fetch, how to extract quarterly values, and 
 For each downloaded filing:
   1. Parse XBRL → contexts + facts
   2. Read DEI elements → fiscal year, fiscal period
-  3. Classify contexts by period type (discrete, YTD, FY, instant)
-  4. Extract raw values for each component
+  3. Classify contexts by period type (discrete, YTD, FY, instant; current + prior year)
+  4. Extract raw values for each component (including prior-year comparatives for CF)
 
 Then:
   5. Derive quarterly values (YTD subtraction for CF, Q4 derivation, etc.)
-  6. Apply restatement overrides from later filings
-  7. Apply company-specific post-processing (if companies/{ticker}.py exists)
-  8. Output filtered to requested fiscal year range
+  6. Detect and apply CF reclassification overrides (YTD consistency check)
+  7. Apply restatement overrides from later filings
+  8. Apply company-specific post-processing (if companies/{ticker}.py exists)
+  9. Output filtered to requested fiscal year range
 ```
 
 ## Fiscal Year and Period Detection
@@ -95,8 +96,14 @@ Each filing's XBRL contexts are classified by their relationship to the filing's
 | `current_ytd_9m` | duration | 240-300 days, ending at report date |
 | `current_fy` | duration | >340 days, ending at report date |
 | `prior_instant` | instant | — (day before FY start) |
+| `prior_discrete` | duration | 60-120 days, ending ~1 year before report date |
+| `prior_ytd_h1` | duration | 150-210 days, ending ~1 year before report date |
+| `prior_ytd_9m` | duration | 240-300 days, ending ~1 year before report date |
+| `prior_fy` | duration | 340-380 days, ending ~1 year before report date |
 
 Only non-dimensioned contexts are used (consolidated totals, not segment breakdowns).
+
+The prior-year duration contexts are used for CF reclassification confirmation (see below), not for extraction of quarterly values.
 
 **Instant context tie-breaking**: Some filings contain multiple non-dimensioned instant contexts within the 3-day window (e.g., SYM FY2023 Q2 had contexts on both 2023-03-24 and 2023-03-25). When this happens, the context closest to the report date wins. The off-by-one context typically has only a few DEI/metadata facts, while the correct one has all the balance sheet data.
 
@@ -123,7 +130,7 @@ This introduces ~$1M rounding from integer truncation in XBRL.
 
 ### Cash Flow Statement (CF) — flow items
 
-10-Q filings contain **only YTD cumulative values**, never discrete quarterly. Every quarter must be derived:
+10-Q filings typically contain **YTD cumulative values**. Some companies (e.g., MSFT) also report discrete quarterly CF values. Every quarter is derived from YTD subtraction:
 
 ```
 Q1 = Q1 YTD (which IS the quarterly value)
@@ -133,6 +140,8 @@ Q4 = FY (from 10-K) - 9M YTD (from Q3 10-Q)
 ```
 
 This means **Q2 derivation requires Q1's filing**. The 6-year fetch window ensures these dependencies are always satisfied.
+
+**CF reclassification risk**: YTD subtraction across filings can break when a company recasts prior-period CF presentation (moving amounts between CF line items without changing totals). The later filing's H1 YTD reflects the recast, but the Q1 YTD still comes from the original Q1 filing. This is detected and corrected by a post-derivation consistency check (see CF Reclassification Overrides below).
 
 ### Balance Sheet (BS) — stock items
 
@@ -181,6 +190,38 @@ After deriving quarterly values, the pipeline scans filings for prior-period val
 Regular 10-Q and 10-K filings include prior-period comparative data as standard disclosure. These are **not** treated as restatements.
 
 Overrides apply to all component types (flow, stock, per_period) and respect `sum_concepts` for components that require it. For each matching prior-period context, if the flagged filing was filed after the original filing for that quarter, the new value replaces the old.
+
+## CF Reclassification Overrides
+
+Companies sometimes recast prior-period CF presentation — reclassifying amounts between CF line items (e.g., "Depreciation, amortization, and other") without changing net cash from operations. This is a presentation change, not an error correction, so `DocumentFinStmtErrorCorrectionFlag` is not set and amended filings are not filed. The restatement scanner does not catch it.
+
+### Detection
+
+After deriving quarterly values, the pipeline checks YTD consistency for each CF flow component. For each fiscal year, if a later filing's YTD does not equal the sum of derived prior quarters (beyond 0.5% tolerance), a potential reclassification is flagged.
+
+Example: MSFT FY2026 Q1 reported D&A = $13,061M. The Q2 filing's H1 YTD = $17,345M and Q2 discrete = $9,198M, implying Q1 = $8,147M. The $4,914M difference indicates Q1 was recast.
+
+### Confirmation
+
+A numerical mismatch alone is not sufficient — it could indicate an extraction bug rather than a deliberate reclassification. The pipeline confirms by checking **prior-year comparatives** from the same filing pair:
+
+- Q1 filing reports prior-year Q1 = X
+- Q2 filing reports prior-year H1 YTD and prior-year Q2 discrete, implying prior-year Q1 = Y
+- If X ≠ Y (same inconsistency pattern as current year), the reclassification is confirmed
+
+Both current and prior year being inconsistent proves a systematic presentation change, not a data error.
+
+### Application
+
+When confirmed, the pipeline overrides:
+- **Q1** = H1 YTD − Q2 discrete (from Q2 filing)
+- **Q2** = Q2 discrete (from Q2 filing, since the YTD-derived Q2 used stale Q1)
+
+The same logic extends to Q3 filings checking 9M YTD consistency.
+
+### Why this matters
+
+Without reclassification detection, YTD subtraction silently mixes pre-recast and post-recast values, producing wrong quarterly amounts for any recast CF line item. The error persists invisibly until manual comparison against the golden eval.
 
 ## Stock Split Handling
 

@@ -118,7 +118,17 @@ This document catalogs the types of issues we have encountered across companies.
 
 **Fix:** In the company override, implement `fix_rd_series(quarterly_rd, records)`. This receives the R&D list and returns a corrected version. Can replace bad values with annual/4 estimates (Dell) or prepend missing quarters (Palantir). The fix runs before the amortization calculation in `compute.py`.
 
-### 13. Company Extension Concepts (Non-US-GAAP)
+### 13. CF Reclassification (Prior-Period Recast)
+
+**Symptom:** A CF component (e.g., D&A) has wrong values for quarters where the company recast prior-period CF presentation in a later filing. The Q2 filing's H1 YTD doesn't equal Q1 (from Q1 filing) + Q2 discrete. The later filing typically discloses: "We have recast certain prior period amounts on our consolidated cash flows statements to conform to the current period presentation."
+
+**Example:** MSFT FY2026 Q1 originally reported D&A of $13,061M. The Q2 filing recast Q1 CF presentation, with H1 YTD = $17,345M and Q2 discrete = $9,198M, implying recast Q1 = $8,147M. The $4,914M reclassified between CF line items. Net cash from operations unchanged.
+
+**Detection:** Handled automatically by the master script's CF reclassification override pass. After derivation, checks YTD consistency across filings and confirms with prior-year comparatives before overriding.
+
+**Fix:** No company-specific fix needed — this is a master fix. See `extraction_logic.md` for the full algorithm.
+
+### 14. Company Extension Concepts (Non-US-GAAP)
 
 **Symptom:** Component returns 0 across all quarters. The value exists in the filing under the company's own XBRL extension namespace (e.g., `http://www.microsoft.com/`) rather than under the standard `us-gaap` namespace. The master script only searches US-GAAP concepts by default.
 

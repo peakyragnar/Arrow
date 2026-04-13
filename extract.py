@@ -384,6 +384,26 @@ def classify_contexts(contexts: dict, report_date: str,
                 classified["prior_instant"] = ctx_id
                 break
 
+    # Prior-year duration contexts (for CF reclassification detection).
+    # These end ~1 year before the report date.
+    prior_report_dt = report_dt.replace(year=report_dt.year - 1)
+    for ctx_id, ctx in contexts.items():
+        if ctx.get("has_dimensions") or ctx["type"] != "duration":
+            continue
+        end_dt = parse_date(ctx["end"])
+        diff = abs((end_dt - prior_report_dt).days)
+        if diff > 5:
+            continue
+        days = ctx["days"]
+        if 60 <= days <= 120:
+            classified["prior_discrete"] = ctx_id
+        elif 150 <= days <= 210:
+            classified["prior_ytd_h1"] = ctx_id
+        elif 240 <= days <= 300:
+            classified["prior_ytd_9m"] = ctx_id
+        elif 340 <= days <= 380:
+            classified["prior_fy"] = ctx_id
+
     return classified
 
 
@@ -571,6 +591,23 @@ def extract_single_filing(filing_dir: str, components: dict = None,
                     comp_values["ytd"] = comp_values["discrete"]
                     comp_values["ytd_type"] = "q1_discrete"
 
+                # Prior-year values (for CF reclassification confirmation)
+                if comp_def.get("statement") == "cf":
+                    prior_discrete_ctx = classified.get("prior_discrete")
+                    if prior_discrete_ctx:
+                        for cref, val in entries:
+                            if cref == prior_discrete_ctx:
+                                comp_values["prior_discrete"] = val
+                                break
+                    for pytd_key in ["prior_ytd_h1", "prior_ytd_9m", "prior_fy"]:
+                        pytd_ctx = classified.get(pytd_key)
+                        if pytd_ctx:
+                            for cref, val in entries:
+                                if cref == pytd_ctx:
+                                    comp_values["prior_ytd"] = val
+                                    comp_values["prior_ytd_type"] = pytd_key
+                                    break
+
             if comp_values:
                 break  # Found values for this concept, stop trying alternatives
 
@@ -728,6 +765,155 @@ def _get_prior_ytd(quarters: dict, current_fp: str, comp_name: str,
 
     raw = prior["values"].get(comp_name, {})
     return raw.get("ytd")
+
+
+# ── CF reclassification detection ─────────────────────────────────────────────
+
+def apply_cf_reclassification_overrides(results: list, filing_extractions: list,
+                                         components: dict = None) -> list:
+    """
+    Detect CF reclassifications by checking YTD consistency across filings.
+
+    When a later filing's YTD doesn't match the sum of derived quarters,
+    AND the same inconsistency appears in prior-year comparatives (confirming
+    a deliberate presentation change, not an extraction bug), override the
+    affected quarter with the later filing's implied value.
+    """
+    if components is None:
+        components = COMPONENTS
+
+    TOLERANCE = 0.005  # 0.5% relative tolerance
+
+    # Group results by fiscal year
+    results_by_fy = {}
+    for r in results:
+        results_by_fy.setdefault(r["fiscal_year"], {})[r["fiscal_period"]] = r
+
+    # Group filing extractions by fiscal year
+    filings_by_fy = {}
+    for f in filing_extractions:
+        filings_by_fy.setdefault(f["fiscal_year"], {})[f["fiscal_period"]] = f
+
+    override_count = 0
+
+    for fy in sorted(results_by_fy.keys()):
+        quarters = results_by_fy[fy]
+        filings = filings_by_fy.get(fy, {})
+
+        for comp_name, comp_def in components.items():
+            if comp_def["type"] != "flow":
+                continue
+            if comp_def.get("statement", "is") != "cf":
+                continue
+
+            negate = comp_def.get("negate", False)
+
+            # Check Q2 filing: H1 YTD vs Q1 + Q2
+            if "Q2" in filings and "Q1" in quarters and "Q2" in quarters:
+                q2_raw = filings["Q2"]["values"].get(comp_name, {})
+                h1_ytd = q2_raw.get("ytd")
+                q2_discrete = q2_raw.get("discrete")
+
+                if h1_ytd is not None and q2_discrete is not None:
+                    # Compare in pre-negate space (raw XBRL values)
+                    q1_derived = quarters["Q1"].get(comp_name)
+                    if q1_derived is not None:
+                        q1_raw = -q1_derived if negate else q1_derived
+                        expected_h1 = q1_raw + q2_discrete
+                        if h1_ytd != 0 and abs(expected_h1 - h1_ytd) / abs(h1_ytd) > TOLERANCE:
+                            # Mismatch detected — confirm with prior-year comparatives
+                            q1_filing_raw = filings.get("Q1", {}).get("values", {}).get(comp_name, {})
+                            prior_q1_from_q1_filing = q1_filing_raw.get("prior_discrete")
+                            prior_h1_from_q2_filing = q2_raw.get("prior_ytd")
+                            prior_q2_from_q2_filing = q2_raw.get("prior_discrete")
+
+                            confirmed = False
+                            if (prior_q1_from_q1_filing is not None and
+                                    prior_h1_from_q2_filing is not None and
+                                    prior_q2_from_q2_filing is not None):
+                                prior_expected = prior_q1_from_q1_filing + prior_q2_from_q2_filing
+                                if (prior_h1_from_q2_filing != 0 and
+                                        abs(prior_expected - prior_h1_from_q2_filing) /
+                                        abs(prior_h1_from_q2_filing) > TOLERANCE):
+                                    confirmed = True
+
+                            if confirmed:
+                                new_q1_raw = h1_ytd - q2_discrete
+                                new_q1 = -new_q1_raw if negate else new_q1_raw
+                                old_q1 = quarters["Q1"][comp_name]
+                                quarters["Q1"][comp_name] = new_q1
+                                override_count += 1
+                                print(f"  CF reclass FY{fy} Q1 {comp_name}: "
+                                      f"{old_q1:,} → {new_q1:,} (from Q2 H1 YTD)")
+
+                                # Also fix Q2: derivation used stale Q1 YTD,
+                                # so re-derive from authoritative Q2 discrete
+                                new_q2 = -q2_discrete if negate else q2_discrete
+                                old_q2 = quarters["Q2"][comp_name]
+                                if old_q2 != new_q2:
+                                    quarters["Q2"][comp_name] = new_q2
+                                    override_count += 1
+                                    print(f"  CF reclass FY{fy} Q2 {comp_name}: "
+                                          f"{old_q2:,} → {new_q2:,} (discrete from Q2 filing)")
+
+            # Check Q3 filing: 9M YTD vs Q1 + Q2 + Q3
+            if "Q3" in filings and "Q1" in quarters and "Q2" in quarters and "Q3" in quarters:
+                q3_raw = filings["Q3"]["values"].get(comp_name, {})
+                ytd_9m = q3_raw.get("ytd")
+                q3_discrete = q3_raw.get("discrete")
+
+                if ytd_9m is not None and q3_discrete is not None:
+                    q1_val = quarters["Q1"].get(comp_name)
+                    q2_val = quarters["Q2"].get(comp_name)
+                    if q1_val is not None and q2_val is not None:
+                        q1_raw = -q1_val if negate else q1_val
+                        q2_raw_val = -q2_val if negate else q2_val
+                        expected_9m = q1_raw + q2_raw_val + q3_discrete
+                        if ytd_9m != 0 and abs(expected_9m - ytd_9m) / abs(ytd_9m) > TOLERANCE:
+                            # Confirm with prior-year
+                            q2_filing_raw = filings.get("Q2", {}).get("values", {}).get(comp_name, {})
+                            prior_h1_from_q2 = q2_filing_raw.get("prior_ytd")
+                            prior_9m_from_q3 = q3_raw.get("prior_ytd")
+                            prior_q3_from_q3 = q3_raw.get("prior_discrete")
+
+                            confirmed = False
+                            if (prior_h1_from_q2 is not None and
+                                    prior_9m_from_q3 is not None and
+                                    prior_q3_from_q3 is not None):
+                                prior_expected = prior_h1_from_q2 + prior_q3_from_q3
+                                if (prior_9m_from_q3 != 0 and
+                                        abs(prior_expected - prior_9m_from_q3) /
+                                        abs(prior_9m_from_q3) > TOLERANCE):
+                                    confirmed = True
+
+                            if confirmed:
+                                # Figure out which quarter(s) changed using H1 from Q3 filing
+                                h1_from_q3 = None
+                                q3_filing_raw_full = q3_raw
+                                # Q3 filing may have H1 YTD as well
+                                for ytd_key in ["current_ytd_h1"]:
+                                    ctx_id = filings["Q3"].get("classified_contexts", {}).get(ytd_key)
+                                    # H1 not directly available in q3_raw, use 9M - Q3
+                                    pass
+                                # Simpler: override Q1+Q2 sum = 9M - Q3
+                                new_h1_raw = ytd_9m - q3_discrete
+                                old_h1_raw = q1_raw + q2_raw_val
+                                if abs(new_h1_raw - old_h1_raw) > 1000:
+                                    # Distribute proportionally or override Q1
+                                    # For now: if Q2 was already fixed by Q2 check above,
+                                    # the remaining diff is in Q1
+                                    new_q1_raw = new_h1_raw - q2_raw_val
+                                    new_q1 = -new_q1_raw if negate else new_q1_raw
+                                    old_q1 = quarters["Q1"][comp_name]
+                                    if old_q1 != new_q1:
+                                        quarters["Q1"][comp_name] = new_q1
+                                        override_count += 1
+                                        print(f"  CF reclass FY{fy} Q1 {comp_name}: "
+                                              f"{old_q1:,} → {new_q1:,} (from Q3 9M YTD)")
+
+    if override_count:
+        print(f"  Applied {override_count} CF reclassification override(s)")
+    return results
 
 
 # ── Restatement overrides ────────────────────────────────────────────────────
@@ -986,6 +1172,10 @@ def extract_company(ticker: str, components: dict = None,
     # Derive quarterly values (uses full filing set for derivation dependencies)
     print(f"\nDeriving quarterly values...")
     results = derive_quarterly_values(extractions, components)
+
+    # Detect and apply CF reclassification overrides
+    print(f"Checking for CF reclassifications...")
+    results = apply_cf_reclassification_overrides(results, extractions, components)
 
     # Apply restatement overrides from 10-K comparative data
     print(f"Checking for restatement overrides...")
