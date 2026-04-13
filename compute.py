@@ -95,6 +95,7 @@ def extract_employee_count_from_html(html_path: str) -> int | None:
     # Find all "N employees" or "N full-time employees" or "workforce of N" patterns
     patterns = [
         r'([\d,]+)\s+(?:full-time\s+)?employees',
+        r'employed\s+approximately\s+([\d,]+)',
         r'workforce\s+of\s+([\d,]+)',
         r'headcount\s+(?:of|was|increased\s+to)\s+([\d,]+)',
     ]
