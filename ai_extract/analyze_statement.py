@@ -580,6 +580,143 @@ def main():
             total_xbrl_match += sum(1 for i in stmt_data.get('line_items', []) if i.get('xbrl_match') is True)
             total_xbrl += sum(1 for i in stmt_data.get('line_items', []) if i.get('xbrl_match') is not None)
 
+        # === CF RETRY: if CFO formula fails, ask AI to find missing items ===
+        cf_v = all_verification.get('cash_flow', {})
+        cf_needs_retry = False
+        for check in cf_v.get('formula_checks', []):
+            # Find the CFO sum formula (contains "operating activities" in result)
+            if not check['pass']:
+                for period, detail in check['periods'].items():
+                    if detail['computed'] is not None and detail['stated'] is not None and detail['computed'] != detail['stated']:
+                        cf_needs_retry = True
+                        break
+            if cf_needs_retry:
+                break
+
+        if cf_needs_retry:
+            print("CFO formula mismatch detected — retrying to find missing components...")
+            cf_items = ai_result.get('cash_flow', {}).get('line_items', [])
+
+            # Build the component list for the retry prompt
+            component_summary = []
+            for item in cf_items:
+                vals = item.get('values') or {}
+                if not vals:
+                    continue
+                first_val = list(vals.values())[0]
+                component_summary.append(f"  {item['label']}: {first_val}")
+
+            # Find the CFO total
+            cfo_vals = {}
+            for item in cf_items:
+                concept = item.get('xbrl_concept', '')
+                if 'NetCashProvidedByUsedInOperatingActivities' in concept:
+                    cfo_vals = item.get('values') or {}
+                    break
+
+            component_text = "\n".join(component_summary)
+            retry_prompt = f"""You extracted cash flow operating activity components for {args.ticker} but they do not sum to the stated CFO total.
+
+Your extracted components:
+{component_text}
+
+Stated CFO total: {list(cfo_vals.values())[0] if cfo_vals else '?'}
+
+The components must sum EXACTLY to CFO. Rules:
+- Positive values = add to cash (D&A addback, decrease in working capital asset, increase in working capital liability)
+- Negative values = reduce cash (increase in working capital asset, decrease in working capital liability, payments)
+- ALL components added together (using +) must equal CFO, because signs are already embedded in the values.
+
+Go back to the cash flow statement in the filing and:
+1. List EVERY line item between Net income and Net cash provided by operating activities
+2. Include the value with correct sign (positive = source, negative = use)
+3. Verify the sum equals CFO exactly
+
+Output ONLY valid JSON:
+{{"corrected_cfo_components": [{{"label": "...", "value": X, "xbrl_concept": "..."}}], "cfo_total": X, "sum_check": X, "items_added": ["list of items that were missing from original extraction"], "items_corrected": ["list of items with sign changes"]}}
+
+CRITICAL: Output must be valid JSON. No apostrophes in strings."""
+
+            # Call the API again
+            retry_text = ""
+            retry_in = 0
+            retry_out = 0
+            if args.model.startswith('gemini'):
+                from google import genai
+                gemini_client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
+                retry_resp = gemini_client.models.generate_content(
+                    model=args.model,
+                    contents=retry_prompt + "\n\nFILING HTML:\n" + html_cleaned,
+                    config=genai.types.GenerateContentConfig(max_output_tokens=8192),
+                )
+                retry_text = retry_resp.text
+                retry_in = retry_resp.usage_metadata.prompt_token_count
+                retry_out = retry_resp.usage_metadata.candidates_token_count
+            elif args.model.startswith('gpt'):
+                from openai import OpenAI
+                oai_client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+                retry_resp = oai_client.chat.completions.create(
+                    model=args.model,
+                    max_completion_tokens=8192,
+                    messages=[{"role": "user", "content": retry_prompt + "\n\nFILING HTML:\n" + html_cleaned}],
+                )
+                retry_text = retry_resp.choices[0].message.content
+                retry_in = retry_resp.usage.prompt_tokens
+                retry_out = retry_resp.usage.completion_tokens
+            else:
+                client = anthropic.Anthropic()
+                with client.messages.stream(
+                    model=args.model,
+                    max_tokens=8192,
+                    messages=[{"role": "user", "content": retry_prompt + "\n\nFILING HTML:\n" + html_cleaned}],
+                ) as stream:
+                    for text in stream.text_stream:
+                        retry_text += text
+                        print(".", end="", flush=True)
+                    print()
+                    resp = stream.get_final_message()
+                    retry_in = resp.usage.input_tokens
+                    retry_out = resp.usage.output_tokens
+
+            input_tokens += retry_in
+            output_tokens += retry_out
+
+            # Parse retry result
+            retry_json = retry_text.strip()
+            fb = retry_json.find('{')
+            lb = retry_json.rfind('}')
+            if fb != -1 and lb != -1:
+                retry_json = retry_json[fb:lb + 1]
+            try:
+                retry_result = json.loads(retry_json)
+            except json.JSONDecodeError:
+                import re
+                retry_json = retry_json.replace('\u2018', "'").replace('\u2019', "'")
+                retry_json = re.sub(r'[\x00-\x1f]', ' ', retry_json)
+                retry_json = re.sub(r',\s*([}\]])', r'\1', retry_json)
+                try:
+                    retry_result = json.loads(retry_json)
+                except json.JSONDecodeError:
+                    retry_result = None
+
+            if retry_result:
+                ai_result['cfo_retry'] = retry_result
+                print(f"CFO retry: sum_check={retry_result.get('sum_check')}, cfo_total={retry_result.get('cfo_total')}")
+                if retry_result.get('items_added'):
+                    print(f"  Items added: {retry_result['items_added']}")
+                if retry_result.get('items_corrected'):
+                    print(f"  Items corrected: {retry_result['items_corrected']}")
+
+                # Re-verify with corrected components
+                corrected = retry_result.get('corrected_cfo_components', [])
+                if corrected:
+                    corrected_sum = sum(c.get('value', 0) for c in corrected)
+                    cfo_total = retry_result.get('cfo_total', 0)
+                    if corrected_sum == cfo_total:
+                        print(f"  VERIFIED: corrected components sum to CFO ({corrected_sum} = {cfo_total})")
+                    else:
+                        print(f"  STILL MISMATCHED: {corrected_sum} vs {cfo_total}")
+
         # Display each statement
         print("=" * 80)
         print(f"AI EXTRACTION: ALL STATEMENTS")
