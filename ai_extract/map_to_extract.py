@@ -146,6 +146,11 @@ NEGATE_FIELDS = {'capex_q', 'acquisitions_q', 'interest_expense_q'}
 # All CF fields that need YTD-to-quarterly derivation
 CF_FIELD_NAMES = set(CF_CONCEPTS.values())
 
+# IS fields that need YTD-to-quarterly derivation (cumulative flow items only).
+# Shares and per-share fields are averages/ratios — NOT cumulative, cannot be derived
+# by subtraction. They come directly from quarterly periods or are left as annual.
+IS_FIELD_NAMES = set(IS_CONCEPTS.values())
+
 
 def period_days(period_key):
     """Calculate the number of days in a duration period."""
@@ -228,12 +233,13 @@ def extract_filing(filing_json):
     bs_periods = get_all_instant_periods(bs_items)
     cf_periods = get_all_duration_periods(cf_items)
 
-    # For IS: find the quarterly periods (shortest duration, ~90 days)
+    # Separate IS periods into quarterly (<120 days) and YTD/annual (>=120 days)
     quarterly_is_periods = [p for p in is_periods if period_days(p) < 120]
+    ytd_is_periods = [p for p in is_periods if period_days(p) >= 120]
 
     results = {}
 
-    # === INCOME STATEMENT (quarterly duration periods) ===
+    # === INCOME STATEMENT — quarterly periods (direct from 10-Q) ===
     for qp in quarterly_is_periods:
         period_end = qp.split('_')[1]
         period_start = qp.split('_')[0]
@@ -266,6 +272,27 @@ def extract_filing(filing_json):
             val = find_value(is_items, concept, qp)
             if val is not None:
                 results[period_end][field] = to_raw(val, field)
+
+    # === INCOME STATEMENT — YTD/annual periods (for Q4 derivation) ===
+    # Only cumulative flow fields (revenue, expenses, income) — NOT shares or EPS
+    for yp in ytd_is_periods:
+        period_start = yp.split('_')[0]
+        period_end = yp.split('_')[1]
+        if period_end not in results:
+            results[period_end] = {'period_end': period_end}
+
+        for concept, field in IS_CONCEPTS.items():
+            ytd_key = f'{field}_ytd'
+            if ytd_key in results[period_end]:
+                continue
+            val = find_value(is_items, concept, yp)
+            if val is not None:
+                raw = to_raw(val, field)
+                if field in NEGATE_FIELDS:
+                    raw = -abs(raw)
+                results[period_end][ytd_key] = raw
+                results[period_end][f'{field}_ytd_days'] = period_days(yp)
+                results[period_end][f'{field}_fy_start'] = period_start
 
     # === BALANCE SHEET (instant periods) ===
     for ip in bs_periods:
@@ -357,21 +384,21 @@ def extract_filing(filing_json):
     return results
 
 
-def derive_quarterly_cf(records):
+def derive_quarterly(records, field_names):
     """
-    Derive quarterly CF values from YTD.
+    Derive quarterly values from YTD/annual data.
     Q1: YTD is already quarterly (~90 days).
     Q2: quarterly = Q2 YTD - Q1 YTD
     Q3: quarterly = Q3 YTD - Q2 YTD
     Q4 (from 10-K): quarterly = annual - Q3 YTD
 
-    Groups by fiscal year start so we never subtract across fiscal years.
-    If a fiscal year has only one non-Q1 period (single filing), the quarterly
-    value cannot be derived and is left as None.
+    Works for both IS and CF fields. Groups by fiscal year start so we never
+    subtract across fiscal years. If a fiscal year has only one non-Q1 period
+    (single filing), the quarterly value cannot be derived and is left as None.
     """
     sorted_ends = sorted(records.keys())
 
-    for field in CF_FIELD_NAMES:
+    for field in field_names:
         ytd_key = f'{field}_ytd'
         days_key = f'{field}_ytd_days'
         fy_key = f'{field}_fy_start'
@@ -438,8 +465,9 @@ def main():
             else:
                 all_periods[pe] = data
 
-    # Derive quarterly CF from YTD
-    all_periods = derive_quarterly_cf(all_periods)
+    # Derive quarterly values from YTD/annual (both IS and CF)
+    all_periods = derive_quarterly(all_periods, IS_FIELD_NAMES)
+    all_periods = derive_quarterly(all_periods, CF_FIELD_NAMES)
 
     # Filter to reporting periods (those with IS data) and clean up None values
     records = []
