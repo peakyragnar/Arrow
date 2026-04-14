@@ -13,7 +13,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Revenue' with ix:nonFraction tag name us-gaap:Revenues, contextRef c-1 (FY2026), c-9 (FY2025), c-10 (FY2024)"
+          "mapping_reason": "HTML row labeled Revenue maps to us-gaap:Revenues via ix:nonFraction tags f-72, f-73, f-74 in the Consolidated Statements of Income table"
         },
         {
           "label": "Cost of revenue",
@@ -26,7 +26,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Cost of revenue' with ix:nonFraction tag name us-gaap:CostOfRevenue"
+          "mapping_reason": "HTML row labeled Cost of revenue maps to us-gaap:CostOfRevenue via ix:nonFraction tags f-75, f-76, f-77"
         },
         {
           "label": "Gross profit",
@@ -39,7 +39,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Gross profit' with ix:nonFraction tag name us-gaap:GrossProfit"
+          "mapping_reason": "HTML row labeled Gross profit maps to us-gaap:GrossProfit via ix:nonFraction tags f-78, f-79, f-80"
         },
         {
           "label": "Operating expenses",
@@ -48,7 +48,7 @@
           "values": {},
           "unit": "USD_millions",
           "xbrl_match": null,
-          "mapping_reason": "Section header in HTML with no numeric value tagged"
+          "mapping_reason": "Section header with no numeric value"
         },
         {
           "label": "Research and development",
@@ -61,7 +61,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Research and development' with ix:nonFraction tag name us-gaap:ResearchAndDevelopmentExpense"
+          "mapping_reason": "HTML row labeled Research and development maps to us-gaap:ResearchAndDevelopmentExpense via ix:nonFraction tags f-81, f-82, f-83"
         },
         {
           "label": "Sales, general and administrative",
@@ -74,7 +74,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Sales, general and administrative' with ix:nonFraction tag name us-gaap:SellingGeneralAndAdministrativeExpense"
+          "mapping_reason": "HTML row labeled Sales, general and administrative maps to us-gaap:SellingGeneralAndAdministrativeExpense via ix:nonFraction tags f-84, f-85, f-86"
         },
         {
           "label": "Total operating expenses",
@@ -87,7 +87,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Total operating expenses' with ix:nonFraction tag name us-gaap:OperatingExpenses"
+          "mapping_reason": "HTML row labeled Total operating expenses maps to us-gaap:OperatingExpenses via ix:nonFraction tags f-87, f-88, f-89"
         },
         {
           "label": "Operating income",
@@ -100,7 +100,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Operating income' with ix:nonFraction tag name us-gaap:OperatingIncomeLoss, contextRef c-1 for consolidated FY2026"
+          "mapping_reason": "HTML row labeled Operating income maps to us-gaap:OperatingIncomeLoss via ix:nonFraction tags f-90, f-91, f-92"
         },
         {
           "label": "Interest income",
@@ -113,7 +113,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Interest income' with ix:nonFraction tag name us-gaap:InvestmentIncomeInterest"
+          "mapping_reason": "HTML row labeled Interest income maps to us-gaap:InvestmentIncomeInterest via ix:nonFraction tags f-93, f-94, f-95"
         },
         {
           "label": "Interest expense",
@@ -126,7 +126,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Interest expense' showing (259) in parentheses; XBRL value is 259 positive per us-gaap:InterestExpenseNonoperating convention"
+          "mapping_reason": "HTML row labeled Interest expense shown as parenthetical (259) maps to us-gaap:InterestExpenseNonoperating via ix:nonFraction tags f-96, f-97, f-98; XBRL value is positive 259 per convention"
         },
         {
           "label": "Other income, net",
@@ -139,7 +139,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Other income, net' with ix:nonFraction tag name us-gaap:OtherNonoperatingIncomeExpense"
+          "mapping_reason": "HTML row labeled Other income, net maps to us-gaap:OtherNonoperatingIncomeExpense via ix:nonFraction tags f-99, f-100, f-101"
         },
         {
           "label": "Total other income, net",
@@ -152,7 +152,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Total other income, net' with ix:nonFraction tag name us-gaap:NonoperatingIncomeExpense"
+          "mapping_reason": "HTML row labeled Total other income, net maps to us-gaap:NonoperatingIncomeExpense via ix:nonFraction tags f-102, f-103, f-104"
         },
         {
           "label": "Income before income tax",
@@ -165,7 +165,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Income before income tax' with ix:nonFraction tag name us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest"
+          "mapping_reason": "HTML row labeled Income before income tax maps to us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest via ix:nonFraction tags f-105, f-106, f-107"
         },
         {
           "label": "Income tax expense",
@@ -178,7 +178,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Income tax expense' with ix:nonFraction tag name us-gaap:IncomeTaxExpenseBenefit"
+          "mapping_reason": "HTML row labeled Income tax expense maps to us-gaap:IncomeTaxExpenseBenefit via ix:nonFraction tags f-108, f-109, f-110"
         },
         {
           "label": "Net income",
@@ -191,10 +191,10 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Net income' with ix:nonFraction tag name us-gaap:NetIncomeLoss"
+          "mapping_reason": "HTML row labeled Net income maps to us-gaap:NetIncomeLoss via ix:nonFraction tags f-111, f-112, f-113"
         },
         {
-          "label": "Basic",
+          "label": "Basic net income per share",
           "indent_level": 1,
           "xbrl_concept": "us-gaap:EarningsPerShareBasic",
           "values": {
@@ -204,10 +204,10 @@
           },
           "unit": "USD_per_share",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Basic' under 'Net income per share' section with ix:nonFraction tag name us-gaap:EarningsPerShareBasic"
+          "mapping_reason": "HTML row labeled Basic under Net income per share maps to us-gaap:EarningsPerShareBasic via ix:nonFraction tags f-114, f-115, f-116"
         },
         {
-          "label": "Diluted",
+          "label": "Diluted net income per share",
           "indent_level": 1,
           "xbrl_concept": "us-gaap:EarningsPerShareDiluted",
           "values": {
@@ -217,7 +217,7 @@
           },
           "unit": "USD_per_share",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Diluted' under 'Net income per share' section with ix:nonFraction tag name us-gaap:EarningsPerShareDiluted"
+          "mapping_reason": "HTML row labeled Diluted under Net income per share maps to us-gaap:EarningsPerShareDiluted via ix:nonFraction tags f-117, f-118, f-119"
         },
         {
           "label": "Basic weighted average shares",
@@ -230,7 +230,7 @@
           },
           "unit": "shares_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Basic' under 'Weighted average shares used in per share computation' with ix:nonFraction tag name us-gaap:WeightedAverageNumberOfSharesOutstandingBasic"
+          "mapping_reason": "HTML row labeled Basic under Weighted average shares used in per share computation maps to us-gaap:WeightedAverageNumberOfSharesOutstandingBasic via ix:nonFraction tags f-120, f-121, f-122"
         },
         {
           "label": "Diluted weighted average shares",
@@ -243,7 +243,7 @@
           },
           "unit": "shares_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled 'Diluted' under 'Weighted average shares used in per share computation' with ix:nonFraction tag name us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding"
+          "mapping_reason": "HTML row labeled Diluted under Weighted average shares used in per share computation maps to us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding via ix:nonFraction tags f-123, f-124, f-125"
         }
       ],
       "formulas": [
@@ -314,31 +314,31 @@
           "concept": "us-gaap:OtherComprehensiveIncomeAvailableforsaleSecuritiesAdjustmentNetOfTaxPortionAttributableToParent",
           "value": 107,
           "period": "2025-01-27_2026-01-25",
-          "reason": "Appears on Consolidated Statement of Comprehensive Income, not the income statement"
+          "reason": "Appears on the Consolidated Statements of Comprehensive Income, not the income statement"
         },
         {
           "concept": "us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossAfterReclassificationAndTaxParent",
           "value": 43,
           "period": "2025-01-27_2026-01-25",
-          "reason": "Appears on Consolidated Statement of Comprehensive Income, not the income statement"
+          "reason": "Appears on the Consolidated Statements of Comprehensive Income, not the income statement"
         },
         {
           "concept": "us-gaap:OtherComprehensiveIncomeLossNetOfTaxPortionAttributableToParent",
           "value": 150,
           "period": "2025-01-27_2026-01-25",
-          "reason": "Appears on Consolidated Statement of Comprehensive Income, not the income statement"
+          "reason": "Appears on the Consolidated Statements of Comprehensive Income as Other comprehensive income net of tax"
         },
         {
           "concept": "us-gaap:ComprehensiveIncomeNetOfTax",
           "value": 120217,
           "period": "2025-01-27_2026-01-25",
-          "reason": "Appears on Consolidated Statement of Comprehensive Income, not the income statement"
+          "reason": "Appears on the Consolidated Statements of Comprehensive Income as Total comprehensive income"
         },
         {
           "concept": "us-gaap:WeightedAverageNumberDilutedSharesOutstandingAdjustment",
           "value": 155,
           "period": "2025-01-27_2026-01-25",
-          "reason": "Dilutive impact of outstanding equity awards disclosed in EPS note, not a line item on the face of the income statement"
+          "reason": "Dilutive impact of outstanding equity awards disclosed in Note 4 EPS table, not a face income statement line item"
         }
       ]
     },
@@ -354,7 +354,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Cash and cash equivalents' with ix:nonFraction tag name us-gaap:CashAndCashEquivalentsAtCarryingValue"
+          "mapping_reason": "HTML row labeled Cash and cash equivalents in current assets maps to us-gaap:CashAndCashEquivalentsAtCarryingValue via ix:nonFraction tags f-141, f-142"
         },
         {
           "label": "Marketable securities",
@@ -366,7 +366,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Marketable securities' with ix:nonFraction tag name nvda:MarketableSecuritiesAndEquitySecuritiesFVNI"
+          "mapping_reason": "HTML row labeled Marketable securities in current assets maps to nvda:MarketableSecuritiesAndEquitySecuritiesFVNI via ix:nonFraction tags f-143, f-144"
         },
         {
           "label": "Accounts receivable, net",
@@ -378,7 +378,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Accounts receivable, net' with ix:nonFraction tag name us-gaap:AccountsReceivableNetCurrent"
+          "mapping_reason": "HTML row labeled Accounts receivable, net maps to us-gaap:AccountsReceivableNetCurrent via ix:nonFraction tags f-145, f-146"
         },
         {
           "label": "Inventories",
@@ -390,7 +390,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Inventories' with ix:nonFraction tag name us-gaap:InventoryNet"
+          "mapping_reason": "HTML row labeled Inventories maps to us-gaap:InventoryNet via ix:nonFraction tags f-147, f-148"
         },
         {
           "label": "Prepaid expenses and other current assets",
@@ -402,7 +402,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Prepaid expenses and other current assets' with ix:nonFraction tag name us-gaap:PrepaidExpenseAndOtherAssetsCurrent"
+          "mapping_reason": "HTML row labeled Prepaid expenses and other current assets maps to us-gaap:PrepaidExpenseAndOtherAssetsCurrent via ix:nonFraction tags f-149, f-150"
         },
         {
           "label": "Total current assets",
@@ -414,7 +414,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Total current assets' with ix:nonFraction tag name us-gaap:AssetsCurrent"
+          "mapping_reason": "HTML row labeled Total current assets maps to us-gaap:AssetsCurrent via ix:nonFraction tags f-151, f-152"
         },
         {
           "label": "Property and equipment, net",
@@ -426,7 +426,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Property and equipment, net' with ix:nonFraction tag name us-gaap:PropertyPlantAndEquipmentNet"
+          "mapping_reason": "HTML row labeled Property and equipment, net maps to us-gaap:PropertyPlantAndEquipmentNet via ix:nonFraction tags f-153, f-154"
         },
         {
           "label": "Operating lease assets",
@@ -438,7 +438,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Operating lease assets' with ix:nonFraction tag name us-gaap:OperatingLeaseRightOfUseAsset"
+          "mapping_reason": "HTML row labeled Operating lease assets maps to us-gaap:OperatingLeaseRightOfUseAsset via ix:nonFraction tags f-155, f-156"
         },
         {
           "label": "Goodwill",
@@ -450,7 +450,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Goodwill' with ix:nonFraction tag name us-gaap:Goodwill, contextRef c-11 and c-12"
+          "mapping_reason": "HTML row labeled Goodwill maps to us-gaap:Goodwill via ix:nonFraction tags f-157, f-158"
         },
         {
           "label": "Intangible assets, net",
@@ -462,7 +462,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Intangible assets, net' with ix:nonFraction tag name us-gaap:IntangibleAssetsNetExcludingGoodwill"
+          "mapping_reason": "HTML row labeled Intangible assets, net maps to us-gaap:IntangibleAssetsNetExcludingGoodwill via ix:nonFraction tags f-159, f-160"
         },
         {
           "label": "Deferred income tax assets",
@@ -474,7 +474,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Deferred income tax assets' with ix:nonFraction tag name us-gaap:DeferredIncomeTaxAssetsNet"
+          "mapping_reason": "HTML row labeled Deferred income tax assets maps to us-gaap:DeferredIncomeTaxAssetsNet via ix:nonFraction tags f-161, f-162"
         },
         {
           "label": "Non-marketable equity securities",
@@ -486,7 +486,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Non-marketable equity securities' with ix:nonFraction tag name us-gaap:EquitySecuritiesFVNINoncurrent"
+          "mapping_reason": "HTML row labeled Non-marketable equity securities maps to us-gaap:EquitySecuritiesFVNINoncurrent via ix:nonFraction tags f-163, f-164"
         },
         {
           "label": "Other assets",
@@ -498,7 +498,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Other assets' with ix:nonFraction tag name us-gaap:OtherAssetsNoncurrent"
+          "mapping_reason": "HTML row labeled Other assets maps to us-gaap:OtherAssetsNoncurrent via ix:nonFraction tags f-165, f-166"
         },
         {
           "label": "Total assets",
@@ -510,7 +510,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Total assets' with ix:nonFraction tag name us-gaap:Assets"
+          "mapping_reason": "HTML row labeled Total assets maps to us-gaap:Assets via ix:nonFraction tags f-167, f-168"
         },
         {
           "label": "Accounts payable",
@@ -522,7 +522,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Accounts payable' with ix:nonFraction tag name us-gaap:AccountsPayableCurrent"
+          "mapping_reason": "HTML row labeled Accounts payable maps to us-gaap:AccountsPayableCurrent via ix:nonFraction tags f-169, f-170"
         },
         {
           "label": "Accrued and other current liabilities",
@@ -534,7 +534,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Accrued and other current liabilities' with ix:nonFraction tag name us-gaap:AccruedLiabilitiesCurrent"
+          "mapping_reason": "HTML row labeled Accrued and other current liabilities maps to us-gaap:AccruedLiabilitiesCurrent via ix:nonFraction tags f-171, f-172"
         },
         {
           "label": "Short-term debt",
@@ -546,7 +546,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Short-term debt' with ix:nonFraction tag name us-gaap:DebtCurrent"
+          "mapping_reason": "HTML row labeled Short-term debt maps to us-gaap:DebtCurrent via ix:nonFraction tags f-173, f-174"
         },
         {
           "label": "Total current liabilities",
@@ -558,7 +558,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Total current liabilities' with ix:nonFraction tag name us-gaap:LiabilitiesCurrent"
+          "mapping_reason": "HTML row labeled Total current liabilities maps to us-gaap:LiabilitiesCurrent via ix:nonFraction tags f-175, f-176"
         },
         {
           "label": "Long-term debt",
@@ -570,7 +570,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Long-term debt' with ix:nonFraction tag name us-gaap:LongTermDebtNoncurrent"
+          "mapping_reason": "HTML row labeled Long-term debt maps to us-gaap:LongTermDebtNoncurrent via ix:nonFraction tags f-177, f-178"
         },
         {
           "label": "Long-term operating lease liabilities",
@@ -582,7 +582,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Long-term operating lease liabilities' with ix:nonFraction tag name us-gaap:OperatingLeaseLiabilityNoncurrent"
+          "mapping_reason": "HTML row labeled Long-term operating lease liabilities maps to us-gaap:OperatingLeaseLiabilityNoncurrent via ix:nonFraction tags f-179, f-180"
         },
         {
           "label": "Other long-term liabilities",
@@ -594,7 +594,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Other long-term liabilities' with ix:nonFraction tag name us-gaap:OtherLiabilitiesNoncurrent"
+          "mapping_reason": "HTML row labeled Other long-term liabilities maps to us-gaap:OtherLiabilitiesNoncurrent via ix:nonFraction tags f-181, f-182"
         },
         {
           "label": "Total liabilities",
@@ -606,19 +606,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Total liabilities' with ix:nonFraction tag name us-gaap:Liabilities"
-        },
-        {
-          "label": "Commitments and contingencies",
-          "indent_level": 0,
-          "xbrl_concept": "us-gaap:CommitmentsAndContingencies",
-          "values": {
-            "2026-01-25": 0,
-            "2025-01-26": 0
-          },
-          "unit": "USD_millions",
-          "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Commitments and contingencies - see Note 12' with ix:nonFraction tag name us-gaap:CommitmentsAndContingencies showing zero value"
+          "mapping_reason": "HTML row labeled Total liabilities maps to us-gaap:Liabilities via ix:nonFraction tags f-183, f-184"
         },
         {
           "label": "Preferred stock",
@@ -630,7 +618,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row for preferred stock with ix:nonFraction tag name us-gaap:PreferredStockValueOutstanding showing zero"
+          "mapping_reason": "HTML row labeled Preferred stock maps to us-gaap:PreferredStockValueOutstanding via ix:nonFraction tags f-193, f-194 showing zero"
         },
         {
           "label": "Common stock",
@@ -642,7 +630,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row for common stock with ix:nonFraction tag name us-gaap:CommonStockValue"
+          "mapping_reason": "HTML row labeled Common stock maps to us-gaap:CommonStockValue via ix:nonFraction tags f-203, f-204"
         },
         {
           "label": "Additional paid-in capital",
@@ -654,7 +642,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Additional paid-in capital' with ix:nonFraction tag name us-gaap:AdditionalPaidInCapital"
+          "mapping_reason": "HTML row labeled Additional paid-in capital maps to us-gaap:AdditionalPaidInCapital via ix:nonFraction tags f-205, f-206"
         },
         {
           "label": "Accumulated other comprehensive income",
@@ -666,7 +654,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Accumulated other comprehensive income' with ix:nonFraction tag name us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax"
+          "mapping_reason": "HTML row labeled Accumulated other comprehensive income maps to us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax via ix:nonFraction tags f-207, f-208"
         },
         {
           "label": "Retained earnings",
@@ -678,7 +666,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Retained earnings' with ix:nonFraction tag name us-gaap:RetainedEarningsAccumulatedDeficit"
+          "mapping_reason": "HTML row labeled Retained earnings maps to us-gaap:RetainedEarningsAccumulatedDeficit via ix:nonFraction tags f-209, f-210"
         },
         {
           "label": "Total shareholders equity",
@@ -690,7 +678,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Total shareholders equity' with ix:nonFraction tag name us-gaap:StockholdersEquity, contextRef c-11 and c-12"
+          "mapping_reason": "HTML row labeled Total shareholders equity maps to us-gaap:StockholdersEquity via ix:nonFraction tags f-211, f-212"
         },
         {
           "label": "Total liabilities and shareholders equity",
@@ -702,7 +690,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled 'Total liabilities and shareholders equity' with ix:nonFraction tag name us-gaap:LiabilitiesAndStockholdersEquity"
+          "mapping_reason": "HTML row labeled Total liabilities and shareholders equity maps to us-gaap:LiabilitiesAndStockholdersEquity via ix:nonFraction tags f-213, f-214"
         }
       ],
       "formulas": [
@@ -786,52 +774,40 @@
             "Total assets",
             "Total liabilities and shareholders equity"
           ],
-          "operation": "Total assets - Total liabilities and shareholders equity",
+          "operation": "Total assets",
           "result_label": "Total liabilities and shareholders equity"
         }
       ],
       "xbrl_not_on_statement": [
         {
+          "concept": "us-gaap:OperatingLeaseLiabilityCurrent",
+          "value": 372,
+          "period": "2026-01-25",
+          "reason": "Current portion of operating lease liabilities is embedded within Accrued and other current liabilities per OperatingLeaseLiabilityCurrentStatementOfFinancialPositionExtensibleList tag pointing to AccruedLiabilitiesCurrent; disclosed in Note 17 lease maturity table"
+        },
+        {
           "concept": "us-gaap:PropertyPlantAndEquipmentGross",
           "value": 16970,
           "period": "2026-01-25",
-          "reason": "Gross property and equipment before accumulated depreciation disclosed in Note 9 balance sheet components, not shown as separate line on face of balance sheet"
+          "reason": "Gross PP&E before accumulated depreciation is disclosed in Note 9 balance sheet components detail, not separately on the balance sheet face"
         },
         {
           "concept": "us-gaap:AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment",
           "value": 6587,
           "period": "2026-01-25",
-          "reason": "Accumulated depreciation disclosed in Note 9 balance sheet components, not shown as separate line on face of balance sheet"
-        },
-        {
-          "concept": "us-gaap:FiniteLivedIntangibleAssetsGross",
-          "value": 6184,
-          "period": "2026-01-25",
-          "reason": "Gross intangible assets disclosed in Note 6, not shown separately on face of balance sheet"
-        },
-        {
-          "concept": "us-gaap:FiniteLivedIntangibleAssetsAccumulatedAmortization",
-          "value": 2878,
-          "period": "2026-01-25",
-          "reason": "Accumulated amortization of intangible assets disclosed in Note 6, not shown separately on face of balance sheet"
-        },
-        {
-          "concept": "us-gaap:OperatingLeaseLiabilityCurrent",
-          "value": 372,
-          "period": "2026-01-25",
-          "reason": "Short-term operating lease liabilities included within Accrued and other current liabilities on the face of the balance sheet per the extensible list tag"
+          "reason": "Accumulated depreciation disclosed in Note 9 PP&E detail table, not separately on the balance sheet face"
         },
         {
           "concept": "us-gaap:LongTermDebt",
           "value": 8468,
           "period": "2026-01-25",
-          "reason": "Net carrying amount of total debt including current portion disclosed in Note 11, split into short-term debt and long-term debt on balance sheet face"
+          "reason": "Total net carrying amount of debt before splitting into current and non-current is disclosed in Note 11 debt table"
         },
         {
-          "concept": "us-gaap:DeferredIncomeTaxLiabilitiesNet",
-          "value": 1774,
+          "concept": "us-gaap:OperatingLeaseLiability",
+          "value": 2944,
           "period": "2026-01-25",
-          "reason": "Deferred income tax liabilities included within Other long-term liabilities on balance sheet per Note 13 disclosure"
+          "reason": "Total operating lease liability (current plus non-current) is disclosed in Note 17 lease maturity reconciliation"
         }
       ]
     },
@@ -848,7 +824,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Net income' with ix:nonFraction tag name us-gaap:NetIncomeLoss, contextRef c-1"
+          "mapping_reason": "HTML row labeled Net income at start of cash flow statement maps to us-gaap:NetIncomeLoss via ix:nonFraction tags f-299, f-300, f-301"
         },
         {
           "label": "Stock-based compensation expense",
@@ -861,7 +837,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Stock-based compensation expense' with ix:nonFraction tag name us-gaap:ShareBasedCompensation"
+          "mapping_reason": "HTML row labeled Stock-based compensation expense in adjustments maps to us-gaap:ShareBasedCompensation via ix:nonFraction tags f-302, f-303, f-304"
         },
         {
           "label": "Depreciation and amortization",
@@ -874,7 +850,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Depreciation and amortization' with ix:nonFraction tag name us-gaap:DepreciationDepletionAndAmortization"
+          "mapping_reason": "HTML row labeled Depreciation and amortization in adjustments maps to us-gaap:DepreciationDepletionAndAmortization via ix:nonFraction tags f-305, f-306, f-307"
         },
         {
           "label": "Gains on non-marketable equity securities and publicly-held equity securities, net",
@@ -887,7 +863,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Gains on non-marketable equity securities and publicly-held equity securities, net' showing (8,918) in parentheses; XBRL value 8918 positive per us-gaap:GainLossOnInvestments convention representing gains subtracted in CFO"
+          "mapping_reason": "HTML row labeled Gains on non-marketable equity securities and publicly-held equity securities net shown as (8,918) maps to us-gaap:GainLossOnInvestments via ix:nonFraction tags f-308, f-309, f-310; XBRL positive value represents a gain (deducted in CFO)"
         },
         {
           "label": "Deferred income taxes",
@@ -900,7 +876,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Deferred income taxes' showing (1,424) in parentheses; XBRL value is -1424 per us-gaap:DeferredIncomeTaxExpenseBenefit"
+          "mapping_reason": "HTML row labeled Deferred income taxes shown as (1,424) maps to us-gaap:DeferredIncomeTaxExpenseBenefit via ix:nonFraction tags f-311, f-312, f-313; negative XBRL value indicates deferred tax benefit reducing CFO"
         },
         {
           "label": "Other",
@@ -913,7 +889,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Other' under adjustments section with ix:nonFraction tag name us-gaap:OtherNoncashIncomeExpense, displayed as (287) in HTML"
+          "mapping_reason": "HTML row labeled Other in adjustments shown as (287) maps to us-gaap:OtherNoncashIncomeExpense via ix:nonFraction tags f-314, f-315, f-316; negative value means subtracted from net income"
         },
         {
           "label": "Accounts receivable",
@@ -926,7 +902,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Accounts receivable' showing (15,399) in parentheses; XBRL value 15399 positive per us-gaap:IncreaseDecreaseInAccountsReceivable representing a use of cash"
+          "mapping_reason": "HTML row labeled Accounts receivable shown as (15,399) maps to us-gaap:IncreaseDecreaseInAccountsReceivable via ix:nonFraction tags f-317, f-318, f-319; positive XBRL value means increase in AR reduces cash"
         },
         {
           "label": "Inventories",
@@ -939,7 +915,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Inventories' showing (11,324) in parentheses; XBRL value 11324 positive per us-gaap:IncreaseDecreaseInInventories"
+          "mapping_reason": "HTML row labeled Inventories shown as (11,324) maps to us-gaap:IncreaseDecreaseInInventories via ix:nonFraction tags f-320, f-321, f-322; positive value means increase in inventory reduces cash"
         },
         {
           "label": "Prepaid expenses and other assets",
@@ -952,7 +928,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Prepaid expenses and other assets' showing 577 positive in FY2026; XBRL value is -577 per us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets sign convention (decrease in assets is a source)"
+          "mapping_reason": "HTML row labeled Prepaid expenses and other assets shown as 577 (positive in HTML) maps to us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets via ix:nonFraction tags f-323, f-324, f-325; XBRL negative value sign used with sign=-1 attribute meaning decrease in assets added to cash"
         },
         {
           "label": "Accounts payable",
@@ -965,7 +941,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Accounts payable' with ix:nonFraction tag name us-gaap:IncreaseDecreaseInAccountsPayable"
+          "mapping_reason": "HTML row labeled Accounts payable in operating changes maps to us-gaap:IncreaseDecreaseInAccountsPayable via ix:nonFraction tags f-326, f-327, f-328"
         },
         {
           "label": "Accrued and other current liabilities",
@@ -978,7 +954,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Accrued and other current liabilities' with ix:nonFraction tag name us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities"
+          "mapping_reason": "HTML row labeled Accrued and other current liabilities in operating changes maps to us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities via ix:nonFraction tags f-329, f-330, f-331"
         },
         {
           "label": "Other long-term liabilities",
@@ -991,7 +967,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Other long-term liabilities' with ix:nonFraction tag name us-gaap:IncreaseDecreaseInOtherNoncurrentLiabilities"
+          "mapping_reason": "HTML row labeled Other long-term liabilities in operating changes maps to us-gaap:IncreaseDecreaseInOtherNoncurrentLiabilities via ix:nonFraction tags f-332, f-333, f-334"
         },
         {
           "label": "Net cash provided by operating activities",
@@ -1004,7 +980,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Net cash provided by operating activities' with ix:nonFraction tag name us-gaap:NetCashProvidedByUsedInOperatingActivities"
+          "mapping_reason": "HTML row labeled Net cash provided by operating activities maps to us-gaap:NetCashProvidedByUsedInOperatingActivities via ix:nonFraction tags f-335, f-336, f-337"
         },
         {
           "label": "Proceeds from sales of marketable securities",
@@ -1017,7 +993,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Proceeds from sales of marketable securities' with ix:nonFraction tag name us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt"
+          "mapping_reason": "HTML row labeled Proceeds from sales of marketable securities maps to us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt via ix:nonFraction tags f-338, f-339, f-340"
         },
         {
           "label": "Proceeds from maturities of marketable securities",
@@ -1030,7 +1006,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Proceeds from maturities of marketable securities' with ix:nonFraction tag name us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities"
+          "mapping_reason": "HTML row labeled Proceeds from maturities of marketable securities maps to us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities via ix:nonFraction tags f-341, f-342, f-343"
         },
         {
           "label": "Proceeds from sales of non-marketable equity securities",
@@ -1043,7 +1019,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Proceeds from sales of non-marketable equity securities' with ix:nonFraction tag name us-gaap:ProceedsFromSaleOfEquitySecuritiesFvNi"
+          "mapping_reason": "HTML row labeled Proceeds from sales of non-marketable equity securities maps to us-gaap:ProceedsFromSaleOfEquitySecuritiesFvNi via ix:nonFraction tags f-344, f-345, f-346"
         },
         {
           "label": "Purchases of marketable securities",
@@ -1056,7 +1032,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Purchases of marketable securities' showing (40,616) in parentheses; XBRL value 40616 per us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt"
+          "mapping_reason": "HTML row labeled Purchases of marketable securities shown as (40,616) maps to us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt via ix:nonFraction tags f-347, f-348, f-349; XBRL positive value per payment convention"
         },
         {
           "label": "Purchases of non-marketable equity securities",
@@ -1069,7 +1045,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Purchases of non-marketable equity securities' showing (17,502) in parentheses; XBRL value 17502 per us-gaap:PaymentsToAcquireEquitySecuritiesFvNi"
+          "mapping_reason": "HTML row labeled Purchases of non-marketable equity securities shown as (17,502) maps to us-gaap:PaymentsToAcquireEquitySecuritiesFvNi via ix:nonFraction tags f-350, f-351, f-352"
         },
         {
           "label": "Groq, Inc.",
@@ -1082,7 +1058,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Groq, Inc.' showing (13,000) in parentheses; XBRL value 13000 per us-gaap:PaymentsToAcquireBusinessTwoNetOfCashAcquired"
+          "mapping_reason": "HTML row labeled Groq Inc shown as (13,000) maps to us-gaap:PaymentsToAcquireBusinessTwoNetOfCashAcquired via ix:nonFraction tags f-353, f-354, f-355"
         },
         {
           "label": "Purchases related to property and equipment and intangible assets",
@@ -1095,7 +1071,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Purchases related to property and equipment and intangible assets' showing (6,042) in parentheses; XBRL value 6042 per us-gaap:PaymentsToAcquireProductiveAssets"
+          "mapping_reason": "HTML row labeled Purchases related to property and equipment and intangible assets shown as (6,042) maps to us-gaap:PaymentsToAcquireProductiveAssets via ix:nonFraction tags f-356, f-357, f-358"
         },
         {
           "label": "Acquisitions, net of cash acquired",
@@ -1108,7 +1084,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Acquisitions, net of cash acquired' showing (1,535) in parentheses; XBRL value 1535 per us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired"
+          "mapping_reason": "HTML row labeled Acquisitions net of cash acquired shown as (1,535) maps to us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired via ix:nonFraction tags f-359, f-360, f-361"
         },
         {
           "label": "Other",
@@ -1121,7 +1097,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Other' under investing activities with ix:nonFraction tag name us-gaap:PaymentsForProceedsFromOtherInvestingActivities"
+          "mapping_reason": "HTML row labeled Other in investing activities maps to us-gaap:PaymentsForProceedsFromOtherInvestingActivities via ix:nonFraction tags f-362, f-363, f-364"
         },
         {
           "label": "Net cash used in investing activities",
@@ -1134,7 +1110,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Net cash used in investing activities' showing (52,228) in parentheses; XBRL value -52228 per us-gaap:NetCashProvidedByUsedInInvestingActivities"
+          "mapping_reason": "HTML row labeled Net cash used in investing activities shown as (52,228) maps to us-gaap:NetCashProvidedByUsedInInvestingActivities via ix:nonFraction tags f-365, f-366, f-367; XBRL negative value"
         },
         {
           "label": "Proceeds related to employee stock plans",
@@ -1147,7 +1123,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Proceeds related to employee stock plans' with ix:nonFraction tag name us-gaap:ProceedsFromStockPlans"
+          "mapping_reason": "HTML row labeled Proceeds related to employee stock plans maps to us-gaap:ProceedsFromStockPlans via ix:nonFraction tags f-368, f-369, f-370"
         },
         {
           "label": "Payments related to repurchases of common stock",
@@ -1160,7 +1136,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Payments related to repurchases of common stock' showing (40,086) in parentheses; XBRL value 40086 per us-gaap:PaymentsForRepurchaseOfCommonStock"
+          "mapping_reason": "HTML row labeled Payments related to repurchases of common stock shown as (40,086) maps to us-gaap:PaymentsForRepurchaseOfCommonStock via ix:nonFraction tags f-371, f-372, f-373"
         },
         {
           "label": "Payments related to employee stock plan taxes",
@@ -1173,7 +1149,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Payments related to employee stock plan taxes' showing (7,948) in parentheses; XBRL value 7948 per us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation"
+          "mapping_reason": "HTML row labeled Payments related to employee stock plan taxes shown as (7,948) maps to us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation via ix:nonFraction tags f-374, f-375, f-376"
         },
         {
           "label": "Dividends paid",
@@ -1186,7 +1162,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Dividends paid' showing (974) in parentheses; XBRL value 974 per us-gaap:PaymentsOfDividends"
+          "mapping_reason": "HTML row labeled Dividends paid shown as (974) maps to us-gaap:PaymentsOfDividends via ix:nonFraction tags f-377, f-378, f-379"
         },
         {
           "label": "Principal payments on property and equipment and intangible assets",
@@ -1199,7 +1175,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Principal payments on property and equipment and intangible assets' showing (101) in parentheses; XBRL value 101 per nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities"
+          "mapping_reason": "HTML row labeled Principal payments on property and equipment and intangible assets shown as (101) maps to nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities via ix:nonFraction tags f-380, f-381, f-382"
         },
         {
           "label": "Repayment of debt",
@@ -1212,7 +1188,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Repayment of debt' with ix:nonFraction tag name us-gaap:RepaymentsOfDebt showing zero for FY2026"
+          "mapping_reason": "HTML row labeled Repayment of debt maps to us-gaap:RepaymentsOfDebt via ix:nonFraction tags f-383, f-384, f-385"
         },
         {
           "label": "Other",
@@ -1225,7 +1201,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Other' under financing activities showing (9) in parentheses; XBRL value -9 per us-gaap:ProceedsFromPaymentsForOtherFinancingActivities"
+          "mapping_reason": "HTML row labeled Other in financing activities shown as (9) maps to us-gaap:ProceedsFromPaymentsForOtherFinancingActivities via ix:nonFraction tags f-386, f-387, f-388; XBRL negative value"
         },
         {
           "label": "Net cash used in financing activities",
@@ -1238,7 +1214,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Net cash used in financing activities' showing (48,474) in parentheses; XBRL value -48474 per us-gaap:NetCashProvidedByUsedInFinancingActivities"
+          "mapping_reason": "HTML row labeled Net cash used in financing activities shown as (48,474) maps to us-gaap:NetCashProvidedByUsedInFinancingActivities via ix:nonFraction tags f-389, f-390, f-391; XBRL negative value"
         },
         {
           "label": "Change in cash and cash equivalents",
@@ -1251,7 +1227,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Change in cash and cash equivalents' with ix:nonFraction tag name us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect"
+          "mapping_reason": "HTML row labeled Change in cash and cash equivalents maps to us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect via ix:nonFraction tags f-392, f-393, f-394"
         },
         {
           "label": "Cash and cash equivalents at beginning of period",
@@ -1264,7 +1240,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Cash and cash equivalents at beginning of period' with ix:nonFraction tag name us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents, contextRef c-12 for FY2026 period"
+          "mapping_reason": "HTML row labeled Cash and cash equivalents at beginning of period maps to us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents at prior period instant via ix:nonFraction tags f-395, f-396, f-397"
         },
         {
           "label": "Cash and cash equivalents at end of period",
@@ -1277,7 +1253,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement row labeled 'Cash and cash equivalents at end of period' with ix:nonFraction tag name us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents, contextRef c-11 for FY2026 period end"
+          "mapping_reason": "HTML row labeled Cash and cash equivalents at end of period maps to us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents at current period instant via ix:nonFraction tags f-398, f-399, f-400"
         },
         {
           "label": "Cash paid for income taxes, net",
@@ -1290,12 +1266,12 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML cash flow statement supplemental disclosure row labeled 'Cash paid for income taxes, net' with ix:nonFraction tag name us-gaap:IncomeTaxesPaidNet"
+          "mapping_reason": "HTML row labeled Cash paid for income taxes net in supplemental disclosures maps to us-gaap:IncomeTaxesPaidNet via ix:nonFraction tags f-401, f-402, f-403"
         }
       ],
       "formulas": [
         {
-          "formula": "Net income plus Stock-based compensation expense plus Depreciation and amortization minus Gains on non-marketable equity securities and publicly-held equity securities net plus Deferred income taxes plus Other plus changes in working capital equals Net cash provided by operating activities",
+          "formula": "Net income plus adjustments equals Net cash provided by operating activities",
           "components": [
             "Net income",
             "Stock-based compensation expense",
@@ -1311,11 +1287,11 @@
             "Other long-term liabilities",
             "Net cash provided by operating activities"
           ],
-          "operation": "Net income + Stock-based compensation expense + Depreciation and amortization - Gains on non-marketable equity securities and publicly-held equity securities, net + Deferred income taxes + Other - Accounts receivable - Inventories + Prepaid expenses and other assets + Accounts payable + Accrued and other current liabilities + Other long-term liabilities",
+          "operation": "Net income + Stock-based compensation expense + Depreciation and amortization - Gains on non-marketable equity securities and publicly-held equity securities, net + Deferred income taxes + Other - Accounts receivable - Inventories - Prepaid expenses and other assets + Accounts payable + Accrued and other current liabilities + Other long-term liabilities",
           "result_label": "Net cash provided by operating activities"
         },
         {
-          "formula": "Sum of investing cash flows equals Net cash used in investing activities",
+          "formula": "Investing cash flows sum to Net cash used in investing activities",
           "components": [
             "Proceeds from sales of marketable securities",
             "Proceeds from maturities of marketable securities",
@@ -1332,7 +1308,7 @@
           "result_label": "Net cash used in investing activities"
         },
         {
-          "formula": "Sum of financing cash flows equals Net cash used in financing activities",
+          "formula": "Financing cash flows sum to Net cash used in financing activities",
           "components": [
             "Proceeds related to employee stock plans",
             "Payments related to repurchases of common stock",
@@ -1347,7 +1323,7 @@
           "result_label": "Net cash used in financing activities"
         },
         {
-          "formula": "Net cash provided by operating activities plus Net cash used in investing activities plus Net cash used in financing activities equals Change in cash and cash equivalents",
+          "formula": "CFO plus CFI plus CFF equals Change in cash",
           "components": [
             "Net cash provided by operating activities",
             "Net cash used in investing activities",
@@ -1358,7 +1334,7 @@
           "result_label": "Change in cash and cash equivalents"
         },
         {
-          "formula": "Cash and cash equivalents at beginning of period plus Change in cash and cash equivalents equals Cash and cash equivalents at end of period",
+          "formula": "Beginning cash plus change equals ending cash",
           "components": [
             "Cash and cash equivalents at beginning of period",
             "Change in cash and cash equivalents",
@@ -1370,22 +1346,16 @@
       ],
       "xbrl_not_on_statement": [
         {
-          "concept": "us-gaap:OperatingLeasePayments",
-          "value": 428,
-          "period": "2025-01-27_2026-01-25",
-          "reason": "Supplemental cash flow disclosure in lease note, not a line item on the face of the cash flow statement"
-        },
-        {
           "concept": "us-gaap:RightOfUseAssetObtainedInExchangeForOperatingLeaseLiability",
           "value": 1439,
           "period": "2025-01-27_2026-01-25",
-          "reason": "Non-cash supplemental disclosure in lease note, not a line item on the face of the cash flow statement"
+          "reason": "Non-cash supplemental disclosure of operating lease assets obtained in exchange for lease obligations disclosed in Note 17 lease table, not on the face of the cash flow statement"
         },
         {
           "concept": "us-gaap:CapitalExpendituresIncurredButNotYetPaid",
           "value": 820,
           "period": "2025-01-27_2026-01-25",
-          "reason": "Non-cash investing activity disclosure in notes, not a line item on the face of the cash flow statement"
+          "reason": "Non-cash supplemental disclosure of property equipment and intangible assets acquired but not yet paid disclosed in Note 9 balance sheet components, not on the face of the cash flow statement"
         }
       ]
     },
@@ -1397,30 +1367,290 @@
         "match": true
       },
       {
-        "check": "Ending cash on CF matches Cash on BS (current period Jan 25 2026)",
+        "check": "Ending cash on CF matches Cash on BS (current period 2026-01-25)",
         "is_value": null,
         "cf_value": 10605,
+        "bs_value": 10605,
         "match": true
       },
       {
-        "check": "Ending cash on CF (2026-01-25) equals Cash and cash equivalents on BS (2026-01-25)",
-        "is_value": 10605,
-        "cf_value": 10605,
-        "match": true
-      },
-      {
-        "check": "Beginning cash on CF (Jan 26 2025) matches Cash on BS prior period (Jan 26 2025)",
-        "is_value": 8589,
+        "check": "Beginning cash on CF matches Cash on BS (prior period 2025-01-26)",
         "cf_value": 8589,
+        "bs_value": 8589,
         "match": true
       },
       {
-        "check": "Retained earnings change on BS equals Net income minus dividends minus shares repurchased charged to retained earnings minus tax withholding charged to retained earnings",
-        "is_value": 78935,
-        "cf_value": 78935,
+        "check": "Retained earnings change on BS equals Net income minus Dividends minus Share repurchases charged to retained earnings plus other RE items",
+        "detail": "RE end 2026-01-25 = 146973, RE begin 2025-01-26 = 68038, Change = 78935. Net income = 120067, Dividends = 974, Stock repurchases charged to retained earnings = 40158. 120067 - 974 - 40158 = 78935",
+        "calculated_change": 78935,
+        "bs_change": 78935,
         "match": true
       }
-    ]
+    ],
+    "calculation_components": {
+      "operating_leases": {
+        "current": 372,
+        "noncurrent": 2572,
+        "total": 2944,
+        "current_location": "Embedded within Accrued and other current liabilities on the balance sheet per OperatingLeaseLiabilityCurrentStatementOfFinancialPositionExtensibleList tag; current portion of 372 million disclosed in Note 17 lease maturity reconciliation table as Less short-term operating lease liabilities"
+      },
+      "depreciation_and_amortization": {
+        "total": 2843,
+        "components": [
+          {
+            "label": "Depreciation and amortization (CF statement single line)",
+            "value": 2843
+          },
+          {
+            "label": "Depreciation of PP&E (per Note 9)",
+            "value": 2400
+          },
+          {
+            "label": "Amortization of intangible assets (per Note 6)",
+            "value": 488
+          }
+        ],
+        "is_single_line": true,
+        "notes": "CF statement shows single line of 2843. Note 9 discloses depreciation expense of 2.4 billion and Note 6 discloses amortization of intangibles of 488 million for fiscal year 2026. These do not sum exactly to 2843 because some amortization may relate to finance lease ROU assets included in depreciation or other items."
+      },
+      "accounts_payable": {
+        "value": 9812,
+        "is_pure": true,
+        "combined_with": null,
+        "note_breakout": null
+      },
+      "accounts_receivable": {
+        "value": 38466,
+        "is_pure": true,
+        "combined_with": null,
+        "note_breakout": null
+      },
+      "capex": {
+        "cf_value": 6042,
+        "supplemental_not_yet_paid": 820,
+        "includes_intangibles": true,
+        "notes": "CF line labeled Purchases related to property and equipment and intangible assets uses us-gaap:PaymentsToAcquireProductiveAssets = 6042. Note 9 discloses property equipment and intangible assets acquired but not yet paid of 820 million for fiscal year 2026."
+      },
+      "acquisitions": {
+        "total": 14535,
+        "items": [
+          {
+            "concept": "us-gaap:PaymentsToAcquireBusinessTwoNetOfCashAcquired",
+            "value": 13000,
+            "label": "Groq Inc non-exclusive license agreement"
+          },
+          {
+            "concept": "us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired",
+            "value": 1535,
+            "label": "Acquisitions net of cash acquired (other)"
+          }
+        ]
+      },
+      "short_term_debt": {
+        "value": 999,
+        "components": [
+          {
+            "label": "3.20% Notes Due 2026 current portion",
+            "value": 999
+          }
+        ],
+        "confirmed_zero": false,
+        "notes": "Short-term debt of 999 million represents the current portion of the 3.20% Notes Due 2026 reclassified from long-term; us-gaap:DebtCurrent = 999 and us-gaap:LongTermDebtCurrent = 999"
+      },
+      "sbc": {
+        "cf_value": 6386,
+        "note_by_function": {
+          "cost_of_revenue": 261,
+          "research_and_development": 4676,
+          "sales_general_and_administrative": 1449,
+          "total": 6386
+        }
+      },
+      "interest_expense": {
+        "gross": 259,
+        "income": 2300,
+        "net": null,
+        "source": "Interest expense of 259 million and Interest income of 2300 million are shown as separate line items on the income statement; no net presentation. us-gaap:InterestExpenseNonoperating = 259 (gross). No further gross vs net breakout found in notes."
+      },
+      "tax_rate": {
+        "tax_expense": 21383,
+        "pretax_income": 141450,
+        "effective_rate": 0.1512,
+        "flags": []
+      },
+      "inventory": {
+        "total": 21403,
+        "raw_materials": 3807,
+        "wip": 8822,
+        "finished_goods": 8774
+      }
+    },
+    "cfo_retry": {
+      "corrected_components": [
+        {
+          "label": "Net income",
+          "value": 120067,
+          "xbrl_concept": "us-gaap:NetIncomeLoss"
+        },
+        {
+          "label": "Stock-based compensation expense",
+          "value": 6386,
+          "xbrl_concept": "us-gaap:ShareBasedCompensation"
+        },
+        {
+          "label": "Depreciation and amortization",
+          "value": 2843,
+          "xbrl_concept": "us-gaap:DepreciationDepletionAndAmortization"
+        },
+        {
+          "label": "Gains on non-marketable equity securities and publicly-held equity securities, net",
+          "value": -8918,
+          "xbrl_concept": "us-gaap:GainLossOnInvestments"
+        },
+        {
+          "label": "Deferred income taxes",
+          "value": -1424,
+          "xbrl_concept": "us-gaap:DeferredIncomeTaxExpenseBenefit"
+        },
+        {
+          "label": "Other",
+          "value": -287,
+          "xbrl_concept": "us-gaap:OtherNoncashIncomeExpense"
+        },
+        {
+          "label": "Accounts receivable",
+          "value": -15399,
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsReceivable"
+        },
+        {
+          "label": "Inventories",
+          "value": -11324,
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInInventories"
+        },
+        {
+          "label": "Prepaid expenses and other assets",
+          "value": 577,
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets"
+        },
+        {
+          "label": "Accounts payable",
+          "value": 3096,
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsPayable"
+        },
+        {
+          "label": "Accrued and other current liabilities",
+          "value": 5257,
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities"
+        },
+        {
+          "label": "Other long-term liabilities",
+          "value": 1844,
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInOtherNoncurrentLiabilities"
+        }
+      ],
+      "section_total": 102718,
+      "sum_check": 102718,
+      "items_added": [],
+      "items_corrected": [
+        "Prepaid expenses and other assets: sign corrected from -577 to +577 (the XBRL tag uses sign='-' attribute indicating a decrease in the asset, which is a source of cash)"
+      ]
+    },
+    "cfi_retry": {
+      "corrected_components": [
+        {
+          "label": "Proceeds from sales of marketable securities",
+          "value": 15157,
+          "xbrl_concept": "us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt"
+        },
+        {
+          "label": "Proceeds from maturities of marketable securities",
+          "value": 11226,
+          "xbrl_concept": "us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities"
+        },
+        {
+          "label": "Proceeds from sales of non-marketable equity securities",
+          "value": 84,
+          "xbrl_concept": "us-gaap:ProceedsFromSaleOfEquitySecuritiesFvNi"
+        },
+        {
+          "label": "Purchases of marketable securities",
+          "value": -40616,
+          "xbrl_concept": "us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt"
+        },
+        {
+          "label": "Purchases of non-marketable equity securities",
+          "value": -17502,
+          "xbrl_concept": "us-gaap:PaymentsToAcquireEquitySecuritiesFvNi"
+        },
+        {
+          "label": "Groq, Inc.",
+          "value": -13000,
+          "xbrl_concept": "us-gaap:PaymentsToAcquireBusinessTwoNetOfCashAcquired"
+        },
+        {
+          "label": "Purchases related to property and equipment and intangible assets",
+          "value": -6042,
+          "xbrl_concept": "us-gaap:PaymentsToAcquireProductiveAssets"
+        },
+        {
+          "label": "Acquisitions, net of cash acquired",
+          "value": -1535,
+          "xbrl_concept": "us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired"
+        },
+        {
+          "label": "Other",
+          "value": 0,
+          "xbrl_concept": "us-gaap:PaymentsForProceedsFromOtherInvestingActivities"
+        }
+      ],
+      "section_total": -52228,
+      "sum_check": -52228,
+      "items_added": [],
+      "items_corrected": []
+    },
+    "cff_retry": {
+      "corrected_components": [
+        {
+          "label": "Proceeds related to employee stock plans",
+          "value": 644,
+          "xbrl_concept": "us-gaap:ProceedsFromStockPlans"
+        },
+        {
+          "label": "Payments related to repurchases of common stock",
+          "value": -40086,
+          "xbrl_concept": "us-gaap:PaymentsForRepurchaseOfCommonStock"
+        },
+        {
+          "label": "Payments related to employee stock plan taxes",
+          "value": -7948,
+          "xbrl_concept": "us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation"
+        },
+        {
+          "label": "Dividends paid",
+          "value": -974,
+          "xbrl_concept": "us-gaap:PaymentsOfDividends"
+        },
+        {
+          "label": "Principal payments on property and equipment and intangible assets",
+          "value": -101,
+          "xbrl_concept": "nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities"
+        },
+        {
+          "label": "Repayment of debt",
+          "value": 0,
+          "xbrl_concept": "us-gaap:RepaymentsOfDebt"
+        },
+        {
+          "label": "Other",
+          "value": -9,
+          "xbrl_concept": "us-gaap:ProceedsFromPaymentsForOtherFinancingActivities"
+        }
+      ],
+      "section_total": -48474,
+      "sum_check": -48474,
+      "items_added": [],
+      "items_corrected": []
+    }
   },
   "formula_verification": {
     "income_statement": {
@@ -1655,49 +1885,49 @@
         },
         {
           "formula": "Total assets equals Total liabilities and shareholders equity",
-          "pass": false,
+          "pass": true,
           "periods": {
             "2026-01-25": {
-              "computed": 0,
+              "computed": 206803,
               "stated": 206803,
-              "computation": "206803 - 206803"
+              "computation": "206803"
             },
             "2025-01-26": {
-              "computed": 0,
+              "computed": 111601,
               "stated": 111601,
-              "computation": "111601 - 111601"
+              "computation": "111601"
             }
           }
         }
       ],
-      "formulas_pass": 6,
+      "formulas_pass": 7,
       "formulas_total": 7
     },
     "cash_flow": {
       "formula_checks": [
         {
-          "formula": "Net income plus Stock-based compensation expense plus Depreciation and amortization minus Gains on non-marketable equity securities and publicly-held equity securities net plus Deferred income taxes plus Other plus changes in working capital equals Net cash provided by operating activities",
+          "formula": "Net income plus adjustments equals Net cash provided by operating activities",
           "pass": false,
           "periods": {
             "2025-01-27_2026-01-25": {
-              "computed": 101842,
+              "computed": 102996,
               "stated": 102718,
-              "computation": "120067 + 6386 + 2843 - 8918 + -1424 + -9 - 15399 - 11324 + -577 + 3096 + 5257 + 1844"
+              "computation": "120067 + 6386 + 2843 - 8918 + -1424 + -9 - 15399 - 11324 - -577 + 3096 + 5257 + 1844"
             },
             "2024-01-29_2025-01-26": {
-              "computed": 65381,
+              "computed": 64591,
               "stated": 64089,
-              "computation": "72880 + 4737 + 1864 - 1030 + -4477 + 0 - 13063 - 4781 + 395 + 3357 + 4278 + 1221"
+              "computation": "72880 + 4737 + 1864 - 1030 + -4477 + 0 - 13063 - 4781 - 395 + 3357 + 4278 + 1221"
             },
             "2023-01-30_2024-01-28": {
-              "computed": 31411,
+              "computed": 28367,
               "stated": 28090,
-              "computation": "29760 + 3549 + 1508 - 238 + -2489 + -1 - 6172 - 98 + 1522 + 1531 + 2025 + 514"
+              "computation": "29760 + 3549 + 1508 - 238 + -2489 + -1 - 6172 - 98 - 1522 + 1531 + 2025 + 514"
             }
           }
         },
         {
-          "formula": "Sum of investing cash flows equals Net cash used in investing activities",
+          "formula": "Investing cash flows sum to Net cash used in investing activities",
           "pass": false,
           "periods": {
             "2025-01-27_2026-01-25": {
@@ -1718,7 +1948,7 @@
           }
         },
         {
-          "formula": "Sum of financing cash flows equals Net cash used in financing activities",
+          "formula": "Financing cash flows sum to Net cash used in financing activities",
           "pass": true,
           "periods": {
             "2025-01-27_2026-01-25": {
@@ -1739,7 +1969,7 @@
           }
         },
         {
-          "formula": "Net cash provided by operating activities plus Net cash used in investing activities plus Net cash used in financing activities equals Change in cash and cash equivalents",
+          "formula": "CFO plus CFI plus CFF equals Change in cash",
           "pass": true,
           "periods": {
             "2025-01-27_2026-01-25": {
@@ -1760,7 +1990,7 @@
           }
         },
         {
-          "formula": "Cash and cash equivalents at beginning of period plus Change in cash and cash equivalents equals Cash and cash equivalents at end of period",
+          "formula": "Beginning cash plus change equals ending cash",
           "pass": true,
           "periods": {
             "2025-01-27_2026-01-25": {

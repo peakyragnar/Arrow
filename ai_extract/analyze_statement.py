@@ -580,24 +580,62 @@ def main():
             total_xbrl_match += sum(1 for i in stmt_data.get('line_items', []) if i.get('xbrl_match') is True)
             total_xbrl += sum(1 for i in stmt_data.get('line_items', []) if i.get('xbrl_match') is not None)
 
-        # === CF RETRY: if CFO formula fails, ask AI to find missing items ===
+        # === CF SECTION RETRY: if any section (CFO/CFI/CFF) doesn't balance ===
         cf_v = all_verification.get('cash_flow', {})
-        cf_needs_retry = False
-        for check in cf_v.get('formula_checks', []):
-            # Find the CFO sum formula (contains "operating activities" in result)
-            if not check['pass']:
-                for period, detail in check['periods'].items():
-                    if detail['computed'] is not None and detail['stated'] is not None and detail['computed'] != detail['stated']:
-                        cf_needs_retry = True
-                        break
-            if cf_needs_retry:
-                break
+        cf_items = ai_result.get('cash_flow', {}).get('line_items', [])
 
-        if cf_needs_retry:
-            print("CFO formula mismatch detected — retrying to find missing components...")
-            cf_items = ai_result.get('cash_flow', {}).get('line_items', [])
+        # Define the three sections to check
+        cf_sections = [
+            {
+                'name': 'CFO',
+                'total_concept': 'NetCashProvidedByUsedInOperatingActivities',
+                'description': 'operating activity',
+                'boundary': 'between Net income and Net cash provided by operating activities',
+                'result_key': 'cfo_retry',
+            },
+            {
+                'name': 'CFI',
+                'total_concept': 'NetCashProvidedByUsedInInvestingActivities',
+                'description': 'investing activity',
+                'boundary': 'in the investing activities section',
+                'result_key': 'cfi_retry',
+            },
+            {
+                'name': 'CFF',
+                'total_concept': 'NetCashProvidedByUsedInFinancingActivities',
+                'description': 'financing activity',
+                'boundary': 'in the financing activities section',
+                'result_key': 'cff_retry',
+            },
+        ]
 
-            # Build the component list for the retry prompt
+        for section in cf_sections:
+            # Check if this section's formula failed
+            section_needs_retry = False
+            for check in cf_v.get('formula_checks', []):
+                if not check['pass']:
+                    for period, detail in check['periods'].items():
+                        if detail['computed'] is not None and detail['stated'] is not None and detail['computed'] != detail['stated']:
+                            section_needs_retry = True
+                            break
+                if section_needs_retry:
+                    break
+
+            if not section_needs_retry:
+                continue
+
+            # Find the section total
+            section_total_vals = {}
+            for item in cf_items:
+                concept = item.get('xbrl_concept') or ''
+                if section['total_concept'] in concept:
+                    section_total_vals = item.get('values') or {}
+                    break
+
+            if not section_total_vals:
+                continue
+
+            # Build component summary
             component_summary = []
             for item in cf_items:
                 vals = item.get('values') or {}
@@ -606,38 +644,35 @@ def main():
                 first_val = list(vals.values())[0]
                 component_summary.append(f"  {item['label']}: {first_val}")
 
-            # Find the CFO total
-            cfo_vals = {}
-            for item in cf_items:
-                concept = item.get('xbrl_concept') or ''
-                if 'NetCashProvidedByUsedInOperatingActivities' in concept:
-                    cfo_vals = item.get('values') or {}
-                    break
-
             component_text = "\n".join(component_summary)
-            retry_prompt = f"""You extracted cash flow operating activity components for {args.ticker} but they do not sum to the stated CFO total.
+            first_total = list(section_total_vals.values())[0]
 
-Your extracted components:
+            retry_prompt = f"""You extracted cash flow {section['description']} components for {args.ticker} but they do not sum to the stated {section['name']} total.
+
+Your extracted components (full CF statement):
 {component_text}
 
-Stated CFO total: {list(cfo_vals.values())[0] if cfo_vals else '?'}
+Stated {section['name']} total: {first_total}
 
-The components must sum EXACTLY to CFO. Rules:
-- Positive values = add to cash (D&A addback, decrease in working capital asset, increase in working capital liability)
-- Negative values = reduce cash (increase in working capital asset, decrease in working capital liability, payments)
-- ALL components added together (using +) must equal CFO, because signs are already embedded in the values.
+The components must sum EXACTLY to {section['name']}. Rules:
+- ALL values already contain the correct sign (positive = source of cash, negative = use of cash)
+- ALL components added together (using +) must equal the section total
+- Search the XBRL facts for ANY concept you may have missed — companies sometimes use numbered variants (e.g., PaymentsToAcquireBusinessTwoNetOfCashAcquired) or custom extension concepts for individual transactions
 
 Go back to the cash flow statement in the filing and:
-1. List EVERY line item between Net income and Net cash provided by operating activities
-2. Include the value with correct sign (positive = source, negative = use)
-3. Verify the sum equals CFO exactly
+1. List EVERY line item {section['boundary']}
+2. Include the value with correct sign
+3. Also search the XBRL facts list for any {section['description']}-related concepts not on the statement face
+4. Verify the sum equals {section['name']} exactly
 
 Output ONLY valid JSON:
-{{"corrected_cfo_components": [{{"label": "...", "value": X, "xbrl_concept": "..."}}], "cfo_total": X, "sum_check": X, "items_added": ["list of items that were missing from original extraction"], "items_corrected": ["list of items with sign changes"]}}
+{{"corrected_components": [{{"label": "...", "value": X, "xbrl_concept": "..."}}], "section_total": X, "sum_check": X, "items_added": ["list of items that were missing from original extraction"], "items_corrected": ["list of items with sign changes"]}}
 
 CRITICAL: Output must be valid JSON. No apostrophes in strings."""
 
-            # Call the API again
+            print(f"{section['name']} formula mismatch detected — retrying to find missing components...")
+
+            # Call the API
             retry_text = ""
             retry_in = 0
             retry_out = 0
@@ -700,22 +735,21 @@ CRITICAL: Output must be valid JSON. No apostrophes in strings."""
                     retry_result = None
 
             if retry_result:
-                ai_result['cfo_retry'] = retry_result
-                print(f"CFO retry: sum_check={retry_result.get('sum_check')}, cfo_total={retry_result.get('cfo_total')}")
+                ai_result[section['result_key']] = retry_result
+                print(f"{section['name']} retry: sum_check={retry_result.get('sum_check')}, total={retry_result.get('section_total')}")
                 if retry_result.get('items_added'):
                     print(f"  Items added: {retry_result['items_added']}")
                 if retry_result.get('items_corrected'):
                     print(f"  Items corrected: {retry_result['items_corrected']}")
 
-                # Re-verify with corrected components
-                corrected = retry_result.get('corrected_cfo_components', [])
+                corrected = retry_result.get('corrected_components', [])
                 if corrected:
                     corrected_sum = sum(c.get('value', 0) for c in corrected)
-                    cfo_total = retry_result.get('cfo_total', 0)
-                    if corrected_sum == cfo_total:
-                        print(f"  VERIFIED: corrected components sum to CFO ({corrected_sum} = {cfo_total})")
+                    section_total = retry_result.get('section_total', 0)
+                    if corrected_sum == section_total:
+                        print(f"  VERIFIED: corrected components sum to {section['name']} ({corrected_sum} = {section_total})")
                     else:
-                        print(f"  STILL MISMATCHED: {corrected_sum} vs {cfo_total}")
+                        print(f"  STILL MISMATCHED: {corrected_sum} vs {section_total}")
 
         # Display each statement
         print("=" * 80)

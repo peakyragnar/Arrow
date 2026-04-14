@@ -373,10 +373,18 @@ def extract_filing(filing_json):
             capex_comp = calc.get('capex', {})
             if capex_comp and capex_comp.get('cf_value') is not None:
                 capex_total = int(capex_comp['cf_value']) * 1_000_000
-                # Override the CF YTD entry for capex on the current period
                 ytd_key = 'capex_q_ytd'
                 if ytd_key in rec:
                     rec[ytd_key] = -abs(capex_total)  # Stored negative in our convention
+
+            # Acquisitions — companies may have multiple acquisition lines
+            # (e.g., NVDA Groq via PaymentsToAcquireBusinessTwoNetOfCashAcquired)
+            acq_comp = calc.get('acquisitions', {})
+            if acq_comp and acq_comp.get('total') is not None:
+                acq_total = int(acq_comp['total']) * 1_000_000
+                ytd_key = 'acquisitions_q_ytd'
+                if ytd_key in rec:
+                    rec[ytd_key] = -abs(acq_total)  # Stored negative in our convention
 
             # Store full calculation_components for downstream use
             rec['_calculation_components'] = calc
