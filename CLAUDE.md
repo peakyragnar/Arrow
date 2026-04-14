@@ -62,7 +62,7 @@ python3 -m http.server 8080 --directory dashboard
 - `company_specific_types.md` — Catalog of per-company issue types and fix patterns
 - `formulas.md` — Canonical metric dictionary (ROIC, reinvestment rate, etc.)
 - `rd_capitalization_reference.md` — R&D amortization schedule formula reference
-- `ai_extract/` — Experimental AI-powered extraction: deterministic XBRL→JSON parser + Claude maps facts to 24 standard fields (no per-company scripts)
+- `ai_extract/` — Experimental AI-powered extraction (see AI Extraction Framework below). Fully isolated from the core deterministic pipeline.
 - `gemini-extract-design.md` — Design document for XBRL extraction architecture (taxonomy resolution, linkbase traversal, prompt design)
 - `data/filings/{TICKER}/{ACCESSION}/` — Downloaded filings (gitignored)
 - `output/{ticker}.json` — Extraction output (gitignored)
@@ -117,3 +117,57 @@ Single-file HTML app (`dashboard/index.html`) with Chart.js. Company selector, m
 - Master script concept lists should include every standard US-GAAP concept for a line item. If it's a standard concept for the same component, it goes in master — not in a company override. Company scripts are for truly bespoke issues (dimensioned contexts, sign flips, summation quirks). The goal is for company #7 through #100 to work without per-company scripts wherever possible.
 - Don't trust AI output without verified inputs — Layers 1-3 exist to give the frontier model data you trust
 - Measure everything — gold audit for financials, field-by-field scoring for extraction models
+
+## AI Extraction Framework (Experimental)
+
+**Status: Testing. Fully isolated in `ai_extract/`. Must NEVER modify or impact the core deterministic pipeline (`extract.py`, `compute.py`, `eval.py`, `calculate.py`, `companies/`, `golden/`, `output/`).**
+
+An experimental approach to replace the deterministic extraction pipeline with AI-powered extraction. Instead of per-company scripts and XBRL concept mappings, a frontier model reads the full filing (cleaned iXBRL HTML + XBRL facts) and extracts all three financial statements in a single API call.
+
+### How It Works
+
+1. **Download**: `fetch.py` downloads the filing (shared with deterministic pipeline).
+2. **Clean HTML**: Strip CSS/styling from iXBRL HTML (57% size reduction). Keeps all tags, text, and ix:nonFraction elements.
+3. **Parse XBRL**: `ai_extract/parse_xbrl.py` extracts all facts from the XBRL instance document into structured data.
+4. **AI Extraction (Layer 1)**: Send cleaned HTML + XBRL facts to Claude Sonnet. The AI extracts every line item from IS, BS, CF with values, XBRL concept mappings, hierarchy, and formulas. Also performs cross-statement verification (net income ties, cash ties, retained earnings reconciliation).
+5. **AI Extraction (Layer 2)**: In the same call, the AI actively searches for calculation components needed for downstream metrics — operating leases (often hidden in "accrued liabilities"), D&A breakdown (may be split across multiple CF lines), pure AP/AR (may be combined with other items), capex, acquisitions, short-term debt, SBC, gross interest expense, tax rate, inventory breakdown.
+6. **Formula Verification**: Deterministic arithmetic checks every formula the AI reports. If CFO components don't sum to the stated total, an automatic retry asks the AI to find missing items.
+7. **Cross-Statement Checks**: Net income IS = Net income CF, ending cash CF = cash BS, beginning cash CF = prior cash BS, retained earnings change = net income - dividends - repurchases.
+
+### Verification Model
+
+The core insight: financial statements are a closed system. The math proves correctness.
+- IS: Revenue - COGS = Gross Profit, flows down to Net Income. All subtotals verified.
+- BS: Assets = Liabilities + Equity. All component sums verified.
+- CF: CFO + CFI + CFF = Change in Cash. Beginning + Change = Ending. All section sums verified.
+- Cross-statement: Net income, cash, and retained earnings must tie across all three.
+
+If all formulas pass and cross-statement checks pass, the extraction is mathematically proven correct. No golden eval needed for the three financial statements — the math IS the eval. Golden evals are only needed for items without formula verification (segments, KPIs, qualitative data — not yet implemented).
+
+### Files
+
+- `ai_extract/analyze_statement.py` — Main extraction script. Supports `--statement income|balance_sheet|cash_flow|all`. Supports multiple models via `--model` (claude-sonnet-4-6, claude-opus-4-6, gemini-3-flash-preview, gpt-5, etc.). Default is Sonnet.
+- `ai_extract/parse_xbrl.py` — Deterministic XBRL fact parser. Extracts all facts with contexts, periods, units, dimensions.
+- `ai_extract/view_extraction.py` — Renders extraction JSON as readable table with formula checks.
+- `ai_extract/export_for_review.py` — Exports extraction to CSV for human review during onboarding.
+- `ai_extract/map_to_extract.py` — Maps AI extraction output to the 24-field format for comparison against deterministic pipeline.
+- `ai_extract/prompt_layer2_draft.md` — Design document for Layer 2 calculation component verification.
+
+### Cost
+
+- Sonnet: ~$1.70-2.90 per filing (varies with filing size). Reliable, follows instructions precisely.
+- Gemini 3 Flash: ~$0.28 per filing. CF formula format issues, occasional JSON problems.
+- 100 companies × 4 quarters = ~$680-1,160/year with Sonnet.
+
+### Tested Results
+
+- NVDA Q1-Q4 FY26: 18/18 formulas pass, all cross-statement checks pass, 24/24 fields match deterministic extraction exactly (Q1, Q2).
+- FCX Q1 CY24: 18/18 formulas pass, 93/93 XBRL matches, 24/24 fields match deterministic extraction exactly. Mining company with depletion, combined AP/accrued liabilities, capitalized interest, segment capex — all handled correctly.
+
+### Relationship to Core Pipeline
+
+The AI extraction is an alternative path to the same output. It does NOT replace the deterministic pipeline. Both can coexist:
+- Deterministic pipeline: proven, free to run, requires per-company scripts and manual golden eval.
+- AI extraction: costs per filing, no per-company scripts needed, formula-verified automatically.
+- During development, run both on the same company and diff the output to validate.
+- The deterministic pipeline remains the production system until the AI approach is fully validated across all target companies.
