@@ -99,7 +99,9 @@ BS_CONCEPTS = {
     'us-gaap:AdditionalPaidInCapital': 'apic_q',
     'us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax': 'aoci_q',
     'us-gaap:RetainedEarningsAccumulatedDeficit': 'retained_earnings_q',
+    'us-gaap:StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest': 'equity_q',
     'us-gaap:StockholdersEquity': 'equity_q',
+    'us-gaap:MinorityInterest': 'noncontrolling_interests_q',
     'us-gaap:LiabilitiesAndStockholdersEquity': 'total_liabilities_and_equity_q',
 }
 
@@ -318,23 +320,35 @@ def extract_filing(filing_json):
                 results[period_end][f'{field}_fy_start'] = period_start
 
     # === CALCULATION COMPONENTS overlay (current period only) ===
+    # These are the authoritative source for tricky items — they reflect the AI's
+    # search through the entire filing (statements, notes, supplemental disclosures).
     calc = ai.get('calculation_components', {})
     if calc and bs_periods:
         current_period = bs_periods[-1]  # Most recent instant date
         if current_period in results:
             rec = results[current_period]
 
-            # Short-term debt — authoritative source
+            # Short-term debt
             std_comp = calc.get('short_term_debt', {})
             if std_comp and std_comp.get('value') is not None:
                 rec['short_term_debt_q'] = int(std_comp['value']) * 1_000_000
             elif std_comp and std_comp.get('confirmed_zero'):
                 rec['short_term_debt_q'] = 0
 
-            # Operating lease liabilities — authoritative source
+            # Operating lease liabilities
             lease_comp = calc.get('operating_leases', {})
             if lease_comp and lease_comp.get('total') is not None:
                 rec['operating_lease_liabilities_q'] = int(lease_comp['total']) * 1_000_000
+
+            # Capex — critical for companies with segmented CF (e.g., mining)
+            # where find_value only finds the first segment's value
+            capex_comp = calc.get('capex', {})
+            if capex_comp and capex_comp.get('cf_value') is not None:
+                capex_total = int(capex_comp['cf_value']) * 1_000_000
+                # Override the CF YTD entry for capex on the current period
+                ytd_key = 'capex_q_ytd'
+                if ytd_key in rec:
+                    rec[ytd_key] = -abs(capex_total)  # Stored negative in our convention
 
             # Store full calculation_components for downstream use
             rec['_calculation_components'] = calc
