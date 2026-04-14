@@ -150,8 +150,8 @@ The AI extraction produces two distinct outputs that serve different purposes:
 3. **Parse XBRL**: `ai_extract/parse_xbrl.py` extracts all facts from the XBRL instance document into structured data.
 4. **AI Extraction (Layer 1)**: Send cleaned HTML + XBRL facts to the model. Extracts every line item from IS, BS, CF with values, XBRL concept mappings, hierarchy, and formulas. Also performs cross-statement verification (net income ties, cash ties, retained earnings reconciliation).
 5. **AI Extraction (Layer 2)**: In the same call, the model actively searches for calculation components needed for downstream metrics — operating leases (often hidden in "accrued liabilities"), D&A breakdown, pure AP/AR, capex, acquisitions, short-term debt, SBC, gross interest expense, tax rate, inventory breakdown.
-6. **Formula Verification**: Deterministic arithmetic checks every formula the model reports. If CFO components don't sum to the stated total, an automatic retry asks the model to find missing items.
-7. **Mapping**: `map_to_extract.py` takes all per-filing extractions for a company, merges them chronologically into quarterly records. Handles YTD-to-quarterly CF derivation (grouped by fiscal year), BS concept resolution (DebtCurrent, OperatingLeaseLiability, etc.), and calculation_components overlay.
+6. **Formula Verification**: Deterministic arithmetic checks every formula the model reports. If any CF section (CFO, CFI, or CFF) components don't sum to the stated total, an automatic retry asks the model to re-read the filing and XBRL facts to find missing items. This catches non-standard concepts like numbered variants (`PaymentsToAcquireBusinessTwoNetOfCashAcquired`) without needing to know concept names in advance.
+7. **Mapping**: `map_to_extract.py` takes all per-filing extractions for a company, merges them chronologically into quarterly records. Handles YTD-to-quarterly derivation for both IS and CF (grouped by fiscal year, including Q4 derivation from 10-K annual minus Q1+Q2+Q3), BS concept resolution with multiple fallbacks, and calculation_components overlay for capex, acquisitions, operating leases, and short-term debt.
 
 ### Verification Model
 
@@ -171,7 +171,9 @@ The model doesn't need to understand amendments. It extracts what the filing say
 - **10-K/A or 10-Q/A** (explicit amendment filing): The model extracts the corrected statements. The mapper updates the affected periods.
 - **Stock splits**: Newer filings restate prior-period share counts to post-split basis. The model extracts the restated values. The mapper records the change.
 
-In all cases: the model is stateless, the mapper is stateful. The mapper stashes old values in the restatement history before overwriting.
+In all cases: the model is stateless, the mapper is stateful.
+
+**Smart merge rule**: When multiple filings report the same period, the mapper only overwrites a field if the new value is **different** from the existing value. Same or absent values are preserved. This prevents incomplete prior-period data (e.g., a later filing missing the current portion of operating leases) from overwriting complete data from the original filing. Changes are logged in a `restatements` array on the record.
 
 ### File Structure
 
@@ -199,8 +201,8 @@ ai_extract/
 
 ### Tested Results
 
-- NVDA Q1-Q3 FY26: All formulas pass, all cross-statement checks pass, 24/24 fields match deterministic extraction exactly across all three quarters (~70 fields per quarter in expanded output).
-- FCX Q1 CY24: 18/18 formulas pass, 93/93 XBRL matches, 24/24 fields match deterministic extraction exactly.
+- NVDA FY25-FY26 (8 filings, 13 mapped quarters): All current-period quarters match deterministic pipeline exactly on 24-field comparison (~70 fields per quarter in expanded output). Q4 derivation from 10-K annual data verified. Remaining differences are prior-year stock split comparatives (resolves when FY24 extracted from original filings) and $1M YTD rounding.
+- FCX Q1 CY24: 18/18 formulas pass, 93/93 XBRL matches, 24/24 fields match deterministic extraction exactly for current period.
 
 ### Relationship to Core Pipeline
 
