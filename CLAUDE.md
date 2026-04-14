@@ -118,56 +118,94 @@ Single-file HTML app (`dashboard/index.html`) with Chart.js. Company selector, m
 - Don't trust AI output without verified inputs — Layers 1-3 exist to give the frontier model data you trust
 - Measure everything — gold audit for financials, field-by-field scoring for extraction models
 
-## AI Extraction Framework (Experimental)
+## AI Extraction Framework
 
 **Status: Testing. Fully isolated in `ai_extract/`. Must NEVER modify or impact the core deterministic pipeline (`extract.py`, `compute.py`, `eval.py`, `calculate.py`, `companies/`, `golden/`, `output/`).**
 
-An experimental approach to replace the deterministic extraction pipeline with AI-powered extraction. Instead of per-company scripts and XBRL concept mappings, a frontier model reads the full filing (cleaned iXBRL HTML + XBRL facts) and extracts all three financial statements in a single API call.
+AI-powered extraction replaces per-company scripts and XBRL concept mappings. A frontier model (Sonnet today, post-trained open source model later) reads the full filing and extracts all three financial statements in a single API call. The model is stateless — it extracts exactly what the filing says. All merging, restatement tracking, and analytical logic is handled by deterministic code downstream.
+
+### Two-Layer Output Design
+
+The AI extraction produces two distinct outputs that serve different purposes:
+
+**1. Per-Filing Extraction** (`ai_extract/{TICKER}/q1_fy26_10q.json`, etc.)
+- One JSON file per filing. Immutable after creation. The raw model output.
+- Contains every line item from IS, BS, CF with values, XBRL concept mappings, hierarchy, formulas, and cross-statement checks.
+- Also contains calculation components (operating leases, D&A breakdown, pure AP/AR, capex, short-term debt, SBC, interest expense, tax rate, inventory breakdown).
+- Includes formula verification results (the math proof that the extraction is correct).
+- Extracts ALL periods reported in the filing — current quarter AND prior-period comparatives. If the filing restates prior periods (stock splits, dispositions, accounting corrections), the restated values are extracted because that's what the filing says.
+- **This is training data.** When we post-train an open source model, these are the target outputs. The model learns: given this filing HTML + XBRL, produce this JSON.
+
+**2. Mapped Quarterly Records** (`ai_extract/{TICKER}/mapped.json`)
+- One record per quarter, ~70 fields, built by `map_to_extract.py` from all per-filing extractions fed chronologically.
+- Contains ALL extracted data: full IS (revenue through net income, EPS, shares), full BS (every current/noncurrent line item, equity components), full CF (all operating adjustments, working capital changes, CFI, CFF, supplemental items), plus calculation components.
+- The original 24 deterministic pipeline fields are a subset, preserved for backward compatibility and accuracy testing against the deterministic pipeline.
+- **Restatement handling**: When multiple filings report the same period with different values, the later filing's values win. The old values are preserved in a `restatements` array on that record. The main record always reflects the most recently reported basis — correct for analytical use (comparables, growth rates, metrics). The restatement history provides audit trail.
+- **This is analytical data.** Feeds `calculate.py`, the dashboard, and Layer 4 synthesis.
 
 ### How It Works
 
-1. **Download**: `fetch.py` downloads the filing (shared with deterministic pipeline).
-2. **Clean HTML**: Strip CSS/styling from iXBRL HTML (57% size reduction). Keeps all tags, text, and ix:nonFraction elements.
+1. **Download**: `fetch.py` downloads the filing (shared with deterministic pipeline). Downloads 10-Q, 10-K, 10-Q/A, and 10-K/A filings.
+2. **Clean HTML**: Strip CSS/styling from iXBRL HTML (~57% size reduction). Keeps all tags, text, and ix:nonFraction elements.
 3. **Parse XBRL**: `ai_extract/parse_xbrl.py` extracts all facts from the XBRL instance document into structured data.
-4. **AI Extraction (Layer 1)**: Send cleaned HTML + XBRL facts to Claude Sonnet. The AI extracts every line item from IS, BS, CF with values, XBRL concept mappings, hierarchy, and formulas. Also performs cross-statement verification (net income ties, cash ties, retained earnings reconciliation).
-5. **AI Extraction (Layer 2)**: In the same call, the AI actively searches for calculation components needed for downstream metrics — operating leases (often hidden in "accrued liabilities"), D&A breakdown (may be split across multiple CF lines), pure AP/AR (may be combined with other items), capex, acquisitions, short-term debt, SBC, gross interest expense, tax rate, inventory breakdown.
-6. **Formula Verification**: Deterministic arithmetic checks every formula the AI reports. If CFO components don't sum to the stated total, an automatic retry asks the AI to find missing items.
-7. **Cross-Statement Checks**: Net income IS = Net income CF, ending cash CF = cash BS, beginning cash CF = prior cash BS, retained earnings change = net income - dividends - repurchases.
+4. **AI Extraction (Layer 1)**: Send cleaned HTML + XBRL facts to the model. Extracts every line item from IS, BS, CF with values, XBRL concept mappings, hierarchy, and formulas. Also performs cross-statement verification (net income ties, cash ties, retained earnings reconciliation).
+5. **AI Extraction (Layer 2)**: In the same call, the model actively searches for calculation components needed for downstream metrics — operating leases (often hidden in "accrued liabilities"), D&A breakdown, pure AP/AR, capex, acquisitions, short-term debt, SBC, gross interest expense, tax rate, inventory breakdown.
+6. **Formula Verification**: Deterministic arithmetic checks every formula the model reports. If CFO components don't sum to the stated total, an automatic retry asks the model to find missing items.
+7. **Mapping**: `map_to_extract.py` takes all per-filing extractions for a company, merges them chronologically into quarterly records. Handles YTD-to-quarterly CF derivation (grouped by fiscal year), BS concept resolution (DebtCurrent, OperatingLeaseLiability, etc.), and calculation_components overlay.
 
 ### Verification Model
 
-The core insight: financial statements are a closed system. The math proves correctness.
+Financial statements are a closed system. The math proves correctness.
 - IS: Revenue - COGS = Gross Profit, flows down to Net Income. All subtotals verified.
 - BS: Assets = Liabilities + Equity. All component sums verified.
 - CF: CFO + CFI + CFF = Change in Cash. Beginning + Change = Ending. All section sums verified.
 - Cross-statement: Net income, cash, and retained earnings must tie across all three.
 
-If all formulas pass and cross-statement checks pass, the extraction is mathematically proven correct. No golden eval needed for the three financial statements — the math IS the eval. Golden evals are only needed for items without formula verification (segments, KPIs, qualitative data — not yet implemented).
+If all formulas pass and cross-statement checks pass, the extraction is mathematically proven correct. No golden eval needed for the three financial statements — the math IS the eval.
 
-### Files
+### Amendments and Restatements
 
-- `ai_extract/analyze_statement.py` — Main extraction script. Supports `--statement income|balance_sheet|cash_flow|all`. Supports multiple models via `--model` (claude-sonnet-4-6, claude-opus-4-6, gemini-3-flash-preview, gpt-5, etc.). Default is Sonnet.
-- `ai_extract/parse_xbrl.py` — Deterministic XBRL fact parser. Extracts all facts with contexts, periods, units, dimensions.
-- `ai_extract/view_extraction.py` — Renders extraction JSON as readable table with formula checks.
-- `ai_extract/export_for_review.py` — Exports extraction to CSV for human review during onboarding.
-- `ai_extract/map_to_extract.py` — Maps AI extraction output to the 24-field format for comparison against deterministic pipeline.
-- `ai_extract/prompt_layer2_draft.md` — Design document for Layer 2 calculation component verification.
+The model doesn't need to understand amendments. It extracts what the filing says — period.
+
+- **Regular 10-K with restated comparatives** (e.g., Dell restates prior years after a disposition): The model extracts all columns including restated values. The mapper updates those periods with the restated values.
+- **10-K/A or 10-Q/A** (explicit amendment filing): The model extracts the corrected statements. The mapper updates the affected periods.
+- **Stock splits**: Newer filings restate prior-period share counts to post-split basis. The model extracts the restated values. The mapper records the change.
+
+In all cases: the model is stateless, the mapper is stateful. The mapper stashes old values in the restatement history before overwriting.
+
+### File Structure
+
+```
+ai_extract/
+  analyze_statement.py    — Main extraction script (--statement all, --model, --ticker, --accession)
+  parse_xbrl.py           — Deterministic XBRL fact parser
+  map_to_extract.py       — Merges per-filing extractions into mapped quarterly records
+  view_extraction.py      — Renders extraction JSON as readable table
+  export_for_review.py    — Exports extraction to CSV for human review
+  prompt_layer2_draft.md  — Design document for Layer 2 calculation components
+  {TICKER}/
+    q1_fy26_10q.json      — Per-filing extraction (immutable, training data)
+    q2_fy26_10q.json
+    q3_fy26_10q.json
+    q4_fy26_10k.json
+    mapped.json           — Mapped quarterly records (analytical data)
+```
 
 ### Cost
 
-- Sonnet: ~$1.70-2.90 per filing (varies with filing size). Reliable, follows instructions precisely.
-- Gemini 3 Flash: ~$0.28 per filing. CF formula format issues, occasional JSON problems.
-- 100 companies × 4 quarters = ~$680-1,160/year with Sonnet.
+- Sonnet: ~$1.70-2.90 per filing (varies with filing size).
+- 100 companies × 4 quarters/year = ~$680-1,160/year with Sonnet.
+- Post-trained open source model: target is near-zero marginal cost at scale.
 
 ### Tested Results
 
-- NVDA Q1-Q4 FY26: 18/18 formulas pass, all cross-statement checks pass, 24/24 fields match deterministic extraction exactly (Q1, Q2).
-- FCX Q1 CY24: 18/18 formulas pass, 93/93 XBRL matches, 24/24 fields match deterministic extraction exactly. Mining company with depletion, combined AP/accrued liabilities, capitalized interest, segment capex — all handled correctly.
+- NVDA Q1-Q3 FY26: All formulas pass, all cross-statement checks pass, 24/24 fields match deterministic extraction exactly across all three quarters (~70 fields per quarter in expanded output).
+- FCX Q1 CY24: 18/18 formulas pass, 93/93 XBRL matches, 24/24 fields match deterministic extraction exactly.
 
 ### Relationship to Core Pipeline
 
-The AI extraction is an alternative path to the same output. It does NOT replace the deterministic pipeline. Both can coexist:
-- Deterministic pipeline: proven, free to run, requires per-company scripts and manual golden eval.
-- AI extraction: costs per filing, no per-company scripts needed, formula-verified automatically.
-- During development, run both on the same company and diff the output to validate.
-- The deterministic pipeline remains the production system until the AI approach is fully validated across all target companies.
+The AI extraction is an alternative path to the same output. Both coexist:
+- **Deterministic pipeline**: Proven, free to run, requires per-company scripts and manual golden eval. 24 fields per quarter.
+- **AI extraction**: Costs per filing, no per-company scripts needed, formula-verified automatically. ~70 fields per quarter. Training data for post-trained model.
+- During development, the 24-field overlap between both pipelines is compared to validate accuracy.
+- Long-term: the AI extraction replaces the deterministic pipeline once validated across all target companies. The post-trained open source model replaces Sonnet to eliminate per-filing costs.
