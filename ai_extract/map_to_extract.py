@@ -46,6 +46,7 @@ IS_CONCEPTS = {
     'us-gaap:OperatingIncomeLoss': 'operating_income_q',
     'us-gaap:InvestmentIncomeInterest': 'interest_income_q',
     'us-gaap:InterestExpenseNonoperating': 'interest_expense_q',
+    'us-gaap:InterestExpense': 'interest_expense_q',
     'us-gaap:InterestIncomeExpenseNet': 'interest_expense_net_q',
     'us-gaap:OtherNonoperatingIncomeExpense': 'other_nonop_income_q',
     'us-gaap:NonoperatingIncomeExpense': 'total_nonop_income_q',
