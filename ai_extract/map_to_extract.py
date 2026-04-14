@@ -74,6 +74,8 @@ BS_CONCEPTS = {
     # Current assets
     'us-gaap:CashAndCashEquivalentsAtCarryingValue': 'cash_q',
     'us-gaap:MarketableSecuritiesCurrent': 'short_term_investments_q',
+    'us-gaap:ShortTermInvestments': 'short_term_investments_q',
+    'nvda:MarketableSecuritiesAndEquitySecuritiesFVNI': 'short_term_investments_q',
     'us-gaap:AccountsReceivableNetCurrent': 'accounts_receivable_q',
     'us-gaap:InventoryNet': 'inventory_q',
     'us-gaap:PrepaidExpenseAndOtherAssetsCurrent': 'prepaid_q',
@@ -274,13 +276,14 @@ def extract_filing(filing_json):
                 results[period_end][field] = to_raw(val, field)
 
     # === INCOME STATEMENT — YTD/annual periods (for Q4 derivation) ===
-    # Only cumulative flow fields (revenue, expenses, income) — NOT shares or EPS
     for yp in ytd_is_periods:
         period_start = yp.split('_')[0]
         period_end = yp.split('_')[1]
+        days = period_days(yp)
         if period_end not in results:
             results[period_end] = {'period_end': period_end}
 
+        # Cumulative flow fields (revenue, expenses, income) — store as YTD for derivation
         for concept, field in IS_CONCEPTS.items():
             ytd_key = f'{field}_ytd'
             if ytd_key in results[period_end]:
@@ -291,8 +294,22 @@ def extract_filing(filing_json):
                 if field in NEGATE_FIELDS:
                     raw = -abs(raw)
                 results[period_end][ytd_key] = raw
-                results[period_end][f'{field}_ytd_days'] = period_days(yp)
+                results[period_end][f'{field}_ytd_days'] = days
                 results[period_end][f'{field}_fy_start'] = period_start
+
+        # Shares and EPS — for annual periods (10-K), store directly as Q4 value.
+        # These are weighted averages that can't be derived by subtraction.
+        if days >= 350:
+            for concept, field in IS_SHARES_CONCEPTS.items():
+                if field not in results[period_end]:
+                    val = find_value(is_items, concept, yp)
+                    if val is not None:
+                        results[period_end][field] = to_raw(val, field)
+            for concept, field in IS_PER_SHARE_CONCEPTS.items():
+                if field not in results[period_end]:
+                    val = find_value(is_items, concept, yp)
+                    if val is not None:
+                        results[period_end][field] = to_raw(val, field)
 
     # === BALANCE SHEET (instant periods) ===
     for ip in bs_periods:
