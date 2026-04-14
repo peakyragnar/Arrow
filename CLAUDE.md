@@ -124,23 +124,29 @@ Single-file HTML app (`dashboard/index.html`) with Chart.js. Company selector, m
 
 AI-powered extraction replaces per-company scripts and XBRL concept mappings. A frontier model (Sonnet today, post-trained open source model later) reads the full filing and extracts all three financial statements in a single API call. The model is stateless — it extracts exactly what the filing says. All merging, restatement tracking, and analytical logic is handled by deterministic code downstream.
 
-### Two-Layer Output Design
+### Three-Stage Pipeline
 
-The AI extraction produces two distinct outputs that serve different purposes:
+**Stage 1 — Per-Filing Extraction** (`analyze_statement.py` → `ai_extract/{TICKER}/q1_fy26_10q.json`)
+- One JSON file per filing. Immutable after creation.
+- The model reads full filing HTML + XBRL facts and extracts every line item from IS, BS, CF with values, XBRL concept mappings, hierarchy, formulas, and cross-statement checks.
+- Also extracts calculation components (operating leases, D&A breakdown, pure AP/AR, capex, acquisitions, short-term debt, SBC, gross interest expense, tax rate, inventory breakdown).
+- Formula verification proves correctness. If any CF section (CFO/CFI/CFF) doesn't balance, automatic retry finds missing items.
+- Extracts ALL periods reported — current and comparatives. Cost: ~$1.70-2.90/filing.
+- **This is training data** for post-training an open source model.
 
-**1. Per-Filing Extraction** (`ai_extract/{TICKER}/q1_fy26_10q.json`, etc.)
-- One JSON file per filing. Immutable after creation. The raw model output.
-- Contains every line item from IS, BS, CF with values, XBRL concept mappings, hierarchy, formulas, and cross-statement checks.
-- Also contains calculation components (operating leases, D&A breakdown, pure AP/AR, capex, short-term debt, SBC, interest expense, tax rate, inventory breakdown).
-- Includes formula verification results (the math proof that the extraction is correct).
-- Extracts ALL periods reported in the filing — current quarter AND prior-period comparatives. If the filing restates prior periods (stock splits, dispositions, accounting corrections), the restated values are extracted because that's what the filing says.
-- **This is training data.** When we post-train an open source model, these are the target outputs. The model learns: given this filing HTML + XBRL, produce this JSON.
+**Stage 2 — Formula Field Mapping** (`ai_formula.py` → `ai_extract/{TICKER}/formula_mapped.json`)
+- A second AI pass that reads the extraction JSON (not the filing) and maps each line item to standardized formula field names (`revenue_q`, `cogs_q`, `equity_q`, etc.).
+- The model does the semantic understanding — no XBRL concept lists, no label pattern matching, no lookup tables. It knows "Cost of revenue" is `cogs_q` regardless of the XBRL concept or company terminology.
+- Handles sign conventions, unit conversions (millions to raw), and flags whether CF values are YTD.
+- Uses `calculation_components` for items that need special handling (operating lease totals, segmented capex, multiple acquisition lines, hidden short-term debt).
+- One result per filing. Cost: ~$0.10/filing.
 
-**2. Mapped Quarterly Records** (`ai_extract/{TICKER}/mapped.json`)
-- One record per quarter, ~70 fields, built by `map_to_extract.py` from all per-filing extractions fed chronologically.
-- Contains ALL extracted data: full IS (revenue through net income, EPS, shares), full BS (every current/noncurrent line item, equity components), full CF (all operating adjustments, working capital changes, CFI, CFF, supplemental items), plus calculation components.
-- The original 24 deterministic pipeline fields are a subset, preserved for backward compatibility and accuracy testing against the deterministic pipeline.
-- **Restatement handling**: When multiple filings report the same period with different values, the later filing's values win. The old values are preserved in a `restatements` array on that record. The main record always reflects the most recently reported basis — correct for analytical use (comparables, growth rates, metrics). The restatement history provides audit trail.
+**Stage 3 — Quarterly Derivation** (`ai_formula.py --from-mapped` → `ai_extract/{TICKER}/quarterly.json`)
+- Pure arithmetic. No AI, no pattern matching. Takes the per-filing formula mappings and derives quarterly values:
+  - Q1 10-Q: values are already quarterly, use as-is.
+  - Q2/Q3 10-Q: IS is quarterly (use as-is), CF is YTD (subtract prior quarter's YTD).
+  - 10-K: IS and CF are annual (subtract Q1+Q2+Q3 to get Q4). Shares/EPS use annual value directly (can't be derived by subtraction — they're weighted averages).
+- Smart merge: when multiple filings report the same period, only overwrites if the value is **different** (restatement). Same or absent values preserved. Changes logged in `restatements` array.
 - **This is analytical data.** Feeds `calculate.py`, the dashboard, and Layer 4 synthesis.
 
 ### How It Works
@@ -148,10 +154,9 @@ The AI extraction produces two distinct outputs that serve different purposes:
 1. **Download**: `fetch.py` downloads the filing (shared with deterministic pipeline). Downloads 10-Q, 10-K, 10-Q/A, and 10-K/A filings.
 2. **Clean HTML**: Strip CSS/styling from iXBRL HTML (~57% size reduction). Keeps all tags, text, and ix:nonFraction elements.
 3. **Parse XBRL**: `ai_extract/parse_xbrl.py` extracts all facts from the XBRL instance document into structured data.
-4. **AI Extraction (Layer 1)**: Send cleaned HTML + XBRL facts to the model. Extracts every line item from IS, BS, CF with values, XBRL concept mappings, hierarchy, and formulas. Also performs cross-statement verification (net income ties, cash ties, retained earnings reconciliation).
-5. **AI Extraction (Layer 2)**: In the same call, the model actively searches for calculation components needed for downstream metrics — operating leases (often hidden in "accrued liabilities"), D&A breakdown, pure AP/AR, capex, acquisitions, short-term debt, SBC, gross interest expense, tax rate, inventory breakdown.
-6. **Formula Verification**: Deterministic arithmetic checks every formula the model reports. If any CF section (CFO, CFI, or CFF) components don't sum to the stated total, an automatic retry asks the model to re-read the filing and XBRL facts to find missing items. This catches non-standard concepts like numbered variants (`PaymentsToAcquireBusinessTwoNetOfCashAcquired`) without needing to know concept names in advance.
-7. **Mapping**: `map_to_extract.py` takes all per-filing extractions for a company, merges them chronologically into quarterly records. Handles YTD-to-quarterly derivation for both IS and CF (grouped by fiscal year, including Q4 derivation from 10-K annual minus Q1+Q2+Q3), BS concept resolution with multiple fallbacks, and calculation_components overlay for capex, acquisitions, operating leases, and short-term debt.
+4. **Extract** (`analyze_statement.py`): Send cleaned HTML + XBRL facts to the model. Extracts every line item from IS, BS, CF with values, XBRL concept mappings, hierarchy, formulas, calculation components, and cross-statement checks. If any CF section doesn't balance, automatic retry finds missing items.
+5. **Map** (`ai_formula.py`): Second AI pass reads the extraction JSON and assigns standardized formula field names. No lookup tables — the model does the semantic mapping.
+6. **Derive** (`ai_formula.py --from-mapped`): Pure arithmetic derives quarterly values from YTD/annual data. Smart merge handles restatements across filings.
 
 ### Verification Model
 
@@ -179,9 +184,11 @@ In all cases: the model is stateless, the mapper is stateful.
 
 ```
 ai_extract/
-  analyze_statement.py    — Main extraction script (--statement all, --model, --ticker, --accession)
+  analyze_statement.py    — Stage 1: extraction (--statement all, --model, --ticker, --accession)
+  ai_formula.py           — Stage 2+3: formula mapping + quarterly derivation
   parse_xbrl.py           — Deterministic XBRL fact parser
-  map_to_extract.py       — Merges per-filing extractions into mapped quarterly records
+  map_to_extract.py       — Legacy concept-based mapper (kept for deterministic pipeline comparison)
+  map_by_label.py         — Deprecated label-based mapper (superseded by ai_formula.py)
   view_extraction.py      — Renders extraction JSON as readable table
   export_for_review.py    — Exports extraction to CSV for human review
   prompt_layer2_draft.md  — Design document for Layer 2 calculation components
@@ -190,18 +197,22 @@ ai_extract/
     q2_fy26_10q.json
     q3_fy26_10q.json
     q4_fy26_10k.json
-    mapped.json           — Mapped quarterly records (analytical data)
+    formula_mapped.json   — Per-filing formula field mappings (AI output)
+    quarterly.json        — Quarterly records (derived, analytical data)
+    mapped.json           — Legacy concept-based mapped records
 ```
 
 ### Cost
 
-- Sonnet: ~$1.70-2.90 per filing (varies with filing size).
-- 100 companies × 4 quarters/year = ~$680-1,160/year with Sonnet.
+- Stage 1 (extraction): ~$1.70-2.90 per filing with Sonnet (varies with filing size).
+- Stage 2 (formula mapping): ~$0.10 per filing with Sonnet.
+- Total: ~$2-3 per filing end-to-end.
+- 100 companies × 4 quarters/year = ~$800-1,200/year with Sonnet.
 - Post-trained open source model: target is near-zero marginal cost at scale.
 
 ### Tested Results
 
-- NVDA FY25-FY26 (8 filings, 13 mapped quarters): All current-period quarters match deterministic pipeline exactly on 24-field comparison (~70 fields per quarter in expanded output). Q4 derivation from 10-K annual data verified. Remaining differences are prior-year stock split comparatives (resolves when FY24 extracted from original filings) and $1M YTD rounding.
+- NVDA FY24-FY26 (12 filings, 12 quarters): **264/264 fields match golden eval exactly (0 mismatch, 0 missing)**. All Q1-Q4 derivations correct. All formula verifications pass. No lookup tables or per-company code needed.
 - FCX Q1 CY24: 18/18 formulas pass, 93/93 XBRL matches, 24/24 fields match deterministic extraction exactly for current period.
 
 ### Relationship to Core Pipeline
