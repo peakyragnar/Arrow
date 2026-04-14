@@ -609,7 +609,7 @@ def main():
             # Find the CFO total
             cfo_vals = {}
             for item in cf_items:
-                concept = item.get('xbrl_concept', '')
+                concept = item.get('xbrl_concept') or ''
                 if 'NetCashProvidedByUsedInOperatingActivities' in concept:
                     cfo_vals = item.get('values') or {}
                     break
