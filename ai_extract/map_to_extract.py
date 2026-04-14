@@ -321,10 +321,14 @@ def extract_filing(filing_json):
         else:
             current = find_not_on_stmt_value(bs_not_on, 'us-gaap:OperatingLeaseLiabilityCurrent', ip)
             noncurrent = find_value(bs_items, 'us-gaap:OperatingLeaseLiabilityNoncurrent', ip)
-            c_val = int(current) * 1_000_000 if current else 0
-            n_val = int(noncurrent) * 1_000_000 if noncurrent else 0
-            if c_val or n_val:
+            if current is not None and noncurrent is not None:
+                # Only set total if we have BOTH components
+                c_val = int(current) * 1_000_000
+                n_val = int(noncurrent) * 1_000_000
                 results[ip]['operating_lease_liabilities_q'] = c_val + n_val
+            elif current is not None or noncurrent is not None:
+                # Only one component found — incomplete, don't set a partial total
+                pass
 
     # === CASH FLOW (YTD duration periods → derive quarterly later) ===
     for cp in cf_periods:
@@ -466,12 +470,32 @@ def main():
         with open(filepath) as f:
             filing = json.load(f)
         periods = extract_filing(filing)
-        # Merge — later filings overwrite earlier for same period (restatements)
+        # Smart merge: only overwrite if the new value is different (restatement).
+        # If the new value is absent or the same, keep the original.
         for pe, data in periods.items():
-            if pe in all_periods:
-                all_periods[pe].update(data)
-            else:
+            if pe not in all_periods:
                 all_periods[pe] = data
+            else:
+                existing = all_periods[pe]
+                for key, new_val in data.items():
+                    if new_val is None:
+                        continue
+                    old_val = existing.get(key)
+                    if old_val is None:
+                        # New field not in original — add it
+                        existing[key] = new_val
+                    elif new_val != old_val:
+                        # Value changed — restatement, overwrite and log
+                        if 'restatements' not in existing:
+                            existing['restatements'] = []
+                        existing['restatements'].append({
+                            'field': key,
+                            'old_value': old_val,
+                            'new_value': new_val,
+                            'source_filing': filepath,
+                        })
+                        existing[key] = new_val
+                    # else: same value, do nothing
 
     # Derive quarterly values from YTD/annual (both IS and CF)
     all_periods = derive_quarterly(all_periods, IS_FIELD_NAMES)
