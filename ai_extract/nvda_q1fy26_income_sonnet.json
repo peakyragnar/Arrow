@@ -1,0 +1,503 @@
+{
+  "ai_extraction": {
+    "line_items": [
+      {
+        "label": "Revenue",
+        "indent_level": 0,
+        "xbrl_concept": "us-gaap:Revenues",
+        "values": {
+          "2025-01-27_2025-04-27": 44062,
+          "2024-01-29_2024-04-28": 26044
+        },
+        "unit": "USD_millions",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Revenue'. The ix:nonFraction tag id='f-30' has name='us-gaap:Revenues' with contextRef='c-1' and scale=6, value 44062. Tag id='f-31' has contextRef='c-3' value 26044. XBRL fact list confirms us-gaap:Revenues = $44,062M and $26,044M for these periods."
+      },
+      {
+        "label": "Cost of Revenue",
+        "indent_level": 0,
+        "xbrl_concept": "us-gaap:CostOfRevenue",
+        "values": {
+          "2025-01-27_2025-04-27": 17394,
+          "2024-01-29_2024-04-28": 5638
+        },
+        "unit": "USD_millions",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Cost of revenue'. The ix:nonFraction tag id='f-32' has name='us-gaap:CostOfRevenue' contextRef='c-1' scale=6 value 17394. Tag id='f-33' contextRef='c-3' value 5638. XBRL fact list confirms us-gaap:CostOfRevenue = $17,394M and $5,638M."
+      },
+      {
+        "label": "Gross Profit",
+        "indent_level": 0,
+        "xbrl_concept": "us-gaap:GrossProfit",
+        "values": {
+          "2025-01-27_2025-04-27": 26668,
+          "2024-01-29_2024-04-28": 20406
+        },
+        "unit": "USD_millions",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Gross profit'. The ix:nonFraction tag id='f-34' has name='us-gaap:GrossProfit' contextRef='c-1' scale=6 value 26668. Tag id='f-35' contextRef='c-3' value 20406. XBRL fact list confirms us-gaap:GrossProfit = $26,668M and $20,406M."
+      },
+      {
+        "label": "Research and Development",
+        "indent_level": 1,
+        "xbrl_concept": "us-gaap:ResearchAndDevelopmentExpense",
+        "values": {
+          "2025-01-27_2025-04-27": 3989,
+          "2024-01-29_2024-04-28": 2720
+        },
+        "unit": "USD_millions",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Research and development'. The ix:nonFraction tag id='f-36' has name='us-gaap:ResearchAndDevelopmentExpense' contextRef='c-1' scale=6 value 3989. Tag id='f-37' contextRef='c-3' value 2720. XBRL fact list confirms us-gaap:ResearchAndDevelopmentExpense = $3,989M and $2,720M."
+      },
+      {
+        "label": "Sales, General and Administrative",
+        "indent_level": 1,
+        "xbrl_concept": "us-gaap:SellingGeneralAndAdministrativeExpense",
+        "values": {
+          "2025-01-27_2025-04-27": 1041,
+          "2024-01-29_2024-04-28": 777
+        },
+        "unit": "USD_millions",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Sales, general and administrative'. The ix:nonFraction tag id='f-38' has name='us-gaap:SellingGeneralAndAdministrativeExpense' contextRef='c-1' scale=6 value 1041. Tag id='f-39' contextRef='c-3' value 777. XBRL fact list confirms us-gaap:SellingGeneralAndAdministrativeExpense = $1,041M and $777M."
+      },
+      {
+        "label": "Total Operating Expenses",
+        "indent_level": 0,
+        "xbrl_concept": "us-gaap:OperatingExpenses",
+        "values": {
+          "2025-01-27_2025-04-27": 5030,
+          "2024-01-29_2024-04-28": 3497
+        },
+        "unit": "USD_millions",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Total operating expenses'. The ix:nonFraction tag id='f-40' has name='us-gaap:OperatingExpenses' contextRef='c-1' scale=6 value 5030. Tag id='f-41' contextRef='c-3' value 3497. XBRL fact list confirms us-gaap:OperatingExpenses = $5,030M and $3,497M."
+      },
+      {
+        "label": "Operating Income",
+        "indent_level": 0,
+        "xbrl_concept": "us-gaap:OperatingIncomeLoss",
+        "values": {
+          "2025-01-27_2025-04-27": 21638,
+          "2024-01-29_2024-04-28": 16909
+        },
+        "unit": "USD_millions",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Operating income'. The ix:nonFraction tag id='f-42' has name='us-gaap:OperatingIncomeLoss' contextRef='c-1' scale=6 value 21638. Tag id='f-43' contextRef='c-3' value 16909. XBRL fact list confirms us-gaap:OperatingIncomeLoss = $21,638M and $16,909M."
+      },
+      {
+        "label": "Interest Income",
+        "indent_level": 1,
+        "xbrl_concept": "us-gaap:InvestmentIncomeInterest",
+        "values": {
+          "2025-01-27_2025-04-27": 515,
+          "2024-01-29_2024-04-28": 359
+        },
+        "unit": "USD_millions",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Interest income'. The ix:nonFraction tag id='f-44' has name='us-gaap:InvestmentIncomeInterest' contextRef='c-1' scale=6 value 515. Tag id='f-45' contextRef='c-3' value 359. XBRL fact list confirms us-gaap:InvestmentIncomeInterest = $515M and $359M."
+      },
+      {
+        "label": "Interest Expense",
+        "indent_level": 1,
+        "xbrl_concept": "us-gaap:InterestExpenseNonoperating",
+        "values": {
+          "2025-01-27_2025-04-27": 63,
+          "2024-01-29_2024-04-28": 64
+        },
+        "unit": "USD_millions",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Interest expense'. The ix:nonFraction tag id='f-46' has name='us-gaap:InterestExpenseNonoperating' contextRef='c-1' scale=6 value 63 (displayed with parentheses in HTML indicating it reduces income, but XBRL value is positive 63). Tag id='f-47' contextRef='c-3' value 64. XBRL fact list confirms us-gaap:InterestExpenseNonoperating = $63M and $64M."
+      },
+      {
+        "label": "Other Income (Expense), Net",
+        "indent_level": 1,
+        "xbrl_concept": "us-gaap:OtherNonoperatingIncomeExpense",
+        "values": {
+          "2025-01-27_2025-04-27": -180,
+          "2024-01-29_2024-04-28": 75
+        },
+        "unit": "USD_millions",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Other income (expense), net'. The ix:nonFraction tag id='f-48' has name='us-gaap:OtherNonoperatingIncomeExpense' contextRef='c-1' scale=6 sign='-' value 180, resulting in XBRL value of -180. Tag id='f-49' contextRef='c-3' value 75. XBRL fact list confirms us-gaap:OtherNonoperatingIncomeExpense = -$180M and $75M."
+      },
+      {
+        "label": "Total Other Income (Expense), Net",
+        "indent_level": 0,
+        "xbrl_concept": "us-gaap:NonoperatingIncomeExpense",
+        "values": {
+          "2025-01-27_2025-04-27": 272,
+          "2024-01-29_2024-04-28": 370
+        },
+        "unit": "USD_millions",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Total other income (expense), net'. The ix:nonFraction tag id='f-50' has name='us-gaap:NonoperatingIncomeExpense' contextRef='c-1' scale=6 value 272. Tag id='f-51' contextRef='c-3' value 370. XBRL fact list confirms us-gaap:NonoperatingIncomeExpense = $272M and $370M."
+      },
+      {
+        "label": "Income Before Income Tax",
+        "indent_level": 0,
+        "xbrl_concept": "us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
+        "values": {
+          "2025-01-27_2025-04-27": 21910,
+          "2024-01-29_2024-04-28": 17279
+        },
+        "unit": "USD_millions",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Income before income tax'. The ix:nonFraction tag id='f-52' has name='us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest' contextRef='c-1' scale=6 value 21910. Tag id='f-53' contextRef='c-3' value 17279. XBRL fact list confirms = $21,910M and $17,279M."
+      },
+      {
+        "label": "Income Tax Expense",
+        "indent_level": 0,
+        "xbrl_concept": "us-gaap:IncomeTaxExpenseBenefit",
+        "values": {
+          "2025-01-27_2025-04-27": 3135,
+          "2024-01-29_2024-04-28": 2398
+        },
+        "unit": "USD_millions",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Income tax expense'. The ix:nonFraction tag id='f-54' has name='us-gaap:IncomeTaxExpenseBenefit' contextRef='c-1' scale=6 value 3135. Tag id='f-55' contextRef='c-3' value 2398. XBRL fact list confirms us-gaap:IncomeTaxExpenseBenefit = $3,135M and $2,398M."
+      },
+      {
+        "label": "Net Income",
+        "indent_level": 0,
+        "xbrl_concept": "us-gaap:NetIncomeLoss",
+        "values": {
+          "2025-01-27_2025-04-27": 18775,
+          "2024-01-29_2024-04-28": 14881
+        },
+        "unit": "USD_millions",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Net income'. The ix:nonFraction tag id='f-56' has name='us-gaap:NetIncomeLoss' contextRef='c-1' scale=6 value 18775. Tag id='f-57' contextRef='c-3' value 14881. XBRL fact list confirms us-gaap:NetIncomeLoss = $18,775M and $14,881M."
+      },
+      {
+        "label": "Basic Earnings Per Share",
+        "indent_level": 1,
+        "xbrl_concept": "us-gaap:EarningsPerShareBasic",
+        "values": {
+          "2025-01-27_2025-04-27": 0.77,
+          "2024-01-29_2024-04-28": 0.6
+        },
+        "unit": "USD_per_share",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Basic' under 'Net income per share'. The ix:nonFraction tag id='f-58' has name='us-gaap:EarningsPerShareBasic' contextRef='c-1' unitRef='usdPerShare' decimals=2 value 0.77. Tag id='f-59' contextRef='c-3' value 0.60. XBRL fact list confirms us-gaap:EarningsPerShareBasic = $0.77 and $0.60."
+      },
+      {
+        "label": "Diluted Earnings Per Share",
+        "indent_level": 1,
+        "xbrl_concept": "us-gaap:EarningsPerShareDiluted",
+        "values": {
+          "2025-01-27_2025-04-27": 0.76,
+          "2024-01-29_2024-04-28": 0.6
+        },
+        "unit": "USD_per_share",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Diluted' under 'Net income per share'. The ix:nonFraction tag id='f-60' has name='us-gaap:EarningsPerShareDiluted' contextRef='c-1' unitRef='usdPerShare' decimals=2 value 0.76. Tag id='f-61' contextRef='c-3' value 0.60. XBRL fact list confirms us-gaap:EarningsPerShareDiluted = $0.76 and $0.60."
+      },
+      {
+        "label": "Basic Weighted Average Shares",
+        "indent_level": 1,
+        "xbrl_concept": "us-gaap:WeightedAverageNumberOfSharesOutstandingBasic",
+        "values": {
+          "2025-01-27_2025-04-27": 24441,
+          "2024-01-29_2024-04-28": 24620
+        },
+        "unit": "shares_millions",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Basic' under 'Weighted average shares used in per share computation'. The ix:nonFraction tag id='f-62' has name='us-gaap:WeightedAverageNumberOfSharesOutstandingBasic' contextRef='c-1' unitRef='shares' scale=6 value 24441. Tag id='f-63' contextRef='c-3' value 24620. XBRL fact list confirms = 24,441M and 24,620M shares."
+      },
+      {
+        "label": "Diluted Weighted Average Shares",
+        "indent_level": 1,
+        "xbrl_concept": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
+        "values": {
+          "2025-01-27_2025-04-27": 24611,
+          "2024-01-29_2024-04-28": 24890
+        },
+        "unit": "shares_millions",
+        "xbrl_match": true,
+        "mapping_reason": "HTML table row text is 'Diluted' under 'Weighted average shares used in per share computation'. The ix:nonFraction tag id='f-64' has name='us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding' contextRef='c-1' unitRef='shares' scale=6 value 24611. Tag id='f-65' contextRef='c-3' value 24890. XBRL fact list confirms = 24,611M and 24,890M shares."
+      }
+    ],
+    "formulas": [
+      {
+        "formula": "Revenue - Cost of Revenue = Gross Profit",
+        "components": [
+          "Revenue",
+          "Cost of Revenue",
+          "Gross Profit"
+        ],
+        "operation": "Revenue - Cost of Revenue",
+        "result_label": "Gross Profit"
+      },
+      {
+        "formula": "Research and Development + Sales, General and Administrative = Total Operating Expenses",
+        "components": [
+          "Research and Development",
+          "Sales, General and Administrative",
+          "Total Operating Expenses"
+        ],
+        "operation": "Research and Development + Sales, General and Administrative",
+        "result_label": "Total Operating Expenses"
+      },
+      {
+        "formula": "Gross Profit - Total Operating Expenses = Operating Income",
+        "components": [
+          "Gross Profit",
+          "Total Operating Expenses",
+          "Operating Income"
+        ],
+        "operation": "Gross Profit - Total Operating Expenses",
+        "result_label": "Operating Income"
+      },
+      {
+        "formula": "Interest Income - Interest Expense + Other Income (Expense), Net = Total Other Income (Expense), Net",
+        "components": [
+          "Interest Income",
+          "Interest Expense",
+          "Other Income (Expense), Net",
+          "Total Other Income (Expense), Net"
+        ],
+        "operation": "Interest Income - Interest Expense + Other Income (Expense), Net",
+        "result_label": "Total Other Income (Expense), Net"
+      },
+      {
+        "formula": "Operating Income + Total Other Income (Expense), Net = Income Before Income Tax",
+        "components": [
+          "Operating Income",
+          "Total Other Income (Expense), Net",
+          "Income Before Income Tax"
+        ],
+        "operation": "Operating Income + Total Other Income (Expense), Net",
+        "result_label": "Income Before Income Tax"
+      },
+      {
+        "formula": "Income Before Income Tax - Income Tax Expense = Net Income",
+        "components": [
+          "Income Before Income Tax",
+          "Income Tax Expense",
+          "Net Income"
+        ],
+        "operation": "Income Before Income Tax - Income Tax Expense",
+        "result_label": "Net Income"
+      }
+    ],
+    "xbrl_not_on_statement": [
+      {
+        "concept": "us-gaap:DepreciationDepletionAndAmortization",
+        "value": 611,
+        "period": "2025-01-27_2025-04-27",
+        "reason": "D&A of $611M is tagged in XBRL but does not appear as a line item on the income statement. It appears as an adjustment in the cash flow statement reconciliation of net income to operating cash flows."
+      },
+      {
+        "concept": "us-gaap:DepreciationDepletionAndAmortization",
+        "value": 410,
+        "period": "2024-01-29_2024-04-28",
+        "reason": "D&A of $410M is tagged in XBRL but does not appear as a line item on the income statement. It appears as an adjustment in the cash flow statement reconciliation of net income to operating cash flows."
+      },
+      {
+        "concept": "us-gaap:ShareBasedCompensation",
+        "value": 1474,
+        "period": "2025-01-27_2025-04-27",
+        "reason": "Stock-based compensation expense of $1,474M is tagged in XBRL (us-gaap:ShareBasedCompensation) for cash flow purposes and also disclosed in the notes (Note 2), but does not appear as a separate line item on the face of the income statement. It is embedded within Cost of Revenue and Operating Expenses line items."
+      },
+      {
+        "concept": "us-gaap:ShareBasedCompensation",
+        "value": 1011,
+        "period": "2024-01-29_2024-04-28",
+        "reason": "Stock-based compensation expense of $1,011M is tagged in XBRL for cash flow purposes and disclosed in notes, but not a separate line item on the income statement."
+      },
+      {
+        "concept": "us-gaap:GainLossOnInvestments",
+        "value": -175,
+        "period": "2025-01-27_2025-04-27",
+        "reason": "Gains (losses) on investments of -$175M is tagged in XBRL as a cash flow adjustment line item. It is a component of 'Other income (expense), net' on the income statement but not separately disclosed as a line item on the face of the income statement."
+      },
+      {
+        "concept": "us-gaap:GainLossOnInvestments",
+        "value": 69,
+        "period": "2024-01-29_2024-04-28",
+        "reason": "Gains (losses) on investments of $69M is tagged in XBRL as a cash flow adjustment line item. It is a component of 'Other income (expense), net' on the income statement but not separately disclosed on the face of the income statement."
+      },
+      {
+        "concept": "us-gaap:DeferredIncomeTaxExpenseBenefit",
+        "value": -2177,
+        "period": "2025-01-27_2025-04-27",
+        "reason": "Deferred income taxes of -$2,177M is tagged in XBRL but appears only as a non-cash adjustment in the cash flow statement, not as a separate line item on the income statement."
+      },
+      {
+        "concept": "us-gaap:DeferredIncomeTaxExpenseBenefit",
+        "value": -1577,
+        "period": "2024-01-29_2024-04-28",
+        "reason": "Deferred income taxes of -$1,577M is tagged in XBRL but appears only as a non-cash adjustment in the cash flow statement, not as a separate line item on the income statement."
+      },
+      {
+        "concept": "us-gaap:AllocatedShareBasedCompensationExpense",
+        "value": 1474,
+        "period": "2025-01-27_2025-04-27",
+        "reason": "Total allocated SBC expense of $1,474M is disclosed in Note 2 (stock-based compensation disclosure table) and segment reconciliation table but is not a separate line item on the face of the income statement."
+      },
+      {
+        "concept": "us-gaap:AllocatedShareBasedCompensationExpense",
+        "value": 1011,
+        "period": "2024-01-29_2024-04-28",
+        "reason": "Total allocated SBC expense of $1,011M is disclosed in Note 2 and segment reconciliation table but is not a separate line item on the face of the income statement."
+      },
+      {
+        "concept": "us-gaap:AmortizationOfIntangibleAssets",
+        "value": 159,
+        "period": "2025-01-27_2025-04-27",
+        "reason": "Amortization of intangible assets of $159M is disclosed in Note 7 but does not appear as a separate line item on the income statement. It is included within operating expenses."
+      },
+      {
+        "concept": "us-gaap:AmortizationOfIntangibleAssets",
+        "value": 143,
+        "period": "2024-01-29_2024-04-28",
+        "reason": "Amortization of intangible assets of $143M is disclosed in Note 7 but does not appear as a separate line item on the income statement. It is included within operating expenses."
+      },
+      {
+        "concept": "us-gaap:InventoryWriteDown",
+        "value": 2300,
+        "period": "2025-01-27_2025-04-27",
+        "reason": "Inventory write-down/provision of $2,300M (including $1.9B for H20 products) is disclosed in Note 8 balance sheet components footnote. It is included within Cost of Revenue but not a separate line item on the income statement face."
+      },
+      {
+        "concept": "us-gaap:InventoryWriteDown",
+        "value": 210,
+        "period": "2024-01-29_2024-04-28",
+        "reason": "Inventory write-down of $210M is disclosed in Note 8 footnote but not a separate line item on the income statement face; included within Cost of Revenue."
+      },
+      {
+        "concept": "us-gaap:OtherComprehensiveIncomeUnrealizedHoldingGainLossOnSecuritiesArisingDuringPeriodNetOfTax",
+        "value": 139,
+        "period": "2025-01-27_2025-04-27",
+        "reason": "Net change in unrealized gain on available-for-sale securities of $139M appears on the Consolidated Statements of Comprehensive Income, not on the income statement."
+      },
+      {
+        "concept": "us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossAfterReclassificationAndTax",
+        "value": 19,
+        "period": "2025-01-27_2025-04-27",
+        "reason": "Net change in unrealized gain on cash flow hedges of $19M appears on the Consolidated Statements of Comprehensive Income, not on the income statement."
+      },
+      {
+        "concept": "us-gaap:OtherComprehensiveIncomeLossNetOfTax",
+        "value": 158,
+        "period": "2025-01-27_2025-04-27",
+        "reason": "Other comprehensive income, net of tax of $158M appears on the Consolidated Statements of Comprehensive Income, not on the income statement."
+      },
+      {
+        "concept": "us-gaap:ComprehensiveIncomeNetOfTax",
+        "value": 18933,
+        "period": "2025-01-27_2025-04-27",
+        "reason": "Total comprehensive income of $18,933M appears on the Consolidated Statements of Comprehensive Income as a subtotal, not on the income statement itself."
+      },
+      {
+        "concept": "us-gaap:OperatingLeaseCost",
+        "value": 101,
+        "period": "2025-01-27_2025-04-27",
+        "reason": "Operating lease expense of $101M is disclosed in Note 14 (Leases) but does not appear as a separate line item on the income statement."
+      }
+    ]
+  },
+  "formula_verification": {
+    "formula_checks": [
+      {
+        "formula": "Revenue - Cost of Revenue = Gross Profit",
+        "pass": true,
+        "periods": {
+          "2025-01-27_2025-04-27": {
+            "computed": 26668,
+            "stated": 26668,
+            "computation": "44062 - 17394"
+          },
+          "2024-01-29_2024-04-28": {
+            "computed": 20406,
+            "stated": 20406,
+            "computation": "26044 - 5638"
+          }
+        }
+      },
+      {
+        "formula": "Research and Development + Sales, General and Administrative = Total Operating Expenses",
+        "pass": true,
+        "periods": {
+          "2025-01-27_2025-04-27": {
+            "computed": 5030,
+            "stated": 5030,
+            "computation": "3989 + 1041"
+          },
+          "2024-01-29_2024-04-28": {
+            "computed": 3497,
+            "stated": 3497,
+            "computation": "2720 + 777"
+          }
+        }
+      },
+      {
+        "formula": "Gross Profit - Total Operating Expenses = Operating Income",
+        "pass": true,
+        "periods": {
+          "2025-01-27_2025-04-27": {
+            "computed": 21638,
+            "stated": 21638,
+            "computation": "26668 - 5030"
+          },
+          "2024-01-29_2024-04-28": {
+            "computed": 16909,
+            "stated": 16909,
+            "computation": "20406 - 3497"
+          }
+        }
+      },
+      {
+        "formula": "Interest Income - Interest Expense + Other Income (Expense), Net = Total Other Income (Expense), Net",
+        "pass": true,
+        "periods": {
+          "2025-01-27_2025-04-27": {
+            "computed": 272,
+            "stated": 272,
+            "computation": "515 - 63 + -180"
+          },
+          "2024-01-29_2024-04-28": {
+            "computed": 370,
+            "stated": 370,
+            "computation": "359 - 64 + 75"
+          }
+        }
+      },
+      {
+        "formula": "Operating Income + Total Other Income (Expense), Net = Income Before Income Tax",
+        "pass": true,
+        "periods": {
+          "2025-01-27_2025-04-27": {
+            "computed": 21910,
+            "stated": 21910,
+            "computation": "21638 + 272"
+          },
+          "2024-01-29_2024-04-28": {
+            "computed": 17279,
+            "stated": 17279,
+            "computation": "16909 + 370"
+          }
+        }
+      },
+      {
+        "formula": "Income Before Income Tax - Income Tax Expense = Net Income",
+        "pass": true,
+        "periods": {
+          "2025-01-27_2025-04-27": {
+            "computed": 18775,
+            "stated": 18775,
+            "computation": "21910 - 3135"
+          },
+          "2024-01-29_2024-04-28": {
+            "computed": 14881,
+            "stated": 14881,
+            "computation": "17279 - 2398"
+          }
+        }
+      }
+    ],
+    "formulas_pass": 6,
+    "formulas_total": 6
+  }
+}

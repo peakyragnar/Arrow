@@ -1,0 +1,100 @@
+statement,label,xbrl_concept,unit,xbrl_match,2025-01-27_2025-04-27,2025-01-27_2025-04-27_correct,2024-01-29_2024-04-28,2024-01-29_2024-04-28_correct,2025-04-27,2025-04-27_correct,2025-01-26,2025-01-26_correct,reason
+IS,Revenue,us-gaap:Revenues,USD_millions,True,44062,,26044,,,,,,
+IS,  Cost of revenue,us-gaap:CostOfRevenue,USD_millions,True,17394,,5638,,,,,,
+IS,Gross profit,us-gaap:GrossProfit,USD_millions,True,26668,,20406,,,,,,
+IS,  Research and development,us-gaap:ResearchAndDevelopmentExpense,USD_millions,True,3989,,2720,,,,,,
+IS,"  Sales, general and administrative",us-gaap:SellingGeneralAndAdministrativeExpense,USD_millions,True,1041,,777,,,,,,
+IS,Total operating expenses,us-gaap:OperatingExpenses,USD_millions,True,5030,,3497,,,,,,
+IS,Operating income,us-gaap:OperatingIncomeLoss,USD_millions,True,21638,,16909,,,,,,
+IS,  Interest income,us-gaap:InvestmentIncomeInterest,USD_millions,True,515,,359,,,,,,
+IS,  Interest expense,us-gaap:InterestExpenseNonoperating,USD_millions,True,63,,64,,,,,,
+IS,"  Other income (expense), net",us-gaap:OtherNonoperatingIncomeExpense,USD_millions,True,-180,,75,,,,,,
+IS,"Total other income (expense), net",us-gaap:NonoperatingIncomeExpense,USD_millions,True,272,,370,,,,,,
+IS,Income before income tax,us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest,USD_millions,True,21910,,17279,,,,,,
+IS,  Income tax expense,us-gaap:IncomeTaxExpenseBenefit,USD_millions,True,3135,,2398,,,,,,
+IS,Net income,us-gaap:NetIncomeLoss,USD_millions,True,18775,,14881,,,,,,
+IS,  Basic EPS,us-gaap:EarningsPerShareBasic,USD_per_share,True,0.77,,0.6,,,,,,
+IS,  Diluted EPS,us-gaap:EarningsPerShareDiluted,USD_per_share,True,0.76,,0.6,,,,,,
+IS,  Basic weighted average shares,us-gaap:WeightedAverageNumberOfSharesOutstandingBasic,shares_millions,True,24441,,24620,,,,,,
+IS,  Diluted weighted average shares,us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding,shares_millions,True,24611,,24890,,,,,,
+IS-hidden,  [NOT ON STMT] us-gaap:OtherComprehensiveIncomeUnrealizedHoldingGainLossOnSecuritiesArisingDuringPeriodNetOfTax,us-gaap:OtherComprehensiveIncomeUnrealizedHoldingGainLossOnSecuritiesArisingDuringPeriodNetOfTax,USD_millions,n/a,139,,-128,,,,,,"Appears on the Condensed Consolidated Statements of Comprehensive Income, not the income statement. It is an OCI component."
+IS-hidden,  [NOT ON STMT] us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossBeforeReclassificationAfterTax,us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossBeforeReclassificationAfterTax,USD_millions,n/a,23,,-4,,,,,,Appears on the Condensed Consolidated Statements of Comprehensive Income as a cash flow hedge OCI component.
+IS-hidden,  [NOT ON STMT] us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossReclassificationAfterTax,us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossReclassificationAfterTax,USD_millions,n/a,4,,4,,,,,,Appears on the Condensed Consolidated Statements of Comprehensive Income as reclassification of cash flow hedge gain/loss.
+IS-hidden,  [NOT ON STMT] us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossAfterReclassificationAndTax,us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossAfterReclassificationAndTax,USD_millions,n/a,19,,-8,,,,,,Appears on the Condensed Consolidated Statements of Comprehensive Income as net cash flow hedge OCI.
+IS-hidden,  [NOT ON STMT] us-gaap:OtherComprehensiveIncomeLossNetOfTax,us-gaap:OtherComprehensiveIncomeLossNetOfTax,USD_millions,n/a,158,,-136,,,,,,Appears on the Condensed Consolidated Statements of Comprehensive Income as total OCI.
+IS-hidden,  [NOT ON STMT] us-gaap:ComprehensiveIncomeNetOfTax,us-gaap:ComprehensiveIncomeNetOfTax,USD_millions,n/a,18933,,14745,,,,,,"Appears on the Condensed Consolidated Statements of Comprehensive Income as Total comprehensive income, not on income statement."
+IS-hidden,  [NOT ON STMT] us-gaap:EffectiveIncomeTaxRateContinuingOperations,us-gaap:EffectiveIncomeTaxRateContinuingOperations,USD_millions,n/a,0.143,,0.139,,,,,,"Disclosed in the Income Taxes note (Note 4), not shown as a line item on the face of the income statement."
+IS-hidden,  [NOT ON STMT] us-gaap:WeightedAverageNumberDilutedSharesOutstandingAdjustment,us-gaap:WeightedAverageNumberDilutedSharesOutstandingAdjustment,USD_millions,n/a,170,,270,,,,,,"Appears in the EPS note (Note 3) as 'Dilutive impact of outstanding equity awards', not on the face of the income statement."
+IS-hidden,  [NOT ON STMT] us-gaap:AntidilutiveSecuritiesExcludedFromComputationOfEarningsPerShareAmount,us-gaap:AntidilutiveSecuritiesExcludedFromComputationOfEarningsPerShareAmount,USD_millions,n/a,62,,60,,,,,,"Appears in the EPS note (Note 3) as anti-dilutive awards excluded, not on the face of the income statement."
+BS,  Cash and cash equivalents,us-gaap:CashAndCashEquivalentsAtCarryingValue,USD_millions,True,,,,,15234,,8589,,
+BS,  Marketable securities,us-gaap:MarketableSecuritiesCurrent,USD_millions,True,,,,,38457,,34621,,
+BS,"  Accounts receivable, net",us-gaap:AccountsReceivableNetCurrent,USD_millions,True,,,,,22132,,23065,,
+BS,  Inventories,us-gaap:InventoryNet,USD_millions,True,,,,,11333,,10080,,
+BS,  Prepaid expenses and other current assets,us-gaap:PrepaidExpenseAndOtherAssetsCurrent,USD_millions,True,,,,,2779,,3771,,
+BS,Total current assets,us-gaap:AssetsCurrent,USD_millions,True,,,,,89935,,80126,,
+BS,"  Property and equipment, net",us-gaap:PropertyPlantAndEquipmentNet,USD_millions,True,,,,,7136,,6283,,
+BS,  Operating lease assets,us-gaap:OperatingLeaseRightOfUseAsset,USD_millions,True,,,,,1810,,1793,,
+BS,  Goodwill,us-gaap:Goodwill,USD_millions,True,,,,,5498,,5188,,
+BS,"  Intangible assets, net",us-gaap:IntangibleAssetsNetExcludingGoodwill,USD_millions,True,,,,,769,,807,,
+BS,  Deferred income tax assets,us-gaap:DeferredIncomeTaxAssetsNet,USD_millions,True,,,,,13318,,10979,,
+BS,  Other assets,us-gaap:OtherAssetsNoncurrent,USD_millions,True,,,,,6788,,6425,,
+BS,Total assets,us-gaap:Assets,USD_millions,True,,,,,125254,,111601,,
+BS,  Accounts payable,us-gaap:AccountsPayableCurrent,USD_millions,True,,,,,7331,,6310,,
+BS,  Accrued and other current liabilities,us-gaap:AccruedLiabilitiesCurrent,USD_millions,True,,,,,19211,,11737,,
+BS,Total current liabilities,us-gaap:LiabilitiesCurrent,USD_millions,True,,,,,26542,,18047,,
+BS,  Long-term debt,us-gaap:LongTermDebtNoncurrent,USD_millions,True,,,,,8464,,8463,,
+BS,  Long-term operating lease liabilities,us-gaap:OperatingLeaseLiabilityNoncurrent,USD_millions,True,,,,,1521,,1519,,
+BS,  Other long-term liabilities,us-gaap:OtherLiabilitiesNoncurrent,USD_millions,True,,,,,4884,,4245,,
+BS,Total liabilities,us-gaap:Liabilities,USD_millions,True,,,,,41411,,32274,,
+BS,  Preferred stock,us-gaap:PreferredStockValueOutstanding,USD_millions,True,,,,,0,,0,,
+BS,  Common stock,us-gaap:CommonStockValue,USD_millions,True,,,,,24,,24,,
+BS,  Additional paid-in capital,us-gaap:AdditionalPaidInCapital,USD_millions,True,,,,,11475,,11237,,
+BS,  Accumulated other comprehensive income,us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax,USD_millions,True,,,,,186,,28,,
+BS,  Retained earnings,us-gaap:RetainedEarningsAccumulatedDeficit,USD_millions,True,,,,,72158,,68038,,
+BS,Total shareholders' equity,us-gaap:StockholdersEquity,USD_millions,True,,,,,83843,,79327,,
+BS,Total liabilities and shareholders' equity,us-gaap:LiabilitiesAndStockholdersEquity,USD_millions,True,,,,,125254,,111601,,
+BS-hidden,  [NOT ON STMT] us-gaap:CommitmentsAndContingencies,us-gaap:CommitmentsAndContingencies,USD_millions,n/a,,,,,,,,,Appears on the balance sheet as a placeholder line 'Commitments and contingencies - see Note 11' with nil value; tagged with ix:nonFraction xsi:nil='true'. It has no monetary value but is tagged as a balance sheet placeholder.
+BS-hidden,  [NOT ON STMT] us-gaap:InventoryRawMaterialsNetOfReserves,us-gaap:InventoryRawMaterialsNetOfReserves,USD_millions,n/a,,,,,2525,,3408,,Disclosed in Note 8 (Balance Sheet Components) as a sub-component of Inventories; not separately presented on the face of the balance sheet.
+BS-hidden,  [NOT ON STMT] us-gaap:InventoryWorkInProcessNetOfReserves,us-gaap:InventoryWorkInProcessNetOfReserves,USD_millions,n/a,,,,,5339,,3399,,Disclosed in Note 8 as a sub-component of Inventories; not separately presented on the face of the balance sheet.
+BS-hidden,  [NOT ON STMT] us-gaap:InventoryFinishedGoodsNetOfReserves,us-gaap:InventoryFinishedGoodsNetOfReserves,USD_millions,n/a,,,,,3469,,3273,,Disclosed in Note 8 as a sub-component of Inventories; not separately presented on the face of the balance sheet.
+BS-hidden,  [NOT ON STMT] us-gaap:DeferredIncomeTaxLiabilitiesNet,us-gaap:DeferredIncomeTaxLiabilitiesNet,USD_millions,n/a,,,,,1082,,886,,Disclosed in Note 8 as a sub-component of Other long-term liabilities (Deferred income tax); not separately presented on the face of the balance sheet.
+BS-hidden,  [NOT ON STMT] us-gaap:AccruedIncomeTaxesNoncurrent,us-gaap:AccruedIncomeTaxesNoncurrent,USD_millions,n/a,,,,,2509,,2188,,Disclosed in Note 8 as Income tax payable within Other long-term liabilities; not separately presented on the face of the balance sheet.
+BS-hidden,  [NOT ON STMT] us-gaap:ContractWithCustomerLiabilityCurrent,us-gaap:ContractWithCustomerLiabilityCurrent,USD_millions,n/a,,,,,1074,,837,,Disclosed in Note 8 as Deferred revenue sub-component of Accrued and other current liabilities; not separately presented on the face of the balance sheet.
+BS-hidden,  [NOT ON STMT] us-gaap:ContractWithCustomerLiabilityNoncurrent,us-gaap:ContractWithCustomerLiabilityNoncurrent,USD_millions,n/a,,,,,1004,,976,,Disclosed in Note 8 as Deferred revenue within Other long-term liabilities; not separately presented on the face of the balance sheet.
+BS-hidden,  [NOT ON STMT] us-gaap:OperatingLeaseLiabilityCurrent,us-gaap:OperatingLeaseLiabilityCurrent,USD_millions,n/a,,,,,300,,288,,Disclosed in Note 8 as Operating leases sub-component within Accrued and other current liabilities; not separately presented on face of balance sheet. Extensible list tag maps this to AccruedLiabilitiesCurrent.
+BS-hidden,  [NOT ON STMT] us-gaap:EquitySecuritiesFVNINoncurrent,us-gaap:EquitySecuritiesFVNINoncurrent,USD_millions,n/a,,,,,3240,,3387,,Disclosed in Note 8 as Non-marketable equity securities within Other Assets (Long Term); embedded within the Other assets balance sheet line.
+BS-hidden,  [NOT ON STMT] us-gaap:LongTermDebt,us-gaap:LongTermDebt,USD_millions,n/a,,,,,8464,,8463,,Tagged in Note 10 (Debt) as net long-term carrying amount; the balance sheet line uses us-gaap:LongTermDebtNoncurrent. Both represent the same value but come from the debt note table.
+BS-hidden,  [NOT ON STMT] us-gaap:OperatingLeaseLiability,us-gaap:OperatingLeaseLiability,USD_millions,n/a,,,,,1821,,,,Present value of total operating lease liability from Note 14 (Leases); sum of current and noncurrent operating lease liabilities. Not separately presented on the face of the balance sheet.
+CF,  Net income,us-gaap:NetIncomeLoss,USD_millions,True,18775,,14881,,,,,,
+CF,    Stock-based compensation expense,us-gaap:ShareBasedCompensation,USD_millions,True,1474,,1011,,,,,,
+CF,    Depreciation and amortization,us-gaap:DepreciationDepletionAndAmortization,USD_millions,True,611,,410,,,,,,
+CF,"    (Gains) losses on non-marketable equity securities and publicly-held equity securities, net",us-gaap:GainLossOnInvestments,USD_millions,True,-175,,69,,,,,,
+CF,    Deferred income taxes,us-gaap:DeferredIncomeTaxExpenseBenefit,USD_millions,True,-2177,,-1577,,,,,,
+CF,    Other,us-gaap:OtherNoncashIncomeExpense,USD_millions,True,98,,145,,,,,,
+CF,    Accounts receivable,us-gaap:IncreaseDecreaseInAccountsReceivable,USD_millions,True,-933,,2366,,,,,,
+CF,    Inventories,us-gaap:IncreaseDecreaseInInventories,USD_millions,True,1258,,577,,,,,,
+CF,    Prepaid expenses and other assets,us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets,USD_millions,True,-560,,726,,,,,,
+CF,    Accounts payable,us-gaap:IncreaseDecreaseInAccountsPayable,USD_millions,True,941,,-22,,,,,,
+CF,    Accrued and other current liabilities,us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities,USD_millions,True,7128,,4202,,,,,,
+CF,    Other long-term liabilities,us-gaap:IncreaseDecreaseInOtherNoncurrentLiabilities,USD_millions,True,350,,323,,,,,,
+CF,Net cash provided by operating activities,us-gaap:NetCashProvidedByUsedInOperatingActivities,USD_millions,True,27414,,15345,,,,,,
+CF,    Proceeds from maturities of marketable securities,us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities,USD_millions,True,3122,,4004,,,,,,
+CF,    Proceeds from sales of marketable securities,us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt,USD_millions,True,467,,149,,,,,,
+CF,    Proceeds from sales of non-marketable equity securities,us-gaap:ProceedsFromSaleOfEquitySecuritiesFvNi,USD_millions,True,0,,55,,,,,,
+CF,    Purchases of marketable securities,us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt,USD_millions,True,6546,,9303,,,,,,
+CF,    Purchases related to property and equipment and intangible assets,us-gaap:PaymentsToAcquireProductiveAssets,USD_millions,True,1227,,369,,,,,,
+CF,    Purchases of non-marketable equity securities,us-gaap:PaymentsToAcquireEquitySecuritiesFvNi,USD_millions,True,649,,190,,,,,,
+CF,"    Acquisitions, net of cash acquired",us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired,USD_millions,True,383,,39,,,,,,
+CF,Net cash used in investing activities,us-gaap:NetCashProvidedByUsedInInvestingActivities,USD_millions,True,-5216,,-5693,,,,,,
+CF,    Proceeds related to employee stock plans,us-gaap:ProceedsFromStockPlans,USD_millions,True,370,,285,,,,,,
+CF,    Payments related to repurchases of common stock,us-gaap:PaymentsForRepurchaseOfCommonStock,USD_millions,True,14095,,7740,,,,,,
+CF,    Payments related to employee stock plan taxes,us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation,USD_millions,True,1532,,1752,,,,,,
+CF,    Dividends paid,us-gaap:PaymentsOfDividends,USD_millions,True,244,,98,,,,,,
+CF,    Principal payments on property and equipment and intangible assets,nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities,USD_millions,True,52,,40,,,,,,
+CF,Net cash used in financing activities,us-gaap:NetCashProvidedByUsedInFinancingActivities,USD_millions,True,-15553,,-9345,,,,,,
+CF,Change in cash and cash equivalents,us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect,USD_millions,True,6645,,307,,,,,,
+CF,  Cash and cash equivalents at beginning of period,us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents,USD_millions,True,8589,,7280,,,,,,
+CF,  Cash and cash equivalents at end of period,us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents,USD_millions,True,15234,,7587,,,,,,
+CF-hidden,  [NOT ON STMT] us-gaap:OperatingLeasePayments,us-gaap:OperatingLeasePayments,USD_millions,n/a,96,,69,,,,,,Supplemental cash flow information disclosed in Note 14 (Leases) - 'Operating cash flow used for operating leases'; not a separate line item on the face of the cash flow statement.
+CF-hidden,  [NOT ON STMT] us-gaap:RightOfUseAssetObtainedInExchangeForOperatingLeaseLiability,us-gaap:RightOfUseAssetObtainedInExchangeForOperatingLeaseLiability,USD_millions,n/a,98,,250,,,,,,Supplemental non-cash information disclosed in Note 14 (Leases) - 'Operating lease assets obtained in exchange for lease obligations'; not on the face of the cash flow statement.
+CF-hidden,  [NOT ON STMT] us-gaap:CapitalExpendituresIncurredButNotYetPaid,us-gaap:CapitalExpendituresIncurredButNotYetPaid,USD_millions,n/a,408,,147,,,,,,"Supplemental non-cash investing activity disclosed in Note 8 - 'Property, equipment and intangible assets acquired by assuming related liabilities'; not on the face of the cash flow statement."

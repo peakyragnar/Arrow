@@ -22,6 +22,18 @@ import anthropic
 from parse_xbrl import parse_filing
 
 
+def clean_html(html):
+    """Strip CSS styling and layout noise from iXBRL HTML. Keeps all tags, text, and ix: elements."""
+    import re
+    # Strip <style> blocks
+    cleaned = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL)
+    # Strip inline style attributes
+    cleaned = re.sub(r'\s+style="[^"]*"', '', cleaned)
+    # Collapse whitespace
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    return cleaned
+
+
 def build_prompt(html_content, xbrl_facts, statement_type, meta):
     """Build the prompt for Claude."""
 
@@ -102,6 +114,191 @@ Rules:
 - xbrl_not_on_statement: review the XBRL facts list and identify concepts that are income-statement-related (revenue, expenses, income, gains, losses, SBC, D&A, etc.) but do NOT appear as line items on the rendered income statement. For each, give the concept, value, period, and a brief reason explaining where this item likely lives (notes, cash flow, etc.). This helps identify items that are aggregated or hidden.
 - Do NOT include analysis, observations, or commentary.
 - Do NOT verify the math yourself — just report what you found."""
+
+    elif statement_type == 'balance_sheet':
+        task = """You are a data extraction tool. You have two inputs:
+1. The full HTML filing (find the balance sheet within it)
+2. The XBRL-tagged facts (the raw structured data)
+
+Output ONLY valid JSON with this structure:
+
+{
+  "line_items": [
+    {
+      "label": "Cash and cash equivalents",
+      "indent_level": 1,
+      "xbrl_concept": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+      "values": {"2025-04-27": 15176, "2025-01-26": 8495},
+      "unit": "USD_millions",
+      "xbrl_match": true,
+      "mapping_reason": "HTML row text is 'Cash and cash equivalents'. The ix:nonFraction tag has name='us-gaap:CashAndCashEquivalentsAtCarryingValue' with contextRef='c-4' (instant 2025-04-27) and value 15176. XBRL fact confirms."
+    }
+  ],
+  "formulas": [
+    {
+      "formula": "Total current assets + Total non-current assets = Total assets",
+      "components": ["Total current assets", "Total non-current assets", "Total assets"],
+      "operation": "Total current assets + Total non-current assets",
+      "result_label": "Total assets"
+    }
+  ],
+  "xbrl_not_on_statement": [
+    {
+      "concept": "us-gaap:OperatingLeaseLiabilityCurrent",
+      "value": 200,
+      "period": "2025-04-27",
+      "reason": "Current operating lease liabilities are tagged in XBRL but do not appear as a separate balance sheet line item. Likely included in 'Accrued and other current liabilities' and disclosed in notes."
+    }
+  ]
+}
+
+Rules:
+- line_items: every line item on the balance sheet, in presentation order.
+- indent_level: hierarchy depth (0=section headers like Total assets; 1=sub-section like Current assets items; 2=sub-sub-items).
+- xbrl_concept: the XBRL concept name. Get this from the ix:nonFraction tag in the HTML, and cross-reference against the XBRL facts list.
+- values: XBRL values are the source of truth. Balance sheet items are instant (point-in-time), so use the date as key (e.g., "2025-04-27"), not a date range. Report in millions as integers.
+- unit: "USD_millions" for all balance sheet items.
+- xbrl_match: did the value from the ix:nonFraction tag in the HTML match the corresponding XBRL fact? true/false.
+- mapping_reason: explain HOW you matched this line item to this XBRL concept. Be specific about what you saw in the HTML and what tag confirmed it.
+- formulas: every subtotal relationship on the balance sheet. Include at minimum:
+  - Current asset components summing to Total current assets
+  - Non-current asset components summing to Total non-current assets (if shown)
+  - Total current assets + non-current assets = Total assets
+  - Current liability components summing to Total current liabilities
+  - Non-current liability components summing to Total non-current liabilities (if shown)
+  - Total liabilities + Total stockholders' equity = Total liabilities and stockholders' equity
+  - The fundamental equation: Total assets = Total liabilities and stockholders' equity
+  Do NOT compute the math — the verification script will do that independently.
+- xbrl_not_on_statement: review the XBRL facts list and identify concepts that are balance-sheet-related but do NOT appear as line items on the rendered balance sheet. These are items aggregated into "other" buckets — for example, operating lease liabilities inside "accrued liabilities", or specific receivable types inside a broader line. For each, give the concept, value, period, and a brief reason explaining where it likely lives. This is critical for identifying what's hidden in aggregated line items.
+- Do NOT include analysis, observations, or commentary.
+- Do NOT verify the math yourself — just report what you found."""
+
+    elif statement_type == 'cash_flow':
+        task = """You are a data extraction tool. You have two inputs:
+1. The full HTML filing (find the cash flow statement within it)
+2. The XBRL-tagged facts (the raw structured data)
+
+Output ONLY valid JSON with this structure:
+
+{
+  "line_items": [
+    {
+      "label": "Net income",
+      "indent_level": 0,
+      "xbrl_concept": "us-gaap:NetIncomeLoss",
+      "values": {"2025-01-27_2025-04-27": 18775, "2024-01-29_2024-04-28": 14881},
+      "unit": "USD_millions",
+      "xbrl_match": true,
+      "mapping_reason": "HTML row text is 'Net income'. ix:nonFraction tag has name='us-gaap:NetIncomeLoss'. XBRL fact confirms."
+    }
+  ],
+  "formulas": [
+    {
+      "formula": "Sum of CFO components = Net cash provided by operating activities",
+      "components": ["Net income", "Stock-based compensation", "...other adjustments...", "Net cash provided by operating activities"],
+      "operation": "Net income + Stock-based compensation + ...other adjustments...",
+      "result_label": "Net cash provided by operating activities"
+    }
+  ],
+  "xbrl_not_on_statement": [
+    {
+      "concept": "us-gaap:SomeConceptNotOnStatement",
+      "value": 100,
+      "period": "2025-01-27_2025-04-27",
+      "reason": "Explanation of where this item lives."
+    }
+  ]
+}
+
+Rules:
+- line_items: every line item on the cash flow statement, in presentation order. This includes:
+  - Operating activities: Net income, all adjustments (D&A, SBC, deferred taxes, etc.), all working capital changes, and the CFO total.
+  - Investing activities: all items and the CFI total.
+  - Financing activities: all items and the CFF total.
+  - Effect of exchange rate changes (if shown).
+  - Net change in cash.
+  - Beginning and ending cash balances.
+- indent_level: hierarchy depth (0=section totals like Net cash from operating activities; 1=items within a section like D&A, SBC, working capital changes).
+- xbrl_concept: the XBRL concept name from the ix:nonFraction tag, cross-referenced against the XBRL facts list.
+- values: Use the values as presented on the cash flow statement — positive means source of cash, negative means use of cash. This applies to ALL items including working capital changes, investing items, and financing items. The sign as shown on the statement is what matters. Cash flow items use duration periods, so key is date range (e.g., "2025-01-27_2025-04-27"). Report in millions as integers.
+- unit: "USD_millions" for all cash flow items.
+- xbrl_match: did the ix:nonFraction tag value match the XBRL fact? true/false.
+- mapping_reason: explain HOW you matched this line item. Be specific about what HTML text and XBRL tag confirmed it.
+- formulas: every subtotal relationship. The "operation" field MUST use exact label names from line_items connected by + ONLY. NEVER use minus signs in the operation.
+  WHY: The values already contain the correct sign. For example, Accounts receivable = -933 means AR increased and used cash. The negative is IN the value. Purchases of marketable securities = -6546 means cash was spent. The negative is IN the value. Dividends paid = -244. The negative is IN the value. So the formula just adds all signed values: "Net income + SBC + D&A + ... + Accounts receivable + Inventories + ..." and the math works because -933 + 1258 + ... naturally nets out. If you write "- Accounts receivable" you are negating -933 to get +933, which is wrong.
+  Include at minimum:
+  - All CFO components summed = CFO total (all +, no -)
+  - All CFI components summed = CFI total (all +, no -)
+  - All CFF components summed = CFF total (all +, no -)
+  - CFO + CFI + CFF = Net change in cash
+  - Beginning cash + Net change = Ending cash (use the EXACT label names from line_items)
+  Do NOT compute the math — the verification script will do that independently.
+- xbrl_not_on_statement: XBRL facts that are cash-flow-related but do NOT appear as line items on the rendered statement. These may be sub-components disclosed in notes.
+- Do NOT include analysis, observations, or commentary.
+- Do NOT verify the math yourself — just report what you found."""
+
+    elif statement_type == 'all':
+        task = """You are a data extraction tool. You have two inputs:
+1. The full HTML filing (find all three financial statements: income statement, balance sheet, cash flow statement)
+2. The XBRL-tagged facts (the raw structured data)
+
+Output ONLY valid JSON with this structure:
+
+{
+  "income_statement": {
+    "line_items": [...],
+    "formulas": [...],
+    "xbrl_not_on_statement": [...]
+  },
+  "balance_sheet": {
+    "line_items": [...],
+    "formulas": [...],
+    "xbrl_not_on_statement": [...]
+  },
+  "cash_flow": {
+    "line_items": [...],
+    "formulas": [...],
+    "xbrl_not_on_statement": [...]
+  },
+  "cross_statement_checks": [
+    {
+      "check": "Net income on IS matches Net income on CF",
+      "is_value": 18775,
+      "cf_value": 18775,
+      "match": true
+    }
+  ]
+}
+
+Each statement section follows the same format:
+
+line_items: every line item on the statement, in presentation order.
+- label: the line item text as shown
+- indent_level: hierarchy depth (0=top level/totals, 1=sub-items, 2=sub-sub-items)
+- xbrl_concept: the XBRL concept name from the ix:nonFraction tag, cross-referenced against XBRL facts
+- values: XBRL values are the source of truth for sign and magnitude. Use XBRL fact values, not HTML display values. HTML may show parentheses for presentation but XBRL defines canonical sign convention (expenses are positive debits). Key format: for duration items use "startDate_endDate", for instant items use just the date.
+- unit: one of "USD_millions", "USD_per_share", or "shares_millions"
+- xbrl_match: did the ix:nonFraction tag value match the XBRL fact? true/false. For section headers with no numeric values, set to null (not false).
+- mapping_reason: explain HOW you matched this line item to the XBRL concept. Be specific about HTML text and tags.
+
+formulas: every subtotal relationship. CRITICAL — each formula MUST use this exact structure:
+  {"formula": "human readable description", "components": ["Label A", "Label B", "Label C"], "operation": "Label A + Label B", "result_label": "Label C"}
+  The "operation" field MUST be a math expression using exact label names from line_items connected by + and - operators. Example: "Revenue - Cost of revenue" NOT {"operation": "subtract", "operands": [...]}. The verification script evaluates the operation string by substituting label names with values.
+- Income statement: Revenue - COGS = Gross Profit, opex sums, operating income, other income sums, pretax, net income
+- Balance sheet: current asset sums, total assets, current liability sums, total liabilities, equity sums, assets = liabilities + equity
+- Cash flow: CFO components sum, CFI components sum, CFF components sum, CFO+CFI+CFF = change in cash, beginning + change = ending cash
+
+xbrl_not_on_statement: XBRL facts related to that statement but NOT appearing as line items. Include concept, value, period, and reason explaining where it likely lives.
+
+cross_statement_checks: verify these ties between statements:
+- Net income on IS = Net income starting CF
+- Ending cash on CF = Cash on BS (current period)
+- Beginning cash on CF = Cash on BS (prior period)
+- Retained earnings change on BS = Net income - Dividends - Share repurchases + any other items charged to retained earnings. Account for ALL items that affect retained earnings, not just net income and dividends.
+
+Do NOT include analysis, observations, or commentary.
+Do NOT verify the math yourself — just report what you found.
+CRITICAL: Output must be valid JSON. In ALL string values, never use apostrophes or single quotes. Use "shareholders equity" not "shareholders' equity". Use "does not" not "doesn't". This applies to labels, mapping_reason, and all other string fields."""
 
     prompt = f"""You are analyzing a {meta['form']} filing for {meta['ticker']}.
 Report date: {meta['report_date']}. Filing date: {meta['filing_date']}.
@@ -197,9 +394,9 @@ def main():
     parser = argparse.ArgumentParser(description='AI-powered financial statement analysis')
     parser.add_argument('--ticker', required=True)
     parser.add_argument('--accession', required=True)
-    parser.add_argument('--statement', default='income', choices=['income', 'balance_sheet', 'cash_flow'])
+    parser.add_argument('--statement', default='income', choices=['income', 'balance_sheet', 'cash_flow', 'all'])
     parser.add_argument('--output', help='Save output to file')
-    parser.add_argument('--model', default='claude-opus-4-6', help='Claude model to use')
+    parser.add_argument('--model', default='claude-sonnet-4-6', help='Model to use (claude-sonnet-4-6, claude-opus-4-6, gemini-3-flash-preview, gpt-5, etc.)')
     args = parser.parse_args()
 
     # Step 1: Parse XBRL facts
@@ -216,25 +413,58 @@ def main():
     html_path = os.path.join(base_dir, meta['html_filename'])
     with open(html_path) as f:
         html_content = f.read()
-    print(f"  Full HTML: {len(html_content)} chars (~{len(html_content)//4} tokens)")
+    html_cleaned = clean_html(html_content)
+    print(f"  Full HTML: {len(html_content):,} chars -> cleaned: {len(html_cleaned):,} chars (~{len(html_cleaned)//4:,} tokens)")
 
     # Step 3: Filter XBRL facts (undimensioned only)
     xbrl_facts = [f for f in parsed['facts'] if not f['dimensioned']]
     print(f"  {len(xbrl_facts)} undimensioned XBRL facts")
 
-    # Step 4: Build prompt and call Claude
-    prompt = build_prompt(html_content, xbrl_facts, args.statement, meta)
+    # Step 4: Build prompt and call model
+    prompt = build_prompt(html_cleaned, xbrl_facts, args.statement, meta)
     print(f"\nTotal prompt size: ~{len(prompt)//4} tokens")
     print(f"Sending to {args.model}...\n")
 
-    client = anthropic.Anthropic()
-    response = client.messages.create(
-        model=args.model,
-        max_tokens=16384,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    output_text = ""
+    input_tokens = 0
+    output_tokens = 0
 
-    output_text = response.content[0].text
+    if args.model.startswith('gemini'):
+        from google import genai
+        gemini_client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
+        response = gemini_client.models.generate_content(
+            model=args.model,
+            contents=prompt,
+            config=genai.types.GenerateContentConfig(max_output_tokens=32768),
+        )
+        output_text = response.text
+        input_tokens = response.usage_metadata.prompt_token_count
+        output_tokens = response.usage_metadata.candidates_token_count
+    elif args.model.startswith('gpt'):
+        from openai import OpenAI
+        oai_client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+        response = oai_client.chat.completions.create(
+            model=args.model,
+            max_completion_tokens=32768,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        output_text = response.choices[0].message.content
+        input_tokens = response.usage.prompt_tokens
+        output_tokens = response.usage.completion_tokens
+    else:
+        client = anthropic.Anthropic()
+        with client.messages.stream(
+            model=args.model,
+            max_tokens=32768,
+            messages=[{"role": "user", "content": prompt}],
+        ) as stream:
+            for text in stream.text_stream:
+                output_text += text
+                print(".", end="", flush=True)
+            print()
+            resp = stream.get_final_message()
+            input_tokens = resp.usage.input_tokens
+            output_tokens = resp.usage.output_tokens
 
     # Parse the JSON from the AI response
     json_text = output_text.strip()
@@ -245,67 +475,189 @@ def main():
 
     try:
         ai_result = json.loads(json_text)
-    except json.JSONDecodeError as e:
-        print(f"ERROR: AI returned invalid JSON: {e}")
-        print("Raw output:")
-        print(output_text)
-        sys.exit(1)
+    except json.JSONDecodeError:
+        # Try fixing common issues: smart quotes, unescaped control chars
+        import re
+        fixed = json_text
+        fixed = fixed.replace('\u2018', "'").replace('\u2019', "'")  # smart single quotes
+        fixed = fixed.replace('\u201c', '"').replace('\u201d', '"')  # smart double quotes
+        fixed = re.sub(r'[\x00-\x1f]', ' ', fixed)  # control characters
+        try:
+            ai_result = json.loads(fixed)
+        except json.JSONDecodeError:
+            ai_result = None
 
-    # === DETERMINISTIC VERIFICATION: arithmetic only ===
-    verification = verify_formulas(ai_result)
+    if ai_result is None:
+        # Last resort: try to repair by finding valid JSON subset
+        print("WARNING: Attempting JSON repair...")
+        import re
+        repaired = re.sub(r',\s*([}\]])', r'\1', json_text)
+        try:
+            ai_result = json.loads(repaired)
+        except json.JSONDecodeError as e:
+            print(f"ERROR: AI returned invalid JSON: {e}")
+            print("Raw output:")
+            print(output_text)
+            sys.exit(1)
 
-    # Display
-    print("=" * 80)
-    print(f"AI EXTRACTION: {args.statement.upper()} STATEMENT")
-    print(f"{args.ticker} | {meta['form']} | {meta['report_date']}")
-    print("=" * 80)
+    # === DETERMINISTIC VERIFICATION ===
+    if args.statement == 'all':
+        # Verify each statement separately
+        all_verification = {}
+        total_formulas_pass = 0
+        total_formulas = 0
+        total_xbrl_match = 0
+        total_xbrl = 0
 
-    # Section 1: Line items with mapping reasons
-    print("\n--- LINE ITEMS (from AI) ---\n")
-    for item in ai_result.get('line_items', []):
-        indent = "  " * item.get('indent_level', 0)
-        vals = item.get('values', {})
-        val_str = " | ".join(f"{v}" for v in vals.values())
-        unit = item.get('unit', '')
-        xbrl_ok = item.get('xbrl_match', '?')
-        print(f"{indent}{item['label']}: {val_str}  [{unit}] xbrl_match={xbrl_ok}")
-        print(f"{indent}  concept: {item.get('xbrl_concept', '?')}")
-        print(f"{indent}  reason: {item.get('mapping_reason', 'none given')}")
-        print()
+        for stmt_name in ['income_statement', 'balance_sheet', 'cash_flow']:
+            stmt_data = ai_result.get(stmt_name, {})
+            v = verify_formulas(stmt_data)
+            all_verification[stmt_name] = v
+            total_formulas_pass += v['formulas_pass']
+            total_formulas += v['formulas_total']
+            total_xbrl_match += sum(1 for i in stmt_data.get('line_items', []) if i.get('xbrl_match') is True)
+            total_xbrl += sum(1 for i in stmt_data.get('line_items', []) if i.get('xbrl_match') is not None)
 
-    # Section 2: Formula verification (deterministic — just arithmetic)
-    print("--- FORMULA VERIFICATION (deterministic arithmetic) ---\n")
-    for check in verification['formula_checks']:
-        status = "PASS" if check['pass'] else "FAIL"
-        print(f"[{status}] {check['formula']}")
-        for period, detail in check['periods'].items():
-            print(f"  {period}: {detail['computation']} = {detail['computed']} vs stated {detail['stated']}")
-        print()
+        # Display each statement
+        print("=" * 80)
+        print(f"AI EXTRACTION: ALL STATEMENTS")
+        print(f"{args.ticker} | {meta['form']} | {meta['report_date']}")
+        print("=" * 80)
 
-    # Section 3: XBRL facts not on the statement (from AI)
-    not_on_stmt = ai_result.get('xbrl_not_on_statement', [])
-    if not_on_stmt:
-        print("--- XBRL FACTS NOT ON STATEMENT (from AI) ---\n")
-        for item in not_on_stmt:
-            print(f"  {item.get('concept')}: {item.get('value')} [{item.get('period')}]")
-            print(f"    {item.get('reason', '')}")
+        for stmt_name, stmt_title in [('income_statement', 'INCOME STATEMENT'), ('balance_sheet', 'BALANCE SHEET'), ('cash_flow', 'CASH FLOW')]:
+            stmt_data = ai_result.get(stmt_name, {})
+            v = all_verification[stmt_name]
+
+            print(f"\n{'=' * 40}")
+            print(f"  {stmt_title}")
+            print(f"{'=' * 40}")
+
+            print("\n--- LINE ITEMS ---\n")
+            for item in stmt_data.get('line_items', []):
+                indent = "  " * item.get('indent_level', 0)
+                vals = item.get('values') or {}
+                val_str = " | ".join(f"{v}" for v in vals.values())
+                xbrl_ok = "✓" if item.get('xbrl_match') else "✗"
+                print(f"{indent}{item['label']}: {val_str}  {xbrl_ok}")
+
+            print("\n--- FORMULAS ---\n")
+            for check in v['formula_checks']:
+                status = "PASS" if check['pass'] else "FAIL"
+                print(f"[{status}] {check['formula']}")
+                for period, detail in check['periods'].items():
+                    print(f"  {detail['computation']} = {detail['computed']} vs {detail['stated']}")
+
+            not_on = stmt_data.get('xbrl_not_on_statement', [])
+            if not_on:
+                print("\n--- NOT ON STATEMENT ---\n")
+                for item in not_on:
+                    print(f"  {item.get('concept')}: {item.get('value')} [{item.get('period')}]")
+                    print(f"    {item.get('reason', '')}")
+
+        # Cross-statement checks
+        cross = ai_result.get('cross_statement_checks', [])
+        if cross:
+            print(f"\n{'=' * 40}")
+            print(f"  CROSS-STATEMENT CHECKS")
+            print(f"{'=' * 40}\n")
+            for check in cross:
+                status = "✓" if check.get('match') else "✗"
+                print(f"  {status} {check.get('check')}")
+                # Print whatever value fields are present
+                for k, v in check.items():
+                    if k not in ('check', 'match'):
+                        print(f"      {k}: {v}")
+
+        print(f"\n{'=' * 80}")
+        print(f"Tokens: {input_tokens} in, {output_tokens} out")
+        if args.model.startswith('gpt-5.4'):
+            in_rate, out_rate = 2.5, 15.0
+        elif args.model.startswith('gpt-5'):
+            in_rate, out_rate = 0.63, 5.0
+        elif args.model.startswith('gemini-3') and 'flash' in args.model:
+            in_rate, out_rate = 0.5, 3.0
+        elif args.model.startswith('gemini'):
+            in_rate, out_rate = 0.3, 2.5
+        elif 'opus' in args.model:
+            in_rate, out_rate = 15.0, 75.0
+        else:
+            in_rate, out_rate = 3.0, 15.0  # Sonnet default
+        input_cost = input_tokens * in_rate / 1_000_000
+        output_cost = output_tokens * out_rate / 1_000_000
+        print(f"Cost: ${input_cost:.2f} input + ${output_cost:.2f} output = ${input_cost + output_cost:.2f}")
+        print(f"Formulas: {total_formulas_pass}/{total_formulas} pass")
+        print(f"XBRL matches (AI-reported): {total_xbrl_match}/{total_xbrl}")
+        print("=" * 80)
+
+        full_output = {
+            'ai_extraction': ai_result,
+            'formula_verification': all_verification,
+        }
+    else:
+        verification = verify_formulas(ai_result)
+
+        # Display
+        print("=" * 80)
+        print(f"AI EXTRACTION: {args.statement.upper()} STATEMENT")
+        print(f"{args.ticker} | {meta['form']} | {meta['report_date']}")
+        print("=" * 80)
+
+        print("\n--- LINE ITEMS (from AI) ---\n")
+        for item in ai_result.get('line_items', []):
+            indent = "  " * item.get('indent_level', 0)
+            vals = item.get('values', {})
+            val_str = " | ".join(f"{v}" for v in vals.values())
+            unit = item.get('unit', '')
+            xbrl_ok = item.get('xbrl_match', '?')
+            print(f"{indent}{item['label']}: {val_str}  [{unit}] xbrl_match={xbrl_ok}")
+            print(f"{indent}  concept: {item.get('xbrl_concept', '?')}")
+            print(f"{indent}  reason: {item.get('mapping_reason', 'none given')}")
             print()
 
-    # Summary
-    print("=" * 80)
-    print(f"Tokens: {response.usage.input_tokens} in, {response.usage.output_tokens} out")
-    v = verification
-    print(f"Formulas: {v['formulas_pass']}/{v['formulas_total']} pass")
-    xbrl_matches = sum(1 for i in ai_result.get('line_items', []) if i.get('xbrl_match') is True)
-    xbrl_total = sum(1 for i in ai_result.get('line_items', []) if i.get('xbrl_match') is not None)
-    print(f"XBRL matches (AI-reported): {xbrl_matches}/{xbrl_total}")
-    print("=" * 80)
+        print("--- FORMULA VERIFICATION (deterministic arithmetic) ---\n")
+        for check in verification['formula_checks']:
+            status = "PASS" if check['pass'] else "FAIL"
+            print(f"[{status}] {check['formula']}")
+            for period, detail in check['periods'].items():
+                print(f"  {period}: {detail['computation']} = {detail['computed']} vs stated {detail['stated']}")
+            print()
 
-    # Save
-    full_output = {
-        'ai_extraction': ai_result,
-        'formula_verification': verification,
-    }
+        not_on_stmt = ai_result.get('xbrl_not_on_statement', [])
+        if not_on_stmt:
+            print("--- XBRL FACTS NOT ON STATEMENT (from AI) ---\n")
+            for item in not_on_stmt:
+                print(f"  {item.get('concept')}: {item.get('value')} [{item.get('period')}]")
+                print(f"    {item.get('reason', '')}")
+                print()
+
+        print("=" * 80)
+        print(f"Tokens: {input_tokens} in, {output_tokens} out")
+        if args.model.startswith('gpt-5.4'):
+            in_rate, out_rate = 2.5, 15.0
+        elif args.model.startswith('gpt-5'):
+            in_rate, out_rate = 0.63, 5.0
+        elif args.model.startswith('gemini-3') and 'flash' in args.model:
+            in_rate, out_rate = 0.5, 3.0
+        elif args.model.startswith('gemini'):
+            in_rate, out_rate = 0.3, 2.5
+        elif 'opus' in args.model:
+            in_rate, out_rate = 15.0, 75.0
+        else:
+            in_rate, out_rate = 3.0, 15.0  # Sonnet default
+        input_cost = input_tokens * in_rate / 1_000_000
+        output_cost = output_tokens * out_rate / 1_000_000
+        print(f"Cost: ${input_cost:.2f} input + ${output_cost:.2f} output = ${input_cost + output_cost:.2f}")
+        v = verification
+        print(f"Formulas: {v['formulas_pass']}/{v['formulas_total']} pass")
+        xbrl_matches = sum(1 for i in ai_result.get('line_items', []) if i.get('xbrl_match') is True)
+        xbrl_total = sum(1 for i in ai_result.get('line_items', []) if i.get('xbrl_match') is not None)
+        print(f"XBRL matches (AI-reported): {xbrl_matches}/{xbrl_total}")
+        print("=" * 80)
+
+        full_output = {
+            'ai_extraction': ai_result,
+            'formula_verification': verification,
+        }
 
     if args.output:
         with open(args.output, 'w') as f:
