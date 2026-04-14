@@ -64,8 +64,8 @@ COMPONENTS = {
 
     # Balance Sheet (stock, instant values)
     "equity_q": {
-        "concepts": ["StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest",
-                      "StockholdersEquity"],
+        "concepts": ["StockholdersEquity",
+                      "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"],
         "type": "stock",
     },
     "short_term_debt_q": {

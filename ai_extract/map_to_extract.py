@@ -99,8 +99,8 @@ BS_CONCEPTS = {
     'us-gaap:AdditionalPaidInCapital': 'apic_q',
     'us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax': 'aoci_q',
     'us-gaap:RetainedEarningsAccumulatedDeficit': 'retained_earnings_q',
-    'us-gaap:StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest': 'equity_q',
     'us-gaap:StockholdersEquity': 'equity_q',
+    'us-gaap:StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest': 'equity_incl_nci_q',
     'us-gaap:MinorityInterest': 'noncontrolling_interests_q',
     'us-gaap:LiabilitiesAndStockholdersEquity': 'total_liabilities_and_equity_q',
 }
