@@ -33,21 +33,30 @@ from datetime import datetime, timedelta
 # Unit types: 'usd' (millions->raw), 'shares' (millions->raw), 'per_share' (keep as-is)
 
 IS_CONCEPTS = {
-    # Core 24-field items
+    # Core 24-field items (multiple concepts may map to the same field — first match wins)
     'us-gaap:Revenues': 'revenue_q',
+    'us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax': 'revenue_q',
     'us-gaap:CostOfRevenue': 'cogs_q',
+    'us-gaap:CostOfGoodsAndServicesSold': 'cogs_q',
     'us-gaap:GrossProfit': 'gross_profit_q',
     'us-gaap:ResearchAndDevelopmentExpense': 'rd_expense_q',
     'us-gaap:SellingGeneralAndAdministrativeExpense': 'sga_q',
     'us-gaap:OperatingExpenses': 'total_opex_q',
+    'us-gaap:CostsAndExpenses': 'total_opex_q',
     'us-gaap:OperatingIncomeLoss': 'operating_income_q',
     'us-gaap:InvestmentIncomeInterest': 'interest_income_q',
     'us-gaap:InterestExpenseNonoperating': 'interest_expense_q',
+    'us-gaap:InterestIncomeExpenseNet': 'interest_expense_net_q',
     'us-gaap:OtherNonoperatingIncomeExpense': 'other_nonop_income_q',
     'us-gaap:NonoperatingIncomeExpense': 'total_nonop_income_q',
     'us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest': 'pretax_income_q',
+    'us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments': 'pretax_income_q',
     'us-gaap:IncomeTaxExpenseBenefit': 'income_tax_expense_q',
+    'us-gaap:IncomeLossFromEquityMethodInvestments': 'equity_method_earnings_q',
     'us-gaap:NetIncomeLoss': 'net_income_q',
+    'us-gaap:ProfitLoss': 'net_income_q',
+    'us-gaap:NetIncomeLossAttributableToNoncontrollingInterest': 'net_income_nci_q',
+    'us-gaap:NetIncomeLossAvailableToCommonStockholdersBasic': 'net_income_to_common_q',
 }
 
 IS_SHARES_CONCEPTS = {
@@ -228,8 +237,10 @@ def extract_filing(filing_json):
         if period_end not in results:
             results[period_end] = {'period_end': period_end, 'period_start': period_start}
 
-        # USD fields
+        # USD fields (skip if field already set — first concept match wins)
         for concept, field in IS_CONCEPTS.items():
+            if field in results[period_end]:
+                continue
             val = find_value(is_items, concept, qp)
             if val is not None:
                 raw = to_raw(val, field)
@@ -239,12 +250,16 @@ def extract_filing(filing_json):
 
         # Shares fields
         for concept, field in IS_SHARES_CONCEPTS.items():
+            if field in results[period_end]:
+                continue
             val = find_value(is_items, concept, qp)
             if val is not None:
                 results[period_end][field] = to_raw(val, field)
 
         # Per-share fields
         for concept, field in IS_PER_SHARE_CONCEPTS.items():
+            if field in results[period_end]:
+                continue
             val = find_value(is_items, concept, qp)
             if val is not None:
                 results[period_end][field] = to_raw(val, field)
@@ -255,6 +270,8 @@ def extract_filing(filing_json):
             results[ip] = {'period_end': ip}
 
         for concept, field in BS_CONCEPTS.items():
+            if field in results[ip]:
+                continue
             val = find_value(bs_items, concept, ip)
             if val is not None:
                 results[ip][field] = to_raw(val, field)
@@ -287,13 +304,16 @@ def extract_filing(filing_json):
             results[period_end] = {'period_end': period_end}
 
         for concept, field in CF_CONCEPTS.items():
+            ytd_key = f'{field}_ytd'
+            if ytd_key in results[period_end]:
+                continue
             val = find_value(cf_items, concept, cp)
             if val is not None:
                 raw = to_raw(val, field)
                 if field in NEGATE_FIELDS:
                     raw = -abs(raw)
                 # Store as YTD with markers for quarterly derivation
-                results[period_end][f'{field}_ytd'] = raw
+                results[period_end][ytd_key] = raw
                 results[period_end][f'{field}_ytd_days'] = period_days(cp)
                 results[period_end][f'{field}_fy_start'] = period_start
 

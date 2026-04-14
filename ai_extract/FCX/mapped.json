@@ -1,0 +1,166 @@
+[
+  {
+    "period_end": "2023-03-31",
+    "period_start": "2023-01-01",
+    "revenue_q": 5389000000,
+    "cogs_q": 3564000000,
+    "sga_q": 126000000,
+    "total_opex_q": 3788000000,
+    "operating_income_q": 1601000000,
+    "interest_expense_net_q": -151000000,
+    "other_nonop_income_q": 88000000,
+    "pretax_income_q": 1538000000,
+    "income_tax_expense_q": 499000000,
+    "equity_method_earnings_q": 10000000,
+    "net_income_q": 1049000000,
+    "net_income_nci_q": 386000000,
+    "net_income_to_common_q": 663000000,
+    "diluted_shares_q": 1443000000,
+    "basic_shares_q": 1433000000,
+    "eps_basic_q": 0.46,
+    "eps_diluted_q": 0.46,
+    "tax_withholding_sbc_q": -47000000,
+    "cfi_q": -1164000000,
+    "net_change_cash_q": -1286000000,
+    "sbc_q": 53000000,
+    "dna_q": 399000000,
+    "change_inventory_q": -457000000,
+    "debt_repayment_q": -1273000000,
+    "cff_q": -1172000000,
+    "cfo_q": 1050000000,
+    "capex_q": -196000000,
+    "ticker": "FCX"
+  },
+  {
+    "period_end": "2024-03-31",
+    "period_start": "2024-01-01",
+    "revenue_q": 6321000000,
+    "cogs_q": 4439000000,
+    "sga_q": 144000000,
+    "total_opex_q": 4687000000,
+    "operating_income_q": 1634000000,
+    "interest_expense_net_q": -89000000,
+    "other_nonop_income_q": 129000000,
+    "pretax_income_q": 1674000000,
+    "income_tax_expense_q": 512000000,
+    "equity_method_earnings_q": 0,
+    "net_income_q": 1162000000,
+    "net_income_nci_q": 689000000,
+    "net_income_to_common_q": 473000000,
+    "diluted_shares_q": 1444000000,
+    "basic_shares_q": 1436000000,
+    "eps_basic_q": 0.33,
+    "eps_diluted_q": 0.32,
+    "cash_q": 5208000000,
+    "accounts_receivable_q": 1494000000,
+    "total_current_assets_q": 14842000000,
+    "ppe_q": 36197000000,
+    "other_noncurrent_assets_q": 1846000000,
+    "total_assets_q": 54198000000,
+    "total_current_liabilities_q": 6305000000,
+    "long_term_debt_q": 8656000000,
+    "other_noncurrent_liabilities_q": 1573000000,
+    "total_liabilities_q": 26093000000,
+    "common_stock_q": 162000000,
+    "apic_q": 24488000000,
+    "aoci_q": -274000000,
+    "retained_earnings_q": -1586000000,
+    "equity_q": 16973000000,
+    "total_liabilities_and_equity_q": 54198000000,
+    "short_term_debt_q": 769000000,
+    "_calculation_components": {
+      "operating_leases": {
+        "current": null,
+        "noncurrent": null,
+        "total": null,
+        "current_location": "Operating lease liabilities are not separately disclosed on the face of the balance sheet or in notes with specific XBRL tags in this filing. The company uses the combined 'Accounts payable and accrued liabilities' line for current liabilities and 'Other liabilities' for noncurrent. No specific OperatingLeaseLiability XBRL facts were found in the undimensioned facts provided. Operating lease amounts may be embedded within these combined line items but specific values cannot be confirmed from available data."
+      },
+      "depreciation_and_amortization": {
+        "total": 595,
+        "components": [
+          {
+            "label": "Depreciation, depletion and amortization (cash flow statement)",
+            "value": 595
+          },
+          {
+            "label": "Depreciation, depletion and amortization (income statement - cost of sales)",
+            "value": 595
+          }
+        ],
+        "is_single_line": true
+      },
+      "accounts_payable": {
+        "value": 3672,
+        "is_pure": false,
+        "combined_with": "Accrued liabilities - the balance sheet line is labeled Accounts payable and accrued liabilities and uses concept us-gaap:AccountsPayableAndAccruedLiabilitiesCurrent",
+        "note_breakout": null
+      },
+      "accounts_receivable": {
+        "value": 1494,
+        "is_pure": true,
+        "combined_with": null,
+        "note_breakout": null
+      },
+      "capex": {
+        "cf_value": 1254,
+        "supplemental_not_yet_paid": null,
+        "includes_intangibles": false
+      },
+      "acquisitions": {
+        "total": 0,
+        "items": []
+      },
+      "short_term_debt": {
+        "value": 769,
+        "components": [
+          {
+            "concept": "us-gaap:LongTermDebtCurrent",
+            "value": 769,
+            "description": "Current portion of long-term debt per balance sheet"
+          }
+        ],
+        "confirmed_zero": false
+      },
+      "sbc": {
+        "cf_value": 53,
+        "note_by_function": null
+      },
+      "interest_expense": {
+        "gross": 175,
+        "income": null,
+        "net": 89,
+        "source": "Note 5 discloses consolidated interest costs before capitalization of 175 million. Capitalized interest was 86 million. Net interest expense on income statement is 89 million (175 - 86 = 89). The XBRL concept InterestIncomeExpenseNet = -89 confirms the net expense. Gross interest income not separately disclosed."
+      },
+      "tax_rate": {
+        "tax_expense": 512,
+        "pretax_income": 1674,
+        "effective_rate": 0.31,
+        "flags": [
+          "Effective rate of 31% includes a net benefit of 182 million related to closure of PT-FI 2021 corporate income tax audit; underlying rate excluding this benefit would be higher",
+          "US jurisdiction expected to generate net losses in 2024 with 0% effective rate applied to US portion"
+        ]
+      },
+      "inventory": {
+        "total": 7290,
+        "raw_materials": 413,
+        "wip": 252,
+        "finished_goods": 1691,
+        "materials_and_supplies": 2202,
+        "current_mill_and_leach_stockpiles": 1419,
+        "long_term_mill_and_leach_stockpiles": 1313,
+        "note": "Total inventory = Product (2356 current) + Materials and supplies (2202) + Current mill and leach stockpiles (1419) + Long-term mill and leach stockpiles (1313) = 7290. Product consists of raw materials 413 + WIP 252 + finished goods 1691 = 2356"
+      }
+    },
+    "tax_withholding_sbc_q": -27000000,
+    "cfi_q": -1277000000,
+    "net_change_cash_q": 277000000,
+    "sbc_q": 53000000,
+    "dna_q": 595000000,
+    "change_inventory_q": 66000000,
+    "debt_repayment_q": -612000000,
+    "cff_q": -342000000,
+    "cfo_q": 1896000000,
+    "capex_q": -237000000,
+    "ticker": "FCX"
+  }
+]
