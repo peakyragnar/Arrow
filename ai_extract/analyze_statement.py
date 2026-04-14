@@ -296,6 +296,68 @@ cross_statement_checks: verify these ties between statements:
 - Beginning cash on CF = Cash on BS (prior period)
 - Retained earnings change on BS = Net income - Dividends - Share repurchases + any other items charged to retained earnings. Account for ALL items that affect retained earnings, not just net income and dividends.
 
+## LAYER 2 — CALCULATION COMPONENT VERIFICATION
+
+After extracting the three statements, search the ENTIRE filing (statement face, notes, supplemental disclosures, dimensioned XBRL facts) to ensure all components needed for downstream calculations are captured. Do not assume a component is absent — actively look for it.
+
+Add a "calculation_components" section to your output with these items:
+
+1. OPERATING LEASES: Find BOTH current and non-current operating lease liabilities.
+   - Current portion is often HIDDEN inside "Accrued and other current liabilities." Check the notes.
+   - Check for XBRL tag OperatingLeaseLiabilityCurrentStatementOfFinancialPositionExtensibleList — it tells you where current portion is classified.
+   - If a total OperatingLeaseLiability exists, use it. If only the split exists, sum current + non-current.
+   - If this is a 10-Q and you cannot find them, flag it.
+   Output: {"current": X, "noncurrent": X, "total": X, "current_location": "where found"}
+
+2. DEPRECIATION AND AMORTIZATION: Check CF statement for ALL D&A-related lines.
+   - May be one line or SPLIT into: depreciation (PP&E), amortization of intangibles, amortization of debt costs, capitalized contract cost amortization, depletion (mining companies).
+   - Search for every CF line containing "depreci", "amortiz", or "deplet".
+   - Report each component and the total. Also check notes for breakdowns.
+   Output: {"total": X, "components": [{"label": "...", "value": X}], "is_single_line": true/false}
+
+3. ACCOUNTS PAYABLE: Must be PURE trade AP, not combined with accrued liabilities.
+   - If BS shows "Accounts payable and accrued liabilities" combined — find pure AP in the notes.
+   - Check for dimensioned contexts (related vs non-related party splits).
+   Output: {"value": X, "is_pure": true/false, "combined_with": null or "description", "note_breakout": X or null}
+
+4. ACCOUNTS RECEIVABLE: Must be pure trade AR.
+   - If combined with other receivables, find pure AR in notes.
+   - Check for dimensioned contexts.
+   Output: {"value": X, "is_pure": true/false, "combined_with": null or "description", "note_breakout": X or null}
+
+5. CAPEX: Capital expenditures on PP&E and intangible assets.
+   - Concept names vary between companies and years (PaymentsToAcquirePropertyPlantAndEquipment vs PaymentsToAcquireProductiveAssets etc).
+   - Check supplemental disclosures for "Capital expenditures incurred but not yet paid."
+   Output: {"cf_value": X, "supplemental_not_yet_paid": X or null, "includes_intangibles": true/false}
+
+6. ACQUISITIONS: Cash paid for acquisitions net of cash acquired.
+   - May have MULTIPLE acquisition lines in same period. Sum all.
+   - Search both us-gaap and company extension namespaces for concepts containing "acquire" or "acquisition."
+   Output: {"total": X, "items": [{"concept": "...", "value": X}]}
+
+7. SHORT-TERM DEBT: Current portion of long-term debt, commercial paper, notes payable, short-term borrowings.
+   - If none found, confirm truly zero.
+   Output: {"value": X, "components": [...], "confirmed_zero": true/false}
+
+8. SBC: Stock-based compensation from CF statement addback.
+   - Also report the note breakdown by function if disclosed.
+   Output: {"cf_value": X, "note_by_function": {...} or null}
+
+9. INTEREST EXPENSE: Must be GROSS interest expense, not net of interest income.
+   - If IS shows "Interest expense, net" — find gross in notes.
+   Output: {"gross": X, "income": X, "net": X, "source": "description"}
+
+10. TAX RATE: Income tax expense and pretax income.
+    - FLAG if pretax income is negative (use 21% fallback).
+    - FLAG if tax expense is negative (refund).
+    Output: {"tax_expense": X, "pretax_income": X, "effective_rate": X, "flags": [...]}
+
+11. INVENTORY: Total and breakdown if disclosed.
+    - If company has no inventory (software/services), confirm truly zero.
+    Output: {"total": X, "raw_materials": X or null, "wip": X or null, "finished_goods": X or null}
+
+Use values from the CURRENT period (most recent quarter-end for BS items, current quarter/YTD for flow items).
+
 Do NOT include analysis, observations, or commentary.
 Do NOT verify the math yourself — just report what you found.
 CRITICAL: Output must be valid JSON. In ALL string values, never use apostrophes or single quotes. Use "shareholders equity" not "shareholders' equity". Use "does not" not "doesn't". This applies to labels, mapping_reason, and all other string fields."""
@@ -563,10 +625,24 @@ def main():
             for check in cross:
                 status = "✓" if check.get('match') else "✗"
                 print(f"  {status} {check.get('check')}")
-                # Print whatever value fields are present
                 for k, v in check.items():
                     if k not in ('check', 'match'):
                         print(f"      {k}: {v}")
+
+        # Calculation components
+        calc = ai_result.get('calculation_components', {})
+        if calc:
+            print(f"\n{'=' * 40}")
+            print(f"  CALCULATION COMPONENTS")
+            print(f"{'=' * 40}\n")
+            for comp_name, comp_data in calc.items():
+                print(f"  {comp_name}:")
+                if isinstance(comp_data, dict):
+                    for k, v in comp_data.items():
+                        print(f"    {k}: {v}")
+                else:
+                    print(f"    {comp_data}")
+                print()
 
         print(f"\n{'=' * 80}")
         print(f"Tokens: {input_tokens} in, {output_tokens} out")
