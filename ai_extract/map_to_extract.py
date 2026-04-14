@@ -436,15 +436,18 @@ def derive_quarterly(records, field_names):
 
                 if ytd_days < 120:
                     # Q1 — YTD is quarterly
-                    rec[field] = ytd_val
+                    if field not in rec:
+                        rec[field] = ytd_val
                     prev_ytd = ytd_val
                 elif prev_ytd != 0:
                     # Q2, Q3, Q4 — subtract previous YTD from same fiscal year
-                    rec[field] = ytd_val - prev_ytd
+                    if field not in rec:
+                        rec[field] = ytd_val - prev_ytd
                     prev_ytd = ytd_val
                 else:
-                    # Single non-Q1 filing with no prior quarter — can't derive
-                    rec[field] = None
+                    # No prior quarter YTD — only derive if no direct value exists
+                    if field not in rec:
+                        rec[field] = None
                     prev_ytd = ytd_val
 
         # Clean up temp keys
