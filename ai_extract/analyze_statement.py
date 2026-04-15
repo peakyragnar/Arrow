@@ -34,7 +34,7 @@ def clean_html(html):
     return cleaned
 
 
-def build_prompt(html_content, xbrl_facts, statement_type, meta):
+def build_prompt(html_content, xbrl_facts, statement_type, meta, segment_facts=None):
     """Build the prompt for Claude."""
 
     # Format XBRL facts as a readable list
@@ -358,9 +358,65 @@ Add a "calculation_components" section to your output with these items:
 
 Use values from the CURRENT period (most recent quarter-end for BS items, current quarter/YTD for flow items).
 
+## LAYER 3 — SEGMENT DATA
+
+After extracting the three statements and calculation components, extract all segment/geographic/product revenue breakdowns from the filing.
+
+Add a "segment_data" section to your output with these items:
+
+1. BUSINESS SEGMENTS: Revenue by operating segment (e.g., Compute & Networking, Graphics).
+   - Look in the XBRL dimensioned facts (StatementBusinessSegmentsAxis) and filing notes.
+   - Also extract operating income by segment if disclosed.
+   Output: {"segments": [{"name": "...", "revenue": X, "operating_income": X or null}], "revenue_total": X}
+
+2. GEOGRAPHY: Revenue by geographic region.
+   - Look in XBRL dimensioned facts (StatementGeographicalAxis) and filing notes.
+   Output: {"regions": [{"name": "...", "revenue": X}], "revenue_total": X}
+
+3. PRODUCT/SERVICE: Revenue by product or service category.
+   - Look in XBRL dimensioned facts (ProductOrServiceAxis) and filing notes.
+   Output: {"products": [{"name": "...", "revenue": X}], "revenue_total": X}
+
+4. CUSTOMER CONCENTRATION: Major customer data if disclosed.
+   - Look in XBRL dimensioned facts (MajorCustomersAxis) and filing notes.
+   Output: {"customers": [{"name": "...", "pct_of_revenue": X}]}
+
+For each breakdown, the revenue_total MUST equal the total revenue from the income statement. If it does not, flag the discrepancy. Use values for ALL periods reported (current + comparatives), keyed the same way as financial statement values.
+
+If a segment type is not disclosed in this filing, omit it (do not output an empty list).
+
 Do NOT include analysis, observations, or commentary.
 Do NOT verify the math yourself — just report what you found.
 CRITICAL: Output must be valid JSON. In ALL string values, never use apostrophes or single quotes. Use "shareholders equity" not "shareholders' equity". Use "does not" not "doesn't". This applies to labels, mapping_reason, and all other string fields."""
+
+    # Format segment XBRL facts
+    segment_text = ""
+    if segment_facts:
+        segment_text = "\n\nSEGMENT/GEOGRAPHY XBRL FACTS (dimensioned facts for segment analysis):\n"
+        seen = set()
+        for f in segment_facts:
+            key = (f['concept'], f['context_ref'])
+            if key in seen:
+                continue
+            seen.add(key)
+
+            period_str = ''
+            if f['period']:
+                if f['period']['type'] == 'duration':
+                    period_str = f"{f['period']['startDate']} to {f['period']['endDate']}"
+                else:
+                    period_str = f"as of {f['period']['date']}"
+
+            dims_str = ', '.join(f"{d['dimension']}={d['member']}" for d in f.get('dimensions', []))
+            val = f['value_raw']
+            unit = f['unit'] or ''
+            if f['value_numeric'] is not None:
+                if 'USD' in unit and 'shares' not in unit:
+                    val = f"${f['value_numeric']/1e6:,.0f}M"
+                elif f['value_numeric'] is not None and isinstance(f['value_numeric'], float) and f['value_numeric'] < 1:
+                    val = f"{f['value_numeric']:.2%}"
+
+            segment_text += f"  {f['concept']} [{period_str}] ({dims_str}) = {val}\n"
 
     prompt = f"""You are analyzing a {meta['form']} filing for {meta['ticker']}.
 Report date: {meta['report_date']}. Filing date: {meta['filing_date']}.
@@ -368,7 +424,7 @@ Report date: {meta['report_date']}. Filing date: {meta['filing_date']}.
 {task}
 
 ---
-{facts_text}
+{facts_text}{segment_text}
 ---
 FULL FILING HTML:
 {html_content}
@@ -478,12 +534,23 @@ def main():
     html_cleaned = clean_html(html_content)
     print(f"  Full HTML: {len(html_content):,} chars -> cleaned: {len(html_cleaned):,} chars (~{len(html_cleaned)//4:,} tokens)")
 
-    # Step 3: Filter XBRL facts (undimensioned only)
+    # Step 3: Filter XBRL facts
     xbrl_facts = [f for f in parsed['facts'] if not f['dimensioned']]
     print(f"  {len(xbrl_facts)} undimensioned XBRL facts")
 
+    # Include segment/geography dimensioned facts for segment extraction
+    segment_dims = {
+        'us-gaap:StatementBusinessSegmentsAxis',
+        'srt:StatementGeographicalAxis',
+        'srt:ProductOrServiceAxis',
+        'srt:MajorCustomersAxis',
+    }
+    segment_facts = [f for f in parsed['facts'] if f['dimensioned']
+                     and any(d['dimension'] in segment_dims for d in f.get('dimensions', []))]
+    print(f"  {len(segment_facts)} segment/geography XBRL facts")
+
     # Step 4: Build prompt and call model
-    prompt = build_prompt(html_cleaned, xbrl_facts, args.statement, meta)
+    prompt = build_prompt(html_cleaned, xbrl_facts, args.statement, meta, segment_facts)
     print(f"\nTotal prompt size: ~{len(prompt)//4} tokens")
     print(f"Sending to {args.model}...\n")
 
@@ -981,16 +1048,20 @@ def update_mapped_json(full_output, ticker, source_filename):
             if source_filename not in rec['source_filings']:
                 rec['source_filings'].append(source_filename)
 
-    # Calculation components — attach to the current period (first IS period)
+    # Calculation components and segment data — attach to the current period
     calc = ai.get('calculation_components', {})
-    if calc:
+    seg = ai.get('segment_data', {})
+    if calc or seg:
         is_items = ai.get('income_statement', {}).get('line_items', [])
         if is_items:
             current_periods = list(is_items[0].get('values', {}).keys())
             if current_periods:
                 current = current_periods[0]
                 if current in mapped:
-                    mapped[current]['calculation_components'] = calc
+                    if calc:
+                        mapped[current]['calculation_components'] = calc
+                    if seg:
+                        mapped[current]['segment_data'] = seg
 
     # Sort by period and write
     sorted_periods = sorted(mapped.keys())

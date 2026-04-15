@@ -7,9 +7,10 @@ Three stages. Each stage has one job. No stage does another stage's work.
 **Input**: Raw filing (HTML + XBRL) downloaded by `fetch.py`
 
 **What the AI does**:
-1. Reads the full filing
+1. Reads the full filing (HTML + undimensioned XBRL facts + segment/geography dimensioned XBRL facts)
 2. Extracts every line item from all three financial statements (IS, BS, CF)
-3. Verifies using the financial statements' own math:
+3. Extracts segment data: revenue by business segment, geography, product/service, and customer concentration. Segment revenue totals must match total revenue from the IS.
+4. Verifies using the financial statements' own math:
    - Component items sum to reported subtotals (e.g., sum of current assets = reported Total Current Assets)
    - IS flows: Revenue → Gross Profit → Operating Income → Pretax → Net Income
    - BS balances: Total Assets = Total Liabilities + Total Equity
@@ -22,7 +23,7 @@ Three stages. Each stage has one job. No stage does another stage's work.
 - **Per-filing JSON** (`ai_extract/{TICKER}/q1_fy26_10q.json`): Exact extraction output, immutable, used as training data for post-trained model
 - **`mapped.json`** (`ai_extract/{TICKER}/mapped.json`): Same data organized by period. If the filing is an amendment (10-Q/A, 10-K/A) or a 10-K with restated comparatives, the amended periods get overwritten. This is the running record of the best-known values for each period.
 
-**What this stage does NOT do**: No field renaming, no analytical mapping, no metric calculations. Just the verified financial statements stored two ways.
+**What this stage does NOT do**: No field renaming, no analytical mapping, no metric calculations. Just the verified financial statements + segment data stored two ways.
 
 ## Stage 2 — Analytical Component Extraction (`ai_formula.py`)
 

@@ -133,6 +133,7 @@ AI-powered extraction replaces per-company scripts and XBRL concept mappings. A 
 - Also extracts calculation components (operating leases, D&A breakdown, pure AP/AR, capex, acquisitions, short-term debt, SBC, gross interest expense, tax rate, inventory breakdown).
 - **The AI must reconcile before outputting.** Every component sum must match the filing's reported subtotals (e.g., sum of current asset items must equal reported Total Current Assets). If any check fails, the AI loops — re-examines the filing, finds missing items, fixes values. It does not output until all checks pass, or times out with a failure log.
 - Extracts ALL periods reported — current and comparatives.
+- Extracts segment data: revenue by business segment, geography, product/service, and customer concentration. Segment revenue totals must tie to IS total revenue.
 - **Outputs two things:**
   - Per-filing JSON (`q1_fy26_10q.json`) — immutable, exact extraction, training data for post-trained model.
   - `mapped.json` — same data organized by period. Later filings overwrite earlier ones for the same period (handles amendments, restated comparatives).
