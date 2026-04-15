@@ -6834,20 +6834,20 @@
         },
         {
           "label": "Interest expense",
-          "xbrl_concept": "us-gaap:InterestExpense",
+          "xbrl_concept": "us-gaap:InterestExpenseNonoperating",
           "value": 64,
           "unit": "USD_millions",
           "indent_level": 1
         },
         {
-          "label": "Other, net",
+          "label": "Other income (expense), net",
           "xbrl_concept": "us-gaap:OtherNonoperatingIncomeExpense",
           "value": 75,
           "unit": "USD_millions",
           "indent_level": 1
         },
         {
-          "label": "Other income (expense), net",
+          "label": "Total other income (expense), net",
           "xbrl_concept": "us-gaap:NonoperatingIncomeExpense",
           "value": 370,
           "unit": "USD_millions",
@@ -6877,28 +6877,28 @@
         {
           "label": "Basic",
           "xbrl_concept": "us-gaap:EarningsPerShareBasic",
-          "value": 6.04,
+          "value": 0.6,
           "unit": "USD_per_share",
           "indent_level": 1
         },
         {
           "label": "Diluted",
           "xbrl_concept": "us-gaap:EarningsPerShareDiluted",
-          "value": 5.98,
+          "value": 0.6,
           "unit": "USD_per_share",
           "indent_level": 1
         },
         {
           "label": "Basic weighted average shares",
           "xbrl_concept": "us-gaap:WeightedAverageNumberOfSharesOutstandingBasic",
-          "value": 2462,
+          "value": 24620,
           "unit": "shares_millions",
           "indent_level": 1
         },
         {
           "label": "Diluted weighted average shares",
           "xbrl_concept": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
-          "value": 2489,
+          "value": 24890,
           "unit": "shares_millions",
           "indent_level": 1
         }
@@ -6915,7 +6915,7 @@
           "result_label": "Gross profit"
         },
         {
-          "formula": "Research and development plus Sales general and administrative equals Total operating expenses",
+          "formula": "Research and development plus Sales, general and administrative equals Total operating expenses",
           "components": [
             "Research and development",
             "Sales, general and administrative",
@@ -6935,24 +6935,24 @@
           "result_label": "Operating income"
         },
         {
-          "formula": "Interest income minus Interest expense plus Other net equals Other income expense net",
+          "formula": "Interest income minus Interest expense plus Other income (expense), net equals Total other income (expense), net",
           "components": [
             "Interest income",
             "Interest expense",
-            "Other, net",
-            "Other income (expense), net"
+            "Other income (expense), net",
+            "Total other income (expense), net"
           ],
-          "operation": "Interest income - Interest expense + Other, net",
-          "result_label": "Other income (expense), net"
+          "operation": "Interest income - Interest expense + Other income (expense), net",
+          "result_label": "Total other income (expense), net"
         },
         {
-          "formula": "Operating income plus Other income expense net equals Income before income tax",
+          "formula": "Operating income plus Total other income (expense), net equals Income before income tax",
           "components": [
             "Operating income",
-            "Other income (expense), net",
+            "Total other income (expense), net",
             "Income before income tax"
           ],
-          "operation": "Operating income + Other income (expense), net",
+          "operation": "Operating income + Total other income (expense), net",
           "result_label": "Income before income tax"
         },
         {
@@ -6995,7 +6995,7 @@
           "indent_level": 2
         },
         {
-          "label": "Realized and unrealized (gains) losses on investments in non-affiliated entities, net",
+          "label": "(Gains) losses on non-marketable equity securities and publicly-held equity securities, net",
           "xbrl_concept": "us-gaap:GainLossOnInvestments",
           "value": 69,
           "unit": "USD_millions",
@@ -7011,7 +7011,7 @@
         {
           "label": "Other",
           "xbrl_concept": "us-gaap:OtherNoncashIncomeExpense",
-          "value": -145,
+          "value": 145,
           "unit": "USD_millions",
           "indent_level": 2
         },
@@ -7079,6 +7079,13 @@
           "indent_level": 2
         },
         {
+          "label": "Proceeds from sales of non-marketable equity securities",
+          "xbrl_concept": "us-gaap:ProceedsFromSaleOfEquitySecuritiesFvNi",
+          "value": 55,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
           "label": "Purchases of marketable securities",
           "xbrl_concept": "us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt",
           "value": 9303,
@@ -7093,16 +7100,16 @@
           "indent_level": 2
         },
         {
-          "label": "Acquisitions, net of cash acquired",
-          "xbrl_concept": "us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired",
-          "value": 39,
+          "label": "Purchases of non-marketable equity securities",
+          "xbrl_concept": "us-gaap:PaymentsToAcquireEquitySecuritiesFvNi",
+          "value": 190,
           "unit": "USD_millions",
           "indent_level": 2
         },
         {
-          "label": "Investments in non-affiliated entities",
-          "xbrl_concept": "us-gaap:PaymentsForProceedsFromOtherInvestingActivities",
-          "value": 135,
+          "label": "Acquisitions, net of cash acquired",
+          "xbrl_concept": "us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired",
+          "value": 39,
           "unit": "USD_millions",
           "indent_level": 2
         },
@@ -7128,7 +7135,7 @@
           "indent_level": 2
         },
         {
-          "label": "Payments related to tax on restricted stock units",
+          "label": "Payments related to employee stock plan taxes",
           "xbrl_concept": "us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation",
           "value": 1752,
           "unit": "USD_millions",
@@ -7184,7 +7191,7 @@
             "Net income",
             "Stock-based compensation expense",
             "Depreciation and amortization",
-            "Realized and unrealized (gains) losses on investments in non-affiliated entities, net",
+            "(Gains) losses on non-marketable equity securities and publicly-held equity securities, net",
             "Deferred income taxes",
             "Other",
             "Accounts receivable",
@@ -7195,7 +7202,7 @@
             "Other long-term liabilities",
             "Net cash provided by operating activities"
           ],
-          "operation": "Net income + Stock-based compensation expense + Depreciation and amortization - Realized and unrealized (gains) losses on investments in non-affiliated entities, net + Deferred income taxes + Other - Accounts receivable - Inventories - Prepaid expenses and other assets + Accounts payable + Accrued and other current liabilities + Other long-term liabilities",
+          "operation": "Net income + Stock-based compensation expense + Depreciation and amortization + (Gains) losses on non-marketable equity securities and publicly-held equity securities, net + Deferred income taxes + Other + Accounts receivable + Inventories + Prepaid expenses and other assets + Accounts payable + Accrued and other current liabilities + Other long-term liabilities",
           "result_label": "Net cash provided by operating activities"
         },
         {
@@ -7203,13 +7210,14 @@
           "components": [
             "Proceeds from maturities of marketable securities",
             "Proceeds from sales of marketable securities",
+            "Proceeds from sales of non-marketable equity securities",
             "Purchases of marketable securities",
             "Purchases related to property and equipment and intangible assets",
+            "Purchases of non-marketable equity securities",
             "Acquisitions, net of cash acquired",
-            "Investments in non-affiliated entities",
             "Net cash used in investing activities"
           ],
-          "operation": "Proceeds from maturities of marketable securities + Proceeds from sales of marketable securities - Purchases of marketable securities - Purchases related to property and equipment and intangible assets - Acquisitions, net of cash acquired - Investments in non-affiliated entities",
+          "operation": "Proceeds from maturities of marketable securities + Proceeds from sales of marketable securities + Proceeds from sales of non-marketable equity securities - Purchases of marketable securities - Purchases related to property and equipment and intangible assets - Purchases of non-marketable equity securities - Acquisitions, net of cash acquired",
           "result_label": "Net cash used in investing activities"
         },
         {
@@ -7217,16 +7225,16 @@
           "components": [
             "Proceeds related to employee stock plans",
             "Payments related to repurchases of common stock",
-            "Payments related to tax on restricted stock units",
+            "Payments related to employee stock plan taxes",
             "Dividends paid",
             "Principal payments on property and equipment and intangible assets",
             "Net cash used in financing activities"
           ],
-          "operation": "Proceeds related to employee stock plans - Payments related to repurchases of common stock - Payments related to tax on restricted stock units - Dividends paid - Principal payments on property and equipment and intangible assets",
+          "operation": "Proceeds related to employee stock plans - Payments related to repurchases of common stock - Payments related to employee stock plan taxes - Dividends paid - Principal payments on property and equipment and intangible assets",
           "result_label": "Net cash used in financing activities"
         },
         {
-          "formula": "CFO plus CFI plus CFF equals Change in cash and cash equivalents",
+          "formula": "Net cash provided by operating activities plus Net cash used in investing activities plus Net cash used in financing activities equals Change in cash and cash equivalents",
           "components": [
             "Net cash provided by operating activities",
             "Net cash used in investing activities",
@@ -7237,7 +7245,7 @@
           "result_label": "Change in cash and cash equivalents"
         },
         {
-          "formula": "Cash at beginning plus Change equals Cash at end",
+          "formula": "Cash and cash equivalents at beginning of period plus Change in cash and cash equivalents equals Cash and cash equivalents at end of period",
           "components": [
             "Cash and cash equivalents at beginning of period",
             "Change in cash and cash equivalents",
@@ -7344,7 +7352,8 @@
       }
     },
     "source_filings": [
-      "q1_fy25_10q.json"
+      "q1_fy25_10q.json",
+      "q1_fy26_10q.json"
     ]
   },
   {
@@ -7415,14 +7424,14 @@
           "indent_level": 1
         },
         {
-          "label": "Other, net",
+          "label": "Other income (expense), net",
           "xbrl_concept": "us-gaap:OtherNonoperatingIncomeExpense",
           "value": 264,
           "unit": "USD_millions",
           "indent_level": 1
         },
         {
-          "label": "Other income (expense), net",
+          "label": "Total other income (expense), net",
           "xbrl_concept": "us-gaap:NonoperatingIncomeExpense",
           "value": 942,
           "unit": "USD_millions",
@@ -7464,14 +7473,14 @@
           "indent_level": 1
         },
         {
-          "label": "Weighted average shares used - Basic",
+          "label": "Weighted average shares - Basic",
           "xbrl_concept": "us-gaap:WeightedAverageNumberOfSharesOutstandingBasic",
           "value": 24599,
           "unit": "shares_millions",
           "indent_level": 1
         },
         {
-          "label": "Weighted average shares used - Diluted",
+          "label": "Weighted average shares - Diluted",
           "xbrl_concept": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
           "value": 24869,
           "unit": "shares_millions",
@@ -7490,7 +7499,7 @@
           "result_label": "Gross profit"
         },
         {
-          "formula": "Research and development plus Sales, general and administrative equals Total operating expenses",
+          "formula": "Research and development plus Sales general and administrative equals Total operating expenses",
           "components": [
             "Research and development",
             "Sales, general and administrative",
@@ -7510,24 +7519,24 @@
           "result_label": "Operating income"
         },
         {
-          "formula": "Interest income minus Interest expense plus Other, net equals Other income (expense), net",
+          "formula": "Interest income minus Interest expense plus Other income expense net equals Total other income expense net",
           "components": [
             "Interest income",
             "Interest expense",
-            "Other, net",
-            "Other income (expense), net"
+            "Other income (expense), net",
+            "Total other income (expense), net"
           ],
-          "operation": "Interest income - Interest expense + Other, net",
-          "result_label": "Other income (expense), net"
+          "operation": "Interest income - Interest expense + Other income (expense), net",
+          "result_label": "Total other income (expense), net"
         },
         {
-          "formula": "Operating income plus Other income (expense), net equals Income before income tax",
+          "formula": "Operating income plus Total other income expense net equals Income before income tax",
           "components": [
             "Operating income",
-            "Other income (expense), net",
+            "Total other income (expense), net",
             "Income before income tax"
           ],
-          "operation": "Operating income + Other income (expense), net",
+          "operation": "Operating income + Total other income (expense), net",
           "result_label": "Income before income tax"
         },
         {
@@ -7553,84 +7562,84 @@
           "xbrl_concept": "us-gaap:NetIncomeLoss",
           "value": 31480,
           "unit": "USD_millions",
-          "indent_level": 0
+          "indent_level": 1
         },
         {
           "label": "Stock-based compensation expense",
           "xbrl_concept": "us-gaap:ShareBasedCompensation",
           "value": 2164,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
         },
         {
           "label": "Depreciation and amortization",
           "xbrl_concept": "us-gaap:DepreciationDepletionAndAmortization",
           "value": 843,
           "unit": "USD_millions",
-          "indent_level": 1
-        },
-        {
-          "label": "Gains on investments in non-affiliated entities and publicly-held equity securities, net",
-          "xbrl_concept": "us-gaap:GainLossOnInvestments",
-          "value": 264,
-          "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
         },
         {
           "label": "Deferred income taxes",
           "xbrl_concept": "us-gaap:DeferredIncomeTaxExpenseBenefit",
           "value": -3276,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
+        },
+        {
+          "label": "Gains on non-marketable equity securities and publicly-held equity securities, net",
+          "xbrl_concept": "us-gaap:GainLossOnInvestments",
+          "value": 264,
+          "unit": "USD_millions",
+          "indent_level": 2
         },
         {
           "label": "Other",
           "xbrl_concept": "us-gaap:OtherNoncashIncomeExpense",
-          "value": 288,
+          "value": -288,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
         },
         {
           "label": "Accounts receivable",
           "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsReceivable",
-          "value": 4133,
+          "value": -4133,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
         },
         {
           "label": "Inventories",
           "xbrl_concept": "us-gaap:IncreaseDecreaseInInventories",
-          "value": 1380,
+          "value": -1380,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
         },
         {
           "label": "Prepaid expenses and other assets",
           "xbrl_concept": "us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets",
-          "value": 12,
+          "value": -12,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
         },
         {
           "label": "Accounts payable",
           "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsPayable",
           "value": 801,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
         },
         {
           "label": "Accrued and other current liabilities",
           "xbrl_concept": "us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities",
           "value": 3314,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
         },
         {
           "label": "Other long-term liabilities",
           "xbrl_concept": "us-gaap:IncreaseDecreaseInOtherNoncurrentLiabilities",
           "value": 584,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
         },
         {
           "label": "Net cash provided by operating activities",
@@ -7644,56 +7653,49 @@
           "xbrl_concept": "us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities",
           "value": 8098,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
         },
         {
           "label": "Proceeds from sales of marketable securities",
           "xbrl_concept": "us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt",
           "value": 164,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
+        },
+        {
+          "label": "Proceeds from sales of non-marketable equity securities",
+          "xbrl_concept": "us-gaap:ProceedsFromSaleOfEquitySecuritiesFvNi",
+          "value": 105,
+          "unit": "USD_millions",
+          "indent_level": 2
         },
         {
           "label": "Purchases of marketable securities",
           "xbrl_concept": "us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt",
-          "value": 15047,
+          "value": -15047,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
         },
         {
           "label": "Purchases related to property and equipment and intangible assets",
           "xbrl_concept": "us-gaap:PaymentsToAcquireProductiveAssets",
-          "value": 1346,
+          "value": -1346,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
+        },
+        {
+          "label": "Purchases of non-marketable equity securities",
+          "xbrl_concept": "us-gaap:PaymentsToAcquireEquitySecuritiesFvNi",
+          "value": -534,
+          "unit": "USD_millions",
+          "indent_level": 2
         },
         {
           "label": "Acquisitions, net of cash acquired",
           "xbrl_concept": "us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired",
-          "value": 317,
+          "value": -317,
           "unit": "USD_millions",
-          "indent_level": 1
-        },
-        {
-          "label": "Purchases of investments in non-affiliated entities",
-          "xbrl_concept": "us-gaap:PaymentsToAcquireEquitySecuritiesFvNi",
-          "value": 534,
-          "unit": "USD_millions",
-          "indent_level": 1
-        },
-        {
-          "label": "Proceeds from sales of investments in non-affiliated entities",
-          "xbrl_concept": "us-gaap:ProceedsFromSaleOfEquitySecuritiesFvNi",
-          "value": 105,
-          "unit": "USD_millions",
-          "indent_level": 1
-        },
-        {
-          "label": "Other",
-          "xbrl_concept": "us-gaap:PaymentsForProceedsFromOtherInvestingActivities",
-          "value": 0,
-          "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
         },
         {
           "label": "Net cash used in investing activities",
@@ -7707,42 +7709,42 @@
           "xbrl_concept": "us-gaap:ProceedsFromStockPlans",
           "value": 285,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
         },
         {
           "label": "Payments related to repurchases of common stock",
           "xbrl_concept": "us-gaap:PaymentsForRepurchaseOfCommonStock",
-          "value": 14898,
+          "value": -14898,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
         },
         {
-          "label": "Repayment of debt",
-          "xbrl_concept": "us-gaap:RepaymentsOfDebt",
-          "value": 1250,
-          "unit": "USD_millions",
-          "indent_level": 1
-        },
-        {
-          "label": "Payments related to tax on restricted stock units",
+          "label": "Payments related to employee stock plan taxes",
           "xbrl_concept": "us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation",
-          "value": 3389,
+          "value": -3389,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
         },
         {
           "label": "Dividends paid",
           "xbrl_concept": "us-gaap:PaymentsOfDividends",
-          "value": 344,
+          "value": -344,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
         },
         {
           "label": "Principal payments on property and equipment and intangible assets",
           "xbrl_concept": "nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities",
-          "value": 69,
+          "value": -69,
           "unit": "USD_millions",
-          "indent_level": 1
+          "indent_level": 2
+        },
+        {
+          "label": "Repayment of debt",
+          "xbrl_concept": "us-gaap:RepaymentsOfDebt",
+          "value": -1250,
+          "unit": "USD_millions",
+          "indent_level": 2
         },
         {
           "label": "Net cash used in financing activities",
@@ -7752,42 +7754,21 @@
           "indent_level": 0
         },
         {
-          "label": "Change in cash, cash equivalents, and restricted cash",
+          "label": "Change in cash and cash equivalents",
           "xbrl_concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect",
           "value": 1291,
           "unit": "USD_millions",
           "indent_level": 0
         },
         {
-          "label": "Cash, cash equivalents, and restricted cash at beginning of period",
+          "label": "Cash and cash equivalents at beginning of period",
           "xbrl_concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
           "value": 7280,
           "unit": "USD_millions",
           "indent_level": 1
         },
         {
-          "label": "Cash, cash equivalents, and restricted cash at end of period",
-          "xbrl_concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
-          "value": 8571,
-          "unit": "USD_millions",
-          "indent_level": 1
-        },
-        {
-          "label": "Cash and cash equivalents (reconciliation)",
-          "xbrl_concept": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
-          "value": 8563,
-          "unit": "USD_millions",
-          "indent_level": 2
-        },
-        {
-          "label": "Restricted cash, included in prepaid expenses and other current assets",
-          "xbrl_concept": "us-gaap:RestrictedCashCurrent",
-          "value": 8,
-          "unit": "USD_millions",
-          "indent_level": 2
-        },
-        {
-          "label": "Total cash, cash equivalents, and restricted cash",
+          "label": "Cash and cash equivalents at end of period",
           "xbrl_concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
           "value": 8571,
           "unit": "USD_millions",
@@ -7803,13 +7784,13 @@
       ],
       "formulas": [
         {
-          "formula": "Net income plus non-cash adjustments plus changes in working capital equals Net cash provided by operating activities",
+          "formula": "Sum of operating activity components equals Net cash provided by operating activities",
           "components": [
             "Net income",
             "Stock-based compensation expense",
             "Depreciation and amortization",
-            "Gains on investments in non-affiliated entities and publicly-held equity securities, net",
             "Deferred income taxes",
+            "Gains on non-marketable equity securities and publicly-held equity securities, net",
             "Other",
             "Accounts receivable",
             "Inventories",
@@ -7819,75 +7800,65 @@
             "Other long-term liabilities",
             "Net cash provided by operating activities"
           ],
-          "operation": "Net income + Stock-based compensation expense + Depreciation and amortization - Gains on investments in non-affiliated entities and publicly-held equity securities, net + Deferred income taxes - Other - Accounts receivable - Inventories - Prepaid expenses and other assets + Accounts payable + Accrued and other current liabilities + Other long-term liabilities",
+          "operation": "Net income + Stock-based compensation expense + Depreciation and amortization + Deferred income taxes - Gains on non-marketable equity securities and publicly-held equity securities, net - Other - Accounts receivable - Inventories + Prepaid expenses and other assets + Accounts payable + Accrued and other current liabilities + Other long-term liabilities",
           "result_label": "Net cash provided by operating activities"
         },
         {
-          "formula": "Investing inflows minus outflows equals Net cash used in investing activities",
+          "formula": "Sum of investing activity components equals Net cash used in investing activities",
           "components": [
             "Proceeds from maturities of marketable securities",
             "Proceeds from sales of marketable securities",
+            "Proceeds from sales of non-marketable equity securities",
             "Purchases of marketable securities",
             "Purchases related to property and equipment and intangible assets",
+            "Purchases of non-marketable equity securities",
             "Acquisitions, net of cash acquired",
-            "Purchases of investments in non-affiliated entities",
-            "Proceeds from sales of investments in non-affiliated entities",
-            "Other",
             "Net cash used in investing activities"
           ],
-          "operation": "Proceeds from maturities of marketable securities + Proceeds from sales of marketable securities - Purchases of marketable securities - Purchases related to property and equipment and intangible assets - Acquisitions, net of cash acquired - Purchases of investments in non-affiliated entities + Proceeds from sales of investments in non-affiliated entities + Other",
+          "operation": "Proceeds from maturities of marketable securities + Proceeds from sales of marketable securities + Proceeds from sales of non-marketable equity securities + Purchases of marketable securities + Purchases related to property and equipment and intangible assets + Purchases of non-marketable equity securities + Acquisitions, net of cash acquired",
           "result_label": "Net cash used in investing activities"
         },
         {
-          "formula": "Financing inflows minus outflows equals Net cash used in financing activities",
+          "formula": "Sum of financing activity components equals Net cash used in financing activities",
           "components": [
             "Proceeds related to employee stock plans",
             "Payments related to repurchases of common stock",
-            "Repayment of debt",
-            "Payments related to tax on restricted stock units",
+            "Payments related to employee stock plan taxes",
             "Dividends paid",
             "Principal payments on property and equipment and intangible assets",
+            "Repayment of debt",
             "Net cash used in financing activities"
           ],
-          "operation": "Proceeds related to employee stock plans - Payments related to repurchases of common stock - Repayment of debt - Payments related to tax on restricted stock units - Dividends paid - Principal payments on property and equipment and intangible assets",
+          "operation": "Proceeds related to employee stock plans + Payments related to repurchases of common stock + Payments related to employee stock plan taxes + Dividends paid + Principal payments on property and equipment and intangible assets + Repayment of debt",
           "result_label": "Net cash used in financing activities"
         },
         {
-          "formula": "Net cash provided by operating activities plus Net cash used in investing activities plus Net cash used in financing activities equals Change in cash",
+          "formula": "CFO plus CFI plus CFF equals Change in cash",
           "components": [
             "Net cash provided by operating activities",
             "Net cash used in investing activities",
             "Net cash used in financing activities",
-            "Change in cash, cash equivalents, and restricted cash"
+            "Change in cash and cash equivalents"
           ],
           "operation": "Net cash provided by operating activities + Net cash used in investing activities + Net cash used in financing activities",
-          "result_label": "Change in cash, cash equivalents, and restricted cash"
+          "result_label": "Change in cash and cash equivalents"
         },
         {
           "formula": "Beginning cash plus Change in cash equals Ending cash",
           "components": [
-            "Cash, cash equivalents, and restricted cash at beginning of period",
-            "Change in cash, cash equivalents, and restricted cash",
-            "Cash, cash equivalents, and restricted cash at end of period"
+            "Cash and cash equivalents at beginning of period",
+            "Change in cash and cash equivalents",
+            "Cash and cash equivalents at end of period"
           ],
-          "operation": "Cash, cash equivalents, and restricted cash at beginning of period + Change in cash, cash equivalents, and restricted cash",
-          "result_label": "Cash, cash equivalents, and restricted cash at end of period"
-        },
-        {
-          "formula": "Cash and cash equivalents plus Restricted cash equals Total cash, cash equivalents, and restricted cash",
-          "components": [
-            "Cash and cash equivalents (reconciliation)",
-            "Restricted cash, included in prepaid expenses and other current assets",
-            "Total cash, cash equivalents, and restricted cash"
-          ],
-          "operation": "Cash and cash equivalents (reconciliation) + Restricted cash, included in prepaid expenses and other current assets",
-          "result_label": "Total cash, cash equivalents, and restricted cash"
+          "operation": "Cash and cash equivalents at beginning of period + Change in cash and cash equivalents",
+          "result_label": "Cash and cash equivalents at end of period"
         }
       ]
     },
     "calculation_components": {},
     "source_filings": [
-      "q2_fy25_10q.json"
+      "q2_fy25_10q.json",
+      "q2_fy26_10q.json"
     ]
   },
   {
@@ -9381,14 +9352,14 @@
           "indent_level": 1
         },
         {
-          "label": "Other, net",
+          "label": "Other income (expense), net",
           "xbrl_concept": "us-gaap:OtherNonoperatingIncomeExpense",
           "value": 189,
           "unit": "USD_millions",
           "indent_level": 1
         },
         {
-          "label": "Other income (expense), net",
+          "label": "Total other income (expense), net",
           "xbrl_concept": "us-gaap:NonoperatingIncomeExpense",
           "value": 572,
           "unit": "USD_millions",
@@ -9430,14 +9401,14 @@
           "indent_level": 1
         },
         {
-          "label": "Weighted average shares used - Basic",
+          "label": "Weighted average shares - Basic",
           "xbrl_concept": "us-gaap:WeightedAverageNumberOfSharesOutstandingBasic",
           "value": 24578,
           "unit": "shares_millions",
           "indent_level": 1
         },
         {
-          "label": "Weighted average shares used - Diluted",
+          "label": "Weighted average shares - Diluted",
           "xbrl_concept": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
           "value": 24848,
           "unit": "shares_millions",
@@ -9456,7 +9427,7 @@
           "result_label": "Gross profit"
         },
         {
-          "formula": "Research and development plus Sales, general and administrative equals Total operating expenses",
+          "formula": "Research and development plus Sales general and administrative equals Total operating expenses",
           "components": [
             "Research and development",
             "Sales, general and administrative",
@@ -9476,24 +9447,24 @@
           "result_label": "Operating income"
         },
         {
-          "formula": "Interest income minus Interest expense plus Other, net equals Other income (expense), net",
+          "formula": "Interest income minus Interest expense plus Other income expense net equals Total other income expense net",
           "components": [
             "Interest income",
             "Interest expense",
-            "Other, net",
-            "Other income (expense), net"
+            "Other income (expense), net",
+            "Total other income (expense), net"
           ],
-          "operation": "Interest income - Interest expense + Other, net",
-          "result_label": "Other income (expense), net"
+          "operation": "Interest income - Interest expense + Other income (expense), net",
+          "result_label": "Total other income (expense), net"
         },
         {
-          "formula": "Operating income plus Other income (expense), net equals Income before income tax",
+          "formula": "Operating income plus Total other income expense net equals Income before income tax",
           "components": [
             "Operating income",
-            "Other income (expense), net",
+            "Total other income (expense), net",
             "Income before income tax"
           ],
-          "operation": "Operating income + Other income (expense), net",
+          "operation": "Operating income + Total other income (expense), net",
           "result_label": "Income before income tax"
         },
         {
@@ -9598,7 +9569,8 @@
       }
     },
     "source_filings": [
-      "q2_fy25_10q.json"
+      "q2_fy25_10q.json",
+      "q2_fy26_10q.json"
     ]
   },
   {
@@ -10515,7 +10487,7 @@
         },
         {
           "label": "Marketable securities",
-          "xbrl_concept": "nvda:MarketableSecuritiesAndEquitySecuritiesFVNI",
+          "xbrl_concept": "us-gaap:MarketableSecuritiesCurrent",
           "value": 34621,
           "unit": "USD_millions",
           "indent_level": 1
@@ -10584,16 +10556,9 @@
           "indent_level": 1
         },
         {
-          "label": "Non-marketable equity securities",
-          "xbrl_concept": "us-gaap:EquitySecuritiesFVNINoncurrent",
-          "value": 3387,
-          "unit": "USD_millions",
-          "indent_level": 1
-        },
-        {
           "label": "Other assets",
           "xbrl_concept": "us-gaap:OtherAssetsNoncurrent",
-          "value": 3038,
+          "value": 6425,
           "unit": "USD_millions",
           "indent_level": 1
         },
@@ -10615,13 +10580,6 @@
           "label": "Accrued and other current liabilities",
           "xbrl_concept": "us-gaap:AccruedLiabilitiesCurrent",
           "value": 11737,
-          "unit": "USD_millions",
-          "indent_level": 1
-        },
-        {
-          "label": "Short-term debt",
-          "xbrl_concept": "us-gaap:DebtCurrent",
-          "value": 0,
           "unit": "USD_millions",
           "indent_level": 1
         },
@@ -10712,7 +10670,7 @@
       ],
       "formulas": [
         {
-          "formula": "Cash and cash equivalents plus Marketable securities plus Accounts receivable net plus Inventories plus Prepaid expenses and other current assets equals Total current assets",
+          "formula": "Sum of current assets equals Total current assets",
           "components": [
             "Cash and cash equivalents",
             "Marketable securities",
@@ -10725,7 +10683,7 @@
           "result_label": "Total current assets"
         },
         {
-          "formula": "Total current assets plus Property and equipment net plus Operating lease assets plus Goodwill plus Intangible assets net plus Deferred income tax assets plus Non-marketable equity securities plus Other assets equals Total assets",
+          "formula": "Total current assets plus noncurrent assets equals Total assets",
           "components": [
             "Total current assets",
             "Property and equipment, net",
@@ -10733,26 +10691,24 @@
             "Goodwill",
             "Intangible assets, net",
             "Deferred income tax assets",
-            "Non-marketable equity securities",
             "Other assets",
             "Total assets"
           ],
-          "operation": "Total current assets + Property and equipment, net + Operating lease assets + Goodwill + Intangible assets, net + Deferred income tax assets + Non-marketable equity securities + Other assets",
+          "operation": "Total current assets + Property and equipment, net + Operating lease assets + Goodwill + Intangible assets, net + Deferred income tax assets + Other assets",
           "result_label": "Total assets"
         },
         {
-          "formula": "Accounts payable plus Accrued and other current liabilities plus Short-term debt equals Total current liabilities",
+          "formula": "Sum of current liabilities equals Total current liabilities",
           "components": [
             "Accounts payable",
             "Accrued and other current liabilities",
-            "Short-term debt",
             "Total current liabilities"
           ],
-          "operation": "Accounts payable + Accrued and other current liabilities + Short-term debt",
+          "operation": "Accounts payable + Accrued and other current liabilities",
           "result_label": "Total current liabilities"
         },
         {
-          "formula": "Total current liabilities plus Long-term debt plus Long-term operating lease liabilities plus Other long-term liabilities equals Total liabilities",
+          "formula": "Total current liabilities plus noncurrent liabilities equals Total liabilities",
           "components": [
             "Total current liabilities",
             "Long-term debt",
@@ -10764,15 +10720,16 @@
           "result_label": "Total liabilities"
         },
         {
-          "formula": "Common stock plus Additional paid-in capital plus Accumulated other comprehensive income plus Retained earnings equals Total shareholders equity",
+          "formula": "Sum of equity components equals Total shareholders equity",
           "components": [
+            "Preferred stock",
             "Common stock",
             "Additional paid-in capital",
             "Accumulated other comprehensive income",
             "Retained earnings",
             "Total shareholders equity"
           ],
-          "operation": "Common stock + Additional paid-in capital + Accumulated other comprehensive income + Retained earnings",
+          "operation": "Preferred stock + Common stock + Additional paid-in capital + Accumulated other comprehensive income + Retained earnings",
           "result_label": "Total shareholders equity"
         },
         {
@@ -10791,8 +10748,8 @@
             "Total assets",
             "Total liabilities and shareholders equity"
           ],
-          "operation": "Total assets",
-          "result_label": "Total liabilities and shareholders equity"
+          "operation": "Total assets - Total liabilities and shareholders equity",
+          "result_label": "Total assets"
         }
       ]
     },
@@ -10804,7 +10761,1268 @@
     "source_filings": [
       "q3_fy26_10q.json",
       "q4_fy25_10k.json",
-      "q4_fy26_10k.json"
+      "q4_fy26_10k.json",
+      "q1_fy26_10q.json",
+      "q2_fy26_10q.json"
+    ]
+  },
+  {
+    "period": "2025-01-27_2025-04-27",
+    "income_statement": {
+      "line_items": [
+        {
+          "label": "Revenue",
+          "xbrl_concept": "us-gaap:Revenues",
+          "value": 44062,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Cost of revenue",
+          "xbrl_concept": "us-gaap:CostOfRevenue",
+          "value": 17394,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Gross profit",
+          "xbrl_concept": "us-gaap:GrossProfit",
+          "value": 26668,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Research and development",
+          "xbrl_concept": "us-gaap:ResearchAndDevelopmentExpense",
+          "value": 3989,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Sales, general and administrative",
+          "xbrl_concept": "us-gaap:SellingGeneralAndAdministrativeExpense",
+          "value": 1041,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Total operating expenses",
+          "xbrl_concept": "us-gaap:OperatingExpenses",
+          "value": 5030,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Operating income",
+          "xbrl_concept": "us-gaap:OperatingIncomeLoss",
+          "value": 21638,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Interest income",
+          "xbrl_concept": "us-gaap:InvestmentIncomeInterest",
+          "value": 515,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Interest expense",
+          "xbrl_concept": "us-gaap:InterestExpenseNonoperating",
+          "value": 63,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Other income (expense), net",
+          "xbrl_concept": "us-gaap:OtherNonoperatingIncomeExpense",
+          "value": -180,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Total other income (expense), net",
+          "xbrl_concept": "us-gaap:NonoperatingIncomeExpense",
+          "value": 272,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Income before income tax",
+          "xbrl_concept": "us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
+          "value": 21910,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Income tax expense",
+          "xbrl_concept": "us-gaap:IncomeTaxExpenseBenefit",
+          "value": 3135,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Net income",
+          "xbrl_concept": "us-gaap:NetIncomeLoss",
+          "value": 18775,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Basic",
+          "xbrl_concept": "us-gaap:EarningsPerShareBasic",
+          "value": 0.77,
+          "unit": "USD_per_share",
+          "indent_level": 1
+        },
+        {
+          "label": "Diluted",
+          "xbrl_concept": "us-gaap:EarningsPerShareDiluted",
+          "value": 0.76,
+          "unit": "USD_per_share",
+          "indent_level": 1
+        },
+        {
+          "label": "Basic weighted average shares",
+          "xbrl_concept": "us-gaap:WeightedAverageNumberOfSharesOutstandingBasic",
+          "value": 24441,
+          "unit": "shares_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Diluted weighted average shares",
+          "xbrl_concept": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
+          "value": 24611,
+          "unit": "shares_millions",
+          "indent_level": 1
+        }
+      ],
+      "formulas": [
+        {
+          "formula": "Revenue minus Cost of revenue equals Gross profit",
+          "components": [
+            "Revenue",
+            "Cost of revenue",
+            "Gross profit"
+          ],
+          "operation": "Revenue - Cost of revenue",
+          "result_label": "Gross profit"
+        },
+        {
+          "formula": "Research and development plus Sales, general and administrative equals Total operating expenses",
+          "components": [
+            "Research and development",
+            "Sales, general and administrative",
+            "Total operating expenses"
+          ],
+          "operation": "Research and development + Sales, general and administrative",
+          "result_label": "Total operating expenses"
+        },
+        {
+          "formula": "Gross profit minus Total operating expenses equals Operating income",
+          "components": [
+            "Gross profit",
+            "Total operating expenses",
+            "Operating income"
+          ],
+          "operation": "Gross profit - Total operating expenses",
+          "result_label": "Operating income"
+        },
+        {
+          "formula": "Interest income minus Interest expense plus Other income (expense), net equals Total other income (expense), net",
+          "components": [
+            "Interest income",
+            "Interest expense",
+            "Other income (expense), net",
+            "Total other income (expense), net"
+          ],
+          "operation": "Interest income - Interest expense + Other income (expense), net",
+          "result_label": "Total other income (expense), net"
+        },
+        {
+          "formula": "Operating income plus Total other income (expense), net equals Income before income tax",
+          "components": [
+            "Operating income",
+            "Total other income (expense), net",
+            "Income before income tax"
+          ],
+          "operation": "Operating income + Total other income (expense), net",
+          "result_label": "Income before income tax"
+        },
+        {
+          "formula": "Income before income tax minus Income tax expense equals Net income",
+          "components": [
+            "Income before income tax",
+            "Income tax expense",
+            "Net income"
+          ],
+          "operation": "Income before income tax - Income tax expense",
+          "result_label": "Net income"
+        }
+      ]
+    },
+    "balance_sheet": {
+      "line_items": [],
+      "formulas": []
+    },
+    "cash_flow": {
+      "line_items": [
+        {
+          "label": "Net income",
+          "xbrl_concept": "us-gaap:NetIncomeLoss",
+          "value": 18775,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Stock-based compensation expense",
+          "xbrl_concept": "us-gaap:ShareBasedCompensation",
+          "value": 1474,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Depreciation and amortization",
+          "xbrl_concept": "us-gaap:DepreciationDepletionAndAmortization",
+          "value": 611,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "(Gains) losses on non-marketable equity securities and publicly-held equity securities, net",
+          "xbrl_concept": "us-gaap:GainLossOnInvestments",
+          "value": -175,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Deferred income taxes",
+          "xbrl_concept": "us-gaap:DeferredIncomeTaxExpenseBenefit",
+          "value": -2177,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Other",
+          "xbrl_concept": "us-gaap:OtherNoncashIncomeExpense",
+          "value": 98,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Accounts receivable",
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsReceivable",
+          "value": -933,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Inventories",
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInInventories",
+          "value": 1258,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Prepaid expenses and other assets",
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets",
+          "value": -560,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Accounts payable",
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsPayable",
+          "value": 941,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Accrued and other current liabilities",
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities",
+          "value": 7128,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Other long-term liabilities",
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInOtherNoncurrentLiabilities",
+          "value": 350,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Net cash provided by operating activities",
+          "xbrl_concept": "us-gaap:NetCashProvidedByUsedInOperatingActivities",
+          "value": 27414,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Proceeds from maturities of marketable securities",
+          "xbrl_concept": "us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities",
+          "value": 3122,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Proceeds from sales of marketable securities",
+          "xbrl_concept": "us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt",
+          "value": 467,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Proceeds from sales of non-marketable equity securities",
+          "xbrl_concept": "us-gaap:ProceedsFromSaleOfEquitySecuritiesFvNi",
+          "value": 0,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Purchases of marketable securities",
+          "xbrl_concept": "us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt",
+          "value": 6546,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Purchases related to property and equipment and intangible assets",
+          "xbrl_concept": "us-gaap:PaymentsToAcquireProductiveAssets",
+          "value": 1227,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Purchases of non-marketable equity securities",
+          "xbrl_concept": "us-gaap:PaymentsToAcquireEquitySecuritiesFvNi",
+          "value": 649,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Acquisitions, net of cash acquired",
+          "xbrl_concept": "us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired",
+          "value": 383,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Net cash used in investing activities",
+          "xbrl_concept": "us-gaap:NetCashProvidedByUsedInInvestingActivities",
+          "value": -5216,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Proceeds related to employee stock plans",
+          "xbrl_concept": "us-gaap:ProceedsFromStockPlans",
+          "value": 370,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Payments related to repurchases of common stock",
+          "xbrl_concept": "us-gaap:PaymentsForRepurchaseOfCommonStock",
+          "value": 14095,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Payments related to employee stock plan taxes",
+          "xbrl_concept": "us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation",
+          "value": 1532,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Dividends paid",
+          "xbrl_concept": "us-gaap:PaymentsOfDividends",
+          "value": 244,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Principal payments on property and equipment and intangible assets",
+          "xbrl_concept": "nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities",
+          "value": 52,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Net cash used in financing activities",
+          "xbrl_concept": "us-gaap:NetCashProvidedByUsedInFinancingActivities",
+          "value": -15553,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Change in cash and cash equivalents",
+          "xbrl_concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect",
+          "value": 6645,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Cash and cash equivalents at beginning of period",
+          "xbrl_concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+          "value": 8589,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Cash and cash equivalents at end of period",
+          "xbrl_concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+          "value": 15234,
+          "unit": "USD_millions",
+          "indent_level": 1
+        }
+      ],
+      "formulas": [
+        {
+          "formula": "Net income plus non-cash adjustments plus working capital changes equals Net cash provided by operating activities",
+          "components": [
+            "Net income",
+            "Stock-based compensation expense",
+            "Depreciation and amortization",
+            "(Gains) losses on non-marketable equity securities and publicly-held equity securities, net",
+            "Deferred income taxes",
+            "Other",
+            "Accounts receivable",
+            "Inventories",
+            "Prepaid expenses and other assets",
+            "Accounts payable",
+            "Accrued and other current liabilities",
+            "Other long-term liabilities",
+            "Net cash provided by operating activities"
+          ],
+          "operation": "Net income + Stock-based compensation expense + Depreciation and amortization + (Gains) losses on non-marketable equity securities and publicly-held equity securities, net + Deferred income taxes + Other + Accounts receivable + Inventories + Prepaid expenses and other assets + Accounts payable + Accrued and other current liabilities + Other long-term liabilities",
+          "result_label": "Net cash provided by operating activities"
+        },
+        {
+          "formula": "Investing inflows minus investing outflows equals Net cash used in investing activities",
+          "components": [
+            "Proceeds from maturities of marketable securities",
+            "Proceeds from sales of marketable securities",
+            "Proceeds from sales of non-marketable equity securities",
+            "Purchases of marketable securities",
+            "Purchases related to property and equipment and intangible assets",
+            "Purchases of non-marketable equity securities",
+            "Acquisitions, net of cash acquired",
+            "Net cash used in investing activities"
+          ],
+          "operation": "Proceeds from maturities of marketable securities + Proceeds from sales of marketable securities + Proceeds from sales of non-marketable equity securities - Purchases of marketable securities - Purchases related to property and equipment and intangible assets - Purchases of non-marketable equity securities - Acquisitions, net of cash acquired",
+          "result_label": "Net cash used in investing activities"
+        },
+        {
+          "formula": "Financing inflows minus financing outflows equals Net cash used in financing activities",
+          "components": [
+            "Proceeds related to employee stock plans",
+            "Payments related to repurchases of common stock",
+            "Payments related to employee stock plan taxes",
+            "Dividends paid",
+            "Principal payments on property and equipment and intangible assets",
+            "Net cash used in financing activities"
+          ],
+          "operation": "Proceeds related to employee stock plans - Payments related to repurchases of common stock - Payments related to employee stock plan taxes - Dividends paid - Principal payments on property and equipment and intangible assets",
+          "result_label": "Net cash used in financing activities"
+        },
+        {
+          "formula": "Net cash provided by operating activities plus Net cash used in investing activities plus Net cash used in financing activities equals Change in cash and cash equivalents",
+          "components": [
+            "Net cash provided by operating activities",
+            "Net cash used in investing activities",
+            "Net cash used in financing activities",
+            "Change in cash and cash equivalents"
+          ],
+          "operation": "Net cash provided by operating activities + Net cash used in investing activities + Net cash used in financing activities",
+          "result_label": "Change in cash and cash equivalents"
+        },
+        {
+          "formula": "Cash and cash equivalents at beginning of period plus Change in cash and cash equivalents equals Cash and cash equivalents at end of period",
+          "components": [
+            "Cash and cash equivalents at beginning of period",
+            "Change in cash and cash equivalents",
+            "Cash and cash equivalents at end of period"
+          ],
+          "operation": "Cash and cash equivalents at beginning of period + Change in cash and cash equivalents",
+          "result_label": "Cash and cash equivalents at end of period"
+        }
+      ]
+    },
+    "calculation_components": {
+      "operating_leases": {
+        "current": 300,
+        "noncurrent": 1521,
+        "total": 1821,
+        "current_location": "Hidden inside Accrued and other current liabilities per us-gaap:OperatingLeaseLiabilityCurrentStatementOfFinancialPositionExtensibleList = AccruedLiabilitiesCurrent; current amount of 300 disclosed in Note 8 accrued liabilities breakdown and Note 14 lease maturity table"
+      },
+      "depreciation_and_amortization": {
+        "total": 611,
+        "components": [
+          {
+            "label": "Depreciation and amortization (CF statement single line)",
+            "value": 611
+          }
+        ],
+        "is_single_line": true,
+        "note": "The CF statement presents one combined line. Note 7 discloses intangible amortization of 159M separately. Note 13 discloses segment D&A: Compute and Networking 296M, Graphics 109M for Q1 FY2026. These segment amounts total 405M and exclude acquisition-related intangible amortization allocated to All Other."
+      },
+      "accounts_payable": {
+        "value": 7331,
+        "is_pure": true,
+        "combined_with": null,
+        "note_breakout": null
+      },
+      "accounts_receivable": {
+        "value": 22132,
+        "is_pure": true,
+        "combined_with": null,
+        "note_breakout": null,
+        "note": "BS shows Accounts receivable, net as a standalone line. Note 8 discloses concentration percentages but no separate AR breakout."
+      },
+      "capex": {
+        "cf_value": 1227,
+        "supplemental_not_yet_paid": 408,
+        "includes_intangibles": true,
+        "note": "CF line labeled Purchases related to property and equipment and intangible assets = 1227M. Supplemental disclosure in Note 8: property, equipment and intangible assets acquired by assuming related liabilities = 408M (us-gaap:CapitalExpendituresIncurredButNotYetPaid). XBRL concept PaymentsToAcquireProductiveAssets used."
+      },
+      "acquisitions": {
+        "total": 383,
+        "items": [
+          {
+            "concept": "us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired",
+            "value": 383
+          }
+        ]
+      },
+      "short_term_debt": {
+        "value": 0,
+        "components": [],
+        "confirmed_zero": true,
+        "note": "No current portion of long-term debt on BS. Note 10 states commercial paper program of 575M with no outstanding balance. 3.20% Notes Due 2026 are classified as LongTermDebtNoncurrent on the BS (remaining term 1.4 years); no reclassification to current observed in XBRL data."
+      },
+      "sbc": {
+        "cf_value": 1474,
+        "note_by_function": {
+          "cost_of_revenue": 64,
+          "research_and_development": 1063,
+          "sales_general_and_administrative": 347,
+          "total": 1474
+        }
+      },
+      "interest_expense": {
+        "gross": 63,
+        "income": 515,
+        "net": null,
+        "source": "IS shows Interest expense of 63M (us-gaap:InterestExpenseNonoperating) and Interest income of 515M (us-gaap:InvestmentIncomeInterest) as separate line items; gross interest expense is 63M per XBRL. MD&A states interest expense is comprised of coupon interest and debt discount amortization."
+      },
+      "tax_rate": {
+        "tax_expense": 3135,
+        "pretax_income": 21910,
+        "effective_rate": 0.143,
+        "flags": []
+      },
+      "inventory": {
+        "total": 11333,
+        "raw_materials": 2525,
+        "wip": 5339,
+        "finished_goods": 3469,
+        "note": "Inventory breakdown from Note 8: Raw materials 2525, Work in process 5339, Finished goods 3469, Total 11333. Inventory provision of 2.3B recorded in cost of revenue in Q1 FY2026 including 1.9B for H20 product inventory."
+      }
+    },
+    "source_filings": [
+      "q1_fy26_10q.json"
+    ],
+    "segment_data": {
+      "segments": {
+        "segments": [
+          {
+            "name": "Compute and Networking",
+            "revenue": {
+              "2025-01-27_2025-04-27": 39589,
+              "2024-01-29_2024-04-28": 22675
+            },
+            "operating_income": {
+              "2025-01-27_2025-04-27": 22054,
+              "2024-01-29_2024-04-28": 17047
+            }
+          },
+          {
+            "name": "Graphics",
+            "revenue": {
+              "2025-01-27_2025-04-27": 4473,
+              "2024-01-29_2024-04-28": 3369
+            },
+            "operating_income": {
+              "2025-01-27_2025-04-27": 1640,
+              "2024-01-29_2024-04-28": 1241
+            }
+          },
+          {
+            "name": "All Other",
+            "revenue": {
+              "2025-01-27_2025-04-27": 0,
+              "2024-01-29_2024-04-28": 0
+            },
+            "operating_income": {
+              "2025-01-27_2025-04-27": -2056,
+              "2024-01-29_2024-04-28": -1379
+            }
+          }
+        ],
+        "revenue_total": {
+          "2025-01-27_2025-04-27": 44062,
+          "2024-01-29_2024-04-28": 26044
+        }
+      },
+      "geography": {
+        "regions": [
+          {
+            "name": "United States",
+            "revenue": {
+              "2025-01-27_2025-04-27": 20739,
+              "2024-01-29_2024-04-28": 13496
+            }
+          },
+          {
+            "name": "Singapore",
+            "revenue": {
+              "2025-01-27_2025-04-27": 9017,
+              "2024-01-29_2024-04-28": 4037
+            }
+          },
+          {
+            "name": "Taiwan",
+            "revenue": {
+              "2025-01-27_2025-04-27": 7158,
+              "2024-01-29_2024-04-28": 4373
+            }
+          },
+          {
+            "name": "China (including Hong Kong)",
+            "revenue": {
+              "2025-01-27_2025-04-27": 5522,
+              "2024-01-29_2024-04-28": 2491
+            }
+          },
+          {
+            "name": "Other",
+            "revenue": {
+              "2025-01-27_2025-04-27": 1626,
+              "2024-01-29_2024-04-28": 1647
+            }
+          }
+        ],
+        "revenue_total": {
+          "2025-01-27_2025-04-27": 44062,
+          "2024-01-29_2024-04-28": 26044
+        }
+      },
+      "product": {
+        "products": [
+          {
+            "name": "Data Center",
+            "revenue": {
+              "2025-01-27_2025-04-27": 39112,
+              "2024-01-29_2024-04-28": 22563
+            }
+          },
+          {
+            "name": "Data Center - Compute",
+            "revenue": {
+              "2025-01-27_2025-04-27": 34155,
+              "2024-01-29_2024-04-28": 19392
+            }
+          },
+          {
+            "name": "Data Center - Networking",
+            "revenue": {
+              "2025-01-27_2025-04-27": 4957,
+              "2024-01-29_2024-04-28": 3171
+            }
+          },
+          {
+            "name": "Gaming",
+            "revenue": {
+              "2025-01-27_2025-04-27": 3763,
+              "2024-01-29_2024-04-28": 2647
+            }
+          },
+          {
+            "name": "Professional Visualization",
+            "revenue": {
+              "2025-01-27_2025-04-27": 509,
+              "2024-01-29_2024-04-28": 427
+            }
+          },
+          {
+            "name": "Automotive",
+            "revenue": {
+              "2025-01-27_2025-04-27": 567,
+              "2024-01-29_2024-04-28": 329
+            }
+          },
+          {
+            "name": "OEM and Other",
+            "revenue": {
+              "2025-01-27_2025-04-27": 111,
+              "2024-01-29_2024-04-28": 78
+            }
+          }
+        ],
+        "revenue_total": {
+          "2025-01-27_2025-04-27": 44062,
+          "2024-01-29_2024-04-28": 26044
+        }
+      },
+      "customer_concentration": {
+        "customers": [
+          {
+            "name": "Customer A (direct, revenue concentration)",
+            "pct_of_revenue": {
+              "2025-01-27_2025-04-27": 16,
+              "2024-01-29_2024-04-28": 11
+            }
+          },
+          {
+            "name": "Customer B (direct, revenue concentration)",
+            "pct_of_revenue": {
+              "2025-01-27_2025-04-27": 14
+            }
+          },
+          {
+            "name": "Customer C (direct, revenue concentration)",
+            "pct_of_revenue": {
+              "2024-01-29_2024-04-28": 13
+            }
+          },
+          {
+            "name": "Customer 1 (AR concentration)",
+            "pct_of_ar": {
+              "2025-01-27_2025-04-27": 27,
+              "2024-01-29_2025-01-26": 17
+            }
+          },
+          {
+            "name": "Customer 2 (AR concentration)",
+            "pct_of_ar": {
+              "2025-01-27_2025-04-27": 18,
+              "2024-01-29_2025-01-26": 16
+            }
+          },
+          {
+            "name": "Customer 3 (AR concentration)",
+            "pct_of_ar": {
+              "2025-01-27_2025-04-27": 12
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "period": "2025-01-27_2025-07-27",
+    "income_statement": {
+      "line_items": [
+        {
+          "label": "Revenue",
+          "xbrl_concept": "us-gaap:Revenues",
+          "value": 90805,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Cost of revenue",
+          "xbrl_concept": "us-gaap:CostOfRevenue",
+          "value": 30284,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Gross profit",
+          "xbrl_concept": "us-gaap:GrossProfit",
+          "value": 60521,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Research and development",
+          "xbrl_concept": "us-gaap:ResearchAndDevelopmentExpense",
+          "value": 8280,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Sales, general and administrative",
+          "xbrl_concept": "us-gaap:SellingGeneralAndAdministrativeExpense",
+          "value": 2163,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Total operating expenses",
+          "xbrl_concept": "us-gaap:OperatingExpenses",
+          "value": 10443,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Operating income",
+          "xbrl_concept": "us-gaap:OperatingIncomeLoss",
+          "value": 50078,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Interest income",
+          "xbrl_concept": "us-gaap:InvestmentIncomeInterest",
+          "value": 1108,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Interest expense",
+          "xbrl_concept": "us-gaap:InterestExpenseNonoperating",
+          "value": 124,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Other income (expense), net",
+          "xbrl_concept": "us-gaap:OtherNonoperatingIncomeExpense",
+          "value": 2055,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Total other income (expense), net",
+          "xbrl_concept": "us-gaap:NonoperatingIncomeExpense",
+          "value": 3039,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Income before income tax",
+          "xbrl_concept": "us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
+          "value": 53117,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Income tax expense",
+          "xbrl_concept": "us-gaap:IncomeTaxExpenseBenefit",
+          "value": 7920,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Net income",
+          "xbrl_concept": "us-gaap:NetIncomeLoss",
+          "value": 45197,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Net income per share - Basic",
+          "xbrl_concept": "us-gaap:EarningsPerShareBasic",
+          "value": 1.85,
+          "unit": "USD_per_share",
+          "indent_level": 1
+        },
+        {
+          "label": "Net income per share - Diluted",
+          "xbrl_concept": "us-gaap:EarningsPerShareDiluted",
+          "value": 1.84,
+          "unit": "USD_per_share",
+          "indent_level": 1
+        },
+        {
+          "label": "Weighted average shares - Basic",
+          "xbrl_concept": "us-gaap:WeightedAverageNumberOfSharesOutstandingBasic",
+          "value": 24404,
+          "unit": "shares_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Weighted average shares - Diluted",
+          "xbrl_concept": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
+          "value": 24571,
+          "unit": "shares_millions",
+          "indent_level": 1
+        }
+      ],
+      "formulas": [
+        {
+          "formula": "Revenue minus Cost of revenue equals Gross profit",
+          "components": [
+            "Revenue",
+            "Cost of revenue",
+            "Gross profit"
+          ],
+          "operation": "Revenue - Cost of revenue",
+          "result_label": "Gross profit"
+        },
+        {
+          "formula": "Research and development plus Sales general and administrative equals Total operating expenses",
+          "components": [
+            "Research and development",
+            "Sales, general and administrative",
+            "Total operating expenses"
+          ],
+          "operation": "Research and development + Sales, general and administrative",
+          "result_label": "Total operating expenses"
+        },
+        {
+          "formula": "Gross profit minus Total operating expenses equals Operating income",
+          "components": [
+            "Gross profit",
+            "Total operating expenses",
+            "Operating income"
+          ],
+          "operation": "Gross profit - Total operating expenses",
+          "result_label": "Operating income"
+        },
+        {
+          "formula": "Interest income minus Interest expense plus Other income expense net equals Total other income expense net",
+          "components": [
+            "Interest income",
+            "Interest expense",
+            "Other income (expense), net",
+            "Total other income (expense), net"
+          ],
+          "operation": "Interest income - Interest expense + Other income (expense), net",
+          "result_label": "Total other income (expense), net"
+        },
+        {
+          "formula": "Operating income plus Total other income expense net equals Income before income tax",
+          "components": [
+            "Operating income",
+            "Total other income (expense), net",
+            "Income before income tax"
+          ],
+          "operation": "Operating income + Total other income (expense), net",
+          "result_label": "Income before income tax"
+        },
+        {
+          "formula": "Income before income tax minus Income tax expense equals Net income",
+          "components": [
+            "Income before income tax",
+            "Income tax expense",
+            "Net income"
+          ],
+          "operation": "Income before income tax - Income tax expense",
+          "result_label": "Net income"
+        }
+      ]
+    },
+    "balance_sheet": {
+      "line_items": [],
+      "formulas": []
+    },
+    "cash_flow": {
+      "line_items": [
+        {
+          "label": "Net income",
+          "xbrl_concept": "us-gaap:NetIncomeLoss",
+          "value": 45197,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Stock-based compensation expense",
+          "xbrl_concept": "us-gaap:ShareBasedCompensation",
+          "value": 3099,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Depreciation and amortization",
+          "xbrl_concept": "us-gaap:DepreciationDepletionAndAmortization",
+          "value": 1280,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Deferred income taxes",
+          "xbrl_concept": "us-gaap:DeferredIncomeTaxExpenseBenefit",
+          "value": -2160,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Gains on non-marketable equity securities and publicly-held equity securities, net",
+          "xbrl_concept": "us-gaap:GainLossOnInvestments",
+          "value": 2073,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Other",
+          "xbrl_concept": "us-gaap:OtherNoncashIncomeExpense",
+          "value": -196,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Accounts receivable",
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsReceivable",
+          "value": -4743,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Inventories",
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInInventories",
+          "value": -4880,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Prepaid expenses and other assets",
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets",
+          "value": 946,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Accounts payable",
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsPayable",
+          "value": 2255,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Accrued and other current liabilities",
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities",
+          "value": 3075,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Other long-term liabilities",
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInOtherNoncurrentLiabilities",
+          "value": 979,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Net cash provided by operating activities",
+          "xbrl_concept": "us-gaap:NetCashProvidedByUsedInOperatingActivities",
+          "value": 42779,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Proceeds from maturities of marketable securities",
+          "xbrl_concept": "us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities",
+          "value": 6252,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Proceeds from sales of marketable securities",
+          "xbrl_concept": "us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt",
+          "value": 487,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Proceeds from sales of non-marketable equity securities",
+          "xbrl_concept": "us-gaap:ProceedsFromSaleOfEquitySecuritiesFvNi",
+          "value": 70,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Purchases of marketable securities",
+          "xbrl_concept": "us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt",
+          "value": -14358,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Purchases related to property and equipment and intangible assets",
+          "xbrl_concept": "us-gaap:PaymentsToAcquireProductiveAssets",
+          "value": -3122,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Purchases of non-marketable equity securities",
+          "xbrl_concept": "us-gaap:PaymentsToAcquireEquitySecuritiesFvNi",
+          "value": -995,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Acquisitions, net of cash acquired",
+          "xbrl_concept": "us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired",
+          "value": -677,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Net cash used in investing activities",
+          "xbrl_concept": "us-gaap:NetCashProvidedByUsedInInvestingActivities",
+          "value": -12343,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Proceeds related to employee stock plans",
+          "xbrl_concept": "us-gaap:ProceedsFromStockPlans",
+          "value": 370,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Payments related to repurchases of common stock",
+          "xbrl_concept": "us-gaap:PaymentsForRepurchaseOfCommonStock",
+          "value": -23815,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Payments related to employee stock plan taxes",
+          "xbrl_concept": "us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation",
+          "value": -3380,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Dividends paid",
+          "xbrl_concept": "us-gaap:PaymentsOfDividends",
+          "value": -488,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Principal payments on property and equipment and intangible assets",
+          "xbrl_concept": "nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities",
+          "value": -73,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Repayment of debt",
+          "xbrl_concept": "us-gaap:RepaymentsOfDebt",
+          "value": 0,
+          "unit": "USD_millions",
+          "indent_level": 2
+        },
+        {
+          "label": "Net cash used in financing activities",
+          "xbrl_concept": "us-gaap:NetCashProvidedByUsedInFinancingActivities",
+          "value": -27386,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Change in cash and cash equivalents",
+          "xbrl_concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect",
+          "value": 3050,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Cash and cash equivalents at beginning of period",
+          "xbrl_concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+          "value": 8589,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Cash and cash equivalents at end of period",
+          "xbrl_concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+          "value": 11639,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Cash paid for income taxes, net",
+          "xbrl_concept": "us-gaap:IncomeTaxesPaidNet",
+          "value": 8451,
+          "unit": "USD_millions",
+          "indent_level": 1
+        }
+      ],
+      "formulas": [
+        {
+          "formula": "Sum of operating activity components equals Net cash provided by operating activities",
+          "components": [
+            "Net income",
+            "Stock-based compensation expense",
+            "Depreciation and amortization",
+            "Deferred income taxes",
+            "Gains on non-marketable equity securities and publicly-held equity securities, net",
+            "Other",
+            "Accounts receivable",
+            "Inventories",
+            "Prepaid expenses and other assets",
+            "Accounts payable",
+            "Accrued and other current liabilities",
+            "Other long-term liabilities",
+            "Net cash provided by operating activities"
+          ],
+          "operation": "Net income + Stock-based compensation expense + Depreciation and amortization + Deferred income taxes - Gains on non-marketable equity securities and publicly-held equity securities, net - Other - Accounts receivable - Inventories + Prepaid expenses and other assets + Accounts payable + Accrued and other current liabilities + Other long-term liabilities",
+          "result_label": "Net cash provided by operating activities"
+        },
+        {
+          "formula": "Sum of investing activity components equals Net cash used in investing activities",
+          "components": [
+            "Proceeds from maturities of marketable securities",
+            "Proceeds from sales of marketable securities",
+            "Proceeds from sales of non-marketable equity securities",
+            "Purchases of marketable securities",
+            "Purchases related to property and equipment and intangible assets",
+            "Purchases of non-marketable equity securities",
+            "Acquisitions, net of cash acquired",
+            "Net cash used in investing activities"
+          ],
+          "operation": "Proceeds from maturities of marketable securities + Proceeds from sales of marketable securities + Proceeds from sales of non-marketable equity securities + Purchases of marketable securities + Purchases related to property and equipment and intangible assets + Purchases of non-marketable equity securities + Acquisitions, net of cash acquired",
+          "result_label": "Net cash used in investing activities"
+        },
+        {
+          "formula": "Sum of financing activity components equals Net cash used in financing activities",
+          "components": [
+            "Proceeds related to employee stock plans",
+            "Payments related to repurchases of common stock",
+            "Payments related to employee stock plan taxes",
+            "Dividends paid",
+            "Principal payments on property and equipment and intangible assets",
+            "Repayment of debt",
+            "Net cash used in financing activities"
+          ],
+          "operation": "Proceeds related to employee stock plans + Payments related to repurchases of common stock + Payments related to employee stock plan taxes + Dividends paid + Principal payments on property and equipment and intangible assets + Repayment of debt",
+          "result_label": "Net cash used in financing activities"
+        },
+        {
+          "formula": "CFO plus CFI plus CFF equals Change in cash",
+          "components": [
+            "Net cash provided by operating activities",
+            "Net cash used in investing activities",
+            "Net cash used in financing activities",
+            "Change in cash and cash equivalents"
+          ],
+          "operation": "Net cash provided by operating activities + Net cash used in investing activities + Net cash used in financing activities",
+          "result_label": "Change in cash and cash equivalents"
+        },
+        {
+          "formula": "Beginning cash plus Change in cash equals Ending cash",
+          "components": [
+            "Cash and cash equivalents at beginning of period",
+            "Change in cash and cash equivalents",
+            "Cash and cash equivalents at end of period"
+          ],
+          "operation": "Cash and cash equivalents at beginning of period + Change in cash and cash equivalents",
+          "result_label": "Cash and cash equivalents at end of period"
+        }
+      ]
+    },
+    "calculation_components": {},
+    "source_filings": [
+      "q2_fy26_10q.json"
     ]
   },
   {
@@ -11927,6 +13145,1071 @@
     },
     "source_filings": [
       "q4_fy26_10k.json"
+    ]
+  },
+  {
+    "period": "2025-04-27",
+    "income_statement": {
+      "line_items": [],
+      "formulas": []
+    },
+    "balance_sheet": {
+      "line_items": [
+        {
+          "label": "Cash and cash equivalents",
+          "xbrl_concept": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+          "value": 15234,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Marketable securities",
+          "xbrl_concept": "us-gaap:MarketableSecuritiesCurrent",
+          "value": 38457,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Accounts receivable, net",
+          "xbrl_concept": "us-gaap:AccountsReceivableNetCurrent",
+          "value": 22132,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Inventories",
+          "xbrl_concept": "us-gaap:InventoryNet",
+          "value": 11333,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Prepaid expenses and other current assets",
+          "xbrl_concept": "us-gaap:PrepaidExpenseAndOtherAssetsCurrent",
+          "value": 2779,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Total current assets",
+          "xbrl_concept": "us-gaap:AssetsCurrent",
+          "value": 89935,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Property and equipment, net",
+          "xbrl_concept": "us-gaap:PropertyPlantAndEquipmentNet",
+          "value": 7136,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Operating lease assets",
+          "xbrl_concept": "us-gaap:OperatingLeaseRightOfUseAsset",
+          "value": 1810,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Goodwill",
+          "xbrl_concept": "us-gaap:Goodwill",
+          "value": 5498,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Intangible assets, net",
+          "xbrl_concept": "us-gaap:IntangibleAssetsNetExcludingGoodwill",
+          "value": 769,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Deferred income tax assets",
+          "xbrl_concept": "us-gaap:DeferredIncomeTaxAssetsNet",
+          "value": 13318,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Other assets",
+          "xbrl_concept": "us-gaap:OtherAssetsNoncurrent",
+          "value": 6788,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Total assets",
+          "xbrl_concept": "us-gaap:Assets",
+          "value": 125254,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Accounts payable",
+          "xbrl_concept": "us-gaap:AccountsPayableCurrent",
+          "value": 7331,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Accrued and other current liabilities",
+          "xbrl_concept": "us-gaap:AccruedLiabilitiesCurrent",
+          "value": 19211,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Total current liabilities",
+          "xbrl_concept": "us-gaap:LiabilitiesCurrent",
+          "value": 26542,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Long-term debt",
+          "xbrl_concept": "us-gaap:LongTermDebtNoncurrent",
+          "value": 8464,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Long-term operating lease liabilities",
+          "xbrl_concept": "us-gaap:OperatingLeaseLiabilityNoncurrent",
+          "value": 1521,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Other long-term liabilities",
+          "xbrl_concept": "us-gaap:OtherLiabilitiesNoncurrent",
+          "value": 4884,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Total liabilities",
+          "xbrl_concept": "us-gaap:Liabilities",
+          "value": 41411,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Preferred stock",
+          "xbrl_concept": "us-gaap:PreferredStockValueOutstanding",
+          "value": 0,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Common stock",
+          "xbrl_concept": "us-gaap:CommonStockValue",
+          "value": 24,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Additional paid-in capital",
+          "xbrl_concept": "us-gaap:AdditionalPaidInCapital",
+          "value": 11475,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Accumulated other comprehensive income",
+          "xbrl_concept": "us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax",
+          "value": 186,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Retained earnings",
+          "xbrl_concept": "us-gaap:RetainedEarningsAccumulatedDeficit",
+          "value": 72158,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Total shareholders equity",
+          "xbrl_concept": "us-gaap:StockholdersEquity",
+          "value": 83843,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Total liabilities and shareholders equity",
+          "xbrl_concept": "us-gaap:LiabilitiesAndStockholdersEquity",
+          "value": 125254,
+          "unit": "USD_millions",
+          "indent_level": 0
+        }
+      ],
+      "formulas": [
+        {
+          "formula": "Cash and cash equivalents plus Marketable securities plus Accounts receivable net plus Inventories plus Prepaid expenses and other current assets equals Total current assets",
+          "components": [
+            "Cash and cash equivalents",
+            "Marketable securities",
+            "Accounts receivable, net",
+            "Inventories",
+            "Prepaid expenses and other current assets",
+            "Total current assets"
+          ],
+          "operation": "Cash and cash equivalents + Marketable securities + Accounts receivable, net + Inventories + Prepaid expenses and other current assets",
+          "result_label": "Total current assets"
+        },
+        {
+          "formula": "Total current assets plus Property and equipment net plus Operating lease assets plus Goodwill plus Intangible assets net plus Deferred income tax assets plus Other assets equals Total assets",
+          "components": [
+            "Total current assets",
+            "Property and equipment, net",
+            "Operating lease assets",
+            "Goodwill",
+            "Intangible assets, net",
+            "Deferred income tax assets",
+            "Other assets",
+            "Total assets"
+          ],
+          "operation": "Total current assets + Property and equipment, net + Operating lease assets + Goodwill + Intangible assets, net + Deferred income tax assets + Other assets",
+          "result_label": "Total assets"
+        },
+        {
+          "formula": "Accounts payable plus Accrued and other current liabilities equals Total current liabilities",
+          "components": [
+            "Accounts payable",
+            "Accrued and other current liabilities",
+            "Total current liabilities"
+          ],
+          "operation": "Accounts payable + Accrued and other current liabilities",
+          "result_label": "Total current liabilities"
+        },
+        {
+          "formula": "Total current liabilities plus Long-term debt plus Long-term operating lease liabilities plus Other long-term liabilities equals Total liabilities",
+          "components": [
+            "Total current liabilities",
+            "Long-term debt",
+            "Long-term operating lease liabilities",
+            "Other long-term liabilities",
+            "Total liabilities"
+          ],
+          "operation": "Total current liabilities + Long-term debt + Long-term operating lease liabilities + Other long-term liabilities",
+          "result_label": "Total liabilities"
+        },
+        {
+          "formula": "Preferred stock plus Common stock plus Additional paid-in capital plus Accumulated other comprehensive income plus Retained earnings equals Total shareholders equity",
+          "components": [
+            "Preferred stock",
+            "Common stock",
+            "Additional paid-in capital",
+            "Accumulated other comprehensive income",
+            "Retained earnings",
+            "Total shareholders equity"
+          ],
+          "operation": "Preferred stock + Common stock + Additional paid-in capital + Accumulated other comprehensive income + Retained earnings",
+          "result_label": "Total shareholders equity"
+        },
+        {
+          "formula": "Total liabilities plus Total shareholders equity equals Total liabilities and shareholders equity",
+          "components": [
+            "Total liabilities",
+            "Total shareholders equity",
+            "Total liabilities and shareholders equity"
+          ],
+          "operation": "Total liabilities + Total shareholders equity",
+          "result_label": "Total liabilities and shareholders equity"
+        },
+        {
+          "formula": "Total assets equals Total liabilities and shareholders equity",
+          "components": [
+            "Total assets",
+            "Total liabilities and shareholders equity"
+          ],
+          "operation": "Total assets - Total liabilities and shareholders equity",
+          "result_label": "Total assets"
+        }
+      ]
+    },
+    "cash_flow": {
+      "line_items": [],
+      "formulas": []
+    },
+    "calculation_components": {},
+    "source_filings": [
+      "q1_fy26_10q.json"
+    ]
+  },
+  {
+    "period": "2025-04-28_2025-07-27",
+    "income_statement": {
+      "line_items": [
+        {
+          "label": "Revenue",
+          "xbrl_concept": "us-gaap:Revenues",
+          "value": 46743,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Cost of revenue",
+          "xbrl_concept": "us-gaap:CostOfRevenue",
+          "value": 12890,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Gross profit",
+          "xbrl_concept": "us-gaap:GrossProfit",
+          "value": 33853,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Research and development",
+          "xbrl_concept": "us-gaap:ResearchAndDevelopmentExpense",
+          "value": 4291,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Sales, general and administrative",
+          "xbrl_concept": "us-gaap:SellingGeneralAndAdministrativeExpense",
+          "value": 1122,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Total operating expenses",
+          "xbrl_concept": "us-gaap:OperatingExpenses",
+          "value": 5413,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Operating income",
+          "xbrl_concept": "us-gaap:OperatingIncomeLoss",
+          "value": 28440,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Interest income",
+          "xbrl_concept": "us-gaap:InvestmentIncomeInterest",
+          "value": 592,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Interest expense",
+          "xbrl_concept": "us-gaap:InterestExpenseNonoperating",
+          "value": 62,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Other income (expense), net",
+          "xbrl_concept": "us-gaap:OtherNonoperatingIncomeExpense",
+          "value": 2236,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Total other income (expense), net",
+          "xbrl_concept": "us-gaap:NonoperatingIncomeExpense",
+          "value": 2766,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Income before income tax",
+          "xbrl_concept": "us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
+          "value": 31206,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Income tax expense",
+          "xbrl_concept": "us-gaap:IncomeTaxExpenseBenefit",
+          "value": 4784,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Net income",
+          "xbrl_concept": "us-gaap:NetIncomeLoss",
+          "value": 26422,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Net income per share - Basic",
+          "xbrl_concept": "us-gaap:EarningsPerShareBasic",
+          "value": 1.08,
+          "unit": "USD_per_share",
+          "indent_level": 1
+        },
+        {
+          "label": "Net income per share - Diluted",
+          "xbrl_concept": "us-gaap:EarningsPerShareDiluted",
+          "value": 1.08,
+          "unit": "USD_per_share",
+          "indent_level": 1
+        },
+        {
+          "label": "Weighted average shares - Basic",
+          "xbrl_concept": "us-gaap:WeightedAverageNumberOfSharesOutstandingBasic",
+          "value": 24366,
+          "unit": "shares_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Weighted average shares - Diluted",
+          "xbrl_concept": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
+          "value": 24532,
+          "unit": "shares_millions",
+          "indent_level": 1
+        }
+      ],
+      "formulas": [
+        {
+          "formula": "Revenue minus Cost of revenue equals Gross profit",
+          "components": [
+            "Revenue",
+            "Cost of revenue",
+            "Gross profit"
+          ],
+          "operation": "Revenue - Cost of revenue",
+          "result_label": "Gross profit"
+        },
+        {
+          "formula": "Research and development plus Sales general and administrative equals Total operating expenses",
+          "components": [
+            "Research and development",
+            "Sales, general and administrative",
+            "Total operating expenses"
+          ],
+          "operation": "Research and development + Sales, general and administrative",
+          "result_label": "Total operating expenses"
+        },
+        {
+          "formula": "Gross profit minus Total operating expenses equals Operating income",
+          "components": [
+            "Gross profit",
+            "Total operating expenses",
+            "Operating income"
+          ],
+          "operation": "Gross profit - Total operating expenses",
+          "result_label": "Operating income"
+        },
+        {
+          "formula": "Interest income minus Interest expense plus Other income expense net equals Total other income expense net",
+          "components": [
+            "Interest income",
+            "Interest expense",
+            "Other income (expense), net",
+            "Total other income (expense), net"
+          ],
+          "operation": "Interest income - Interest expense + Other income (expense), net",
+          "result_label": "Total other income (expense), net"
+        },
+        {
+          "formula": "Operating income plus Total other income expense net equals Income before income tax",
+          "components": [
+            "Operating income",
+            "Total other income (expense), net",
+            "Income before income tax"
+          ],
+          "operation": "Operating income + Total other income (expense), net",
+          "result_label": "Income before income tax"
+        },
+        {
+          "formula": "Income before income tax minus Income tax expense equals Net income",
+          "components": [
+            "Income before income tax",
+            "Income tax expense",
+            "Net income"
+          ],
+          "operation": "Income before income tax - Income tax expense",
+          "result_label": "Net income"
+        }
+      ]
+    },
+    "balance_sheet": {
+      "line_items": [],
+      "formulas": []
+    },
+    "cash_flow": {
+      "line_items": [],
+      "formulas": []
+    },
+    "calculation_components": {
+      "operating_leases": {
+        "current": 301,
+        "noncurrent": 1831,
+        "total": 2132,
+        "current_location": "Embedded within Accrued and other current liabilities on the balance sheet face per OperatingLeaseLiabilityCurrentStatementOfFinancialPositionExtensibleList tag pointing to AccruedLiabilitiesCurrent; broken out separately in Note 8 accrued liabilities table as Operating leases line item"
+      },
+      "depreciation_and_amortization": {
+        "total": 1280,
+        "components": [
+          {
+            "label": "Depreciation and amortization",
+            "value": 1280
+          }
+        ],
+        "is_single_line": true,
+        "notes": "Single line on CF statement. Notes disclose intangible amortization separately: 243M for H1 2026. Segment note discloses C&N D&A 684M and Graphics D&A 252M for H1 2026 totaling 936M, which excludes acquisition-related intangible amortization 243M; 936+243=1279 approximately equals 1280 CF line."
+      },
+      "accounts_payable": {
+        "value": 9064,
+        "is_pure": true,
+        "combined_with": null,
+        "note_breakout": null
+      },
+      "accounts_receivable": {
+        "value": 27808,
+        "is_pure": true,
+        "combined_with": null,
+        "note_breakout": null
+      },
+      "capex": {
+        "cf_value": 3122,
+        "supplemental_not_yet_paid": 1100,
+        "includes_intangibles": true,
+        "notes": "CF line labeled Purchases related to property and equipment and intangible assets uses PaymentsToAcquireProductiveAssets concept. Note 8 discloses property equipment and intangible assets acquired but not yet paid of 1.1 billion for H1 FY2026."
+      },
+      "acquisitions": {
+        "total": 677,
+        "items": [
+          {
+            "concept": "us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired",
+            "value": 677
+          }
+        ]
+      },
+      "short_term_debt": {
+        "value": 0,
+        "components": [],
+        "confirmed_zero": true,
+        "notes": "No short-term debt on balance sheet. Commercial paper balance is zero per filing. 3.20% Notes Due 2026 with 1.1 year remaining term are classified as LongTermDebtNoncurrent. No current portion of long-term debt separately disclosed."
+      },
+      "sbc": {
+        "cf_value": 3099,
+        "note_by_function": {
+          "cost_of_revenue": 123,
+          "research_and_development": 2254,
+          "sales_general_and_administrative": 722,
+          "total": 3099,
+          "period": "2025-01-27_2025-07-27"
+        }
+      },
+      "interest_expense": {
+        "gross": 124,
+        "income": 1108,
+        "net": -984,
+        "source": "Interest expense of 124M (us-gaap:InterestExpenseNonoperating) and interest income of 1108M (us-gaap:InvestmentIncomeInterest) are separately disclosed on IS for H1 FY2026. Gross interest expense is 124M. No separate gross/net split needed as they are already presented separately."
+      },
+      "tax_rate": {
+        "tax_expense": 7920,
+        "pretax_income": 53117,
+        "effective_rate": 0.149,
+        "flags": [
+          "Effective rate of 14.9% is below US federal statutory rate of 21% due to foreign-derived deduction eligible income, SBC, lower-rate jurisdictions, and R&D credits per Note 4"
+        ]
+      },
+      "inventory": {
+        "total": 14962,
+        "raw_materials": 1843,
+        "wip": 4411,
+        "finished_goods": 8708
+      }
+    },
+    "source_filings": [
+      "q2_fy26_10q.json"
+    ],
+    "segment_data": {
+      "business_segments": {
+        "segments": [
+          {
+            "name": "Compute and Networking",
+            "revenue": {
+              "2025-04-28_2025-07-27": 41331,
+              "2024-04-29_2024-07-28": 26446,
+              "2025-01-27_2025-07-27": 80920,
+              "2024-01-29_2024-07-28": 49121
+            },
+            "operating_income": {
+              "2025-04-28_2025-07-27": 28363,
+              "2024-04-29_2024-07-28": 18848,
+              "2025-01-27_2025-07-27": 50417,
+              "2024-01-29_2024-07-28": 35896
+            }
+          },
+          {
+            "name": "Graphics",
+            "revenue": {
+              "2025-04-28_2025-07-27": 5412,
+              "2024-04-29_2024-07-28": 3594,
+              "2025-01-27_2025-07-27": 9885,
+              "2024-01-29_2024-07-28": 6963
+            },
+            "operating_income": {
+              "2025-04-28_2025-07-27": 2242,
+              "2024-04-29_2024-07-28": 1369,
+              "2025-01-27_2025-07-27": 3882,
+              "2024-01-29_2024-07-28": 2609
+            }
+          }
+        ],
+        "revenue_total": {
+          "2025-04-28_2025-07-27": 46743,
+          "2024-04-29_2024-07-28": 30040,
+          "2025-01-27_2025-07-27": 90805,
+          "2024-01-29_2024-07-28": 56084
+        },
+        "notes": "Segment totals match consolidated revenue. Operating income reconciliation to pretax income includes SBC, unallocated costs, acquisition-related costs, interest income, interest expense, and other income net."
+      },
+      "geography": {
+        "regions": [
+          {
+            "name": "United States",
+            "revenue": {
+              "2025-04-28_2025-07-27": 23470,
+              "2024-04-29_2024-07-28": 13022,
+              "2025-01-27_2025-07-27": 44209,
+              "2024-01-29_2024-07-28": 26518
+            }
+          },
+          {
+            "name": "Singapore",
+            "revenue": {
+              "2025-04-28_2025-07-27": 10156,
+              "2024-04-29_2024-07-28": 5622,
+              "2025-01-27_2025-07-27": 19173,
+              "2024-01-29_2024-07-28": 9659
+            }
+          },
+          {
+            "name": "Taiwan",
+            "revenue": {
+              "2025-04-28_2025-07-27": 8529,
+              "2024-04-29_2024-07-28": 5740,
+              "2025-01-27_2025-07-27": 15687,
+              "2024-01-29_2024-07-28": 10113
+            }
+          },
+          {
+            "name": "China (including Hong Kong)",
+            "revenue": {
+              "2025-04-28_2025-07-27": 2769,
+              "2024-04-29_2024-07-28": 3667,
+              "2025-01-27_2025-07-27": 8291,
+              "2024-01-29_2024-07-28": 6158
+            }
+          },
+          {
+            "name": "Other",
+            "revenue": {
+              "2025-04-28_2025-07-27": 1819,
+              "2024-04-29_2024-07-28": 1989,
+              "2025-01-27_2025-07-27": 3445,
+              "2024-01-29_2024-07-28": 3636
+            }
+          }
+        ],
+        "revenue_total": {
+          "2025-04-28_2025-07-27": 46743,
+          "2024-04-29_2024-07-28": 30040,
+          "2025-01-27_2025-07-27": 90805,
+          "2024-01-29_2024-07-28": 56084
+        }
+      },
+      "product_service": {
+        "products": [
+          {
+            "name": "Data Center",
+            "revenue": {
+              "2025-04-28_2025-07-27": 41096,
+              "2024-04-29_2024-07-28": 26272,
+              "2025-01-27_2025-07-27": 80208,
+              "2024-01-29_2024-07-28": 48835
+            }
+          },
+          {
+            "name": "Data Center Compute",
+            "revenue": {
+              "2025-04-28_2025-07-27": 33844,
+              "2024-04-29_2024-07-28": 22604,
+              "2025-01-27_2025-07-27": 67999,
+              "2024-01-29_2024-07-28": 41996
+            }
+          },
+          {
+            "name": "Data Center Networking",
+            "revenue": {
+              "2025-04-28_2025-07-27": 7252,
+              "2024-04-29_2024-07-28": 3668,
+              "2025-01-27_2025-07-27": 12209,
+              "2024-01-29_2024-07-28": 6839
+            }
+          },
+          {
+            "name": "Gaming",
+            "revenue": {
+              "2025-04-28_2025-07-27": 4287,
+              "2024-04-29_2024-07-28": 2880,
+              "2025-01-27_2025-07-27": 8050,
+              "2024-01-29_2024-07-28": 5527
+            }
+          },
+          {
+            "name": "Professional Visualization",
+            "revenue": {
+              "2025-04-28_2025-07-27": 601,
+              "2024-04-29_2024-07-28": 454,
+              "2025-01-27_2025-07-27": 1110,
+              "2024-01-29_2024-07-28": 881
+            }
+          },
+          {
+            "name": "Automotive",
+            "revenue": {
+              "2025-04-28_2025-07-27": 586,
+              "2024-04-29_2024-07-28": 346,
+              "2025-01-27_2025-07-27": 1153,
+              "2024-01-29_2024-07-28": 675
+            }
+          },
+          {
+            "name": "OEM and Other",
+            "revenue": {
+              "2025-04-28_2025-07-27": 173,
+              "2024-04-29_2024-07-28": 88,
+              "2025-01-27_2025-07-27": 284,
+              "2024-01-29_2024-07-28": 166
+            }
+          }
+        ],
+        "revenue_total": {
+          "2025-04-28_2025-07-27": 46743,
+          "2024-04-29_2024-07-28": 30040,
+          "2025-01-27_2025-07-27": 90805,
+          "2024-01-29_2024-07-28": 56084
+        },
+        "notes": "Data Center Compute and Networking are sub-categories of Data Center; top-level sum uses Data Center plus Gaming plus Professional Visualization plus Automotive plus OEM and Other"
+      },
+      "customer_concentration": {
+        "customers": [
+          {
+            "name": "Customer A",
+            "pct_of_revenue": {
+              "2025-04-28_2025-07-27": 23,
+              "2025-01-27_2025-07-27": 20
+            },
+            "segment": "Compute and Networking"
+          },
+          {
+            "name": "Customer B",
+            "pct_of_revenue": {
+              "2025-04-28_2025-07-27": 16,
+              "2025-01-27_2025-07-27": 15
+            },
+            "segment": "Compute and Networking"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "period": "2025-07-27",
+    "income_statement": {
+      "line_items": [],
+      "formulas": []
+    },
+    "balance_sheet": {
+      "line_items": [
+        {
+          "label": "Cash and cash equivalents",
+          "xbrl_concept": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+          "value": 11639,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Marketable securities",
+          "xbrl_concept": "us-gaap:MarketableSecuritiesCurrent",
+          "value": 45152,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Accounts receivable, net",
+          "xbrl_concept": "us-gaap:AccountsReceivableNetCurrent",
+          "value": 27808,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Inventories",
+          "xbrl_concept": "us-gaap:InventoryNet",
+          "value": 14962,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Prepaid expenses and other current assets",
+          "xbrl_concept": "us-gaap:PrepaidExpenseAndOtherAssetsCurrent",
+          "value": 2658,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Total current assets",
+          "xbrl_concept": "us-gaap:AssetsCurrent",
+          "value": 102219,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Property and equipment, net",
+          "xbrl_concept": "us-gaap:PropertyPlantAndEquipmentNet",
+          "value": 9141,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Operating lease assets",
+          "xbrl_concept": "us-gaap:OperatingLeaseRightOfUseAsset",
+          "value": 2084,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Goodwill",
+          "xbrl_concept": "us-gaap:Goodwill",
+          "value": 5755,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Intangible assets, net",
+          "xbrl_concept": "us-gaap:IntangibleAssetsNetExcludingGoodwill",
+          "value": 755,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Deferred income tax assets",
+          "xbrl_concept": "us-gaap:DeferredIncomeTaxAssetsNet",
+          "value": 13570,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Other assets",
+          "xbrl_concept": "us-gaap:OtherAssetsNoncurrent",
+          "value": 7216,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Total assets",
+          "xbrl_concept": "us-gaap:Assets",
+          "value": 140740,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Accounts payable",
+          "xbrl_concept": "us-gaap:AccountsPayableCurrent",
+          "value": 9064,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Accrued and other current liabilities",
+          "xbrl_concept": "us-gaap:AccruedLiabilitiesCurrent",
+          "value": 15193,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Total current liabilities",
+          "xbrl_concept": "us-gaap:LiabilitiesCurrent",
+          "value": 24257,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Long-term debt",
+          "xbrl_concept": "us-gaap:LongTermDebtNoncurrent",
+          "value": 8466,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Long-term operating lease liabilities",
+          "xbrl_concept": "us-gaap:OperatingLeaseLiabilityNoncurrent",
+          "value": 1831,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Other long-term liabilities",
+          "xbrl_concept": "us-gaap:OtherLiabilitiesNoncurrent",
+          "value": 6055,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Total liabilities",
+          "xbrl_concept": "us-gaap:Liabilities",
+          "value": 40609,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Preferred stock",
+          "xbrl_concept": "us-gaap:PreferredStockValueOutstanding",
+          "value": 0,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Common stock",
+          "xbrl_concept": "us-gaap:CommonStockValue",
+          "value": 24,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Additional paid-in capital",
+          "xbrl_concept": "us-gaap:AdditionalPaidInCapital",
+          "value": 11200,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Accumulated other comprehensive income",
+          "xbrl_concept": "us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax",
+          "value": 170,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Retained earnings",
+          "xbrl_concept": "us-gaap:RetainedEarningsAccumulatedDeficit",
+          "value": 88737,
+          "unit": "USD_millions",
+          "indent_level": 1
+        },
+        {
+          "label": "Total shareholders equity",
+          "xbrl_concept": "us-gaap:StockholdersEquity",
+          "value": 100131,
+          "unit": "USD_millions",
+          "indent_level": 0
+        },
+        {
+          "label": "Total liabilities and shareholders equity",
+          "xbrl_concept": "us-gaap:LiabilitiesAndStockholdersEquity",
+          "value": 140740,
+          "unit": "USD_millions",
+          "indent_level": 0
+        }
+      ],
+      "formulas": [
+        {
+          "formula": "Sum of current assets equals Total current assets",
+          "components": [
+            "Cash and cash equivalents",
+            "Marketable securities",
+            "Accounts receivable, net",
+            "Inventories",
+            "Prepaid expenses and other current assets",
+            "Total current assets"
+          ],
+          "operation": "Cash and cash equivalents + Marketable securities + Accounts receivable, net + Inventories + Prepaid expenses and other current assets",
+          "result_label": "Total current assets"
+        },
+        {
+          "formula": "Total current assets plus noncurrent assets equals Total assets",
+          "components": [
+            "Total current assets",
+            "Property and equipment, net",
+            "Operating lease assets",
+            "Goodwill",
+            "Intangible assets, net",
+            "Deferred income tax assets",
+            "Other assets",
+            "Total assets"
+          ],
+          "operation": "Total current assets + Property and equipment, net + Operating lease assets + Goodwill + Intangible assets, net + Deferred income tax assets + Other assets",
+          "result_label": "Total assets"
+        },
+        {
+          "formula": "Sum of current liabilities equals Total current liabilities",
+          "components": [
+            "Accounts payable",
+            "Accrued and other current liabilities",
+            "Total current liabilities"
+          ],
+          "operation": "Accounts payable + Accrued and other current liabilities",
+          "result_label": "Total current liabilities"
+        },
+        {
+          "formula": "Total current liabilities plus noncurrent liabilities equals Total liabilities",
+          "components": [
+            "Total current liabilities",
+            "Long-term debt",
+            "Long-term operating lease liabilities",
+            "Other long-term liabilities",
+            "Total liabilities"
+          ],
+          "operation": "Total current liabilities + Long-term debt + Long-term operating lease liabilities + Other long-term liabilities",
+          "result_label": "Total liabilities"
+        },
+        {
+          "formula": "Sum of equity components equals Total shareholders equity",
+          "components": [
+            "Preferred stock",
+            "Common stock",
+            "Additional paid-in capital",
+            "Accumulated other comprehensive income",
+            "Retained earnings",
+            "Total shareholders equity"
+          ],
+          "operation": "Preferred stock + Common stock + Additional paid-in capital + Accumulated other comprehensive income + Retained earnings",
+          "result_label": "Total shareholders equity"
+        },
+        {
+          "formula": "Total liabilities plus Total shareholders equity equals Total liabilities and shareholders equity",
+          "components": [
+            "Total liabilities",
+            "Total shareholders equity",
+            "Total liabilities and shareholders equity"
+          ],
+          "operation": "Total liabilities + Total shareholders equity",
+          "result_label": "Total liabilities and shareholders equity"
+        },
+        {
+          "formula": "Total assets equals Total liabilities and shareholders equity",
+          "components": [
+            "Total assets",
+            "Total liabilities and shareholders equity"
+          ],
+          "operation": "Total assets - Total liabilities and shareholders equity",
+          "result_label": "Total assets"
+        }
+      ]
+    },
+    "cash_flow": {
+      "line_items": [],
+      "formulas": []
+    },
+    "calculation_components": {},
+    "source_filings": [
+      "q2_fy26_10q.json"
     ]
   },
   {

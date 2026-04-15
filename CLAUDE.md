@@ -138,29 +138,29 @@ AI-powered extraction replaces per-company scripts and XBRL concept mappings. A 
   - Per-filing JSON (`q1_fy26_10q.json`) — immutable, exact extraction, training data for post-trained model.
   - `mapped.json` — same data organized by period. Later filings overwrite earlier ones for the same period (handles amendments, restated comparatives).
 
-**Stage 2 — Analytical Component Extraction** (`ai_formula.py` → `ai_extract/{TICKER}/formula_mapped.json`)
-- Reads `mapped.json` (verified financial statements by period). Does NOT re-read filings.
-- Extracts exactly 23 analytical components needed for metric calculations (ROIC, ROIIC, reinvestment rate, margins, CCC, etc.).
+**Stage 2 — Standardized Field Mapping** (`ai_formula.py` → `ai_extract/{TICKER}/formula_mapped.json`)
+- Reads per-filing JSONs (each filing has IS + BS + CF + calculation_components together).
+- Maps ALL line items to ~70 standardized field names covering complete IS, BS, and CF.
 - Resolves 9 ambiguities: gross vs net interest expense, pure AP vs combined, operating lease total (current hidden in accrued), short-term debt (hidden or zero), consolidated NI vs to-common, parent equity vs incl NCI, tax benefit handling, segmented capex, multiple acquisition lines.
-- Validates consistency: tax rate logic, NI = pretax - tax, BS balances, no double counting on operating leases.
-- **Does NOT reproduce financial statements.** That data lives in `mapped.json`. Stage 2 only outputs the 23 fields `calculate.py` needs.
-- Cost: ~$0.10/period.
+- Uses CF PRESENTATION signs (not XBRL raw signs). Validates every formula: IS subtotals, BS balance, CFO/CFI/CFF component sums, cross-statement NI.
+- **Maps all fields, not just analytical ones.** Label normalization is essential — the same item can have 7+ label variants across filings (e.g., gains/losses on investments). Without consistent field names, YTD-to-quarterly subtraction in Stage 3 produces wrong values.
+- Cost: ~$0.13/filing.
 
 **Stage 3 — Quarterly Derivation** (`ai_formula.py --from-mapped` → `ai_extract/{TICKER}/quarterly.json`)
-- Pure arithmetic. No AI, no pattern matching. Takes the 23 fields from `formula_mapped.json` and derives standalone quarterly values:
+- Pure arithmetic. No AI, no pattern matching. Takes all ~70 fields from `formula_mapped.json` and derives standalone quarterly values:
   - Q1 10-Q: values are already quarterly, use as-is.
-  - Q2/Q3 10-Q: IS fields are quarterly (use as-is). CF fields (sbc, dna, cfo, capex, acquisitions) are YTD — subtract prior period's YTD.
+  - Q2/Q3 10-Q: IS fields are quarterly (use as-is). CF fields are YTD — subtract prior period's YTD. Works correctly because Stage 2 normalized all labels.
   - 10-K: IS and CF fields are annual — subtract Q1+Q2+Q3 to get Q4. Shares/EPS use annual value directly (weighted averages, not derived by subtraction).
   - BS fields: point-in-time snapshots, no derivation.
 - Smart merge: when multiple filings report the same period, only overwrites if the value is **different** (restatement). Same or absent values preserved. Changes logged in `restatements` array.
-- **This is analytical data.** Feeds `calculate.py`, the dashboard, and Layer 4 synthesis.
+- `quarterly.json` is the single source of truth for all downstream consumers — `calculate.py`, the dashboard, and the verification CSV.
 
 ### How It Works
 
 1. **Download**: `fetch.py` downloads the filing (shared with deterministic pipeline). Downloads 10-Q, 10-K, 10-Q/A, and 10-K/A filings.
 2. **Prepare** (inline in `analyze_statement.py`): Clean HTML (~57% size reduction), parse XBRL facts into structured data.
-3. **Extract + Verify**: The AI reads the full filing, extracts all three statements, then verifies every component sum against the filing's reported subtotals. If any check fails, the AI loops — finds missing items, fixes values/signs. It does not output until all checks pass, or times out with a failure log. Writes per-filing JSON (training data) and updates `mapped.json` (running record by period).
-4. **Analytical mapping** (`ai_formula.py`): Second AI pass reads `mapped.json` and extracts the 23 analytical components, resolving ambiguities and validating consistency. Writes `formula_mapped.json`.
+3. **Extract + Verify**: The AI reads the full filing, extracts all three statements, then verifies every component sum against the filing's reported subtotals. If any check fails, the AI loops — finds missing items, fixes values/signs. CF sign corrections from retries are applied back to `line_items` (not just stored in retry logs). Writes per-filing JSON (training data with correction logs) and updates `mapped.json` (running record by period).
+4. **Standardized mapping** (`ai_formula.py`): Second AI pass reads per-filing JSONs and maps ALL line items to ~70 standardized field names. Resolves ambiguities, validates formulas, normalizes CF signs. Label normalization is essential — without it, YTD-to-quarterly subtraction fails due to label variants across filings. Writes `formula_mapped.json`.
 5. **Derive** (`ai_formula.py --from-mapped`): Pure arithmetic derives standalone quarterly values. Writes `quarterly.json`.
 
 ### Verification Model
@@ -190,8 +190,8 @@ In all cases: Stage 1 is stateless, `mapped.json` is stateful.
 
 ```
 ai_extract/
-  analyze_statement.py    — Stage 1: extraction with self-verifying loop, writes per-filing JSON + updates mapped.json
-  ai_formula.py           — Stage 2: analytical component extraction (23 fields) + Stage 3: quarterly derivation
+  analyze_statement.py    — Stage 1: extraction with self-verifying loop, CF sign correction writeback, writes per-filing JSON + updates mapped.json
+  ai_formula.py           — Stage 2: standardized field mapping (~70 fields) + Stage 3: quarterly derivation
   parse_xbrl.py           — Deterministic XBRL fact parser (used by analyze_statement.py)
   ai_extraction_flow.md   — Design doc: the three-stage pipeline
   view_extraction.py      — Renders extraction JSON as readable table
@@ -202,8 +202,8 @@ ai_extract/
     q3_fy26_10q.json
     q4_fy26_10k.json
     mapped.json            — Stage 1: all periods organized by period, updated on amendments
-    formula_mapped.json    — Stage 2: 23 analytical fields per period
-    quarterly.json         — Stage 3: 23 fields per standalone quarter
+    formula_mapped.json    — Stage 2: ~70 standardized fields per filing
+    quarterly.json         — Stage 3: ~70 fields per standalone quarter (single source of truth)
 ```
 
 ### Cost
@@ -215,7 +215,9 @@ ai_extract/
 
 - NVDA FY24-FY26 (12 filings, 12 quarters): **264/264 fields match golden eval** (final quarterly.json vs deterministic pipeline). All Q1-Q4 derivations correct. No lookup tables or per-company code needed.
 - FCX Q1 CY24: 93/93 XBRL matches, 24/24 fields match deterministic extraction exactly for current period.
-- **Known issue**: The `verify_formulas()` code in `analyze_statement.py` has bugs — duplicate label collisions ("Other" in CFO overwrites "Other" in CFF) and text-based formula evaluation breaks on substring matches. CF sign conventions are inconsistent across filings (some use XBRL raw sign, some use CF presentation sign). IS verification is clean (72/72 pass). CF verification has 17/62 failures due to these bugs. **The extraction prompt's self-verification loop (checking component sums against reported subtotals) is the fix — the Python verify_formulas() should be removed or rewritten.**
+- **CF sign inversion (fixed)**: Stage 1 AI sometimes used XBRL raw signs instead of CF presentation signs. The Python verification detects this (components don't sum to section total), triggers a retry, and the corrected values are now applied back to `cash_flow.line_items`. Previously corrections were stored in `cfo_retry` but never applied — fixed by adding writeback logic after verified retries.
+- **Label variation across filings (fixed)**: Same line item has different labels across filings (e.g., 7 variants of gains/losses on investments). Stage 2 normalizes all labels to consistent field names. Attempting to match raw labels directly for YTD subtraction produces wrong quarterly values.
+- **Known issue**: The `verify_formulas()` code in `analyze_statement.py` has legacy bugs — duplicate label collisions and text-based formula evaluation issues. The retry loop and Stage 2 normalization work around these. `verify_formulas()` should be rewritten.
 
 ### Relationship to Core Pipeline
 

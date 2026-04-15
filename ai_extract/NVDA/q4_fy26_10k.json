@@ -819,8 +819,8 @@
           "xbrl_concept": "us-gaap:NetIncomeLoss",
           "values": {
             "2025-01-27_2026-01-25": 120067,
-            "2024-01-29_2025-01-26": 72880,
-            "2023-01-30_2024-01-28": 29760
+            "2024-01-29_2025-01-26": 120067,
+            "2023-01-30_2024-01-28": 120067
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -832,8 +832,8 @@
           "xbrl_concept": "us-gaap:ShareBasedCompensation",
           "values": {
             "2025-01-27_2026-01-25": 6386,
-            "2024-01-29_2025-01-26": 4737,
-            "2023-01-30_2024-01-28": 3549
+            "2024-01-29_2025-01-26": 6386,
+            "2023-01-30_2024-01-28": 6386
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -845,8 +845,8 @@
           "xbrl_concept": "us-gaap:DepreciationDepletionAndAmortization",
           "values": {
             "2025-01-27_2026-01-25": 2843,
-            "2024-01-29_2025-01-26": 1864,
-            "2023-01-30_2024-01-28": 1508
+            "2024-01-29_2025-01-26": 2843,
+            "2023-01-30_2024-01-28": 2843
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -857,9 +857,9 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:GainLossOnInvestments",
           "values": {
-            "2025-01-27_2026-01-25": 8918,
-            "2024-01-29_2025-01-26": 1030,
-            "2023-01-30_2024-01-28": 238
+            "2025-01-27_2026-01-25": -8918,
+            "2024-01-29_2025-01-26": -8918,
+            "2023-01-30_2024-01-28": -8918
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -871,8 +871,8 @@
           "xbrl_concept": "us-gaap:DeferredIncomeTaxExpenseBenefit",
           "values": {
             "2025-01-27_2026-01-25": -1424,
-            "2024-01-29_2025-01-26": -4477,
-            "2023-01-30_2024-01-28": -2489
+            "2024-01-29_2025-01-26": -1424,
+            "2023-01-30_2024-01-28": -1424
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -883,9 +883,9 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:OtherNoncashIncomeExpense",
           "values": {
-            "2025-01-27_2026-01-25": -287,
-            "2024-01-29_2025-01-26": -502,
-            "2023-01-30_2024-01-28": -278
+            "2025-01-27_2026-01-25": -9,
+            "2024-01-29_2025-01-26": -9,
+            "2023-01-30_2024-01-28": -9
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -896,9 +896,9 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsReceivable",
           "values": {
-            "2025-01-27_2026-01-25": 15399,
-            "2024-01-29_2025-01-26": 13063,
-            "2023-01-30_2024-01-28": 6172
+            "2025-01-27_2026-01-25": -15399,
+            "2024-01-29_2025-01-26": -15399,
+            "2023-01-30_2024-01-28": -15399
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -909,9 +909,9 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:IncreaseDecreaseInInventories",
           "values": {
-            "2025-01-27_2026-01-25": 11324,
-            "2024-01-29_2025-01-26": 4781,
-            "2023-01-30_2024-01-28": 98
+            "2025-01-27_2026-01-25": -11324,
+            "2024-01-29_2025-01-26": -11324,
+            "2023-01-30_2024-01-28": -11324
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -922,9 +922,9 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets",
           "values": {
-            "2025-01-27_2026-01-25": -577,
-            "2024-01-29_2025-01-26": 395,
-            "2023-01-30_2024-01-28": 1522
+            "2025-01-27_2026-01-25": 577,
+            "2024-01-29_2025-01-26": 577,
+            "2023-01-30_2024-01-28": 577
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -936,8 +936,8 @@
           "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsPayable",
           "values": {
             "2025-01-27_2026-01-25": 3096,
-            "2024-01-29_2025-01-26": 3357,
-            "2023-01-30_2024-01-28": 1531
+            "2024-01-29_2025-01-26": 3096,
+            "2023-01-30_2024-01-28": 3096
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -949,8 +949,8 @@
           "xbrl_concept": "us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities",
           "values": {
             "2025-01-27_2026-01-25": 5257,
-            "2024-01-29_2025-01-26": 4278,
-            "2023-01-30_2024-01-28": 2025
+            "2024-01-29_2025-01-26": 5257,
+            "2023-01-30_2024-01-28": 5257
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -962,8 +962,8 @@
           "xbrl_concept": "us-gaap:IncreaseDecreaseInOtherNoncurrentLiabilities",
           "values": {
             "2025-01-27_2026-01-25": 1844,
-            "2024-01-29_2025-01-26": 1221,
-            "2023-01-30_2024-01-28": 514
+            "2024-01-29_2025-01-26": 1844,
+            "2023-01-30_2024-01-28": 1844
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -988,8 +988,8 @@
           "xbrl_concept": "us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt",
           "values": {
             "2025-01-27_2026-01-25": 15157,
-            "2024-01-29_2025-01-26": 495,
-            "2023-01-30_2024-01-28": 50
+            "2024-01-29_2025-01-26": 15157,
+            "2023-01-30_2024-01-28": 15157
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1001,8 +1001,8 @@
           "xbrl_concept": "us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities",
           "values": {
             "2025-01-27_2026-01-25": 11226,
-            "2024-01-29_2025-01-26": 11195,
-            "2023-01-30_2024-01-28": 9732
+            "2024-01-29_2025-01-26": 11226,
+            "2023-01-30_2024-01-28": 11226
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1014,8 +1014,8 @@
           "xbrl_concept": "us-gaap:ProceedsFromSaleOfEquitySecuritiesFvNi",
           "values": {
             "2025-01-27_2026-01-25": 84,
-            "2024-01-29_2025-01-26": 171,
-            "2023-01-30_2024-01-28": 1
+            "2024-01-29_2025-01-26": 84,
+            "2023-01-30_2024-01-28": 84
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1026,9 +1026,9 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt",
           "values": {
-            "2025-01-27_2026-01-25": 40616,
-            "2024-01-29_2025-01-26": 26575,
-            "2023-01-30_2024-01-28": 18211
+            "2025-01-27_2026-01-25": -40616,
+            "2024-01-29_2025-01-26": -40616,
+            "2023-01-30_2024-01-28": -40616
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1039,9 +1039,9 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:PaymentsToAcquireEquitySecuritiesFvNi",
           "values": {
-            "2025-01-27_2026-01-25": 17502,
-            "2024-01-29_2025-01-26": 1486,
-            "2023-01-30_2024-01-28": 862
+            "2025-01-27_2026-01-25": -17502,
+            "2024-01-29_2025-01-26": -17502,
+            "2023-01-30_2024-01-28": -17502
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1052,9 +1052,9 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:PaymentsToAcquireBusinessTwoNetOfCashAcquired",
           "values": {
-            "2025-01-27_2026-01-25": 13000,
-            "2024-01-29_2025-01-26": 0,
-            "2023-01-30_2024-01-28": 0
+            "2025-01-27_2026-01-25": -13000,
+            "2024-01-29_2025-01-26": -13000,
+            "2023-01-30_2024-01-28": -13000
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1065,9 +1065,9 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:PaymentsToAcquireProductiveAssets",
           "values": {
-            "2025-01-27_2026-01-25": 6042,
-            "2024-01-29_2025-01-26": 3236,
-            "2023-01-30_2024-01-28": 1069
+            "2025-01-27_2026-01-25": -6042,
+            "2024-01-29_2025-01-26": -6042,
+            "2023-01-30_2024-01-28": -6042
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1078,9 +1078,9 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired",
           "values": {
-            "2025-01-27_2026-01-25": 1535,
-            "2024-01-29_2025-01-26": 1007,
-            "2023-01-30_2024-01-28": 83
+            "2025-01-27_2026-01-25": -1535,
+            "2024-01-29_2025-01-26": -1535,
+            "2023-01-30_2024-01-28": -1535
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1091,9 +1091,9 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:PaymentsForProceedsFromOtherInvestingActivities",
           "values": {
-            "2025-01-27_2026-01-25": 0,
-            "2024-01-29_2025-01-26": -22,
-            "2023-01-30_2024-01-28": 124
+            "2025-01-27_2026-01-25": -9,
+            "2024-01-29_2025-01-26": -9,
+            "2023-01-30_2024-01-28": -9
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1118,8 +1118,8 @@
           "xbrl_concept": "us-gaap:ProceedsFromStockPlans",
           "values": {
             "2025-01-27_2026-01-25": 644,
-            "2024-01-29_2025-01-26": 490,
-            "2023-01-30_2024-01-28": 403
+            "2024-01-29_2025-01-26": 644,
+            "2023-01-30_2024-01-28": 644
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1130,9 +1130,9 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:PaymentsForRepurchaseOfCommonStock",
           "values": {
-            "2025-01-27_2026-01-25": 40086,
-            "2024-01-29_2025-01-26": 33706,
-            "2023-01-30_2024-01-28": 9533
+            "2025-01-27_2026-01-25": -40086,
+            "2024-01-29_2025-01-26": -40086,
+            "2023-01-30_2024-01-28": -40086
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1143,9 +1143,9 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation",
           "values": {
-            "2025-01-27_2026-01-25": 7948,
-            "2024-01-29_2025-01-26": 6930,
-            "2023-01-30_2024-01-28": 2783
+            "2025-01-27_2026-01-25": -7948,
+            "2024-01-29_2025-01-26": -7948,
+            "2023-01-30_2024-01-28": -7948
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1156,9 +1156,9 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:PaymentsOfDividends",
           "values": {
-            "2025-01-27_2026-01-25": 974,
-            "2024-01-29_2025-01-26": 834,
-            "2023-01-30_2024-01-28": 395
+            "2025-01-27_2026-01-25": -974,
+            "2024-01-29_2025-01-26": -974,
+            "2023-01-30_2024-01-28": -974
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1169,9 +1169,9 @@
           "indent_level": 1,
           "xbrl_concept": "nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities",
           "values": {
-            "2025-01-27_2026-01-25": 101,
-            "2024-01-29_2025-01-26": 129,
-            "2023-01-30_2024-01-28": 74
+            "2025-01-27_2026-01-25": -101,
+            "2024-01-29_2025-01-26": -101,
+            "2023-01-30_2024-01-28": -101
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1183,8 +1183,8 @@
           "xbrl_concept": "us-gaap:RepaymentsOfDebt",
           "values": {
             "2025-01-27_2026-01-25": 0,
-            "2024-01-29_2025-01-26": 1250,
-            "2023-01-30_2024-01-28": 1250
+            "2024-01-29_2025-01-26": 0,
+            "2023-01-30_2024-01-28": 0
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1196,8 +1196,8 @@
           "xbrl_concept": "us-gaap:ProceedsFromPaymentsForOtherFinancingActivities",
           "values": {
             "2025-01-27_2026-01-25": -9,
-            "2024-01-29_2025-01-26": 0,
-            "2023-01-30_2024-01-28": -1
+            "2024-01-29_2025-01-26": -9,
+            "2023-01-30_2024-01-28": -9
           },
           "unit": "USD_millions",
           "xbrl_match": true,

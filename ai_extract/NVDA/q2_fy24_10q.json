@@ -907,7 +907,7 @@
           "xbrl_concept": "us-gaap:NetIncomeLoss",
           "values": {
             "2023-01-30_2023-07-30": 8232,
-            "2022-01-31_2022-07-31": 2274
+            "2022-01-31_2022-07-31": 8232
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -919,7 +919,7 @@
           "xbrl_concept": "us-gaap:ShareBasedCompensation",
           "values": {
             "2023-01-30_2023-07-30": 1576,
-            "2022-01-31_2022-07-31": 1226
+            "2022-01-31_2022-07-31": 1576
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -931,7 +931,7 @@
           "xbrl_concept": "us-gaap:DepreciationDepletionAndAmortization",
           "values": {
             "2023-01-30_2023-07-30": 749,
-            "2022-01-31_2022-07-31": 712
+            "2022-01-31_2022-07-31": 749
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -942,8 +942,8 @@
           "indent_level": 2,
           "xbrl_concept": "us-gaap:GainLossOnInvestments",
           "values": {
-            "2023-01-30_2023-07-30": 45,
-            "2022-01-31_2022-07-31": -24
+            "2023-01-30_2023-07-30": -45,
+            "2022-01-31_2022-07-31": -45
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -955,7 +955,7 @@
           "xbrl_concept": "us-gaap:DeferredIncomeTaxExpenseBenefit",
           "values": {
             "2023-01-30_2023-07-30": -1881,
-            "2022-01-31_2022-07-31": -985
+            "2022-01-31_2022-07-31": -1881
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -967,7 +967,7 @@
           "xbrl_concept": "nvda:BusinessCombinationAdvancedConsiderationWrittenOff",
           "values": {
             "2023-01-30_2023-07-30": 0,
-            "2022-01-31_2022-07-31": 1353
+            "2022-01-31_2022-07-31": 0
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -978,8 +978,8 @@
           "indent_level": 2,
           "xbrl_concept": "us-gaap:OtherNoncashIncomeExpense",
           "values": {
-            "2023-01-30_2023-07-30": -102,
-            "2022-01-31_2022-07-31": 18
+            "2023-01-30_2023-07-30": 0,
+            "2022-01-31_2022-07-31": 0
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -990,8 +990,8 @@
           "indent_level": 2,
           "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsReceivable",
           "values": {
-            "2023-01-30_2023-07-30": 3239,
-            "2022-01-31_2022-07-31": 668
+            "2023-01-30_2023-07-30": -3239,
+            "2022-01-31_2022-07-31": -3239
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1002,8 +1002,8 @@
           "indent_level": 2,
           "xbrl_concept": "us-gaap:IncreaseDecreaseInInventories",
           "values": {
-            "2023-01-30_2023-07-30": -861,
-            "2022-01-31_2022-07-31": 1285
+            "2023-01-30_2023-07-30": 861,
+            "2022-01-31_2022-07-31": 861
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1014,8 +1014,8 @@
           "indent_level": 2,
           "xbrl_concept": "us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets",
           "values": {
-            "2023-01-30_2023-07-30": 592,
-            "2022-01-31_2022-07-31": 1554
+            "2023-01-30_2023-07-30": -592,
+            "2022-01-31_2022-07-31": -592
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1027,7 +1027,7 @@
           "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsPayable",
           "values": {
             "2023-01-30_2023-07-30": 789,
-            "2022-01-31_2022-07-31": 559
+            "2022-01-31_2022-07-31": 789
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1039,7 +1039,7 @@
           "xbrl_concept": "us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities",
           "values": {
             "2023-01-30_2023-07-30": 2675,
-            "2022-01-31_2022-07-31": 1267
+            "2022-01-31_2022-07-31": 2675
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1051,7 +1051,7 @@
           "xbrl_concept": "us-gaap:IncreaseDecreaseInOtherNoncurrentLiabilities",
           "values": {
             "2023-01-30_2023-07-30": 236,
-            "2022-01-31_2022-07-31": 60
+            "2022-01-31_2022-07-31": 236
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1084,7 +1084,7 @@
           "xbrl_concept": "us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities",
           "values": {
             "2023-01-30_2023-07-30": 5111,
-            "2022-01-31_2022-07-31": 10983
+            "2022-01-31_2022-07-31": 5111
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1096,7 +1096,7 @@
           "xbrl_concept": "us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt",
           "values": {
             "2023-01-30_2023-07-30": 0,
-            "2022-01-31_2022-07-31": 1731
+            "2022-01-31_2022-07-31": 0
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1107,8 +1107,8 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt",
           "values": {
-            "2023-01-30_2023-07-30": 5343,
-            "2022-01-31_2022-07-31": 7576
+            "2023-01-30_2023-07-30": -5343,
+            "2022-01-31_2022-07-31": -5343
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1119,8 +1119,8 @@
           "indent_level": 1,
           "xbrl_concept": "nvda:PurchasesOfPropertyAndEquipmentAndIntangibleAssets",
           "values": {
-            "2023-01-30_2023-07-30": 537,
-            "2022-01-31_2022-07-31": 794
+            "2023-01-30_2023-07-30": -537,
+            "2022-01-31_2022-07-31": -537
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1131,8 +1131,8 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired",
           "values": {
-            "2023-01-30_2023-07-30": 83,
-            "2022-01-31_2022-07-31": 49
+            "2023-01-30_2023-07-30": -83,
+            "2022-01-31_2022-07-31": -83
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1143,8 +1143,8 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:PaymentsForProceedsFromOtherInvestingActivities",
           "values": {
-            "2023-01-30_2023-07-30": 435,
-            "2022-01-31_2022-07-31": 65
+            "2023-01-30_2023-07-30": -435,
+            "2022-01-31_2022-07-31": -435
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1177,7 +1177,7 @@
           "xbrl_concept": "nvda:NetProceedsPaymentsRelatedToEmployeeStockPlans",
           "values": {
             "2023-01-30_2023-07-30": 247,
-            "2022-01-31_2022-07-31": 205
+            "2022-01-31_2022-07-31": 247
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1188,8 +1188,8 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:PaymentsForRepurchaseOfCommonStock",
           "values": {
-            "2023-01-30_2023-07-30": 3067,
-            "2022-01-31_2022-07-31": 5341
+            "2023-01-30_2023-07-30": -3067,
+            "2022-01-31_2022-07-31": -3067
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1200,8 +1200,8 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:RepaymentsOfDebt",
           "values": {
-            "2023-01-30_2023-07-30": 1250,
-            "2022-01-31_2022-07-31": 0
+            "2023-01-30_2023-07-30": -1250,
+            "2022-01-31_2022-07-31": -1250
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1212,8 +1212,8 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation",
           "values": {
-            "2023-01-30_2023-07-30": 1179,
-            "2022-01-31_2022-07-31": 837
+            "2023-01-30_2023-07-30": -1179,
+            "2022-01-31_2022-07-31": -1179
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1224,8 +1224,8 @@
           "indent_level": 1,
           "xbrl_concept": "us-gaap:PaymentsOfDividends",
           "values": {
-            "2023-01-30_2023-07-30": 199,
-            "2022-01-31_2022-07-31": 200
+            "2023-01-30_2023-07-30": -199,
+            "2022-01-31_2022-07-31": -199
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1236,8 +1236,8 @@
           "indent_level": 1,
           "xbrl_concept": "nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities",
           "values": {
-            "2023-01-30_2023-07-30": 31,
-            "2022-01-31_2022-07-31": 36
+            "2023-01-30_2023-07-30": -31,
+            "2022-01-31_2022-07-31": -31
           },
           "unit": "USD_millions",
           "xbrl_match": true,
@@ -1249,7 +1249,7 @@
           "xbrl_concept": "us-gaap:ProceedsFromPaymentsForOtherFinancingActivities",
           "values": {
             "2023-01-30_2023-07-30": 0,
-            "2022-01-31_2022-07-31": 1
+            "2022-01-31_2022-07-31": 0
           },
           "unit": "USD_millions",
           "xbrl_match": true,

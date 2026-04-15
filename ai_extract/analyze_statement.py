@@ -815,8 +815,25 @@ CRITICAL: Output must be valid JSON. No apostrophes in strings."""
                     section_total = retry_result.get('section_total', 0)
                     if corrected_sum == section_total:
                         print(f"  VERIFIED: corrected components sum to {section['name']} ({corrected_sum} = {section_total})")
+
+                        # Apply corrected values back to cash_flow.line_items
+                        corrected_by_label = {c['label']: c['value'] for c in corrected}
+                        cf_line_items = ai_result.get('cash_flow', {}).get('line_items', [])
+                        applied = 0
+                        for item in cf_line_items:
+                            if item['label'] in corrected_by_label:
+                                old_vals = item.get('values', {})
+                                for period in old_vals:
+                                    old_val = old_vals[period]
+                                    new_val = corrected_by_label[item['label']]
+                                    if old_val != new_val:
+                                        old_vals[period] = new_val
+                                        applied += 1
+                        if applied > 0:
+                            print(f"  Applied {applied} corrected values to cash_flow.line_items")
                     else:
                         print(f"  STILL MISMATCHED: {corrected_sum} vs {section_total}")
+                        ai_result[section['result_key'] + '_unresolved'] = True
 
         # Display each statement
         print("=" * 80)

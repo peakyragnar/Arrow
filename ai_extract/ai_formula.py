@@ -26,84 +26,156 @@ import anthropic
 
 
 FIELD_DEFINITIONS = """
-You are reviewing a verified financial extraction and mapping 23 analytical components for metric calculations (ROIC, ROIIC, reinvestment rate, margins, CCC, etc.).
+You are reviewing a verified financial extraction and mapping ALL financial statement items to standardized field names. The extraction has already been verified — all subtotals match reported totals, formulas balance. Your job is:
 
-The extraction has already been verified — all subtotals match reported totals, formulas balance. Your job is NOT to re-extract data. Your job is:
+1. Map every line item to its standardized field name
+2. Resolve ambiguities (9 fields need judgment — marked AMBIGUITY below)
+3. Validate consistency — no double counting, signs correct, tax logic flows
+4. Use CF PRESENTATION signs (as shown on the statement), NOT XBRL raw signs. If the CF shows (252) for AR, that means -252. If it shows 566 for inventories, that means +566. The sign that makes all components sum to the section total using + only.
 
-1. Map the 23 fields below from the extraction, resolving ambiguities
-2. Validate consistency — no double counting, signs are correct, tax logic flows
-3. Flag anything suspicious
+## INCOME STATEMENT FIELDS
 
-## THE 23 FIELDS
+- revenue_q: Total revenue / net revenue
+- cogs_q: Cost of revenue / cost of goods sold
+- gross_profit_q: Gross profit
+- rd_expense_q: Research and development expense
+- sga_q: Selling, general and administrative expense
+- acquisition_termination_q: Acquisition termination cost (0 if not present)
+- total_opex_q: Total operating expenses
+- operating_income_q: Operating income / income from operations
+- interest_income_q: Interest income / investment income
+- interest_expense_q: GROSS interest expense. Store as NEGATIVE.
+  AMBIGUITY: If IS shows "Interest expense, net", find gross in notes or calculation_components.interest_expense.gross.
+- other_nonop_income_q: Other non-operating income/expense, net
+- total_nonop_income_q: Total other income/expense, net
+- pretax_income_q: Income before income taxes
+- income_tax_expense_q: Income tax expense / provision for income taxes
+  AMBIGUITY: Can be benefit (negative). Flag if effective rate < 0% or > 50%.
+- net_income_q: Net income
+  AMBIGUITY: Must be CONSOLIDATED (same as CF starting line). Not net income to common if NCI exists.
+- eps_basic_q: Basic EPS. Keep as reported (do not multiply).
+- eps_diluted_q: Diluted EPS. Keep as reported.
+- basic_shares_q: Basic weighted average shares. RAW count (multiply millions by 1,000,000).
+- diluted_shares_q: Diluted weighted average shares. RAW count.
 
-### Income Statement (7 fields)
+## BALANCE SHEET FIELDS
 
-- revenue_q: Total revenue / net revenue. Top line. Straightforward.
-- cogs_q: Cost of revenue / cost of goods sold. Straightforward.
-- operating_income_q: Operating income / income from operations. Straightforward.
-- interest_expense_q: GROSS interest expense, not net. Store as NEGATIVE.
-  AMBIGUITY: If the IS only shows "Interest expense, net", find gross interest expense in the notes or calculation_components.interest_expense.gross. If gross is not disclosed, use net as fallback and flag it.
-- pretax_income_q: Income before income taxes. Straightforward.
-- income_tax_expense_q: Income tax expense / provision for income taxes.
-  AMBIGUITY: Can be a benefit (negative). Compute effective_tax_rate = tax / pretax. If pretax is positive but tax is negative (benefit), or if effective rate is > 50% or < 0%, flag it. The downstream formula uses a 21% fallback for nonsensical rates, but output the actual reported value here.
-- net_income_q: Net income.
-  AMBIGUITY: Must be CONSOLIDATED net income — the same number the cash flow statement uses as its starting line. If the company has noncontrolling interests (NCI), do NOT use "net income attributable to common stockholders." Use the line before the NCI attribution. Verify: net_income_q here should match the "Net income" line at the top of the cash flow statement.
+- cash_q: Cash and cash equivalents
+- short_term_investments_q: Marketable securities / short-term investments (current)
+- accounts_receivable_q: Accounts receivable, net
+- inventory_q: Inventories
+- prepaid_q: Prepaid expenses and other current assets
+- total_current_assets_q: Total current assets
+- ppe_q: Property and equipment, net
+- operating_lease_assets_q: Operating lease right-of-use assets
+- goodwill_q: Goodwill
+- intangibles_q: Intangible assets, net (excluding goodwill)
+- deferred_tax_assets_q: Deferred income tax assets
+- other_noncurrent_assets_q: Other non-current assets
+- total_assets_q: Total assets
+- accounts_payable_q: Accounts payable
+  AMBIGUITY: Must be PURE trade AP. If BS combines AP with accrued, find breakout in notes.
+- accrued_liabilities_q: Accrued and other current liabilities
+- short_term_debt_q: Short-term debt / current portion of LT debt. 0 if none (confirm in notes).
+  AMBIGUITY: May not be a separate BS line. Check notes.
+- total_current_liabilities_q: Total current liabilities
+- long_term_debt_q: Long-term debt (non-current)
+- long_term_lease_liabilities_q: Long-term operating lease liabilities (non-current BS line)
+- other_noncurrent_liabilities_q: Other non-current liabilities
+- total_liabilities_q: Total liabilities
+- operating_lease_liabilities_q: TOTAL operating lease liabilities (current + non-current)
+  AMBIGUITY: Current portion often hidden in accrued liabilities. Find in notes. No double counting.
+- equity_q: Total stockholders equity (parent only, not incl NCI)
+  AMBIGUITY: If BS shows both stockholders equity and total equity incl NCI, use stockholders.
+- total_liabilities_and_equity_q: Total liabilities and stockholders equity
 
-### Balance Sheet (10 fields)
+## CASH FLOW - OPERATING FIELDS
+Use CF PRESENTATION signs. All items should sum to cfo_q using + only.
 
-- cash_q: Cash and cash equivalents. Straightforward.
-- short_term_investments_q: Marketable securities / short-term investments (current). Straightforward.
-- accounts_receivable_q: Accounts receivable, net. Straightforward.
-- inventory_q: Inventories. Straightforward.
-- total_assets_q: Total assets. Straightforward.
-- accounts_payable_q: Accounts payable.
-  AMBIGUITY: Must be PURE trade AP, not combined with accrued liabilities. If the BS shows a single "Accounts payable and accrued liabilities" line, find the pure AP breakout in notes or calculation_components.accounts_payable. If no breakout exists, use the combined line and flag it.
-- short_term_debt_q: Short-term debt / current portion of long-term debt / commercial paper.
-  AMBIGUITY: May not appear as a separate BS line item. Check calculation_components.short_term_debt. Check if there is a current portion of long-term debt in the notes. If genuinely none exists, set to 0 and confirm with "confirmed_zero": true in notes.
-- long_term_debt_q: Long-term debt (non-current portion). Straightforward.
-- operating_lease_liabilities_q: TOTAL operating lease liabilities (current + non-current combined).
-  AMBIGUITY: The current portion is often NOT a separate BS line — it may be buried inside "Accrued and other current liabilities." Find it in calculation_components.operating_leases or search the notes. Add current + non-current to get the total. Do NOT double count — if the BS line "Accrued liabilities" already includes the current operating lease liability, you are extracting it FROM accrued, not in addition to.
-- equity_q: Total stockholders equity.
-  AMBIGUITY: Must be parent-only stockholders equity, NOT total equity including NCI. If the BS shows both lines, use the stockholders equity line (before NCI).
+- cf_net_income_q: Net income (CF starting line — must equal net_income_q)
+- sbc_q: Stock-based compensation (positive add-back)
+- dna_q: Depreciation and amortization (positive add-back)
+- gains_losses_investments_q: Gains/losses on investments, net. Gains are NEGATIVE (removed from income). Losses are POSITIVE (added back).
+- deferred_taxes_q: Deferred income taxes (as shown on CF)
+- acquisition_termination_cf_q: Acquisition termination cost CF add-back (0 if not present)
+- other_noncash_q: Other non-cash adjustments (as shown on CF)
+- change_ar_q: Change in accounts receivable (negative = AR increased = use of cash)
+- change_inventory_q: Change in inventories (positive = inventory decreased = source of cash)
+- change_prepaid_q: Change in prepaid/other assets
+- change_ap_q: Change in accounts payable
+- change_accrued_q: Change in accrued liabilities
+- change_other_lt_liabilities_q: Change in other long-term liabilities
+- cfo_q: Net cash provided by operating activities
 
-### Cash Flow / Other (6 fields)
+## CASH FLOW - INVESTING FIELDS
+Use CF PRESENTATION signs. All items should sum to cfi_q using + only.
 
-- diluted_shares_q: Diluted weighted average shares outstanding. From IS/EPS section. Straightforward.
-- sbc_q: Stock-based compensation expense. From CF operating adjustments. Straightforward.
-- dna_q: Depreciation and amortization. From CF operating adjustments. Straightforward.
-- cfo_q: Net cash provided by operating activities. Straightforward.
-- capex_q: Capital expenditures. Store as NEGATIVE.
-  AMBIGUITY: May be labeled "Purchases of property and equipment" or may include intangible asset purchases on the same line. May be split across multiple lines. Use calculation_components.capex if available. Sum all capex-related lines.
-- acquisitions_q: Acquisitions net of cash acquired. Store as NEGATIVE.
-  AMBIGUITY: May be multiple acquisition lines. Use calculation_components.acquisitions.total if available. Sum all acquisition-related lines.
+- proceeds_maturities_q: Proceeds from maturities of marketable securities (positive)
+- proceeds_sales_securities_q: Proceeds from sales of marketable securities (positive)
+- proceeds_sales_equity_q: Proceeds from sales of non-marketable equity securities (positive, 0 if none)
+- purchases_securities_q: Purchases of marketable securities (NEGATIVE)
+- capex_q: Purchases of PP&E and intangible assets (NEGATIVE)
+  AMBIGUITY: May include intangibles. May be split. Use calculation_components.capex if available.
+- purchases_equity_investments_q: Purchases of non-marketable equity securities (NEGATIVE, 0 if none)
+- acquisitions_q: Acquisitions net of cash acquired (NEGATIVE). Sum all acquisition lines.
+  AMBIGUITY: May be multiple lines. Use calculation_components.acquisitions.total if available.
+- other_investing_q: Other investing activities, net (0 if none)
+- cfi_q: Net cash used in investing activities
+
+## CASH FLOW - FINANCING FIELDS
+Use CF PRESENTATION signs. All items should sum to cff_q using + only.
+
+- proceeds_stock_plans_q: Proceeds from employee stock plans (positive)
+- share_repurchases_q: Payments for repurchases of common stock (NEGATIVE)
+- tax_withholding_q: Payments for employee stock plan taxes (NEGATIVE)
+- dividends_q: Dividends paid (NEGATIVE)
+- principal_payments_ppe_q: Principal payments on financed PP&E (NEGATIVE, 0 if none)
+- debt_repayment_q: Repayment of debt (NEGATIVE, 0 if none)
+- debt_issuance_q: Issuance of debt (positive, 0 if none)
+- cff_q: Net cash used in financing activities
+
+## CASH FLOW - SUMMARY
+
+- net_change_cash_q: Change in cash and cash equivalents
+- taxes_paid_q: Cash paid for income taxes (supplemental, 0 if not disclosed)
 
 ## VALIDATION CHECKS (perform these, report results)
 
-1. Tax rate: effective_tax_rate = income_tax_expense_q / pretax_income_q. Flag if < 0%, > 50%, or pretax is negative.
-2. Net income consistency: net_income_q should equal pretax_income_q - income_tax_expense_q (within rounding). Flag if not.
-3. Balance sheet: equity_q + total_liabilities (from extraction) should equal total_assets_q. Flag if not.
-4. Operating lease total: current + non-current should match calculation_components.operating_leases.total if available. Flag if not.
-5. No double counting: If you extracted operating lease current from inside accrued liabilities, confirm it is not also counted in a separate BS line.
+1. IS: revenue_q - cogs_q = gross_profit_q. Flag if not.
+2. IS: gross_profit_q - total_opex_q = operating_income_q. Flag if not.
+3. IS: pretax_income_q - income_tax_expense_q = net_income_q. Flag if not.
+4. BS: total_assets_q = total_liabilities_and_equity_q. Flag if not.
+5. CF: sum of all CFO items = cfo_q. Flag if not.
+6. CF: sum of all CFI items = cfi_q. Flag if not.
+7. CF: sum of all CFF items = cff_q. Flag if not.
+8. CF: cfo_q + cfi_q + cff_q = net_change_cash_q. Flag if not.
+9. Cross: net_income_q = cf_net_income_q. Flag if not.
+10. Tax rate: effective_tax_rate = income_tax_expense_q / pretax_income_q. Flag if < 0% or > 50%.
+11. Operating lease: current + non-current = operating_lease_liabilities_q. No double counting.
 
 ## SIGN CONVENTIONS
 
 - Revenue, income, assets, equity: POSITIVE
-- Expenses (COGS, tax): POSITIVE (they are costs)
+- Expenses (COGS, R&D, SGA, tax): POSITIVE
 - Interest expense: NEGATIVE
-- Capex: NEGATIVE (cash outflow)
-- Acquisitions: NEGATIVE (cash outflow)
-- Short-term debt: 0 if none exists (explicitly set, do not omit)
+- ALL CF items: use PRESENTATION sign (as shown on the cash flow statement)
+  - Positive = source of cash, Negative = use of cash
+  - Capex, acquisitions, repurchases, dividends: NEGATIVE
+  - Proceeds, add-backs: POSITIVE
+- Short-term debt: 0 if none exists
 
 ## UNITS
 
-ALL monetary values in RAW dollars (not millions). Multiply the extraction values (in millions) by 1,000,000.
+ALL monetary values in RAW dollars (not millions). Multiply extraction values (in millions) by 1,000,000.
 Shares in RAW count. Multiply millions by 1,000,000.
+EPS: keep as reported.
 
 ## PERIOD SELECTION
 
-- For 10-Q: use the CURRENT QUARTER values for IS fields and BS fields. For CF fields (sbc_q, dna_q, cfo_q, capex_q, acquisitions_q), use YTD values if this is Q2/Q3 (the caller handles YTD-to-quarterly derivation). For Q1, CF is already quarterly.
-- For 10-K: use ANNUAL totals for IS and CF fields. BS is year-end. The caller derives Q4 = annual - Q1 - Q2 - Q3.
-- Set cf_is_ytd: true if CF values are YTD (Q2/Q3 10-Q), false otherwise.
+- 10-Q Q1: IS quarterly, CF quarterly, BS quarter-end. cf_is_ytd = false.
+- 10-Q Q2/Q3: IS quarterly (3-month column), CF YTD. BS quarter-end. cf_is_ytd = true.
+- 10-K: IS annual, CF annual, BS year-end. cf_is_ytd = false.
+- The caller handles YTD-to-quarterly derivation and Q4 derivation.
 
 ## OUTPUT FORMAT
 
@@ -115,35 +187,41 @@ Output ONLY valid JSON:
   "fields": {
     "revenue_q": 44062000000,
     "cogs_q": 17394000000,
-    ...all 23 fields...
+    ...
   },
   "cf_is_ytd": false,
   "effective_tax_rate": 0.143,
   "validation": {
+    "is_gross_profit_ok": true,
+    "is_operating_income_ok": true,
+    "is_net_income_ok": true,
+    "bs_balances": true,
+    "cfo_sums": true,
+    "cfi_sums": true,
+    "cff_sums": true,
+    "net_cash_ok": true,
+    "cross_ni_ok": true,
     "tax_rate_ok": true,
-    "net_income_consistent": true,
-    "balance_sheet_balances": true,
-    "operating_lease_confirmed": true,
-    "no_double_counting": true
+    "operating_lease_ok": true
   },
   "notes": ["any ambiguity resolutions or flags"]
 }
 
-CRITICAL: Output exactly 23 fields. No more, no less. If a field genuinely does not apply (e.g., no acquisitions), set to 0. Output must be valid JSON.
+If a field does not apply (e.g., no acquisitions, no debt issuance), set to 0. Output must be valid JSON.
 """
 
 
-def map_period(period_data, ticker, model='claude-sonnet-4-6'):
-    """Send one period's verified financial data to AI for analytical component extraction."""
+def map_filing(extraction_json, ticker, model='claude-sonnet-4-6'):
+    """Send a per-filing extraction to AI for analytical component extraction."""
+    ai = extraction_json.get('ai_extraction', extraction_json)
 
-    # Build a compact version for the prompt
-    prompt = f"""Extract the 23 analytical components from this {ticker} financial data for period {period_data.get('period', '?')}.
+    prompt = f"""Extract the 23 analytical components from this {ticker} filing extraction.
 
 {FIELD_DEFINITIONS}
 
 ---
-FINANCIAL DATA FOR THIS PERIOD:
-{json.dumps(period_data, indent=2)}
+EXTRACTION DATA:
+{json.dumps(ai, indent=2)}
 """
 
     client = anthropic.Anthropic()
@@ -247,7 +325,16 @@ def derive_quarterly(filing_results):
             elif not cf_is_ytd:
                 # Q1: everything is quarterly
                 rec[field] = val
-            elif field in ('cfo_q', 'capex_q', 'acquisitions_q', 'sbc_q', 'dna_q'):
+            elif field in ('cf_net_income_q', 'sbc_q', 'dna_q', 'gains_losses_investments_q',
+                    'deferred_taxes_q', 'acquisition_termination_cf_q', 'other_noncash_q',
+                    'change_ar_q', 'change_inventory_q', 'change_prepaid_q',
+                    'change_ap_q', 'change_accrued_q', 'change_other_lt_liabilities_q', 'cfo_q',
+                    'proceeds_maturities_q', 'proceeds_sales_securities_q', 'proceeds_sales_equity_q',
+                    'purchases_securities_q', 'capex_q', 'purchases_equity_investments_q',
+                    'acquisitions_q', 'other_investing_q', 'cfi_q',
+                    'proceeds_stock_plans_q', 'share_repurchases_q', 'tax_withholding_q',
+                    'dividends_q', 'principal_payments_ppe_q', 'debt_repayment_q',
+                    'debt_issuance_q', 'cff_q', 'net_change_cash_q', 'taxes_paid_q'):
                 # CF fields with YTD value — store as YTD, derive later
                 rec[f'{field}_ytd'] = val
             else:
@@ -371,39 +458,39 @@ def main():
             all_results = json.load(f)
         total_in = total_out = 0
     else:
-        # Read mapped.json (verified financial statements by period)
-        if not os.path.exists(mapped_path):
-            print(f"Error: {mapped_path} not found. Run Stage 1 (analyze_statement.py) first.")
+        import glob
+        # Find all per-filing JSONs
+        filing_paths = sorted(glob.glob(os.path.join(extract_dir, 'q*_fy*_10*.json')))
+        if not filing_paths:
+            print(f"Error: no per-filing JSONs found in {extract_dir}. Run Stage 1 first.")
             sys.exit(1)
 
-        with open(mapped_path) as f:
-            mapped_data = json.load(f)
-
-        # Filter to periods that have IS data (actual reporting periods, not just BS snapshots)
-        periods_to_map = [p for p in mapped_data
-                          if p.get('income_statement', {}).get('line_items')]
-
-        print(f"Found {len(periods_to_map)} periods with IS data in mapped.json")
+        print(f"Found {len(filing_paths)} per-filing JSONs")
 
         all_results = []
         total_in = 0
         total_out = 0
 
-        for period_data in periods_to_map:
-            period = period_data.get('period', '?')
-            print(f"\nMapping period {period}...")
+        for filepath in filing_paths:
+            fname = os.path.basename(filepath)
+            print(f"\nMapping {fname}...")
 
-            result, in_tok, out_tok = map_period(period_data, args.ticker, args.model)
+            with open(filepath) as f:
+                extraction = json.load(f)
+
+            result, in_tok, out_tok = map_filing(extraction, args.ticker, args.model)
             total_in += in_tok
             total_out += out_tok
 
             fields = result.get('fields', {})
+            pe = result.get('period_end', '?')
+            form = result.get('form', '?')
             n_fields = len(fields)
 
             rev = fields.get('revenue_q', 0) / 1e9 if fields.get('revenue_q') else 0
             ni = fields.get('net_income_q', 0) / 1e9 if fields.get('net_income_q') else 0
 
-            print(f"  {period}: {n_fields} fields, revenue={rev:.1f}B, net_income={ni:.1f}B")
+            print(f"  {pe} ({form}): {n_fields} fields, revenue={rev:.1f}B, net_income={ni:.1f}B")
             validation = result.get('validation', {})
             if validation:
                 failures = [k for k, v in validation.items() if not v]
