@@ -911,6 +911,96 @@ CRITICAL: Output must be valid JSON. No apostrophes in strings."""
             json.dump(full_output, f, indent=2)
         print(f"\nSaved to {args.output}")
 
+        # Update mapped.json — organize data by period, overwrite if amendment
+        update_mapped_json(full_output, args.ticker, os.path.basename(args.output))
+
+
+def update_mapped_json(full_output, ticker, source_filename):
+    """
+    Update mapped.json with data from a per-filing extraction.
+    Organizes all line items by period. Later filings overwrite earlier ones
+    for the same period (handles amendments and restated comparatives).
+    """
+    extract_dir = os.path.join(os.path.dirname(__file__), ticker)
+    mapped_path = os.path.join(extract_dir, 'mapped.json')
+
+    # Load existing mapped.json or start fresh
+    if os.path.exists(mapped_path):
+        with open(mapped_path) as f:
+            existing = json.load(f)
+        # Convert list to dict keyed by period for easy lookup
+        mapped = {rec['period']: rec for rec in existing}
+    else:
+        mapped = {}
+
+    ai = full_output.get('ai_extraction', {})
+
+    for stmt_name in ['income_statement', 'balance_sheet', 'cash_flow']:
+        stmt = ai.get(stmt_name, {})
+        items = stmt.get('line_items', [])
+        formulas = stmt.get('formulas', [])
+
+        if not items:
+            continue
+
+        # Get all periods from the first item
+        first_vals = items[0].get('values', {})
+        periods = list(first_vals.keys())
+
+        for period in periods:
+            if period not in mapped:
+                mapped[period] = {
+                    'period': period,
+                    'income_statement': {'line_items': [], 'formulas': []},
+                    'balance_sheet': {'line_items': [], 'formulas': []},
+                    'cash_flow': {'line_items': [], 'formulas': []},
+                    'calculation_components': {},
+                    'source_filings': [],
+                }
+
+            rec = mapped[period]
+
+            # Build line items for this period
+            period_items = []
+            for item in items:
+                val = item.get('values', {}).get(period)
+                if val is not None:
+                    period_items.append({
+                        'label': item.get('label', ''),
+                        'xbrl_concept': item.get('xbrl_concept', ''),
+                        'value': val,
+                        'unit': item.get('unit', 'USD_millions'),
+                        'indent_level': item.get('indent_level', 0),
+                    })
+
+            if period_items:
+                # Overwrite this statement for this period (later filing wins)
+                rec[stmt_name]['line_items'] = period_items
+                rec[stmt_name]['formulas'] = formulas
+
+            if source_filename not in rec['source_filings']:
+                rec['source_filings'].append(source_filename)
+
+    # Calculation components — attach to the current period (first IS period)
+    calc = ai.get('calculation_components', {})
+    if calc:
+        is_items = ai.get('income_statement', {}).get('line_items', [])
+        if is_items:
+            current_periods = list(is_items[0].get('values', {}).keys())
+            if current_periods:
+                current = current_periods[0]
+                if current in mapped:
+                    mapped[current]['calculation_components'] = calc
+
+    # Sort by period and write
+    sorted_periods = sorted(mapped.keys())
+    result = [mapped[p] for p in sorted_periods]
+
+    with open(mapped_path, 'w') as f:
+        json.dump(result, f, indent=2)
+
+    print(f"\nUpdated {mapped_path} ({len(result)} periods)")
+
 
 if __name__ == '__main__':
     main()

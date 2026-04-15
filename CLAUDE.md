@@ -128,26 +128,29 @@ AI-powered extraction replaces per-company scripts and XBRL concept mappings. A 
 
 ### Three-Stage Pipeline
 
-**Stage 1 — Per-Filing Extraction** (`analyze_statement.py`)
-- One JSON file per filing. Immutable after creation.
-- The model reads full filing HTML + XBRL facts and extracts every line item from IS, BS, CF with values, XBRL concept mappings, hierarchy, formulas, and cross-statement checks.
+**Stage 1 — Extract and Verify** (`analyze_statement.py`)
+- The AI reads full filing HTML + XBRL facts and extracts every line item from IS, BS, CF with values, XBRL concept mappings, hierarchy, formulas, and cross-statement checks.
 - Also extracts calculation components (operating leases, D&A breakdown, pure AP/AR, capex, acquisitions, short-term debt, SBC, gross interest expense, tax rate, inventory breakdown).
 - **The AI must reconcile before outputting.** Every component sum must match the filing's reported subtotals (e.g., sum of current asset items must equal reported Total Current Assets). If any check fails, the AI loops — re-examines the filing, finds missing items, fixes values. It does not output until all checks pass, or times out with a failure log.
 - Extracts ALL periods reported — current and comparatives.
-- **This is training data** for post-training an open source model.
+- **Outputs two things:**
+  - Per-filing JSON (`q1_fy26_10q.json`) — immutable, exact extraction, training data for post-trained model.
+  - `mapped.json` — same data organized by period. Later filings overwrite earlier ones for the same period (handles amendments, restated comparatives).
 
-**Stage 2 — Formula Field Mapping** (`ai_formula.py` → `ai_extract/{TICKER}/formula_mapped.json`)
-- A second AI pass that reads the extraction JSON (not the filing) and maps each line item to standardized formula field names (`revenue_q`, `cogs_q`, `equity_q`, etc.).
-- The model does the semantic understanding — no XBRL concept lists, no label pattern matching, no lookup tables. It knows "Cost of revenue" is `cogs_q` regardless of the XBRL concept or company terminology.
-- Handles sign conventions, unit conversions (millions to raw), and flags whether CF values are YTD.
-- Uses `calculation_components` for items that need special handling (operating lease totals, segmented capex, multiple acquisition lines, hidden short-term debt).
-- One result per filing. Cost: ~$0.10/filing.
+**Stage 2 — Analytical Component Extraction** (`ai_formula.py` → `ai_extract/{TICKER}/formula_mapped.json`)
+- Reads `mapped.json` (verified financial statements by period). Does NOT re-read filings.
+- Extracts exactly 23 analytical components needed for metric calculations (ROIC, ROIIC, reinvestment rate, margins, CCC, etc.).
+- Resolves 9 ambiguities: gross vs net interest expense, pure AP vs combined, operating lease total (current hidden in accrued), short-term debt (hidden or zero), consolidated NI vs to-common, parent equity vs incl NCI, tax benefit handling, segmented capex, multiple acquisition lines.
+- Validates consistency: tax rate logic, NI = pretax - tax, BS balances, no double counting on operating leases.
+- **Does NOT reproduce financial statements.** That data lives in `mapped.json`. Stage 2 only outputs the 23 fields `calculate.py` needs.
+- Cost: ~$0.10/period.
 
 **Stage 3 — Quarterly Derivation** (`ai_formula.py --from-mapped` → `ai_extract/{TICKER}/quarterly.json`)
-- Pure arithmetic. No AI, no pattern matching. Takes the per-filing formula mappings and derives quarterly values:
+- Pure arithmetic. No AI, no pattern matching. Takes the 23 fields from `formula_mapped.json` and derives standalone quarterly values:
   - Q1 10-Q: values are already quarterly, use as-is.
-  - Q2/Q3 10-Q: IS is quarterly (use as-is), CF is YTD (subtract prior quarter's YTD).
-  - 10-K: IS and CF are annual (subtract Q1+Q2+Q3 to get Q4). Shares/EPS use annual value directly (can't be derived by subtraction — they're weighted averages).
+  - Q2/Q3 10-Q: IS fields are quarterly (use as-is). CF fields (sbc, dna, cfo, capex, acquisitions) are YTD — subtract prior period's YTD.
+  - 10-K: IS and CF fields are annual — subtract Q1+Q2+Q3 to get Q4. Shares/EPS use annual value directly (weighted averages, not derived by subtraction).
+  - BS fields: point-in-time snapshots, no derivation.
 - Smart merge: when multiple filings report the same period, only overwrites if the value is **different** (restatement). Same or absent values preserved. Changes logged in `restatements` array.
 - **This is analytical data.** Feeds `calculate.py`, the dashboard, and Layer 4 synthesis.
 
@@ -155,9 +158,9 @@ AI-powered extraction replaces per-company scripts and XBRL concept mappings. A 
 
 1. **Download**: `fetch.py` downloads the filing (shared with deterministic pipeline). Downloads 10-Q, 10-K, 10-Q/A, and 10-K/A filings.
 2. **Prepare** (inline in `analyze_statement.py`): Clean HTML (~57% size reduction), parse XBRL facts into structured data.
-3. **Extract + Verify**: The AI reads the full filing, extracts all three statements, then verifies every component sum against the filing's reported subtotals. If any check fails, the AI loops — finds missing items, fixes values/signs. It does not output until all checks pass, or times out with a failure log.
-4. **Map** (`ai_formula.py`): Second AI pass reads the extraction JSON and assigns standardized formula field names. No lookup tables — the model does the semantic mapping.
-5. **Derive** (`ai_formula.py --from-mapped`): Pure arithmetic derives quarterly values from YTD/annual data. Smart merge handles restatements across filings.
+3. **Extract + Verify**: The AI reads the full filing, extracts all three statements, then verifies every component sum against the filing's reported subtotals. If any check fails, the AI loops — finds missing items, fixes values/signs. It does not output until all checks pass, or times out with a failure log. Writes per-filing JSON (training data) and updates `mapped.json` (running record by period).
+4. **Analytical mapping** (`ai_formula.py`): Second AI pass reads `mapped.json` and extracts the 23 analytical components, resolving ambiguities and validating consistency. Writes `formula_mapped.json`.
+5. **Derive** (`ai_formula.py --from-mapped`): Pure arithmetic derives standalone quarterly values. Writes `quarterly.json`.
 
 ### Verification Model
 
@@ -174,36 +177,32 @@ If all formulas pass and cross-statement checks pass, the extraction is mathemat
 
 ### Amendments and Restatements
 
-The model doesn't need to understand amendments. It extracts what the filing says — period.
+The Stage 1 model doesn't need to understand amendments. It extracts what the filing says — period. `mapped.json` handles the statefulness:
 
-- **Regular 10-K with restated comparatives** (e.g., Dell restates prior years after a disposition): The model extracts all columns including restated values. The mapper updates those periods with the restated values.
-- **10-K/A or 10-Q/A** (explicit amendment filing): The model extracts the corrected statements. The mapper updates the affected periods.
-- **Stock splits**: Newer filings restate prior-period share counts to post-split basis. The model extracts the restated values. The mapper records the change.
+- **Regular 10-K with restated comparatives** (e.g., Dell restates prior years after a disposition): The model extracts all columns including restated values. `mapped.json` updates those periods with the restated values.
+- **10-K/A or 10-Q/A** (explicit amendment filing): The model extracts the corrected statements. `mapped.json` updates the affected periods.
+- **Stock splits**: Newer filings restate prior-period share counts to post-split basis. The model extracts the restated values. `mapped.json` records the change.
 
-In all cases: the model is stateless, the mapper is stateful.
-
-**Smart merge rule**: When multiple filings report the same period, the mapper only overwrites a field if the new value is **different** from the existing value. Same or absent values are preserved. This prevents incomplete prior-period data (e.g., a later filing missing the current portion of operating leases) from overwriting complete data from the original filing. Changes are logged in a `restatements` array on the record.
+In all cases: Stage 1 is stateless, `mapped.json` is stateful.
 
 ### File Structure
 
 ```
 ai_extract/
-  analyze_statement.py    — Stage 1: API-based extraction with self-verifying loop
-  ai_formula.py           — Stage 2+3: formula mapping + quarterly derivation
-  parse_xbrl.py           — Deterministic XBRL fact parser
-  map_to_extract.py       — Legacy concept-based mapper (kept for deterministic pipeline comparison)
-  map_by_label.py         — Deprecated label-based mapper (superseded by ai_formula.py)
+  analyze_statement.py    — Stage 1: extraction with self-verifying loop, writes per-filing JSON + updates mapped.json
+  ai_formula.py           — Stage 2: analytical component extraction (23 fields) + Stage 3: quarterly derivation
+  parse_xbrl.py           — Deterministic XBRL fact parser (used by analyze_statement.py)
+  ai_extraction_flow.md   — Design doc: the three-stage pipeline
   view_extraction.py      — Renders extraction JSON as readable table
   export_for_review.py    — Exports extraction to CSV for human review
-  prompt_layer2_draft.md  — Design document for Layer 2 calculation components
   {TICKER}/
-    q1_fy26_10q.json      — Per-filing extraction (immutable, training data)
+    q1_fy26_10q.json      — Stage 1: per-filing extraction (immutable, training data)
     q2_fy26_10q.json
     q3_fy26_10q.json
     q4_fy26_10k.json
-    formula_mapped.json   — Per-filing formula field mappings (AI output)
-    quarterly.json        — Quarterly records (derived, analytical data)
-    mapped.json           — Legacy concept-based mapped records
+    mapped.json            — Stage 1: all periods organized by period, updated on amendments
+    formula_mapped.json    — Stage 2: 23 analytical fields per period
+    quarterly.json         — Stage 3: 23 fields per standalone quarter
 ```
 
 ### Cost
