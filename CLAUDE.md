@@ -124,17 +124,15 @@ Single-file HTML app (`dashboard/index.html`) with Chart.js. Company selector, m
 
 AI-powered extraction replaces per-company scripts and XBRL concept mappings. A frontier model reads the full filing and extracts all three financial statements. The model is stateless — it extracts exactly what the filing says. All merging, restatement tracking, and analytical logic is handled by deterministic code downstream.
 
-**Two extraction methods exist:**
-- **Claude Code skill** (`/extract-filing`): Runs on Claude Max subscription (no API cost). The AI extracts AND verifies — it checks its own math and fixes errors before outputting. This is the primary method going forward.
-- **API script** (`analyze_statement.py`): Legacy method using Anthropic API. Has a known-buggy Python verification step (`verify_formulas()`) with duplicate label collisions and inconsistent CF sign conventions. Kept for reference and batch processing.
+**Extraction method**: `analyze_statement.py` calls the Anthropic API. The AI extracts all three statements, then loops on verification until every component sum matches the filing's reported subtotals — or times out with a failure log. The Python code does not validate or fix anything — the AI must reconcile before outputting.
 
 ### Three-Stage Pipeline
 
-**Stage 1 — Per-Filing Extraction** (skill: `/extract-filing TICKER ACCESSION` or legacy: `analyze_statement.py`)
+**Stage 1 — Per-Filing Extraction** (`analyze_statement.py`)
 - One JSON file per filing. Immutable after creation.
 - The model reads full filing HTML + XBRL facts and extracts every line item from IS, BS, CF with values, XBRL concept mappings, hierarchy, formulas, and cross-statement checks.
 - Also extracts calculation components (operating leases, D&A breakdown, pure AP/AR, capex, acquisitions, short-term debt, SBC, gross interest expense, tax rate, inventory breakdown).
-- **The AI verifies its own math.** Every subtotal formula is checked by the AI during extraction. If any formula doesn't balance, the AI re-examines the filing and fixes the values before outputting. No separate Python verification step.
+- **The AI must reconcile before outputting.** Every component sum must match the filing's reported subtotals (e.g., sum of current asset items must equal reported Total Current Assets). If any check fails, the AI loops — re-examines the filing, finds missing items, fixes values. It does not output until all checks pass, or times out with a failure log.
 - Extracts ALL periods reported — current and comparatives.
 - **This is training data** for post-training an open source model.
 
@@ -156,14 +154,14 @@ AI-powered extraction replaces per-company scripts and XBRL concept mappings. A 
 ### How It Works
 
 1. **Download**: `fetch.py` downloads the filing (shared with deterministic pipeline). Downloads 10-Q, 10-K, 10-Q/A, and 10-K/A filings.
-2. **Prepare** (skill: `prepare_filing.py`, legacy: inline in `analyze_statement.py`): Clean HTML (~57% size reduction), parse XBRL facts into structured data.
-3. **Extract + Verify**: The AI reads the full filing, extracts all three statements, then verifies every formula. If any sum doesn't balance, the AI re-examines the filing and fixes values/signs. The AI only outputs when all checks pass.
+2. **Prepare** (inline in `analyze_statement.py`): Clean HTML (~57% size reduction), parse XBRL facts into structured data.
+3. **Extract + Verify**: The AI reads the full filing, extracts all three statements, then verifies every component sum against the filing's reported subtotals. If any check fails, the AI loops — finds missing items, fixes values/signs. It does not output until all checks pass, or times out with a failure log.
 4. **Map** (`ai_formula.py`): Second AI pass reads the extraction JSON and assigns standardized formula field names. No lookup tables — the model does the semantic mapping.
 5. **Derive** (`ai_formula.py --from-mapped`): Pure arithmetic derives quarterly values from YTD/annual data. Smart merge handles restatements across filings.
 
 ### Verification Model
 
-Financial statements are a closed system. The math proves correctness. **The AI performing the extraction is responsible for verification** — it checks every formula and fixes errors before outputting.
+Financial statements are a closed system. The math proves correctness. **The AI must verify every component sum against the filing's reported subtotals before outputting.**
 
 - IS: Revenue - COGS = Gross Profit, flows down to Net Income. All subtotals verified.
 - BS: Assets = Liabilities + Equity. All component sums verified.
@@ -189,14 +187,8 @@ In all cases: the model is stateless, the mapper is stateful.
 ### File Structure
 
 ```
-.claude/skills/extract-filing/
-  SKILL.md                — Stage 1 skill: /extract-filing TICKER ACCESSION
-  extraction_schema.md    — Output format, sign conventions, required formulas
-  scripts/
-    prepare_filing.py     — Cleans HTML, parses XBRL, writes prep JSON
-
 ai_extract/
-  analyze_statement.py    — Legacy Stage 1: API-based extraction (kept for batch/reference)
+  analyze_statement.py    — Stage 1: API-based extraction with self-verifying loop
   ai_formula.py           — Stage 2+3: formula mapping + quarterly derivation
   parse_xbrl.py           — Deterministic XBRL fact parser
   map_to_extract.py       — Legacy concept-based mapper (kept for deterministic pipeline comparison)
@@ -216,21 +208,19 @@ ai_extract/
 
 ### Cost
 
-- **Skill method** (`/extract-filing`): Runs on Claude Max subscription. No per-filing API cost. ~323K tokens per filing fits in the 1M context window.
-- **Legacy API method**: ~$1.70-2.90 per filing (Stage 1) + ~$0.10 (Stage 2) with Sonnet.
+- **API method**: ~$1.70-2.90 per filing (Stage 1) + ~$0.10 (Stage 2) with Sonnet.
 - Post-trained open source model: target is near-zero marginal cost at scale.
 
 ### Tested Results
 
 - NVDA FY24-FY26 (12 filings, 12 quarters): **264/264 fields match golden eval** (final quarterly.json vs deterministic pipeline). All Q1-Q4 derivations correct. No lookup tables or per-company code needed.
 - FCX Q1 CY24: 93/93 XBRL matches, 24/24 fields match deterministic extraction exactly for current period.
-- **Known issue (legacy API method)**: The `verify_formulas()` code in `analyze_statement.py` has bugs — duplicate label collisions ("Other" in CFO overwrites "Other" in CFF) and text-based formula evaluation breaks on substring matches. CF sign conventions are inconsistent across filings (some use XBRL raw sign, some use CF presentation sign). IS verification is clean (72/72 pass). CF verification has 17/62 failures due to these bugs. The skill method eliminates these issues by having the AI verify its own math.
+- **Known issue**: The `verify_formulas()` code in `analyze_statement.py` has bugs — duplicate label collisions ("Other" in CFO overwrites "Other" in CFF) and text-based formula evaluation breaks on substring matches. CF sign conventions are inconsistent across filings (some use XBRL raw sign, some use CF presentation sign). IS verification is clean (72/72 pass). CF verification has 17/62 failures due to these bugs. **The extraction prompt's self-verification loop (checking component sums against reported subtotals) is the fix — the Python verify_formulas() should be removed or rewritten.**
 
 ### Relationship to Core Pipeline
 
 The AI extraction is an alternative path to the same output. Both coexist:
 - **Deterministic pipeline**: Proven, free to run, requires per-company scripts and manual golden eval. 24 fields per quarter.
-- **AI extraction (skill)**: No per-filing cost on Max subscription, no per-company scripts needed, AI-verified. ~70 fields per quarter. Training data for post-trained model.
-- **AI extraction (legacy API)**: Kept for batch processing and reference. Has known verification bugs.
+- **AI extraction (API)**: ~$2/filing, no per-company scripts needed, self-verifying extraction loop. ~70 fields per quarter. Training data for post-trained model.
 - During development, the 24-field overlap between both pipelines is compared to validate accuracy.
 - Long-term: the AI extraction replaces the deterministic pipeline once validated across all target companies. The post-trained open source model replaces Sonnet to eliminate per-filing costs.
