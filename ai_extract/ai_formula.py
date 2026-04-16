@@ -211,8 +211,130 @@ If a field does not apply (e.g., no acquisitions, no debt issuance), set to 0. O
 """
 
 
+def load_formulas_md():
+    """Load formulas.md content."""
+    formulas_path = os.path.join(os.path.dirname(__file__), '..', 'formulas.md')
+    with open(formulas_path) as f:
+        return f.read()
+
+
+def map_filing_v2(extraction_json, ticker, model='claude-sonnet-4-6'):
+    """Send a per-filing extraction to AI for normalization + analytical derivation."""
+    ai = extraction_json.get('ai_extraction', extraction_json)
+    formulas_md = load_formulas_md()
+
+    prompt = f"""You are a financial analyst preparing extracted data for metric calculations.
+
+You have two inputs:
+1. The verified extraction from a {ticker} filing
+2. The metric formulas that will be computed from this data (below)
+
+Your job has two parts:
+
+PART 1 — AS-REPORTED NORMALIZATION:
+Normalize the three financial statements (IS, BS, CF) so every item has a consistent name. Use the data exactly as reported — do not adjust values. If accrued liabilities includes operating lease current, leave it as-is. The quarterly derivation (Stage 3) needs the as-reported numbers so YTD subtraction works correctly.
+
+PART 2 — ANALYTICAL DERIVATIONS:
+Read the metric formulas below. Determine what additional analytical items are needed that are not directly on the statement face. These are SEPARATE derived values, not replacements for the as-reported data. For example:
+- Total operating lease liabilities = current (from notes/xbrl_not_on_statement) + non-current (from BS)
+- Pure accounts payable = breakout from notes if BS combines AP with accrued
+- Gross interest expense = from notes if IS reports net
+
+Find these in the extraction's xbrl_not_on_statement data. If a formula input does not exist for this company, explain why in the company_mapping.
+
+Determine the reporting unit from the extraction data and convert all values to RAW dollars. Do not assume any unit — check the extraction values and the XBRL data to determine the scale.
+
+METRIC FORMULAS:
+{formulas_md}
+
+EXTRACTION DATA:
+{json.dumps(ai, indent=2)}
+
+OUTPUT FORMAT:
+
+Output ONLY valid JSON:
+{{
+  "ticker": "{ticker}",
+  "reporting_unit": "description of what unit the filing reports in and how you converted",
+  "company_mapping": {{
+    "description of each analytical input": "which XBRL concept(s) or line items it maps to, and why"
+  }},
+  "period_end": "YYYY-MM-DD",
+  "period_start": "YYYY-MM-DD",
+  "form": "10-Q or 10-K",
+  "cf_is_ytd": false,
+  "as_reported": {{
+    "income_statement": {{
+      "label_name": value,
+      ...
+    }},
+    "balance_sheet": {{
+      "label_name": value,
+      ...
+    }},
+    "cash_flow": {{
+      "label_name": value,
+      ...
+    }}
+  }},
+  "analytical": {{
+    "operating_lease_liabilities": value,
+    "operating_lease_current": value,
+    "operating_lease_noncurrent": value,
+    ...
+  }},
+  "segments": {{ ... }}
+}}
+
+All monetary values in RAW dollars after conversion.
+Shares in raw count.
+EPS as reported.
+
+PERIOD SELECTION:
+- 10-Q Q1: IS quarterly, CF quarterly, BS quarter-end
+- 10-Q Q2/Q3: IS quarterly (3-month column), CF is YTD (set cf_is_ytd: true)
+- 10-K: IS annual, CF annual, BS year-end
+- The caller handles YTD-to-quarterly derivation and Q4 derivation
+
+CRITICAL: Output must be valid JSON. No apostrophes in strings."""
+
+    client = anthropic.Anthropic()
+    output_text = ""
+
+    with client.messages.stream(
+        model=model,
+        max_tokens=16384,
+        messages=[{"role": "user", "content": prompt}],
+    ) as stream:
+        for text in stream.text_stream:
+            output_text += text
+            print(".", end="", flush=True)
+        print()
+        resp = stream.get_final_message()
+        input_tokens = resp.usage.input_tokens
+        output_tokens = resp.usage.output_tokens
+
+    # Parse JSON
+    json_text = output_text.strip()
+    first_brace = json_text.find('{')
+    last_brace = json_text.rfind('}')
+    if first_brace != -1 and last_brace != -1:
+        json_text = json_text[first_brace:last_brace + 1]
+
+    try:
+        result = json.loads(json_text)
+    except json.JSONDecodeError:
+        import re
+        fixed = json_text.replace('\u2018', "'").replace('\u2019', "'")
+        fixed = re.sub(r'[\x00-\x1f]', ' ', fixed)
+        fixed = re.sub(r',\s*([}\]])', r'\1', fixed)
+        result = json.loads(fixed)
+
+    return result, input_tokens, output_tokens
+
+
 def map_filing(extraction_json, ticker, model='claude-sonnet-4-6'):
-    """Send a per-filing extraction to AI for analytical component extraction."""
+    """Send a per-filing extraction to AI for analytical component extraction. (LEGACY)"""
     ai = extraction_json.get('ai_extraction', extraction_json)
 
     prompt = f"""Extract the 23 analytical components from this {ticker} filing extraction.
@@ -445,11 +567,64 @@ def main():
     parser.add_argument('--output', help='Output file path')
     parser.add_argument('--from-mapped', action='store_true',
                         help='Skip AI calls, use existing formula_mapped.json for quarterly derivation only')
+    parser.add_argument('--v2', action='store_true',
+                        help='Use new linkbase-based prompt (as_reported + analytical output)')
+    parser.add_argument('--filing', help='Process a single filing JSON (for testing)')
+    parser.add_argument('--test', action='store_true',
+                        help='Write output to test/ subdirectory')
     args = parser.parse_args()
 
     extract_dir = f'ai_extract/{args.ticker}'
     mapped_path = os.path.join(extract_dir, 'mapped.json')
     formula_mapped_path = os.path.join(extract_dir, 'formula_mapped.json')
+
+    if args.v2 and args.filing:
+        # V2: process a single filing with new prompt
+        print(f"V2: Processing {args.filing}...")
+        with open(args.filing) as f:
+            extraction = json.load(f)
+
+        result, in_tok, out_tok = map_filing_v2(extraction, args.ticker, args.model)
+
+        pe = result.get('period_end', '?')
+        form = result.get('form', '?')
+        unit = result.get('reporting_unit', '?')
+
+        print(f"\n  {pe} ({form}), reporting unit: {unit}")
+        print(f"  Company mapping: {len(result.get('company_mapping', {}))} items")
+
+        as_rep = result.get('as_reported', {})
+        for stmt in ['income_statement', 'balance_sheet', 'cash_flow']:
+            n = len(as_rep.get(stmt, {}))
+            print(f"  as_reported.{stmt}: {n} items")
+
+        analytical = result.get('analytical', {})
+        print(f"  analytical: {len(analytical)} items")
+        for k, v in analytical.items():
+            if isinstance(v, (int, float)):
+                print(f"    {k}: {v/1e6:,.0f}M" if abs(v) > 1e6 else f"    {k}: {v}")
+
+        segments = result.get('segments', {})
+        if segments:
+            print(f"  segments: {len(segments)} dimensions")
+
+        # Save output
+        test_dir = os.path.join(extract_dir, 'test') if args.test else extract_dir
+        os.makedirs(test_dir, exist_ok=True)
+        out_path = args.output or os.path.join(test_dir, 'formula_v2_' + os.path.basename(args.filing))
+        with open(out_path, 'w') as f:
+            json.dump(result, f, indent=2)
+        print(f"\nSaved to {out_path}")
+
+        # Cost
+        in_rate, out_rate = 3.0, 15.0
+        if 'opus' in (args.model or ''):
+            in_rate, out_rate = 15.0, 75.0
+        input_cost = in_tok * in_rate / 1_000_000
+        output_cost = out_tok * out_rate / 1_000_000
+        print(f"Tokens: {in_tok:,} in, {out_tok:,} out")
+        print(f"Cost: ${input_cost:.2f} input + ${output_cost:.2f} output = ${input_cost + output_cost:.2f}")
+        return
 
     if args.from_mapped:
         # Skip AI, just derive quarterly from existing formula_mapped.json
