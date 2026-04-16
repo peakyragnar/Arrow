@@ -605,6 +605,11 @@ def derive_quarterly_v2(filing_results):
             if not isinstance(val, (int, float)):
                 continue  # skip notes/strings
 
+            # Skip _ytd, _prior, _prior_period suffixed fields from analytical
+            # These are informational — the core field has the right value
+            if field.endswith('_ytd') or field.endswith('_prior_quarter') or field.endswith('_prior_period'):
+                continue
+
             if field in bs_fields or field in non_cumulative:
                 rec[field] = val
             elif not cf_is_ytd:
