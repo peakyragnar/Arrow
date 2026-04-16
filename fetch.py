@@ -124,12 +124,19 @@ def build_file_urls(cik: str, filing: dict) -> dict:
     # The XBRL instance doc is typically {primary}_htm.xml
     # The primary doc is typically {ticker}-{date}.htm
     xbrl_name = primary.replace(".htm", "_htm.xml")
+    base_name = primary.replace(".htm", "")
 
     return {
         "html_url": f"{base_url}/{primary}",
         "html_filename": primary,
         "xbrl_url": f"{base_url}/{xbrl_name}",
         "xbrl_filename": xbrl_name,
+        "cal_url": f"{base_url}/{base_name}_cal.xml",
+        "cal_filename": f"{base_name}_cal.xml",
+        "pre_url": f"{base_url}/{base_name}_pre.xml",
+        "pre_filename": f"{base_name}_pre.xml",
+        "def_url": f"{base_url}/{base_name}_def.xml",
+        "def_filename": f"{base_name}_def.xml",
     }
 
 
@@ -170,6 +177,17 @@ def download_filing(cik: str, ticker: str, filing: dict) -> str:
         except Exception as e:
             print(f"    Warning: could not download HTML: {e}")
 
+    # Download XBRL linkbase files (calculation, presentation, definition)
+    for lb in ("cal", "pre", "def"):
+        lb_path = os.path.join(filing_dir, urls[f"{lb}_filename"])
+        if not os.path.exists(lb_path):
+            try:
+                data = sec_fetch(urls[f"{lb}_url"])
+                with open(lb_path, "wb") as f:
+                    f.write(data)
+            except Exception as e:
+                print(f"    Warning: could not download {lb} linkbase: {e}")
+
     # Save metadata
     meta = {
         "cik": cik,
@@ -181,6 +199,9 @@ def download_filing(cik: str, ticker: str, filing: dict) -> str:
         "primary_document": filing["primary_document"],
         "xbrl_filename": urls["xbrl_filename"],
         "html_filename": urls["html_filename"],
+        "cal_filename": urls["cal_filename"],
+        "pre_filename": urls["pre_filename"],
+        "def_filename": urls["def_filename"],
     }
     with open(meta_path, "w") as f:
         json.dump(meta, f, indent=2)
