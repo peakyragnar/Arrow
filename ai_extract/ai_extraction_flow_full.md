@@ -133,43 +133,40 @@ Output format unchanged: `line_items`, `formulas`, `xbrl_not_on_statement`, `seg
 
 ---
 
-## Step 4: Cross-Filing Normalization (Stage 2)
+## Step 4: All-Periods Normalization + Quarterly Derivation (Stage 2)
 
 ```bash
-python3 ai_extract/ai_formula.py --ticker NVDA
+python3 ai_extract/ai_formula.py --ticker NVDA --v3
 ```
 
-Reads `mapped.json` (all periods from all filings).
+One AI call sees all filings at once. Input: slimmed per-filing extractions (~96K tokens for 12 NVDA filings) + `formulas.md`.
 
 AI does:
-- Normalize labels across filings (XBRL concepts help — same concept = same item regardless of display label)
-- Decompose aggregated items using note-level data extracted in Step 3
-- Verify no double counting
-- Handle cases where XBRL tagging changed between filings
+- Read all filings to understand this company's reporting structure
+- For each analytical input the metric formulas need, determine where it comes from across all periods
+- Normalize field names consistently across all periods
+- Handle stock splits (normalize pre-split shares to post-split basis)
+- Forward-fill annual-only values (e.g., operating lease liabilities disclosed only in 10-K) with explicit flags
+- Handle reporting changes between filings (renamed items, new segments)
 
-Outputs: `formula_mapped.json`
+Verification (deterministic, runs after AI returns):
+1. **Quarterly derivation** — Q1 pass-through, Q2/Q3 CF YTD subtraction, Q4 = annual - Q1-Q2-Q3. This IS the primary verification: wrong period values produce impossible results.
+2. **Sanity checks** — revenue must be positive, no impossible sign flips
+3. **Formula checks** — revenue - cogs = gross_profit, pretax - tax = net_income
+4. **Field presence** — every standard field in every period
+5. **Split normalization** — diluted shares within 2x range across all quarters
+6. **Forward-fill audit** — verify flagged items genuinely don't exist in that filing's XBRL
+7. **Continuity** — no 5x jumps between consecutive quarters
 
----
+If any check fails, the failures are sent back to the AI for retry (max 3). The retry prompt includes the specific errors.
 
-## Step 5: Quarterly Derivation (Stage 3)
-
-```bash
-python3 ai_extract/ai_formula.py --ticker NVDA --from-mapped
-```
-
-Pure arithmetic. No AI needed.
-
-- Q1: pass-through (already standalone quarter)
-- Q2/Q3: CF and IS use YTD subtraction (Q2 standalone = Q2 YTD - Q1)
-- Q4: annual minus Q1+Q2+Q3
-- BS: snapshots at period end, no derivation needed
-- Segments: same logic as IS fields
-
-Outputs: `quarterly.json` (standalone quarterly values — single source of truth)
+Outputs:
+- `formula_mapped_v3.json` — company mapping + analytical fields per period
+- `quarterly.json` — standalone quarterly values (single source of truth)
 
 ---
 
-## Step 6: Metrics
+## Step 5: Metrics
 
 ```bash
 python3 calculate.py --ticker NVDA
@@ -189,8 +186,10 @@ Reads `quarterly.json`, computes ROIC, margins, growth, and other metrics from `
 | Find segment structure | Prompt prescribes 4 categories | Def linkbase provides dimension hierarchy |
 | Read precise values | AI reads HTML | AI reads HTML (still needed where XBRL rounds) |
 | Verify math | AI + verification script | AI + verification script (formulas from linkbase) |
-| Cross-filing label normalization | AI in Stage 2 | AI in Stage 2 (XBRL concepts reduce the work) |
-| YTD to quarterly | Arithmetic in Stage 3 | Arithmetic in Stage 3 (unchanged) |
+| Cross-filing normalization | AI in separate Stage 2 (per-filing) | AI in Stage 2 (all periods in one call) |
+| YTD to quarterly | Separate Stage 3 | Embedded in Stage 2 as verification |
+| Stock split normalization | Not handled | AI normalizes in Stage 2 (sees all periods) |
+| Annual-only forward fill | Hardcoded in calculate.py | AI flags and fills in Stage 2 |
 
 ---
 
@@ -202,7 +201,7 @@ fetch.py                              — Step 1: download filings + linkbases f
 ai_extract/
   parse_xbrl.py                       — Step 2: deterministic parse → parsed_xbrl.json
   analyze_statement.py                — Step 3: AI extraction + verification → per-filing .json + mapped.json
-  ai_formula.py                       — Step 4 + 5: normalization + quarterly derivation
+  ai_formula.py                       — Step 4: all-periods normalization + quarterly derivation
   ai_extraction_flow_full.md          — This document
 
 data/filings/{TICKER}/{ACCESSION}/
@@ -217,7 +216,7 @@ data/filings/{TICKER}/{ACCESSION}/
 ai_extract/{TICKER}/
   q*_fy*_10*.json                     — Per-filing extractions (immutable training data)
   mapped.json                         — All periods, amendment-aware
-  formula_mapped.json                 — Normalized fields per filing
+  formula_mapped_v3.json              — Analytical mapping + quarterly derivation output
   quarterly.json                      — Standalone quarterly values (single source of truth)
 
 calculate.py                          — Step 6: metrics from quarterly.json

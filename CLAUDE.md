@@ -21,19 +21,16 @@ python3 fetch.py --cik 0001045810 --ticker NVDA
 # 2. Deterministic parse: facts + linkbases → structured JSON
 python3 ai_extract/parse_xbrl.py --ticker NVDA --accession <ACCESSION>
 
-# 3. Stage 1: AI verifies formulas, reads precise values, extracts statements + segments
+# 3. Stage 1: AI extracts + verifies IS/BS/CF/segments per filing
 python3 ai_extract/analyze_statement.py --ticker NVDA --accession <ACCESSION> --statement all
 
-# 4. Stage 2: AI normalizes labels + decomposes aggregated items across filings
-python3 ai_extract/ai_formula.py --ticker NVDA
+# 4. Stage 2: AI normalizes all periods + quarterly derivation as verification
+python3 ai_extract/ai_formula.py --ticker NVDA --v3
 
-# 5. Stage 3: Pure arithmetic — YTD to quarterly derivation
-python3 ai_extract/ai_formula.py --ticker NVDA --from-mapped
-
-# 6. Calculate financial metrics (ROIC, growth, margins, etc.)
+# 5. Calculate financial metrics (ROIC, growth, margins, etc.)
 python3 calculate.py --ticker NVDA
 
-# 7. Serve dashboard
+# 6. Serve dashboard
 python3 -m http.server 8080 --directory dashboard
 ```
 
@@ -50,13 +47,13 @@ dashboard/                  — Single-file HTML app (Chart.js), served locally
 ai_extract/
   parse_xbrl.py             — Deterministic parser: XBRL facts + linkbases → parsed_xbrl.json
   analyze_statement.py      — Stage 1: AI extraction + verification (reads parsed_xbrl.json + HTML)
-  ai_formula.py             — Stage 2: analytical mapping + Stage 3: quarterly derivation
+  ai_formula.py             — Stage 2: all-periods normalization + quarterly derivation verification
   ai_extraction_flow_full.md — Full pipeline design doc (detailed)
   ai_extraction_flow.md     — Original pipeline design doc (reference)
   {TICKER}/
     q*_fy*_10*.json         — Per-filing extractions (immutable, training data)
     mapped.json             — All periods by period, handles amendments/restatements
-    formula_mapped.json     — Normalized fields per filing
+    formula_mapped_v3.json  — Analytical mapping + quarterly derivation output
     quarterly.json          — Standalone quarterly values (single source of truth)
 
 data/filings/{TICKER}/{ACCESSION}/  — Downloaded filings (gitignored)
@@ -81,11 +78,9 @@ See `ai_extract/ai_extraction_flow_full.md` for the complete design.
 
 **Step 3 — AI Extraction** (`analyze_statement.py`): AI receives the parsed linkbase data + filing HTML (auto-sized: full HTML for small filings under 150K tokens, stripped to statement tables for large filings). Three deterministic checks run after: formula verification, CF section retry, and XBRL fact completeness check. The completeness check compares every XBRL fact sent against the AI's output — any gap triggers a targeted retry with the specific notes HTML sections where the missing facts live. Not a hardcoded list — it comes from the filing's own XBRL. Outputs per-filing JSON (training data) + updates mapped.json.
 
-**Step 4 — Cross-Filing Normalization** (`ai_formula.py`): AI reads extractions across filings. Normalizes labels (XBRL concept names are consistent across filings, reducing this work). Decomposes aggregated items using note-level data from Step 3. Verifies no double counting.
+**Step 4 — All-Periods Normalization + Quarterly Derivation** (`ai_formula.py --v3`): One AI call sees all filings at once (slimmed per-filing extractions). Produces standardized analytical fields consistent across all periods. Handles stock splits, forward-fills annual-only values with flags, resolves cross-period naming differences. Quarterly derivation runs as the primary verification — if derived quarterly values are impossible (negative revenue, etc.), the AI retries with specific error feedback. Output: `formula_mapped_v3.json` + `quarterly.json`.
 
-**Step 5 — Quarterly Derivation** (`ai_formula.py --from-mapped`): Pure arithmetic. Q1 pass-through, Q2/Q3 YTD subtraction, Q4 = annual minus Q1+Q2+Q3. BS snapshots, no derivation. Segments follow same IS logic.
-
-**Step 6 — Metrics** (`calculate.py`): Reads quarterly.json, computes ROIC, margins, growth per formulas.md.
+**Step 5 — Metrics** (`calculate.py`): Reads quarterly.json, computes ROIC, margins, growth per formulas.md.
 
 ## What the AI Does vs. Doesn't Do
 
