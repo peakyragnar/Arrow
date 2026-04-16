@@ -48,8 +48,7 @@ ai_extract/
   parse_xbrl.py             — Deterministic parser: XBRL facts + linkbases → parsed_xbrl.json
   analyze_statement.py      — Stage 1: AI extraction + verification (reads parsed_xbrl.json + HTML)
   ai_formula.py             — Stage 2: all-periods normalization + quarterly derivation verification
-  ai_extraction_flow_full.md — Full pipeline design doc (detailed)
-  ai_extraction_flow.md     — Original pipeline design doc (reference)
+  ai_extraction_flow_full.md — Pipeline design doc
   {TICKER}/
     q*_fy*_10*.json         — Per-filing extractions (immutable, training data)
     mapped.json             — All periods by period, handles amendments/restatements
