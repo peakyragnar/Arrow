@@ -80,7 +80,10 @@ python3 ai_extract/analyze_statement.py --ticker NVDA --accession {ACCESSION} --
 
 4. **XBRL FACTS** — all tagged values (existing)
 
-5. **FILING HTML (stripped)** — only the financial statement tables, not the full filing. The `extract_statement_html()` function uses ix:nonFraction tag positions and the presentation linkbase to identify the IS, BS, and CF sections in the HTML. This reduces HTML from ~122K tokens to ~27K tokens (78% reduction).
+5. **FILING HTML (auto-sized)** — the system automatically selects full or stripped HTML based on filing size:
+   - **Full HTML** (< 150K tokens): sends the entire cleaned filing. No completeness retry needed — the AI sees everything. Used for most 10-Qs.
+   - **Stripped HTML** (>= 150K tokens): sends only the financial statement tables, identified by ix:nonFraction tag positions and presentation linkbase. Used for large 10-Ks and filings that would exceed context limits.
+   - **`--full-html` flag**: forces full HTML regardless of size.
 
 ### Prompt Instructions (principle-based)
 
@@ -91,15 +94,31 @@ python3 ai_extract/analyze_statement.py --ticker NVDA --accession {ACCESSION} --
 - Extract all disaggregation data, verify each breakdown sums to the consolidated total
 - Report anything that doesn't tie
 
-### Incremental HTML Retry
+### Verification + Retry Pipeline
 
-If formulas don't balance on the first pass (stripped HTML), the retry sends the **full filing HTML** so the AI can search the notes for missing components. The cal linkbase role names (e.g., `BalanceSheetComponentsScheduleofAccruedandOtherCurrentLiabilitiesDetails`) identify which note section contains the needed data — a future optimization can send only the targeted note section instead of the full filing.
+After the AI returns its extraction, three deterministic checks run in sequence:
 
-Typical flow:
-1. **First pass**: stripped HTML (~27K tokens) — cheap, handles most filings
-2. **Verification**: formulas tie? Cross-statement checks pass?
-3. **If yes**: done ($1.41 for NVDA Q1 FY26 on Sonnet)
-4. **If no**: retry with full HTML (~122K tokens) targeting the specific sections that failed
+**1. Formula verification** — every formula the AI reported is checked arithmetically. If any formula fails, the AI already gets another attempt via the existing retry mechanism.
+
+**2. CF section retry** — if CFO, CFI, or CFF component sums don't match the section total, a targeted retry sends the full HTML to find missing cash flow components.
+
+**3. XBRL fact completeness check** — `check_fact_completeness()` compares every XBRL fact we sent to the AI against what it reported in `line_items` + `xbrl_not_on_statement`. Any concept in the input but not in the output is a gap. This is not a hardcoded list — it comes from the filing's own XBRL, different for every company and filing.
+
+   - **If stripped HTML was used**: the unaccounted concepts are sent back to the AI with targeted HTML sections extracted by their ix:nonFraction tag positions. The AI places each one (which statement it belongs to, where it's classified). Results merge into `xbrl_not_on_statement`.
+   - **If full HTML was used**: the AI already had everything. Unaccounted facts are logged for audit but not retried with the same context.
+
+Typical flow for a 10-Q (full HTML, under threshold):
+1. **First pass**: full HTML — AI sees everything
+2. **Formula verification**: pass/fail
+3. **Completeness check**: log any gaps (no retry since full HTML was sent)
+4. **Done**
+
+Typical flow for a 10-K (stripped HTML, over threshold):
+1. **First pass**: stripped HTML (statements only)
+2. **Formula verification**: pass/fail, CF retry if needed
+3. **Completeness check**: finds unaccounted notes-level facts
+4. **Completeness retry**: sends targeted notes HTML for the gaps
+5. **Done**
 
 ### Outputs
 
