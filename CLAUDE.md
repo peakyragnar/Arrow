@@ -4,7 +4,8 @@ Arrow is a financial data extraction and synthesis system. It extracts structure
 
 ## Principles
 
-- **The AI replaces the analyst.** It reads the filing, extracts the three financial statements, discovers every formula relationship, and verifies the math — the same work a human analyst does manually. It is not given a template of fields to fill in.
+- **The AI replaces the analyst.** It reads the filing, verifies every formula relationship, reads precise values from the HTML, and accounts for every tagged fact — the same work a human analyst does manually. It is not given a template of fields to fill in.
+- **Linkbase data is the foundation.** The SEC filing includes calculation, presentation, and definition linkbase files that declare every formula, statement structure, and dimension hierarchy. These are parsed deterministically and fed to the AI as structured input. The AI verifies — it does not discover structure.
 - **Math proves correctness.** Financial statements are a closed system. Every subtotal must tie to its components, every cross-statement relationship must hold. If the math passes, the extraction is proven correct. No golden eval needed for the three statements — the math IS the eval.
 - **Nothing unaccounted for.** Every XBRL-tagged fact must be placed — either on the statement face or identified as hidden/aggregated. The AI cannot skip items.
 - **Extract as reported, normalize downstream.** Stage 1 extracts exactly what the filing says. Stage 2 does the analytical work (decomposing aggregated items, normalizing labels across filings). Stage 3 is pure arithmetic.
@@ -14,29 +15,32 @@ Arrow is a financial data extraction and synthesis system. It extracts structure
 ## Pipeline
 
 ```bash
-# 1. Download filings from SEC EDGAR
+# 1. Download filings + XBRL linkbases from SEC EDGAR
 python3 fetch.py --cik 0001045810 --ticker NVDA
 
-# 2. Stage 1: AI extracts + verifies IS/BS/CF/segments per filing
+# 2. Deterministic parse: facts + linkbases → structured JSON
+python3 ai_extract/parse_xbrl.py --ticker NVDA --accession <ACCESSION>
+
+# 3. Stage 1: AI verifies formulas, reads precise values, extracts statements + segments
 python3 ai_extract/analyze_statement.py --ticker NVDA --accession <ACCESSION> --statement all
 
-# 3. Stage 2: AI normalizes labels + decomposes aggregated items across filings
+# 4. Stage 2: AI normalizes labels + decomposes aggregated items across filings
 python3 ai_extract/ai_formula.py --ticker NVDA
 
-# 4. Stage 3: Pure arithmetic — YTD to quarterly derivation
+# 5. Stage 3: Pure arithmetic — YTD to quarterly derivation
 python3 ai_extract/ai_formula.py --ticker NVDA --from-mapped
 
-# 5. Calculate financial metrics (ROIC, growth, margins, etc.)
+# 6. Calculate financial metrics (ROIC, growth, margins, etc.)
 python3 calculate.py --ticker NVDA
 
-# 6. Serve dashboard
+# 7. Serve dashboard
 python3 -m http.server 8080 --directory dashboard
 ```
 
 ## File Map
 
 ```
-fetch.py                    — Downloads 10-Q/10-K/amendments from SEC EDGAR
+fetch.py                    — Downloads 10-Q/10-K/amendments + XBRL linkbases from SEC EDGAR
 calculate.py                — Computes metrics from quarterly.json, writes dashboard data
 formulas.md                 — Canonical metric dictionary (ROIC, margins, growth, etc.)
 rd_capitalization_reference.md — R&D amortization schedule formula reference
@@ -44,29 +48,58 @@ golden_eval.xlsx            — Manually verified financial data (source of trut
 dashboard/                  — Single-file HTML app (Chart.js), served locally
 
 ai_extract/
-  analyze_statement.py      — Stage 1: extraction + self-verification loop
+  parse_xbrl.py             — Deterministic parser: XBRL facts + linkbases → parsed_xbrl.json
+  analyze_statement.py      — Stage 1: AI extraction + verification (reads parsed_xbrl.json + HTML)
   ai_formula.py             — Stage 2: analytical mapping + Stage 3: quarterly derivation
-  parse_xbrl.py             — Deterministic XBRL fact parser
-  ai_extraction_flow.md     — Detailed pipeline design doc
+  ai_extraction_flow_full.md — Full pipeline design doc (detailed)
+  ai_extraction_flow.md     — Original pipeline design doc (reference)
   {TICKER}/
     q*_fy*_10*.json         — Per-filing extractions (immutable, training data)
     mapped.json             — All periods by period, handles amendments/restatements
     formula_mapped.json     — Normalized fields per filing
     quarterly.json          — Standalone quarterly values (single source of truth)
 
+data/filings/{TICKER}/{ACCESSION}/  — Downloaded filings (gitignored)
+  *.htm                     — Filing HTML (iXBRL)
+  *_htm.xml                 — XBRL instance document (all tagged facts)
+  *_cal.xml                 — Calculation linkbase (declared formulas with weights)
+  *_pre.xml                 — Presentation linkbase (concept-to-statement mapping)
+  *_def.xml                 — Definition linkbase (dimension hierarchies)
+  filing_meta.json          — Filing metadata
+  parsed_xbrl.json          — Deterministic parse output (Step 2)
+
 deterministic-flow/         — Archived deterministic pipeline (extract.py, eval.py, etc.)
-data/filings/{TICKER}/      — Downloaded filings (gitignored)
 ```
 
-## Three-Stage Pipeline
+## Pipeline Detail
 
-See `ai_extract/ai_extraction_flow.md` for the full design. Summary:
+See `ai_extract/ai_extraction_flow_full.md` for the complete design.
 
-**Stage 1** (`analyze_statement.py`): AI reads the full filing, extracts every line item from IS/BS/CF in presentation order, discovers all formula relationships, verifies all math, extracts all segment/disaggregation data. Loops on failure until everything ties. Outputs per-filing JSON + updates mapped.json.
+**Step 1 — Download** (`fetch.py`): Downloads filing HTML, XBRL instance document, and three XBRL linkbase files (calculation, presentation, definition) from SEC EDGAR.
 
-**Stage 2** (`ai_formula.py`): AI reads extractions across filings. Decomposes aggregated items (e.g., operating leases buried in accrued liabilities — found via XBRL tags not on statement face). Normalizes labels across filings so the same item has one consistent name. Verifies no double counting.
+**Step 2 — Deterministic Parse** (`parse_xbrl.py`): Parses all XBRL files into `parsed_xbrl.json`. Extracts every tagged fact, every declared formula with signed weights, every concept-to-statement mapping, and every dimension hierarchy. No AI — pure parsing.
 
-**Stage 3** (`ai_formula.py --from-mapped`): Pure arithmetic. Q1 pass-through, Q2/Q3 CF YTD subtraction, Q4 = annual minus Q1+Q2+Q3. BS snapshots, no derivation. Segments follow same logic as IS fields.
+**Step 3 — AI Extraction** (`analyze_statement.py`): AI receives the parsed linkbase data + filing HTML. The linkbase data tells it the structure — which concepts belong on which statement, what the formula relationships are, what dimensions exist. The AI's job is to verify every formula ties, read precise values from HTML where XBRL rounds, account for every tagged fact, and extract all disaggregation data. Retries until everything ties. Outputs per-filing JSON (training data) + updates mapped.json.
+
+**Step 4 — Cross-Filing Normalization** (`ai_formula.py`): AI reads extractions across filings. Normalizes labels (XBRL concept names are consistent across filings, reducing this work). Decomposes aggregated items using note-level data from Step 3. Verifies no double counting.
+
+**Step 5 — Quarterly Derivation** (`ai_formula.py --from-mapped`): Pure arithmetic. Q1 pass-through, Q2/Q3 YTD subtraction, Q4 = annual minus Q1+Q2+Q3. BS snapshots, no derivation. Segments follow same IS logic.
+
+**Step 6 — Metrics** (`calculate.py`): Reads quarterly.json, computes ROIC, margins, growth per formulas.md.
+
+## What the AI Does vs. Doesn't Do
+
+| Task | Deterministic (linkbase) | AI (judgment) |
+|------|--------------------------|---------------|
+| Statement structure | Presentation linkbase provides it | — |
+| Formula relationships | Calculation linkbase declares them | — |
+| Hidden items (e.g. leases in accrued) | Cal linkbase declares decomposition | — |
+| Segment/dimension structure | Def linkbase provides hierarchy | — |
+| Precise values where XBRL rounds | — | Reads HTML for exact numbers |
+| Math verification | — | Confirms all formulas tie |
+| Fact completeness | — | Accounts for every XBRL fact |
+| Cross-filing label normalization | XBRL concepts reduce the work | Handles edge cases |
+| YTD to quarterly | Pure arithmetic (Stage 3) | — |
 
 ## Architecture: 4 Layers
 
@@ -77,7 +110,7 @@ See `ai_extract/ai_extraction_flow.md` for the full design. Summary:
 
 ## Current Status
 
-- NVDA: 12 filings extracted, 12 quarters, 264/264 fields match golden eval
-- Stage 1 segment extraction working (Q1+Q2 FY26 have segments, 10 older filings pending re-run)
+- NVDA: 12 filings extracted, 12 quarters, 264/264 fields match golden eval (template-based prompt, tagged as `v1-template-prompt`)
+- Linkbase-based pipeline: fetch + parse working for all 9 companies. Prompt rewrite in progress.
 - Deterministic pipeline archived in `deterministic-flow/` (9 companies validated, 0 mismatches)
 - `calculate.py` reads from deterministic output — switchover to `quarterly.json` pending
