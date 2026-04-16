@@ -1,0 +1,610 @@
+{
+  "ticker": "NVDA",
+  "reporting_unit": "Filing reports in USD millions (scale=6 per XBRL tags). All monetary values converted to raw dollars by multiplying by 1,000,000. Shares reported in millions (scale=6) converted to raw count by multiplying by 1,000,000. EPS reported as USD per share, no conversion needed.",
+  "company_mapping": {
+    "revenue": "us-gaap:Revenues \u2014 income statement line item labeled 'Revenue', single revenue line, no disaggregation needed at the top level",
+    "cogs": "us-gaap:CostOfRevenue \u2014 income statement line item labeled 'Cost of revenue'",
+    "gross_profit": "us-gaap:GrossProfit \u2014 explicitly reported on income statement as 'Gross profit'",
+    "operating_income": "us-gaap:OperatingIncomeLoss \u2014 income statement line item labeled 'Operating income'",
+    "pretax_income": "us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest \u2014 income statement labeled 'Income before income tax'",
+    "income_tax_expense": "us-gaap:IncomeTaxExpenseBenefit \u2014 income statement labeled 'Income tax expense'",
+    "net_income": "us-gaap:NetIncomeLoss \u2014 income statement and CF starting line both use NetIncomeLoss; no NCI attribution separately disclosed; consolidated net income is the CFO bridge starting line",
+    "interest_expense": "us-gaap:InterestExpenseNonoperating \u2014 income statement labeled 'Interest expense', reported as a gross separate line (61M for Q2 FY2025). Interest income is separately disclosed as us-gaap:InvestmentIncomeInterest. The filing discloses gross interest expense separately so we use that as the negative gross interest expense. Reported as positive in extraction (61), normalized to negative per policy.",
+    "sbc": "us-gaap:ShareBasedCompensation \u2014 cash flow statement addback labeled 'Stock-based compensation expense'; confirmed by us-gaap:AllocatedShareBasedCompensationExpense in IS xbrl_not_on_statement showing same values",
+    "dna": "us-gaap:DepreciationDepletionAndAmortization \u2014 cash flow statement addback labeled 'Depreciation and amortization'; single line capturing all D&A",
+    "diluted_shares": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding \u2014 income statement labeled 'Diluted weighted average shares', reported in millions, converted to raw count",
+    "cash": "us-gaap:CashAndCashEquivalentsAtCarryingValue \u2014 balance sheet labeled 'Cash and cash equivalents'",
+    "short_term_investments": "us-gaap:MarketableSecuritiesCurrent \u2014 balance sheet labeled 'Marketable securities' (current); NVDA holds all short-term investments as marketable securities",
+    "accounts_receivable": "us-gaap:AccountsReceivableNetCurrent \u2014 balance sheet labeled 'Accounts receivable, net'; pure trade AR, no combined items",
+    "inventory": "us-gaap:InventoryNet \u2014 balance sheet labeled 'Inventories'; breakdown into raw materials, WIP, finished goods available in xbrl_not_on_statement",
+    "accounts_payable": "us-gaap:AccountsPayableCurrent \u2014 balance sheet labeled 'Accounts payable'; separately stated from accrued liabilities, pure trade AP",
+    "total_assets": "us-gaap:Assets \u2014 balance sheet labeled 'Total assets'",
+    "equity": "us-gaap:StockholdersEquity \u2014 balance sheet labeled 'Total shareholders equity'; no NCI; parent-only equity",
+    "short_term_debt": "us-gaap:DebtCurrent \u2014 balance sheet labeled 'Short-term debt'; maps to current portion of long-term debt per xbrl_not_on_statement (LongTermDebtCurrent). Jul 2024: 0; Jan 2024: 1,250M",
+    "long_term_debt": "us-gaap:LongTermDebtNoncurrent \u2014 balance sheet labeled 'Long-term debt'; Jul 2024: 8,461M, Jan 2024: 8,459M",
+    "operating_lease_liabilities": "Current: us-gaap:OperatingLeaseLiabilityCurrent from balance sheet xbrl_not_on_statement (embedded in AccruedLiabilitiesCurrent per extensible list disclosure; Jul 2024: 250M, Jan 2024: 228M). Non-current: us-gaap:OperatingLeaseLiabilityNoncurrent on balance sheet face (Jul 2024: 1,304M, Jan 2024: 1,119M). Total confirmed by us-gaap:OperatingLeaseLiability = 1,554M at Jul 2024 (250+1304=1554, check passes). Total Jul 2024: 1,554M; total Jan 2024: 1,347M (228+1119).",
+    "cfo": "us-gaap:NetCashProvidedByUsedInOperatingActivities \u2014 cash flow statement labeled 'Net cash provided by operating activities'; YTD value for six months ended Jul 28 2024",
+    "capex": "us-gaap:PaymentsToAcquireProductiveAssets \u2014 cash flow statement labeled 'Purchases related to property and equipment and intangible assets'; reported as negative outflow; normalized to negative per policy",
+    "acquisitions": "us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired \u2014 cash flow statement labeled 'Acquisitions, net of cash acquired'; reported as negative outflow; normalized to negative per policy",
+    "rd_expense": "us-gaap:ResearchAndDevelopmentExpense \u2014 income statement labeled 'Research and development'",
+    "interest_income": "us-gaap:InvestmentIncomeInterest \u2014 income statement labeled 'Interest income'; used for metric 21 unlevered FCF and interest coverage context",
+    "cash_paid_for_interest": "us-gaap:IncomeTaxesPaidNet is disclosed for taxes; no explicit cash paid for interest supplemental disclosure found in extraction. For metric 21, approximate with income-statement gross interest expense per formula instructions.",
+    "cash_paid_for_income_taxes": "us-gaap:IncomeTaxesPaidNet \u2014 cash flow supplemental disclosure labeled 'Cash paid for income taxes, net'; YTD six months ended Jul 2024: 7,449M",
+    "current_operating_lease_liabilities": "us-gaap:OperatingLeaseLiabilityCurrent from xbrl_not_on_statement; Jul 2024: 250M, Jan 2024: 228M",
+    "noncurrent_operating_lease_liabilities": "us-gaap:OperatingLeaseLiabilityNoncurrent \u2014 balance sheet face labeled 'Long-term operating lease liabilities'; Jul 2024: 1,304M, Jan 2024: 1,119M",
+    "inventory_raw_materials": "us-gaap:InventoryRawMaterialsNetOfReserves from balance sheet xbrl_not_on_statement; Jul 2024: 1,895M, Jan 2024: 1,719M",
+    "inventory_wip": "us-gaap:InventoryWorkInProcessNetOfReserves from balance sheet xbrl_not_on_statement; Jul 2024: 2,111M, Jan 2024: 1,505M",
+    "inventory_finished_goods": "us-gaap:InventoryFinishedGoodsNetOfReserves from balance sheet xbrl_not_on_statement; Jul 2024: 2,669M, Jan 2024: 2,058M",
+    "sbc_allocated_note": "us-gaap:AllocatedShareBasedCompensationExpense from IS xbrl_not_on_statement; same value as CF addback; used as corroboration",
+    "effective_tax_rate": "us-gaap:EffectiveIncomeTaxRateContinuingOperations from IS xbrl_not_on_statement; Q2 FY2025: 13.6%, H1 FY2025: 13.7%",
+    "dilutive_equity_awards": "us-gaap:WeightedAverageNumberDilutedSharesOutstandingAdjustment from IS xbrl_not_on_statement; Q2 FY2025: 270M shares raw",
+    "segment_compute_networking_revenue": "Segment data ComputeAndNetworkingMember Revenue",
+    "segment_graphics_revenue": "Segment data GraphicsMember Revenue",
+    "segment_compute_networking_operating_income": "Segment data ComputeAndNetworkingMember OperatingIncome",
+    "segment_graphics_operating_income": "Segment data GraphicsMember OperatingIncome",
+    "revenue_data_center": "ProductOrServiceAxis member Data Center",
+    "revenue_gaming": "ProductOrServiceAxis member Gaming",
+    "revenue_professional_visualization": "ProductOrServiceAxis member Professional Visualization",
+    "revenue_automotive": "ProductOrServiceAxis member Automotive",
+    "revenue_oem_other": "ProductOrServiceAxis member OEM and Other"
+  },
+  "period_end": "2024-07-28",
+  "period_start": "2024-04-29",
+  "form": "10-Q",
+  "cf_is_ytd": true,
+  "as_reported": {
+    "income_statement": {
+      "Revenue": {
+        "2024-04-29_2024-07-28": 30040000000,
+        "2023-05-01_2023-07-30": 13507000000,
+        "2024-01-29_2024-07-28": 56084000000,
+        "2023-01-30_2023-07-30": 20699000000
+      },
+      "Cost of revenue": {
+        "2024-04-29_2024-07-28": 7466000000,
+        "2023-05-01_2023-07-30": 4045000000,
+        "2024-01-29_2024-07-28": 13105000000,
+        "2023-01-30_2023-07-30": 6589000000
+      },
+      "Gross profit": {
+        "2024-04-29_2024-07-28": 22574000000,
+        "2023-05-01_2023-07-30": 9462000000,
+        "2024-01-29_2024-07-28": 42979000000,
+        "2023-01-30_2023-07-30": 14110000000
+      },
+      "Research and development": {
+        "2024-04-29_2024-07-28": 3090000000,
+        "2023-05-01_2023-07-30": 2040000000,
+        "2024-01-29_2024-07-28": 5810000000,
+        "2023-01-30_2023-07-30": 3916000000
+      },
+      "Sales, general and administrative": {
+        "2024-04-29_2024-07-28": 842000000,
+        "2023-05-01_2023-07-30": 622000000,
+        "2024-01-29_2024-07-28": 1618000000,
+        "2023-01-30_2023-07-30": 1253000000
+      },
+      "Total operating expenses": {
+        "2024-04-29_2024-07-28": 3932000000,
+        "2023-05-01_2023-07-30": 2662000000,
+        "2024-01-29_2024-07-28": 7428000000,
+        "2023-01-30_2023-07-30": 5169000000
+      },
+      "Operating income": {
+        "2024-04-29_2024-07-28": 18642000000,
+        "2023-05-01_2023-07-30": 6800000000,
+        "2024-01-29_2024-07-28": 35551000000,
+        "2023-01-30_2023-07-30": 8941000000
+      },
+      "Interest income": {
+        "2024-04-29_2024-07-28": 444000000,
+        "2023-05-01_2023-07-30": 187000000,
+        "2024-01-29_2024-07-28": 803000000,
+        "2023-01-30_2023-07-30": 338000000
+      },
+      "Interest expense": {
+        "2024-04-29_2024-07-28": 61000000,
+        "2023-05-01_2023-07-30": 65000000,
+        "2024-01-29_2024-07-28": 125000000,
+        "2023-01-30_2023-07-30": 131000000
+      },
+      "Other, net": {
+        "2024-04-29_2024-07-28": 189000000,
+        "2023-05-01_2023-07-30": 59000000,
+        "2024-01-29_2024-07-28": 264000000,
+        "2023-01-30_2023-07-30": 42000000
+      },
+      "Other income (expense), net": {
+        "2024-04-29_2024-07-28": 572000000,
+        "2023-05-01_2023-07-30": 181000000,
+        "2024-01-29_2024-07-28": 942000000,
+        "2023-01-30_2023-07-30": 249000000
+      },
+      "Income before income tax": {
+        "2024-04-29_2024-07-28": 19214000000,
+        "2023-05-01_2023-07-30": 6981000000,
+        "2024-01-29_2024-07-28": 36493000000,
+        "2023-01-30_2023-07-30": 9190000000
+      },
+      "Income tax expense": {
+        "2024-04-29_2024-07-28": 2615000000,
+        "2023-05-01_2023-07-30": 793000000,
+        "2024-01-29_2024-07-28": 5013000000,
+        "2023-01-30_2023-07-30": 958000000
+      },
+      "Net income": {
+        "2024-04-29_2024-07-28": 16599000000,
+        "2023-05-01_2023-07-30": 6188000000,
+        "2024-01-29_2024-07-28": 31480000000,
+        "2023-01-30_2023-07-30": 8232000000
+      },
+      "Basic EPS": {
+        "2024-04-29_2024-07-28": 0.68,
+        "2023-05-01_2023-07-30": 0.25,
+        "2024-01-29_2024-07-28": 1.28,
+        "2023-01-30_2023-07-30": 0.33
+      },
+      "Diluted EPS": {
+        "2024-04-29_2024-07-28": 0.67,
+        "2023-05-01_2023-07-30": 0.25,
+        "2024-01-29_2024-07-28": 1.27,
+        "2023-01-30_2023-07-30": 0.33
+      },
+      "Basic weighted average shares": {
+        "2024-04-29_2024-07-28": 24578000000,
+        "2023-05-01_2023-07-30": 24729000000,
+        "2024-01-29_2024-07-28": 24599000000,
+        "2023-01-30_2023-07-30": 24716000000
+      },
+      "Diluted weighted average shares": {
+        "2024-04-29_2024-07-28": 24848000000,
+        "2023-05-01_2023-07-30": 24994000000,
+        "2024-01-29_2024-07-28": 24869000000,
+        "2023-01-30_2023-07-30": 24948000000
+      }
+    },
+    "balance_sheet": {
+      "Cash and cash equivalents": {
+        "2024-07-28": 8563000000,
+        "2024-01-28": 7280000000
+      },
+      "Marketable securities": {
+        "2024-07-28": 26237000000,
+        "2024-01-28": 18704000000
+      },
+      "Accounts receivable, net": {
+        "2024-07-28": 14132000000,
+        "2024-01-28": 9999000000
+      },
+      "Inventories": {
+        "2024-07-28": 6675000000,
+        "2024-01-28": 5282000000
+      },
+      "Prepaid expenses and other current assets": {
+        "2024-07-28": 4026000000,
+        "2024-01-28": 3080000000
+      },
+      "Total current assets": {
+        "2024-07-28": 59633000000,
+        "2024-01-28": 44345000000
+      },
+      "Property and equipment, net": {
+        "2024-07-28": 4885000000,
+        "2024-01-28": 3914000000
+      },
+      "Operating lease assets": {
+        "2024-07-28": 1556000000,
+        "2024-01-28": 1346000000
+      },
+      "Goodwill": {
+        "2024-07-28": 4622000000,
+        "2024-01-28": 4430000000
+      },
+      "Intangible assets, net": {
+        "2024-07-28": 952000000,
+        "2024-01-28": 1112000000
+      },
+      "Deferred income tax assets": {
+        "2024-07-28": 9578000000,
+        "2024-01-28": 6081000000
+      },
+      "Other assets": {
+        "2024-07-28": 4001000000,
+        "2024-01-28": 4500000000
+      },
+      "Total assets": {
+        "2024-07-28": 85227000000,
+        "2024-01-28": 65728000000
+      },
+      "Accounts payable": {
+        "2024-07-28": 3680000000,
+        "2024-01-28": 2699000000
+      },
+      "Accrued and other current liabilities": {
+        "2024-07-28": 10289000000,
+        "2024-01-28": 6682000000
+      },
+      "Short-term debt": {
+        "2024-07-28": 0,
+        "2024-01-28": 1250000000
+      },
+      "Total current liabilities": {
+        "2024-07-28": 13969000000,
+        "2024-01-28": 10631000000
+      },
+      "Long-term debt": {
+        "2024-07-28": 8461000000,
+        "2024-01-28": 8459000000
+      },
+      "Long-term operating lease liabilities": {
+        "2024-07-28": 1304000000,
+        "2024-01-28": 1119000000
+      },
+      "Other long-term liabilities": {
+        "2024-07-28": 3336000000,
+        "2024-01-28": 2541000000
+      },
+      "Total liabilities": {
+        "2024-07-28": 27070000000,
+        "2024-01-28": 22750000000
+      },
+      "Commitments and contingencies": {
+        "2024-07-28": null,
+        "2024-01-28": null
+      },
+      "Preferred stock": {
+        "2024-07-28": 0,
+        "2024-01-28": 0
+      },
+      "Common stock": {
+        "2024-07-28": 25000000,
+        "2024-01-28": 25000000
+      },
+      "Additional paid-in capital": {
+        "2024-07-28": 12115000000,
+        "2024-01-28": 13109000000
+      },
+      "Accumulated other comprehensive income": {
+        "2024-07-28": 56000000,
+        "2024-01-28": 27000000
+      },
+      "Retained earnings": {
+        "2024-07-28": 45961000000,
+        "2024-01-28": 29817000000
+      },
+      "Total shareholders equity": {
+        "2024-07-28": 58157000000,
+        "2024-01-28": 42978000000
+      },
+      "Total liabilities and shareholders equity": {
+        "2024-07-28": 85227000000,
+        "2024-01-28": 65728000000
+      }
+    },
+    "cash_flow": {
+      "Net income": {
+        "2024-01-29_2024-07-28": 31480000000,
+        "2023-01-30_2023-07-30": 8232000000
+      },
+      "Stock-based compensation expense": {
+        "2024-01-29_2024-07-28": 2164000000,
+        "2023-01-30_2023-07-30": 1576000000
+      },
+      "Depreciation and amortization": {
+        "2024-01-29_2024-07-28": 843000000,
+        "2023-01-30_2023-07-30": 749000000
+      },
+      "Gains on investments in non-affiliated entities and publicly-held equity securities, net": {
+        "2024-01-29_2024-07-28": -264000000,
+        "2023-01-30_2023-07-30": -45000000
+      },
+      "Deferred income taxes": {
+        "2024-01-29_2024-07-28": -3276000000,
+        "2023-01-30_2023-07-30": -1881000000
+      },
+      "Other": {
+        "2024-01-29_2024-07-28": -288000000,
+        "2023-01-30_2023-07-30": -102000000
+      },
+      "Accounts receivable (change)": {
+        "2024-01-29_2024-07-28": -4133000000,
+        "2023-01-30_2023-07-30": -3239000000
+      },
+      "Inventories (change)": {
+        "2024-01-29_2024-07-28": -1380000000,
+        "2023-01-30_2023-07-30": 861000000
+      },
+      "Prepaid expenses and other assets (change)": {
+        "2024-01-29_2024-07-28": -12000000,
+        "2023-01-30_2023-07-30": -592000000
+      },
+      "Accounts payable (change)": {
+        "2024-01-29_2024-07-28": 801000000,
+        "2023-01-30_2023-07-30": 789000000
+      },
+      "Accrued and other current liabilities (change)": {
+        "2024-01-29_2024-07-28": 3314000000,
+        "2023-01-30_2023-07-30": 2675000000
+      },
+      "Other long-term liabilities (change)": {
+        "2024-01-29_2024-07-28": 584000000,
+        "2023-01-30_2023-07-30": 236000000
+      },
+      "Net cash provided by operating activities": {
+        "2024-01-29_2024-07-28": 29833000000,
+        "2023-01-30_2023-07-30": 9259000000
+      },
+      "Proceeds from maturities of marketable securities": {
+        "2024-01-29_2024-07-28": 8098000000,
+        "2023-01-30_2023-07-30": 5111000000
+      },
+      "Proceeds from sales of marketable securities": {
+        "2024-01-29_2024-07-28": 164000000,
+        "2023-01-30_2023-07-30": 0
+      },
+      "Purchases of marketable securities": {
+        "2024-01-29_2024-07-28": -15047000000,
+        "2023-01-30_2023-07-30": -5343000000
+      },
+      "Purchases related to property and equipment and intangible assets": {
+        "2024-01-29_2024-07-28": -1346000000,
+        "2023-01-30_2023-07-30": -537000000
+      },
+      "Acquisitions, net of cash acquired": {
+        "2024-01-29_2024-07-28": -317000000,
+        "2023-01-30_2023-07-30": -83000000
+      },
+      "Purchases of investments in non-affiliated entities": {
+        "2024-01-29_2024-07-28": -534000000,
+        "2023-01-30_2023-07-30": -456000000
+      },
+      "Proceeds from sales of investments in non-affiliated entities": {
+        "2024-01-29_2024-07-28": 105000000,
+        "2023-01-30_2023-07-30": 0
+      },
+      "Other (investing)": {
+        "2024-01-29_2024-07-28": 0,
+        "2023-01-30_2023-07-30": -21000000
+      },
+      "Net cash used in investing activities": {
+        "2024-01-29_2024-07-28": -8877000000,
+        "2023-01-30_2023-07-30": -1287000000
+      },
+      "Proceeds related to employee stock plans": {
+        "2024-01-29_2024-07-28": 285000000,
+        "2023-01-30_2023-07-30": 247000000
+      },
+      "Payments related to repurchases of common stock": {
+        "2024-01-29_2024-07-28": -14898000000,
+        "2023-01-30_2023-07-30": -3067000000
+      },
+      "Repayment of debt": {
+        "2024-01-29_2024-07-28": -1250000000,
+        "2023-01-30_2023-07-30": -1250000000
+      },
+      "Payments related to tax on restricted stock units": {
+        "2024-01-29_2024-07-28": -3389000000,
+        "2023-01-30_2023-07-30": -1179000000
+      },
+      "Dividends paid": {
+        "2024-01-29_2024-07-28": -344000000,
+        "2023-01-30_2023-07-30": -199000000
+      },
+      "Principal payments on property and equipment and intangible assets": {
+        "2024-01-29_2024-07-28": -69000000,
+        "2023-01-30_2023-07-30": -31000000
+      },
+      "Net cash used in financing activities": {
+        "2024-01-29_2024-07-28": -19665000000,
+        "2023-01-30_2023-07-30": -5479000000
+      },
+      "Change in cash, cash equivalents, and restricted cash": {
+        "2024-01-29_2024-07-28": 1291000000,
+        "2023-01-30_2023-07-30": 2493000000
+      },
+      "Cash, cash equivalents, and restricted cash at beginning of period": {
+        "2024-01-28": 7280000000,
+        "2023-01-29": 3389000000
+      },
+      "Cash, cash equivalents, and restricted cash at end of period": {
+        "2024-07-28": 8571000000,
+        "2023-07-30": 5882000000
+      },
+      "Cash and cash equivalents (reconciliation)": {
+        "2024-07-28": 8563000000,
+        "2023-07-30": 5783000000
+      },
+      "Restricted cash, included in prepaid expenses and other current assets": {
+        "2024-07-28": 8000000,
+        "2023-07-30": 99000000
+      },
+      "Total cash, cash equivalents, and restricted cash (reconciliation)": {
+        "2024-07-28": 8571000000,
+        "2023-07-30": 5882000000
+      },
+      "Cash paid for income taxes, net": {
+        "2024-01-29_2024-07-28": 7449000000,
+        "2023-01-30_2023-07-30": 328000000
+      }
+    }
+  },
+  "analytical": {
+    "revenue": 30040000000,
+    "cogs": 7466000000,
+    "gross_profit": 22574000000,
+    "operating_income": 18642000000,
+    "pretax_income": 19214000000,
+    "income_tax_expense": 2615000000,
+    "net_income": 16599000000,
+    "interest_expense": -61000000,
+    "sbc": 2164000000,
+    "dna": 843000000,
+    "diluted_shares": 24848000000,
+    "cash": 8563000000,
+    "short_term_investments": 26237000000,
+    "accounts_receivable": 14132000000,
+    "inventory": 6675000000,
+    "accounts_payable": 3680000000,
+    "total_assets": 85227000000,
+    "equity": 58157000000,
+    "short_term_debt": 0,
+    "long_term_debt": 8461000000,
+    "operating_lease_liabilities": 1554000000,
+    "current_operating_lease_liabilities": 250000000,
+    "noncurrent_operating_lease_liabilities": 1304000000,
+    "cfo": 29833000000,
+    "capex": -1346000000,
+    "acquisitions": -317000000,
+    "rd_expense": 3090000000,
+    "interest_income": 444000000,
+    "cash_paid_for_income_taxes_net": 7449000000,
+    "cash_paid_for_interest": null,
+    "inventory_raw_materials": 1895000000,
+    "inventory_wip": 2111000000,
+    "inventory_finished_goods": 2669000000,
+    "effective_tax_rate": 0.136,
+    "sbc_note_corroboration": 1154000000,
+    "prior_period_beginning_equity": 42978000000,
+    "total_assets_prior_period": 65728000000,
+    "sga_expense": 842000000,
+    "ytd_revenue": 56084000000,
+    "ytd_cogs": 13105000000,
+    "ytd_gross_profit": 42979000000,
+    "ytd_operating_income": 35551000000,
+    "ytd_pretax_income": 36493000000,
+    "ytd_income_tax_expense": 5013000000,
+    "ytd_net_income": 31480000000,
+    "ytd_interest_expense": -125000000,
+    "ytd_interest_income": 803000000,
+    "ytd_rd_expense": 5810000000,
+    "ytd_sbc": 2164000000,
+    "ytd_dna": 843000000,
+    "ytd_cfo": 29833000000,
+    "ytd_capex": -1346000000,
+    "ytd_acquisitions": -317000000
+  },
+  "segments": {
+    "by_business_segment": {
+      "Compute and Networking": {
+        "revenue_q2_fy2025": 26446000000,
+        "revenue_q2_fy2024": 10402000000,
+        "revenue_h1_fy2025": 49121000000,
+        "revenue_h1_fy2024": 14862000000,
+        "operating_income_q2_fy2025": 18848000000,
+        "operating_income_q2_fy2024": 6728000000,
+        "operating_income_h1_fy2025": 35896000000,
+        "operating_income_h1_fy2024": 8887000000
+      },
+      "Graphics": {
+        "revenue_q2_fy2025": 3594000000,
+        "revenue_q2_fy2024": 3105000000,
+        "revenue_h1_fy2025": 6963000000,
+        "revenue_h1_fy2024": 5837000000,
+        "operating_income_q2_fy2025": 1369000000,
+        "operating_income_q2_fy2024": 1211000000,
+        "operating_income_h1_fy2025": 2609000000,
+        "operating_income_h1_fy2024": 2258000000
+      },
+      "All Other (Corporate Non-Segment)": {
+        "operating_income_q2_fy2025": -1575000000,
+        "operating_income_q2_fy2024": -1139000000,
+        "operating_income_h1_fy2025": -2954000000,
+        "operating_income_h1_fy2024": -2204000000,
+        "reconciling_items": {
+          "sbc_q2_fy2025": -1154000000,
+          "sbc_q2_fy2024": -842000000,
+          "sbc_h1_fy2025": -2164000000,
+          "sbc_h1_fy2024": -1576000000,
+          "unallocated_cost_of_revenue_and_opex_q2_fy2025": -280000000,
+          "unallocated_cost_of_revenue_and_opex_q2_fy2024": -163000000,
+          "unallocated_cost_of_revenue_and_opex_h1_fy2025": -508000000,
+          "unallocated_cost_of_revenue_and_opex_h1_fy2024": -317000000,
+          "acquisition_related_and_other_costs_q2_fy2025": -144000000,
+          "acquisition_related_and_other_costs_q2_fy2024": -137000000,
+          "acquisition_related_and_other_costs_h1_fy2025": -286000000,
+          "acquisition_related_and_other_costs_h1_fy2024": -311000000,
+          "other_operating_income_q2_fy2025": 3000000,
+          "other_operating_income_q2_fy2024": 3000000,
+          "other_operating_income_h1_fy2025": 4000000,
+          "other_operating_income_h1_fy2024": 0
+        }
+      }
+    },
+    "by_market": {
+      "Data Center": {
+        "revenue_q2_fy2025": 26272000000,
+        "revenue_q2_fy2024": 10323000000,
+        "revenue_h1_fy2025": 48835000000,
+        "revenue_h1_fy2024": 14607000000
+      },
+      "Data Center Compute": {
+        "revenue_q2_fy2025": 22604000000,
+        "revenue_q2_fy2024": 8612000000,
+        "revenue_h1_fy2025": 41996000000,
+        "revenue_h1_fy2024": 11969000000
+      },
+      "Data Center Networking": {
+        "revenue_q2_fy2025": 3668000000,
+        "revenue_q2_fy2024": 1711000000,
+        "revenue_h1_fy2025": 6839000000,
+        "revenue_h1_fy2024": 2638000000
+      },
+      "Gaming": {
+        "revenue_q2_fy2025": 2880000000,
+        "revenue_q2_fy2024": 2486000000,
+        "revenue_h1_fy2025": 5527000000,
+        "revenue_h1_fy2024": 4726000000
+      },
+      "Professional Visualization": {
+        "revenue_q2_fy2025": 454000000,
+        "revenue_q2_fy2024": 379000000,
+        "revenue_h1_fy2025": 881000000,
+        "revenue_h1_fy2024": 674000000
+      },
+      "Automotive": {
+        "revenue_q2_fy2025": 346000000,
+        "revenue_q2_fy2024": 253000000,
+        "revenue_h1_fy2025": 675000000,
+        "revenue_h1_fy2024": 549000000
+      },
+      "OEM and Other": {
+        "revenue_q2_fy2025": 88000000,
+        "revenue_q2_fy2024": 66000000,
+        "revenue_h1_fy2025": 166000000,
+        "revenue_h1_fy2024": 143000000
+      }
+    },
+    "by_geography": {
+      "United States": {
+        "revenue_q2_fy2025": 13022000000,
+        "revenue_q2_fy2024": 6043000000,
+        "revenue_h1_fy2025": 26518000000,
+        "revenue_h1_fy2024": 8428000000
+      },
+      "Taiwan": {
+        "revenue_q2_fy2025": 5740000000,
+        "revenue_q2_fy2024": 2839000000,
+        "revenue_h1_fy2025": 10113000000,
+        "revenue_h1_fy2024": 4635000000
+      },
+      "Singapore": {
+        "revenue_q2_fy2025": 5622000000,
+        "revenue_q2_fy2024": 1042000000,
+        "revenue_h1_fy2025": 9659000000,
+        "revenue_h1_fy2024": 1804000000
+      },
+      "China including Hong Kong": {
+        "revenue_q2_fy2025": 3667000000,
+        "revenue_q2_fy2024": 2740000000,
+        "revenue_h1_fy2025": 6158000000,
+        "revenue_h1_fy2024": 4330000000
+      },
+      "Other countries": {
+        "revenue_q2_fy2025": 1989000000,
+        "revenue_q2_fy2024": 843000000,
+        "revenue_h1_fy2025": 3636000000,
+        "revenue_h1_fy2024": 1502000000
+      }
+    }
+  }
+}
