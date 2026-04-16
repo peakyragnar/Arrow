@@ -1,7 +1,7 @@
 """
 Metric calculation script: computes financial metrics from extracted data.
 
-Reads extraction output from output/{ticker}.json (after extract.py and compute.py),
+Reads extraction output from output/{ticker}.json,
 calculates all metrics defined in formulas.md, and writes enriched JSON to
 dashboard/data/{ticker}.json.
 

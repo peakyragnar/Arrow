@@ -17,7 +17,7 @@ import html as html_module
 import json
 import os
 import re
-from extract import DATA_DIR
+DATA_DIR = "data/filings"
 
 
 # ── R&D Capitalization ─────────────────────────────────────────────────────────

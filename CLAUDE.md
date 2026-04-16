@@ -1,228 +1,83 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Arrow is a financial data extraction and synthesis system. It extracts structured financial data from SEC filings using AI, computes analytical metrics, and will ultimately generate forward estimates with reasoning.
 
-## Project Overview
+## Principles
 
-Arrow is a financial data extraction and synthesis system. It collects structured financial data, qualitative text, and market data, then uses a frontier model (Claude) to generate forward revenue/earnings estimates with reasoning.
+- **The AI replaces the analyst.** It reads the filing, extracts the three financial statements, discovers every formula relationship, and verifies the math — the same work a human analyst does manually. It is not given a template of fields to fill in.
+- **Math proves correctness.** Financial statements are a closed system. Every subtotal must tie to its components, every cross-statement relationship must hold. If the math passes, the extraction is proven correct. No golden eval needed for the three statements — the math IS the eval.
+- **Nothing unaccounted for.** Every XBRL-tagged fact must be placed — either on the statement face or identified as hidden/aggregated. The AI cannot skip items.
+- **Extract as reported, normalize downstream.** Stage 1 extracts exactly what the filing says. Stage 2 does the analytical work (decomposing aggregated items, normalizing labels across filings). Stage 3 is pure arithmetic.
+- **No forced mappings.** The AI is never given a list of fields to look for. It reads the data and figures out what's there. This applies to financial statements, segments, and all disaggregation data.
+- **Per-filing extractions are training data.** Every extraction is stored immutably for training a post-trained model to replace API costs.
 
-**Current status**: Layer 1 (financial data extraction) is built and working for NVIDIA, Dell, Palantir, Palo Alto Networks, Union Pacific, Freeport-McMoRan, LyondellBasell, Symbotic, and Microsoft. Metric calculations and a web dashboard are built on top. Layers 2-4 are planned but not yet implemented. Storage is JSON files per company for now; PostgreSQL later.
-
-## Architecture: 4 Layers
-
-**Layer 1 — Financial Data Extraction**: Extracts quarterly component values (revenue, COGS, operating income, etc.) from SEC XBRL data. Uses a master script for universal extraction plus per-company scripts for company-specific quirks. Common fixes get promoted from per-company scripts into the master script over time. Evaluated against a gold audit spreadsheet.
-
-**Layer 2 — Qualitative Data**: Three sub-pipelines with trained models for curation:
-- **2A Filing text**: MD&A, risk factors from XBRL/HTML
-- **2B Earnings transcripts**: From SEC 8-K exhibits or transcript APIs, strip boilerplate, keep substantive commentary
-- **2C News**: From news APIs, classify materiality, filter signal from noise
-
-**Layer 3 — Market Data**: Stock prices (OHLCV) from price APIs (Polygon, Yahoo Finance). Straightforward ingestion, no AI.
-
-**Layer 4 — Synthesis**: Frontier model takes all Layer 1-3 data, formats into a prompt, generates forward estimates with reasoning.
-
-## Pipeline Commands
+## Pipeline
 
 ```bash
-# 1. Download filings from SEC EDGAR (XBRL + HTML)
+# 1. Download filings from SEC EDGAR
 python3 fetch.py --cik 0001045810 --ticker NVDA
 
-# 2. Extract 24 quarterly components from local XBRL files
-python3 extract.py --ticker NVDA
+# 2. Stage 1: AI extracts + verifies IS/BS/CF/segments per filing
+python3 ai_extract/analyze_statement.py --ticker NVDA --accession <ACCESSION> --statement all
 
-# 3. Compute R&D capitalization + employee count
-python3 compute.py --ticker NVDA
+# 3. Stage 2: AI normalizes labels + decomposes aggregated items across filings
+python3 ai_extract/ai_formula.py --ticker NVDA
 
-# 4. Evaluate against golden data
-python3 eval.py --ticker NVDA --verbose
+# 4. Stage 3: Pure arithmetic — YTD to quarterly derivation
+python3 ai_extract/ai_formula.py --ticker NVDA --from-mapped
 
 # 5. Calculate financial metrics (ROIC, growth, margins, etc.)
 python3 calculate.py --ticker NVDA
-python3 calculate.py --all
 
-# 6. Serve dashboard (then open http://localhost:8080)
+# 6. Serve dashboard
 python3 -m http.server 8080 --directory dashboard
 ```
 
-`fetch.py` downloads 6 fiscal years of filings (~20-24 quarters). `extract.py` outputs all derived quarters by default. `compute.py` uses the last 20 extracted quarters for R&D capitalization (20-quarter amortization schedule with actual quarterly R&D, no annual/4 estimates). Company scripts can override bad R&D quarters via `fix_rd_series()`.
-
-## File Structure
-
-- `fetch.py` — Downloads 10-Q/10-K filings (XBRL XML + iXBRL HTML) from SEC EDGAR
-- `extract.py` — Parses local XBRL instance documents, extracts 24 components per quarter
-- `compute.py` — Post-extraction: R&D capitalization (20-quarter schedule) and employee count from 10-K HTML
-- `eval.py` — Compares extracted data against golden eval (28 fields per quarter)
-- `calculate.py` — Computes 20+ financial metrics (ROIC, growth, margins, etc.) from extracted data
-- `dashboard/index.html` — Single-file web dashboard (HTML + JS + Chart.js) for viewing metrics
-- `dashboard/data/` — Generated metric JSON files (gitignored, regenerate with `calculate.py --all`)
-- `companies/{ticker}.py` — Per-company concept overrides and post-processing
-- `golden/{ticker}.json` — Golden eval data (created from confirmed extraction output once accuracy is verified against `golden_eval.xlsx`)
-- `golden_eval.xlsx` — Source of truth for evaluation (manually verified data, strict OOXML format — requires custom parser, openpyxl cannot read it)
-- `extraction_logic.md` — Master extraction logic: fiscal year detection, fetch/output windows, derivation, restatements
-- `company_specific_types.md` — Catalog of per-company issue types and fix patterns
-- `formulas.md` — Canonical metric dictionary (ROIC, reinvestment rate, etc.)
-- `rd_capitalization_reference.md` — R&D amortization schedule formula reference
-- `ai_extract/` — Experimental AI-powered extraction (see AI Extraction Framework below). Fully isolated from the core deterministic pipeline.
-- `gemini-extract-design.md` — Design document for XBRL extraction architecture (taxonomy resolution, linkbase traversal, prompt design)
-- `data/filings/{TICKER}/{ACCESSION}/` — Downloaded filings (gitignored)
-- `output/{ticker}.json` — Extraction output (gitignored)
-
-## Extraction Details
-
-See `extraction_logic.md` for the full extraction logic: XBRL parsing, DEI-based fiscal year detection, context classification, quarterly derivation, R&D capitalization (20-quarter amortization using actual quarterly data), restatement overrides, stock split handling, employee count extraction, and output filtering.
-
-See `company_specific_types.md` for the catalog of per-company issue types and fix patterns (alternate concepts, dimensioned contexts, DEI tagging errors, restatements, spurious XBRL tags, CF line item breakouts, bad R&D quarters, etc.).
-
-## Evaluation
-
-Golden eval (`golden_eval.xlsx`) contains manually verified data. Eval checks 28 fields per quarter:
-- 24 extracted components (revenue, COGS, operating income, R&D, tax, pretax income, net income, interest expense, equity, short/long-term debt, lease liabilities, cash, short-term investments, AR, inventory, AP, total assets, CFO, capex, D&A, acquisitions, SBC, diluted shares)
-- 3 R&D capitalization fields (amortization, asset, OI adjustment)
-- 1 employee count
-
-"Close" match = within 0.1%, typically $1M from Q4 YTD rounding. All companies currently at 0 mismatches. Run `python3 eval.py --ticker <TICKER> --verbose` for live results.
-
-**Golden eval source**: `golden_eval.xlsx` has three tabs: `manual_audit_entry_v1` (the 24 extracted components + employee count), `researchanddevelopment` (R&D capitalization inputs), and `restatements`. The spreadsheet uses strict OOXML format — openpyxl cannot read it, requires a custom XML parser (see `eval.py` pattern). Golden JSON files (`golden/{ticker}.json`) are created from extracted data once extraction accuracy is confirmed, not parsed from the spreadsheet.
-
-**Golden eval window vs extraction output**: The golden eval covers an arbitrary 12-quarter window per company (chosen during manual verification). This is a validation window, not an output constraint. `extract.py` outputs **all** derived quarters from downloaded filings — the eval compares only the overlapping quarters. More extraction output is better: downstream consumers (calculate.py, dashboard, future Layer 4 synthesis) benefit from longer history (TTM needs 4 quarters, YoY needs 8, ROIIC needs more). Once all 20 target companies are validated, the golden eval becomes a regression test — new filings get extracted automatically without golden data, and the eval proves the extraction logic hasn't regressed on known-good data.
-
-## Adding a New Company
-
-1. `fetch.py --cik <CIK> --ticker <TICKER>` — download filings
-2. `extract.py --ticker <TICKER>` — run master extraction
-3. `compute.py --ticker <TICKER>` — compute R&D capitalization + employee count
-4. Compare extraction output against `golden_eval.xlsx` manually (parse the spreadsheet with the custom XML parser)
-5. Fix mismatches — check `company_specific_types.md` for known issue patterns. Add `companies/{ticker}.py` if needed.
-6. For R&D: build the 20-quarter R&D tab in the spreadsheet, verify amort/asset/OI match compute.py output, copy totals to the main eval tab.
-7. Once all fields match: create `golden/{ticker}.json` from the confirmed extraction output, run `eval.py --ticker <TICKER> --verbose` to confirm 0 mismatches.
-
-## Financial Metrics (calculate.py)
-
-Reads `output/{ticker}.json`, computes all metrics from `formulas.md`, writes enriched JSON to `dashboard/data/{ticker}.json`. Metrics include ROIC, ROIIC, reinvestment rate, revenue/gross profit growth, margins, cash quality ratios, CCC, net debt, interest coverage, and more. See `formulas.md` for the full canonical metric dictionary.
-
-**Stock split normalization**: Diluted share counts in extraction output are stored as-reported (pre-split for historical periods). `calculate.py` detects splits by looking for >=1.5x (forward) or <=0.67x (reverse) jumps between adjacent quarters, then normalizes all values to the most recent basis in a `diluted_shares_split_adjusted_q` field. Raw extraction data is never modified. This was a deliberate design decision — keep extraction faithful to filings, normalize in the calculations layer.
-
-**Metric availability**: TTM metrics need 4 quarters of history, YoY metrics need 8. With 6 fiscal years of fetched filings, all derived quarters are available for metric computation. The more history, the earlier full metrics become available.
-
-## Dashboard
-
-Single-file HTML app (`dashboard/index.html`) with Chart.js. Company selector, metrics table grouped by section, click any row to chart it over time. Served via `python3 -m http.server 8080 --directory dashboard`. The `dashboard/data/` directory is gitignored — run `calculate.py --all` to regenerate after a fresh clone.
-
-## Key Principles
-
-- Deterministic code owns: fetching, parsing, period math, storage, lineage
-- Trained models own: qualitative curation (text extraction, transcript filtering, news classification)
-- Frontier model owns: synthesis, forward estimation, thesis generation
-- Per-company work is unavoidable for financial extraction — capture it and reuse it
-- Master script concept lists should include every standard US-GAAP concept for a line item. If it's a standard concept for the same component, it goes in master — not in a company override. Company scripts are for truly bespoke issues (dimensioned contexts, sign flips, summation quirks). The goal is for company #7 through #100 to work without per-company scripts wherever possible.
-- Don't trust AI output without verified inputs — Layers 1-3 exist to give the frontier model data you trust
-- Measure everything — gold audit for financials, field-by-field scoring for extraction models
-
-## AI Extraction Framework
-
-**Status: Testing. Fully isolated in `ai_extract/`. Must NEVER modify or impact the core deterministic pipeline (`extract.py`, `compute.py`, `eval.py`, `calculate.py`, `companies/`, `golden/`, `output/`).**
-
-AI-powered extraction replaces per-company scripts and XBRL concept mappings. A frontier model reads the full filing and extracts all three financial statements. The model is stateless — it extracts exactly what the filing says. All merging, restatement tracking, and analytical logic is handled by deterministic code downstream.
-
-**Extraction method**: `analyze_statement.py` calls the Anthropic API. The AI extracts all three statements, then loops on verification until every component sum matches the filing's reported subtotals — or times out with a failure log. The Python code does not validate or fix anything — the AI must reconcile before outputting.
-
-### Three-Stage Pipeline
-
-**Stage 1 — Extract and Verify** (`analyze_statement.py`)
-- The AI reads full filing HTML + XBRL facts and extracts every line item from IS, BS, CF with values, XBRL concept mappings, hierarchy, formulas, and cross-statement checks.
-- Also extracts calculation components (operating leases, D&A breakdown, pure AP/AR, capex, acquisitions, short-term debt, SBC, gross interest expense, tax rate, inventory breakdown).
-- **The AI must reconcile before outputting.** Every component sum must match the filing's reported subtotals (e.g., sum of current asset items must equal reported Total Current Assets). If any check fails, the AI loops — re-examines the filing, finds missing items, fixes values. It does not output until all checks pass, or times out with a failure log.
-- Extracts ALL periods reported — current and comparatives.
-- Extracts segment data: revenue by business segment, geography, product/service, and customer concentration. Segment revenue totals must tie to IS total revenue.
-- **Outputs two things:**
-  - Per-filing JSON (`q1_fy26_10q.json`) — immutable, exact extraction, training data for post-trained model.
-  - `mapped.json` — same data organized by period. Later filings overwrite earlier ones for the same period (handles amendments, restated comparatives).
-
-**Stage 2 — Standardized Field Mapping** (`ai_formula.py` → `ai_extract/{TICKER}/formula_mapped.json`)
-- Reads per-filing JSONs (each filing has IS + BS + CF + calculation_components together).
-- Maps ALL line items to ~70 standardized field names covering complete IS, BS, and CF.
-- Resolves 9 ambiguities: gross vs net interest expense, pure AP vs combined, operating lease total (current hidden in accrued), short-term debt (hidden or zero), consolidated NI vs to-common, parent equity vs incl NCI, tax benefit handling, segmented capex, multiple acquisition lines.
-- Uses CF PRESENTATION signs (not XBRL raw signs). Validates every formula: IS subtotals, BS balance, CFO/CFI/CFF component sums, cross-statement NI.
-- **Maps all fields, not just analytical ones.** Label normalization is essential — the same item can have 7+ label variants across filings (e.g., gains/losses on investments). Without consistent field names, YTD-to-quarterly subtraction in Stage 3 produces wrong values.
-- Cost: ~$0.13/filing.
-
-**Stage 3 — Quarterly Derivation** (`ai_formula.py --from-mapped` → `ai_extract/{TICKER}/quarterly.json`)
-- Pure arithmetic. No AI, no pattern matching. Takes all ~70 fields from `formula_mapped.json` and derives standalone quarterly values:
-  - Q1 10-Q: values are already quarterly, use as-is.
-  - Q2/Q3 10-Q: IS fields are quarterly (use as-is). CF fields are YTD — subtract prior period's YTD. Works correctly because Stage 2 normalized all labels.
-  - 10-K: IS and CF fields are annual — subtract Q1+Q2+Q3 to get Q4. Shares/EPS use annual value directly (weighted averages, not derived by subtraction).
-  - BS fields: point-in-time snapshots, no derivation.
-- Smart merge: when multiple filings report the same period, only overwrites if the value is **different** (restatement). Same or absent values preserved. Changes logged in `restatements` array.
-- `quarterly.json` is the single source of truth for all downstream consumers — `calculate.py`, the dashboard, and the verification CSV.
-
-### How It Works
-
-1. **Download**: `fetch.py` downloads the filing (shared with deterministic pipeline). Downloads 10-Q, 10-K, 10-Q/A, and 10-K/A filings.
-2. **Prepare** (inline in `analyze_statement.py`): Clean HTML (~57% size reduction), parse XBRL facts into structured data.
-3. **Extract + Verify**: The AI reads the full filing, extracts all three statements, then verifies every component sum against the filing's reported subtotals. If any check fails, the AI loops — finds missing items, fixes values/signs. CF sign corrections from retries are applied back to `line_items` (not just stored in retry logs). Writes per-filing JSON (training data with correction logs) and updates `mapped.json` (running record by period).
-4. **Standardized mapping** (`ai_formula.py`): Second AI pass reads per-filing JSONs and maps ALL line items to ~70 standardized field names. Resolves ambiguities, validates formulas, normalizes CF signs. Label normalization is essential — without it, YTD-to-quarterly subtraction fails due to label variants across filings. Writes `formula_mapped.json`.
-5. **Derive** (`ai_formula.py --from-mapped`): Pure arithmetic derives standalone quarterly values. Writes `quarterly.json`.
-
-### Verification Model
-
-Financial statements are a closed system. The math proves correctness. **The AI must verify every component sum against the filing's reported subtotals before outputting.**
-
-- IS: Revenue - COGS = Gross Profit, flows down to Net Income. All subtotals verified.
-- BS: Assets = Liabilities + Equity. All component sums verified.
-- CF: All CFO components summed with `+` = CFO total. Same for CFI and CFF. CFO + CFI + CFF = Change in Cash. Beginning + Change = Ending.
-- Cross-statement: Net income, cash, and retained earnings must tie across all three.
-
-**CF sign convention**: All CF values use presentation sign (positive = source of cash, negative = use of cash). All CF formulas use `+` only — signs are in the values. The XBRL raw value may differ from the presentation sign; always use the presentation sign. This was a source of bugs in the legacy `verify_formulas()` Python code, which stored inconsistent signs and had duplicate label collisions.
-
-If all formulas pass and cross-statement checks pass, the extraction is mathematically proven correct. No golden eval needed for the three financial statements — the math IS the eval.
-
-### Amendments and Restatements
-
-The Stage 1 model doesn't need to understand amendments. It extracts what the filing says — period. `mapped.json` handles the statefulness:
-
-- **Regular 10-K with restated comparatives** (e.g., Dell restates prior years after a disposition): The model extracts all columns including restated values. `mapped.json` updates those periods with the restated values.
-- **10-K/A or 10-Q/A** (explicit amendment filing): The model extracts the corrected statements. `mapped.json` updates the affected periods.
-- **Stock splits**: Newer filings restate prior-period share counts to post-split basis. The model extracts the restated values. `mapped.json` records the change.
-
-In all cases: Stage 1 is stateless, `mapped.json` is stateful.
-
-### File Structure
+## File Map
 
 ```
+fetch.py                    — Downloads 10-Q/10-K/amendments from SEC EDGAR
+calculate.py                — Computes metrics from quarterly.json, writes dashboard data
+formulas.md                 — Canonical metric dictionary (ROIC, margins, growth, etc.)
+rd_capitalization_reference.md — R&D amortization schedule formula reference
+golden_eval.xlsx            — Manually verified financial data (source of truth)
+dashboard/                  — Single-file HTML app (Chart.js), served locally
+
 ai_extract/
-  analyze_statement.py    — Stage 1: extraction with self-verifying loop, CF sign correction writeback, writes per-filing JSON + updates mapped.json
-  ai_formula.py           — Stage 2: standardized field mapping (~70 fields) + Stage 3: quarterly derivation
-  parse_xbrl.py           — Deterministic XBRL fact parser (used by analyze_statement.py)
-  ai_extraction_flow.md   — Design doc: the three-stage pipeline
-  view_extraction.py      — Renders extraction JSON as readable table
-  export_for_review.py    — Exports extraction to CSV for human review
+  analyze_statement.py      — Stage 1: extraction + self-verification loop
+  ai_formula.py             — Stage 2: analytical mapping + Stage 3: quarterly derivation
+  parse_xbrl.py             — Deterministic XBRL fact parser
+  ai_extraction_flow.md     — Detailed pipeline design doc
   {TICKER}/
-    q1_fy26_10q.json      — Stage 1: per-filing extraction (immutable, training data)
-    q2_fy26_10q.json
-    q3_fy26_10q.json
-    q4_fy26_10k.json
-    mapped.json            — Stage 1: all periods organized by period, updated on amendments
-    formula_mapped.json    — Stage 2: ~70 standardized fields per filing
-    quarterly.json         — Stage 3: ~70 fields per standalone quarter (single source of truth)
+    q*_fy*_10*.json         — Per-filing extractions (immutable, training data)
+    mapped.json             — All periods by period, handles amendments/restatements
+    formula_mapped.json     — Normalized fields per filing
+    quarterly.json          — Standalone quarterly values (single source of truth)
+
+deterministic-flow/         — Archived deterministic pipeline (extract.py, eval.py, etc.)
+data/filings/{TICKER}/      — Downloaded filings (gitignored)
 ```
 
-### Cost
+## Three-Stage Pipeline
 
-- **API method**: ~$1.70-2.90 per filing (Stage 1) + ~$0.10 (Stage 2) with Sonnet.
-- Post-trained open source model: target is near-zero marginal cost at scale.
+See `ai_extract/ai_extraction_flow.md` for the full design. Summary:
 
-### Tested Results
+**Stage 1** (`analyze_statement.py`): AI reads the full filing, extracts every line item from IS/BS/CF in presentation order, discovers all formula relationships, verifies all math, extracts all segment/disaggregation data. Loops on failure until everything ties. Outputs per-filing JSON + updates mapped.json.
 
-- NVDA FY24-FY26 (12 filings, 12 quarters): **264/264 fields match golden eval** (final quarterly.json vs deterministic pipeline). All Q1-Q4 derivations correct. No lookup tables or per-company code needed.
-- FCX Q1 CY24: 93/93 XBRL matches, 24/24 fields match deterministic extraction exactly for current period.
-- **CF sign inversion (fixed)**: Stage 1 AI sometimes used XBRL raw signs instead of CF presentation signs. The Python verification detects this (components don't sum to section total), triggers a retry, and the corrected values are now applied back to `cash_flow.line_items`. Previously corrections were stored in `cfo_retry` but never applied — fixed by adding writeback logic after verified retries.
-- **Label variation across filings (fixed)**: Same line item has different labels across filings (e.g., 7 variants of gains/losses on investments). Stage 2 normalizes all labels to consistent field names. Attempting to match raw labels directly for YTD subtraction produces wrong quarterly values.
-- **Known issue**: The `verify_formulas()` code in `analyze_statement.py` has legacy bugs — duplicate label collisions and text-based formula evaluation issues. The retry loop and Stage 2 normalization work around these. `verify_formulas()` should be rewritten.
+**Stage 2** (`ai_formula.py`): AI reads extractions across filings. Decomposes aggregated items (e.g., operating leases buried in accrued liabilities — found via XBRL tags not on statement face). Normalizes labels across filings so the same item has one consistent name. Verifies no double counting.
 
-### Relationship to Core Pipeline
+**Stage 3** (`ai_formula.py --from-mapped`): Pure arithmetic. Q1 pass-through, Q2/Q3 CF YTD subtraction, Q4 = annual minus Q1+Q2+Q3. BS snapshots, no derivation. Segments follow same logic as IS fields.
 
-The AI extraction is an alternative path to the same output. Both coexist:
-- **Deterministic pipeline**: Proven, free to run, requires per-company scripts and manual golden eval. 24 fields per quarter.
-- **AI extraction (API)**: ~$2/filing, no per-company scripts needed, self-verifying extraction loop. ~70 fields per quarter. Training data for post-trained model.
-- During development, the 24-field overlap between both pipelines is compared to validate accuracy.
-- Long-term: the AI extraction replaces the deterministic pipeline once validated across all target companies. The post-trained open source model replaces Sonnet to eliminate per-filing costs.
+## Architecture: 4 Layers
+
+- **Layer 1 — Financial Data**: AI extraction from SEC XBRL filings (built, validated for NVDA)
+- **Layer 2 — Qualitative Data**: MD&A, earnings transcripts, news (planned)
+- **Layer 3 — Market Data**: Stock prices from price APIs (planned)
+- **Layer 4 — Synthesis**: Frontier model generates forward estimates (planned)
+
+## Current Status
+
+- NVDA: 12 filings extracted, 12 quarters, 264/264 fields match golden eval
+- Stage 1 segment extraction working (Q1+Q2 FY26 have segments, 10 older filings pending re-run)
+- Deterministic pipeline archived in `deterministic-flow/` (9 companies validated, 0 mismatches)
+- `calculate.py` reads from deterministic output — switchover to `quarterly.json` pending
