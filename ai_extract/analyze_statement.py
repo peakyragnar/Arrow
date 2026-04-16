@@ -34,6 +34,101 @@ def clean_html(html):
     return cleaned
 
 
+def extract_statement_html(html, presentation):
+    """Extract just the financial statement sections from the filing HTML.
+
+    Uses ix:nonFraction tag positions to find contiguous clusters, then
+    matches clusters to statements using presentation linkbase concepts.
+    Returns stripped HTML containing only the three financial statements.
+    """
+    import re
+
+    # Find all ix:nonFraction tags and their positions
+    tags = [(m.start(), m.group(1))
+            for m in re.finditer(r'<ix:nonFraction[^>]*name="([^"]+)"', html)]
+    if not tags:
+        return html  # fallback to full HTML
+
+    # Group into clusters (gap > 5000 chars = new cluster)
+    clusters = []
+    current = [tags[0]]
+    for i in range(1, len(tags)):
+        if tags[i][0] - tags[i-1][0] > 5000:
+            clusters.append(current)
+            current = [tags[i]]
+        else:
+            current.append(tags[i])
+    clusters.append(current)
+
+    # Get statement-face concepts from presentation linkbase
+    stmt_concepts = {}
+    stmt_keywords = {
+        'IS': 'StatementsofIncome',
+        'BS': 'BalanceSheets',
+        'CF': 'StatementsofCashFlows',
+    }
+    for label, keyword in stmt_keywords.items():
+        for section in (presentation or []):
+            if keyword in section['role']:
+                concepts = set()
+                for entry in section['structure']:
+                    for child in entry['children']:
+                        concepts.add(child)
+                stmt_concepts[label] = concepts
+                break
+
+    # Score each cluster by overlap with statement concepts
+    stmt_clusters = []
+    for cluster in clusters:
+        cluster_concepts = set(t[1] for t in cluster)
+        for label, concepts in stmt_concepts.items():
+            overlap = len(cluster_concepts & concepts)
+            if overlap >= 3:  # at least 3 matching concepts
+                start = cluster[0][0]
+                end = cluster[-1][0]
+                # Expand to include surrounding HTML (table boundaries)
+                # Go back to find the start of the containing table/div
+                search_start = max(0, start - 2000)
+                search_end = min(len(html), end + 2000)
+                stmt_clusters.append((label, search_start, search_end))
+                break
+
+    if not stmt_clusters:
+        return html  # fallback
+
+    # Extract the HTML sections
+    sections = []
+    for label, start, end in sorted(stmt_clusters, key=lambda x: x[1]):
+        section_html = html[start:end]
+        sections.append(f"<!-- {label} STATEMENT -->\n{section_html}")
+
+    return '\n\n'.join(sections)
+
+
+def extract_targeted_html(html, concepts_needed):
+    """Extract HTML sections containing specific XBRL concepts for retry.
+
+    Given a list of concept names that need resolution, finds the HTML
+    sections containing those concepts' ix:nonFraction tags.
+    """
+    import re
+
+    sections = []
+    for concept in concepts_needed:
+        # Find all occurrences of this concept in the HTML
+        pattern = rf'<ix:nonFraction[^>]*name="{re.escape(concept)}"'
+        matches = list(re.finditer(pattern, html))
+        if matches:
+            # Extract surrounding context (the table containing this tag)
+            pos = matches[0].start()
+            start = max(0, pos - 3000)
+            end = min(len(html), pos + 3000)
+            section = html[start:end]
+            sections.append(f"<!-- Context for {concept} -->\n{section}")
+
+    return '\n\n'.join(sections) if sections else None
+
+
 def format_linkbase_for_prompt(calculations, presentation, definitions):
     """Format parsed linkbase data into readable prompt text."""
     sections = []
@@ -498,6 +593,11 @@ def main():
     html_cleaned = clean_html(html_content)
     print(f"  Full HTML: {len(html_content):,} chars -> cleaned: {len(html_cleaned):,} chars (~{len(html_cleaned)//4:,} tokens)")
 
+    # Extract just the financial statement sections for the first pass
+    html_statements = extract_statement_html(html_content, parsed.get('presentation', []))
+    html_statements = clean_html(html_statements)
+    print(f"  Statement HTML: {len(html_statements):,} chars (~{len(html_statements)//4:,} tokens)")
+
     # Step 3: Filter XBRL facts
     xbrl_facts = [f for f in parsed['facts'] if not f['dimensioned']]
     print(f"  {len(xbrl_facts)} undimensioned XBRL facts")
@@ -518,8 +618,8 @@ def main():
     if definitions:
         print(f"  {len(definitions)} definition sections")
 
-    # Step 4: Build prompt and call model
-    prompt = build_prompt(html_cleaned, xbrl_facts, args.statement, meta, dim_facts,
+    # Step 4: Build prompt and call model (use stripped HTML for first pass)
+    prompt = build_prompt(html_statements, xbrl_facts, args.statement, meta, dim_facts,
                           calculations, presentation, definitions)
     print(f"\nTotal prompt size: ~{len(prompt)//4} tokens")
     print(f"Sending to {args.model}...\n")
