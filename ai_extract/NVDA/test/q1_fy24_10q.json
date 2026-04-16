@@ -12,7 +12,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Revenue with ix:nonFraction tag name us-gaap:Revenues for contexts i22d2c06eca1a447bae57634d686ce3f8_D20230130-20230430 and ia5206106403d43e6b74ab17bb4a402ce_D20220131-20220501"
+          "mapping_reason": "HTML table row labeled Revenue in Condensed Consolidated Statements of Income, tagged with ix:nonFraction name us-gaap:Revenues"
         },
         {
           "label": "Cost of revenue",
@@ -24,7 +24,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Cost of revenue with ix:nonFraction tag name us-gaap:CostOfRevenue"
+          "mapping_reason": "HTML table row labeled Cost of revenue, tagged with ix:nonFraction name us-gaap:CostOfRevenue"
         },
         {
           "label": "Gross profit",
@@ -36,7 +36,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Gross profit with ix:nonFraction tag name us-gaap:GrossProfit"
+          "mapping_reason": "HTML table row labeled Gross profit, tagged with ix:nonFraction name us-gaap:GrossProfit"
         },
         {
           "label": "Research and development",
@@ -48,7 +48,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Research and development with ix:nonFraction tag name us-gaap:ResearchAndDevelopmentExpense"
+          "mapping_reason": "HTML table row labeled Research and development under Operating expenses, tagged with ix:nonFraction name us-gaap:ResearchAndDevelopmentExpense"
         },
         {
           "label": "Sales, general and administrative",
@@ -60,7 +60,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Sales, general and administrative with ix:nonFraction tag name us-gaap:SellingGeneralAndAdministrativeExpense"
+          "mapping_reason": "HTML table row labeled Sales, general and administrative, tagged with ix:nonFraction name us-gaap:SellingGeneralAndAdministrativeExpense"
         },
         {
           "label": "Acquisition termination cost",
@@ -72,7 +72,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Acquisition termination cost with ix:nonFraction tag name nvda:BusinessCombinationAdvancedConsiderationWrittenOff; Q1 FY2024 shows zero via ixt:fixed-zero format"
+          "mapping_reason": "HTML table row labeled Acquisition termination cost, tagged with ix:nonFraction name nvda:BusinessCombinationAdvancedConsiderationWrittenOff"
         },
         {
           "label": "Total operating expenses",
@@ -84,7 +84,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Total operating expenses with ix:nonFraction tag name us-gaap:OperatingExpenses"
+          "mapping_reason": "HTML table row labeled Total operating expenses, tagged with ix:nonFraction name us-gaap:OperatingExpenses"
         },
         {
           "label": "Income from operations",
@@ -96,7 +96,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Income from operations with ix:nonFraction tag name us-gaap:OperatingIncomeLoss"
+          "mapping_reason": "HTML table row labeled Income from operations, tagged with ix:nonFraction name us-gaap:OperatingIncomeLoss"
         },
         {
           "label": "Interest income",
@@ -108,7 +108,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Interest income with ix:nonFraction tag name us-gaap:InvestmentIncomeInterest"
+          "mapping_reason": "HTML table row labeled Interest income, tagged with ix:nonFraction name us-gaap:InvestmentIncomeInterest"
         },
         {
           "label": "Interest expense",
@@ -120,7 +120,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Interest expense with ix:nonFraction tag name us-gaap:InterestExpense; displayed in parentheses indicating expense"
+          "mapping_reason": "HTML table row labeled Interest expense shown as (66) and (68), tagged with ix:nonFraction name us-gaap:InterestExpense"
         },
         {
           "label": "Other, net",
@@ -132,7 +132,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Other, net with ix:nonFraction tag name us-gaap:OtherNonoperatingIncomeExpense with sign=-1 attribute indicating negative value"
+          "mapping_reason": "HTML table row labeled Other, net shown as (15) and (13), tagged with ix:nonFraction name us-gaap:OtherNonoperatingIncomeExpense with sign=-1"
         },
         {
           "label": "Other income (expense), net",
@@ -144,7 +144,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Other income (expense), net with ix:nonFraction tag name us-gaap:NonoperatingIncomeExpense; Q1 FY2023 displayed in parentheses indicating negative with sign=-1"
+          "mapping_reason": "HTML table row labeled Other income (expense), net, tagged with ix:nonFraction name us-gaap:NonoperatingIncomeExpense"
         },
         {
           "label": "Income before income tax",
@@ -156,7 +156,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Income before income tax with ix:nonFraction tag name us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest"
+          "mapping_reason": "HTML table row labeled Income before income tax, tagged with ix:nonFraction name us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest"
         },
         {
           "label": "Income tax expense",
@@ -168,7 +168,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Income tax expense with ix:nonFraction tag name us-gaap:IncomeTaxExpenseBenefit"
+          "mapping_reason": "HTML table row labeled Income tax expense, tagged with ix:nonFraction name us-gaap:IncomeTaxExpenseBenefit"
         },
         {
           "label": "Net income",
@@ -180,10 +180,10 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Net income with ix:nonFraction tag name us-gaap:NetIncomeLoss"
+          "mapping_reason": "HTML table row labeled Net income, tagged with ix:nonFraction name us-gaap:NetIncomeLoss"
         },
         {
-          "label": "Basic net income per share",
+          "label": "Basic EPS",
           "indent_level": 1,
           "xbrl_concept": "us-gaap:EarningsPerShareBasic",
           "values": {
@@ -192,10 +192,10 @@
           },
           "unit": "USD_per_share",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Basic under Net income per share with ix:nonFraction tag name us-gaap:EarningsPerShareBasic"
+          "mapping_reason": "HTML table row labeled Basic under Net income per share, tagged with ix:nonFraction name us-gaap:EarningsPerShareBasic"
         },
         {
-          "label": "Diluted net income per share",
+          "label": "Diluted EPS",
           "indent_level": 1,
           "xbrl_concept": "us-gaap:EarningsPerShareDiluted",
           "values": {
@@ -204,10 +204,10 @@
           },
           "unit": "USD_per_share",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Diluted under Net income per share with ix:nonFraction tag name us-gaap:EarningsPerShareDiluted"
+          "mapping_reason": "HTML table row labeled Diluted under Net income per share, tagged with ix:nonFraction name us-gaap:EarningsPerShareDiluted"
         },
         {
-          "label": "Basic weighted average shares",
+          "label": "Weighted average shares - Basic",
           "indent_level": 1,
           "xbrl_concept": "us-gaap:WeightedAverageNumberOfSharesOutstandingBasic",
           "values": {
@@ -216,10 +216,10 @@
           },
           "unit": "shares_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Basic under Weighted average shares used in per share computation with ix:nonFraction tag name us-gaap:WeightedAverageNumberOfSharesOutstandingBasic"
+          "mapping_reason": "HTML table row labeled Basic under Weighted average shares, tagged with ix:nonFraction name us-gaap:WeightedAverageNumberOfSharesOutstandingBasic"
         },
         {
-          "label": "Diluted weighted average shares",
+          "label": "Weighted average shares - Diluted",
           "indent_level": 1,
           "xbrl_concept": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
           "values": {
@@ -228,7 +228,7 @@
           },
           "unit": "shares_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML table row labeled Diluted under Weighted average shares used in per share computation with ix:nonFraction tag name us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding"
+          "mapping_reason": "HTML table row labeled Diluted under Weighted average shares, tagged with ix:nonFraction name us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding"
         }
       ],
       "formulas": [
@@ -297,76 +297,22 @@
       ],
       "xbrl_not_on_statement": [
         {
-          "concept": "us-gaap:OtherComprehensiveIncomeUnrealizedHoldingGainLossOnSecuritiesArisingDuringPeriodNetOfTax",
-          "values": {
-            "2023-01-30_2023-04-30": 17,
-            "2022-01-31_2022-05-01": -22
-          },
-          "period": "duration",
-          "classification": "Reported on Condensed Consolidated Statement of Comprehensive Income, not income statement"
-        },
-        {
-          "concept": "us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossBeforeReclassificationAfterTax",
-          "values": {
-            "2023-01-30_2023-04-30": -13,
-            "2022-01-31_2022-05-01": -29
-          },
-          "period": "duration",
-          "classification": "Reported on Condensed Consolidated Statement of Comprehensive Income"
-        },
-        {
-          "concept": "us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossReclassificationAfterTax",
-          "values": {
-            "2023-01-30_2023-04-30": 11,
-            "2022-01-31_2022-05-01": 2
-          },
-          "period": "duration",
-          "classification": "Reported on Condensed Consolidated Statement of Comprehensive Income"
-        },
-        {
-          "concept": "us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossAfterReclassificationAndTax",
-          "values": {
-            "2023-01-30_2023-04-30": -24,
-            "2022-01-31_2022-05-01": -31
-          },
-          "period": "duration",
-          "classification": "Reported on Condensed Consolidated Statement of Comprehensive Income"
-        },
-        {
-          "concept": "us-gaap:OtherComprehensiveIncomeLossNetOfTax",
-          "values": {
-            "2023-01-30_2023-04-30": -7,
-            "2022-01-31_2022-05-01": -53
-          },
-          "period": "duration",
-          "classification": "Reported on Condensed Consolidated Statement of Comprehensive Income"
-        },
-        {
-          "concept": "us-gaap:ComprehensiveIncomeNetOfTax",
-          "values": {
-            "2023-01-30_2023-04-30": 2036,
-            "2022-01-31_2022-05-01": 1565
-          },
-          "period": "duration",
-          "classification": "Reported on Condensed Consolidated Statement of Comprehensive Income"
-        },
-        {
           "concept": "us-gaap:WeightedAverageNumberDilutedSharesOutstandingAdjustment",
-          "values": {
+          "value": {
             "2023-01-30_2023-04-30": 20,
             "2022-01-31_2022-05-01": 31
           },
           "period": "duration",
-          "classification": "Disclosed in EPS note, not on face of income statement"
+          "classification": "Disclosed in EPS note (Note 5) as dilutive impact of outstanding equity awards, not on face of income statement"
         },
         {
           "concept": "us-gaap:AntidilutiveSecuritiesExcludedFromComputationOfEarningsPerShareAmount",
-          "values": {
+          "value": {
             "2023-01-30_2023-04-30": 4,
             "2022-01-31_2022-05-01": 3
           },
           "period": "duration",
-          "classification": "Disclosed in EPS note"
+          "classification": "Disclosed in EPS note (Note 5) as anti-dilutive equity awards excluded, not on face of income statement"
         }
       ]
     },
@@ -382,7 +328,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Cash and cash equivalents with ix:nonFraction tag name us-gaap:CashAndCashEquivalentsAtCarryingValue"
+          "mapping_reason": "HTML balance sheet row labeled Cash and cash equivalents, tagged with ix:nonFraction name us-gaap:CashAndCashEquivalentsAtCarryingValue"
         },
         {
           "label": "Marketable securities",
@@ -394,7 +340,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Marketable securities with ix:nonFraction tag name us-gaap:MarketableSecuritiesCurrent"
+          "mapping_reason": "HTML balance sheet row labeled Marketable securities, tagged with ix:nonFraction name us-gaap:MarketableSecuritiesCurrent"
         },
         {
           "label": "Accounts receivable, net",
@@ -406,7 +352,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Accounts receivable, net with ix:nonFraction tag name us-gaap:AccountsReceivableNetCurrent"
+          "mapping_reason": "HTML balance sheet row labeled Accounts receivable, net, tagged with ix:nonFraction name us-gaap:AccountsReceivableNetCurrent"
         },
         {
           "label": "Inventories",
@@ -418,7 +364,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Inventories with ix:nonFraction tag name us-gaap:InventoryNet"
+          "mapping_reason": "HTML balance sheet row labeled Inventories, tagged with ix:nonFraction name us-gaap:InventoryNet"
         },
         {
           "label": "Prepaid expenses and other current assets",
@@ -430,7 +376,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Prepaid expenses and other current assets with ix:nonFraction tag name us-gaap:PrepaidExpenseAndOtherAssetsCurrent"
+          "mapping_reason": "HTML balance sheet row labeled Prepaid expenses and other current assets, tagged with ix:nonFraction name us-gaap:PrepaidExpenseAndOtherAssetsCurrent"
         },
         {
           "label": "Total current assets",
@@ -442,7 +388,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Total current assets with ix:nonFraction tag name us-gaap:AssetsCurrent"
+          "mapping_reason": "HTML balance sheet row labeled Total current assets, tagged with ix:nonFraction name us-gaap:AssetsCurrent"
         },
         {
           "label": "Property and equipment, net",
@@ -454,7 +400,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Property and equipment, net with ix:nonFraction tag name us-gaap:PropertyPlantAndEquipmentNet"
+          "mapping_reason": "HTML balance sheet row labeled Property and equipment, net, tagged with ix:nonFraction name us-gaap:PropertyPlantAndEquipmentNet"
         },
         {
           "label": "Operating lease assets",
@@ -466,7 +412,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Operating lease assets with ix:nonFraction tag name us-gaap:OperatingLeaseRightOfUseAsset"
+          "mapping_reason": "HTML balance sheet row labeled Operating lease assets, tagged with ix:nonFraction name us-gaap:OperatingLeaseRightOfUseAsset"
         },
         {
           "label": "Goodwill",
@@ -478,7 +424,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Goodwill with ix:nonFraction tag name us-gaap:Goodwill"
+          "mapping_reason": "HTML balance sheet row labeled Goodwill, tagged with ix:nonFraction name us-gaap:Goodwill"
         },
         {
           "label": "Intangible assets, net",
@@ -490,7 +436,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Intangible assets, net with ix:nonFraction tag name us-gaap:IntangibleAssetsNetExcludingGoodwill"
+          "mapping_reason": "HTML balance sheet row labeled Intangible assets, net, tagged with ix:nonFraction name us-gaap:IntangibleAssetsNetExcludingGoodwill"
         },
         {
           "label": "Deferred income tax assets",
@@ -502,7 +448,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Deferred income tax assets with ix:nonFraction tag name us-gaap:DeferredIncomeTaxAssetsNet"
+          "mapping_reason": "HTML balance sheet row labeled Deferred income tax assets, tagged with ix:nonFraction name us-gaap:DeferredIncomeTaxAssetsNet"
         },
         {
           "label": "Other assets",
@@ -514,7 +460,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Other assets with ix:nonFraction tag name us-gaap:OtherAssetsNoncurrent"
+          "mapping_reason": "HTML balance sheet row labeled Other assets, tagged with ix:nonFraction name us-gaap:OtherAssetsNoncurrent"
         },
         {
           "label": "Total assets",
@@ -526,7 +472,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Total assets with ix:nonFraction tag name us-gaap:Assets"
+          "mapping_reason": "HTML balance sheet row labeled Total assets, tagged with ix:nonFraction name us-gaap:Assets"
         },
         {
           "label": "Accounts payable",
@@ -538,7 +484,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Accounts payable with ix:nonFraction tag name us-gaap:AccountsPayableCurrent"
+          "mapping_reason": "HTML balance sheet row labeled Accounts payable, tagged with ix:nonFraction name us-gaap:AccountsPayableCurrent"
         },
         {
           "label": "Accrued and other current liabilities",
@@ -550,7 +496,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Accrued and other current liabilities with ix:nonFraction tag name us-gaap:AccruedLiabilitiesCurrent"
+          "mapping_reason": "HTML balance sheet row labeled Accrued and other current liabilities, tagged with ix:nonFraction name us-gaap:AccruedLiabilitiesCurrent"
         },
         {
           "label": "Short-term debt",
@@ -562,7 +508,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Short-term debt with ix:nonFraction tag name us-gaap:DebtCurrent"
+          "mapping_reason": "HTML balance sheet row labeled Short-term debt, tagged with ix:nonFraction name us-gaap:DebtCurrent"
         },
         {
           "label": "Total current liabilities",
@@ -574,7 +520,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Total current liabilities with ix:nonFraction tag name us-gaap:LiabilitiesCurrent"
+          "mapping_reason": "HTML balance sheet row labeled Total current liabilities, tagged with ix:nonFraction name us-gaap:LiabilitiesCurrent"
         },
         {
           "label": "Long-term debt",
@@ -586,7 +532,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Long-term debt with ix:nonFraction tag name us-gaap:LongTermDebtNoncurrent"
+          "mapping_reason": "HTML balance sheet row labeled Long-term debt, tagged with ix:nonFraction name us-gaap:LongTermDebtNoncurrent"
         },
         {
           "label": "Long-term operating lease liabilities",
@@ -598,7 +544,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Long-term operating lease liabilities with ix:nonFraction tag name us-gaap:OperatingLeaseLiabilityNoncurrent"
+          "mapping_reason": "HTML balance sheet row labeled Long-term operating lease liabilities, tagged with ix:nonFraction name us-gaap:OperatingLeaseLiabilityNoncurrent"
         },
         {
           "label": "Other long-term liabilities",
@@ -610,7 +556,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Other long-term liabilities with ix:nonFraction tag name us-gaap:OtherLiabilitiesNoncurrent"
+          "mapping_reason": "HTML balance sheet row labeled Other long-term liabilities, tagged with ix:nonFraction name us-gaap:OtherLiabilitiesNoncurrent"
         },
         {
           "label": "Total liabilities",
@@ -622,19 +568,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Total liabilities with ix:nonFraction tag name us-gaap:Liabilities"
-        },
-        {
-          "label": "Commitments and contingencies",
-          "indent_level": 0,
-          "xbrl_concept": "us-gaap:CommitmentsAndContingencies",
-          "values": {
-            "2023-04-30": null,
-            "2023-01-29": null
-          },
-          "unit": "USD_millions",
-          "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Commitments and contingencies - see Note 13 with ix:nonFraction tag name us-gaap:CommitmentsAndContingencies; xsi:nil=true indicating no dollar amount"
+          "mapping_reason": "HTML balance sheet row labeled Total liabilities, tagged with ix:nonFraction name us-gaap:Liabilities"
         },
         {
           "label": "Preferred stock",
@@ -646,7 +580,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Preferred stock with ix:nonFraction tag name us-gaap:PreferredStockValueOutstanding showing zero via ixt:fixed-zero"
+          "mapping_reason": "HTML balance sheet row labeled Preferred stock shown as dash, tagged with ix:nonFraction name us-gaap:PreferredStockValueOutstanding with ixt:fixed-zero"
         },
         {
           "label": "Common stock",
@@ -658,7 +592,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Common stock with ix:nonFraction tag name us-gaap:CommonStockValue"
+          "mapping_reason": "HTML balance sheet row labeled Common stock, tagged with ix:nonFraction name us-gaap:CommonStockValue"
         },
         {
           "label": "Additional paid-in capital",
@@ -670,7 +604,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Additional paid-in capital with ix:nonFraction tag name us-gaap:AdditionalPaidInCapital"
+          "mapping_reason": "HTML balance sheet row labeled Additional paid-in capital, tagged with ix:nonFraction name us-gaap:AdditionalPaidInCapital"
         },
         {
           "label": "Accumulated other comprehensive loss",
@@ -682,7 +616,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Accumulated other comprehensive loss with ix:nonFraction tag name us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax with sign=-1"
+          "mapping_reason": "HTML balance sheet row labeled Accumulated other comprehensive loss shown as (50) and (43), tagged with ix:nonFraction name us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax with sign=-1"
         },
         {
           "label": "Retained earnings",
@@ -694,7 +628,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Retained earnings with ix:nonFraction tag name us-gaap:RetainedEarningsAccumulatedDeficit"
+          "mapping_reason": "HTML balance sheet row labeled Retained earnings, tagged with ix:nonFraction name us-gaap:RetainedEarningsAccumulatedDeficit"
         },
         {
           "label": "Total shareholders equity",
@@ -706,7 +640,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Total shareholders equity with ix:nonFraction tag name us-gaap:StockholdersEquity for context ic860290e6d25418da487e13716f03f31_I20230430"
+          "mapping_reason": "HTML balance sheet row labeled Total shareholders equity, tagged with ix:nonFraction name us-gaap:StockholdersEquity"
         },
         {
           "label": "Total liabilities and shareholders equity",
@@ -718,7 +652,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "HTML balance sheet row labeled Total liabilities and shareholders equity with ix:nonFraction tag name us-gaap:LiabilitiesAndStockholdersEquity"
+          "mapping_reason": "HTML balance sheet row labeled Total liabilities and shareholders equity, tagged with ix:nonFraction name us-gaap:LiabilitiesAndStockholdersEquity"
         }
       ],
       "formulas": [
@@ -787,7 +721,7 @@
           "result_label": "Total shareholders equity"
         },
         {
-          "formula": "Total liabilities and shareholders equity = Total liabilities + Commitments and contingencies + Total shareholders equity",
+          "formula": "Total liabilities and shareholders equity = Total liabilities + Total shareholders equity",
           "components": [
             "Total liabilities",
             "Total shareholders equity",
@@ -799,19 +733,914 @@
       ],
       "xbrl_not_on_statement": [
         {
-          "concept": "us-gaap:StockholdersEquity (by equity component)",
-          "values": "Various by component and date",
-          "period": "instant",
-          "classification": "Reported in Statement of Shareholders Equity, not balance sheet face"
-        },
-        {
-          "concept": "us-gaap:CommonStockSharesOutstanding",
-          "values": {
-            "2023-04-30": 2473,
-            "2023-01-29": 2466
+          "concept": "us-gaap:CommitmentsAndContingencies",
+          "value": {
+            "2023-04-30": null,
+            "2023-01-29": null
           },
           "period": "instant",
-          "classification": "Share count disclosed in shareholders equity statement, balance sheet shows dollar amount only"
+          "classification": "Commitments and contingencies line on balance sheet, nil value, not a numeric line item"
+        },
+        {
+          "concept": "nvda:AccruedCustomerProgramsCurrent",
+          "value": {
+            "2023-04-30": 1245000000.0,
+            "2023-01-29": 1196000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Customer program accruals \u2014 Disclosed in Note 10 Balance Sheet Components table under Accrued and Other Current Liabilities as Customer program accruals"
+        },
+        {
+          "concept": "nvda:AccruedLicensesAndRoyalties",
+          "value": {
+            "2023-04-30": 143000000.0,
+            "2023-01-29": 149000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Licenses and royalties \u2014 Disclosed in Note 10 Balance Sheet Components table under Accrued and Other Current Liabilities as Licenses and royalties"
+        },
+        {
+          "concept": "nvda:AggregateNumberOfSharesRepurchasedUnderStockRepurchasePlan",
+          "value": {
+            "2023-04-30": 1100000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 14 Shareholders Equity - Capital Return Program disclosure \u2014 Cumulative shares repurchased since inception of share repurchase program, disclosed in Note 14 Shareholders Equity narrative"
+        },
+        {
+          "concept": "nvda:AggregatedCostOfSharesRepurchased",
+          "value": {
+            "2023-04-30": 17120000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 14 Shareholders Equity - Capital Return Program disclosure \u2014 Total cumulative cost of shares repurchased since inception, disclosed in Note 14 Shareholders Equity narrative"
+        },
+        {
+          "concept": "nvda:ContractWithCustomerLiabilityAdditions",
+          "value": {
+            "2023-01-30 to 2023-04-30": 287000000.0,
+            "2022-01-31 to 2022-05-01": 212000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 10 Balance Sheet Components - Deferred Revenue rollforward table, line item Deferred revenue additions during the period \u2014 Part of the deferred revenue activity rollforward presented in Note 10 Balance Sheet Components"
+        },
+        {
+          "concept": "nvda:ContractWithCustomerLiabilityRevenueRecognizedIncludingOpeningBalance",
+          "value": {
+            "2023-01-30 to 2023-04-30": 262000000.0,
+            "2022-01-31 to 2022-05-01": 177000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 10 Balance Sheet Components - Deferred Revenue rollforward table, line item Revenue recognized during the period \u2014 Part of the deferred revenue activity rollforward presented in Note 10 Balance Sheet Components"
+        },
+        {
+          "concept": "nvda:ExcessInventoryPurchaseObligationsCurrent",
+          "value": {
+            "2023-04-30": 786000000.0,
+            "2023-01-29": 954000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Excess inventory purchase obligations \u2014 Disclosed in Note 10 Balance Sheet Components table under Accrued and Other Current Liabilities as Excess inventory purchase obligations"
+        },
+        {
+          "concept": "nvda:FiniteLivedIntangibleAssetsAmortizationExpenseAfterYearFour",
+          "value": {
+            "2023-04-30": 109000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 9 Amortizable Intangible Assets and Goodwill - Future amortization expense table, line item 2029 and thereafter \u2014 Disclosed as part of the future amortization expense schedule in Note 9 for fiscal year 2029 and thereafter"
+        },
+        {
+          "concept": "nvda:LesseeOperatingLeaseLeaseNotYetCommencedUndiscountedAmount",
+          "value": {
+            "2023-04-30": 361000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 3 Leases - disclosure of operating leases not yet commenced \u2014 Undiscounted amount of operating leases signed but not yet commenced, disclosed in the lease note narrative"
+        },
+        {
+          "concept": "nvda:LesseeOperatingLeaseLiabilityPaymentsDueAfterYearFour",
+          "value": {
+            "2023-04-30": 357000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 3 Leases - Operating lease maturity table, line item 2029 and thereafter \u2014 Disclosed as part of the operating lease future minimum payment schedule for fiscal year 2029 and thereafter"
+        },
+        {
+          "concept": "nvda:LicensesPayableNoncurrent",
+          "value": {
+            "2023-04-30": 155000000.0,
+            "2023-01-29": 181000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Other Long-Term Liabilities on the Balance Sheet - line item Licenses payable \u2014 Disclosed in Note 10 Balance Sheet Components table under Other Long-Term Liabilities as Licenses payable"
+        },
+        {
+          "concept": "nvda:NotionalAmountOfFXForwardContractNonDesignatedAsHedge",
+          "value": {
+            "2023-04-30": 350000000.0,
+            "2023-01-29": 366000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 11 Derivative Financial Instruments - notional value table, line item Non-designated hedges \u2014 Notional value of FX forward contracts not designated as hedges, disclosed in Note 11 derivatives table"
+        },
+        {
+          "concept": "nvda:NotionalAmountOfForeignExchangeForwardContractDesignatedAsHedge",
+          "value": {
+            "2023-04-30": 1142000000.0,
+            "2023-01-29": 1128000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 11 Derivative Financial Instruments - notional value table, line item Designated as cash flow hedges \u2014 Notional value of FX forward contracts designated as cash flow hedges, disclosed in Note 11 derivatives table"
+        },
+        {
+          "concept": "nvda:PrepaidCloudServices",
+          "value": {
+            "2023-04-30": 171000000.0,
+            "2023-01-29": 23000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Other Assets (noncurrent) on the Balance Sheet - line item Prepaid cloud services \u2014 Disclosed in Note 10 Balance Sheet Components table under Other Assets as Prepaid cloud services"
+        },
+        {
+          "concept": "nvda:PrepaidRoyaltiesNoncurrent",
+          "value": {
+            "2023-04-30": 381000000.0,
+            "2023-01-29": 387000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Other Assets (noncurrent) on the Balance Sheet - line item Prepaid royalties \u2014 Disclosed in Note 10 Balance Sheet Components table under Other Assets as Prepaid royalties"
+        },
+        {
+          "concept": "nvda:PrepaidSupplyAgreementsNoncurrent",
+          "value": {
+            "2023-04-30": 3002000000.0,
+            "2023-01-29": 2989000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Other Assets (noncurrent) on the Balance Sheet - line item Prepaid supply and capacity agreements \u2014 Disclosed in Note 10 Balance Sheet Components table under Other Assets as Prepaid supply and capacity agreements"
+        },
+        {
+          "concept": "nvda:ProductWarrantyAccrualsAndReturnProvisionsCurrent",
+          "value": {
+            "2023-04-30": 112000000.0,
+            "2023-01-29": 108000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Product warranty and return provisions \u2014 Disclosed in Note 10 Balance Sheet Components table under Accrued and Other Current Liabilities as Product warranty and return provisions"
+        },
+        {
+          "concept": "nvda:PurchaseObligationInventoryPurchaseAndSupplyAgreements",
+          "value": {
+            "2023-04-30": 7270000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 13 Commitments and Contingencies - Purchase Obligations narrative \u2014 Outstanding inventory purchase and long-term supply and capacity obligations disclosed in Note 13 commitments narrative"
+        },
+        {
+          "concept": "nvda:PurchaseObligationToBePaidAfterYearFour",
+          "value": {
+            "2023-04-30": 255000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 13 Commitments and Contingencies - Purchase commitments maturity table, line item 2029 and thereafter \u2014 Disclosed as part of the total future purchase commitments schedule for fiscal year 2029 and thereafter"
+        },
+        {
+          "concept": "us-gaap:AccruedIncomeTaxesNoncurrent",
+          "value": {
+            "2023-04-30": 1300000000.0,
+            "2023-01-29": 1204000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Other Long-Term Liabilities on the Balance Sheet - line item Income tax payable \u2014 Disclosed in Note 10 Balance Sheet Components table under Other Long-Term Liabilities as Income tax payable"
+        },
+        {
+          "concept": "us-gaap:AdjustmentsRelatedToTaxWithholdingForShareBasedCompensation",
+          "value": {
+            "2023-01-30 to 2023-04-30": 507000000.0,
+            "2022-01-31 to 2022-05-01": 538000000.0
+          },
+          "period": "see value keys",
+          "reason": "Condensed Consolidated Statements of Shareholders Equity - line item Tax withholding related to vesting of restricted stock units, reduction to Additional Paid-In Capital \u2014 Appears in the statement of shareholders equity as a deduction from APIC for tax withholding on RSU vesting"
+        },
+        {
+          "concept": "us-gaap:AdjustmentsToAdditionalPaidInCapitalSharebasedCompensationRequisiteServicePeriodRecognitionValue",
+          "value": {
+            "2023-01-30 to 2023-04-30": 743000000.0,
+            "2022-01-31 to 2022-05-01": 573000000.0
+          },
+          "period": "see value keys",
+          "reason": "Condensed Consolidated Statements of Shareholders Equity - line item Stock-based compensation, addition to Additional Paid-In Capital \u2014 Stock-based compensation expense recognized in APIC in the statement of shareholders equity"
+        },
+        {
+          "concept": "us-gaap:AmortizationOfIntangibleAssets",
+          "value": {
+            "2023-01-30 to 2023-04-30": 181000000.0,
+            "2022-01-31 to 2022-05-01": 155000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 9 Amortizable Intangible Assets and Goodwill - narrative disclosure of amortization expense \u2014 Disclosed in Note 9 as amortization expense associated with intangible assets for the period"
+        },
+        {
+          "concept": "us-gaap:AvailableForSaleDebtSecuritiesAccumulatedGrossUnrealizedGainBeforeTax",
+          "value": {
+            "2023-04-30": 7000000.0,
+            "2023-01-29": 1000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 7 Cash Equivalents and Investments - available-for-sale securities table, column Gross Unrealized Gain \u2014 Disclosed in Note 7 investment schedule as gross unrealized gains on available-for-sale debt securities"
+        },
+        {
+          "concept": "us-gaap:AvailableForSaleDebtSecuritiesAccumulatedGrossUnrealizedLossBeforeTax",
+          "value": {
+            "2023-04-30": 43000000.0,
+            "2023-01-29": 58000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 7 Cash Equivalents and Investments - available-for-sale securities table, column Gross Unrealized Loss \u2014 Disclosed in Note 7 investment schedule as gross unrealized losses on available-for-sale debt securities"
+        },
+        {
+          "concept": "us-gaap:AvailableForSaleDebtSecuritiesAmortizedCostBasis",
+          "value": {
+            "2023-04-30": 15107000000.0,
+            "2023-01-29": 13112000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 7 Cash Equivalents and Investments - available-for-sale securities table, column Amortized Cost \u2014 Disclosed in Note 7 investment schedule as total amortized cost of available-for-sale debt securities"
+        },
+        {
+          "concept": "us-gaap:AvailableForSaleSecuritiesDebtMaturitiesAfterOneThroughFiveYearsAmortizedCost",
+          "value": {
+            "2023-04-30": 2453000000.0,
+            "2023-01-29": 3374000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 7 Cash Equivalents and Investments - contractual maturity table, line item Due in 1-5 years, Amortized Cost \u2014 Part of the contractual maturity schedule for available-for-sale securities in Note 7"
+        },
+        {
+          "concept": "us-gaap:AvailableForSaleSecuritiesDebtMaturitiesAfterOneThroughFiveYearsFairValue",
+          "value": {
+            "2023-04-30": 2446000000.0,
+            "2023-01-29": 3347000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 7 Cash Equivalents and Investments - contractual maturity table, line item Due in 1-5 years, Estimated Fair Value \u2014 Part of the contractual maturity schedule for available-for-sale securities in Note 7"
+        },
+        {
+          "concept": "us-gaap:AvailableForSaleSecuritiesDebtMaturitiesWithinOneYearAmortizedCost",
+          "value": {
+            "2023-04-30": 12654000000.0,
+            "2023-01-29": 9738000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 7 Cash Equivalents and Investments - contractual maturity table, line item Less than one year, Amortized Cost \u2014 Part of the contractual maturity schedule for available-for-sale securities in Note 7"
+        },
+        {
+          "concept": "us-gaap:AvailableForSaleSecuritiesDebtMaturitiesWithinOneYearFairValue",
+          "value": {
+            "2023-04-30": 12625000000.0,
+            "2023-01-29": 9708000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 7 Cash Equivalents and Investments - contractual maturity table, line item Less than one year, Estimated Fair Value \u2014 Part of the contractual maturity schedule for available-for-sale securities in Note 7"
+        },
+        {
+          "concept": "us-gaap:AvailableForSaleSecuritiesDebtSecurities",
+          "value": {
+            "2023-04-30": 15071000000.0,
+            "2023-01-29": 13055000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 7 Cash Equivalents and Investments - available-for-sale securities table, column Estimated Fair Value (total) \u2014 Total fair value of available-for-sale debt securities disclosed in Note 7 investment schedule"
+        },
+        {
+          "concept": "us-gaap:CashEquivalentsAtCarryingValue",
+          "value": {
+            "2023-04-30": 4830000000.0,
+            "2023-01-29": 3148000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 7 Cash Equivalents and Investments - investment schedule, column Reported as Cash Equivalents \u2014 Portion of investment securities classified as cash equivalents, disclosed in Note 7 table"
+        },
+        {
+          "concept": "us-gaap:CommercialPaper",
+          "value": {
+            "2023-04-30": 0.0
+          },
+          "period": "see value keys",
+          "reason": "Note 12 Debt - Commercial Paper section narrative disclosure \u2014 Disclosed in Note 12 as no commercial paper outstanding under the $575 million commercial paper program"
+        },
+        {
+          "concept": "us-gaap:CommonStockDividendsPerShareDeclared",
+          "value": {
+            "2023-01-30 to 2023-04-30": 0.04,
+            "2022-01-31 to 2022-05-01": 0.04
+          },
+          "period": "see value keys",
+          "reason": "Condensed Consolidated Statements of Shareholders Equity - Cash dividends declared and paid per share disclosure \u2014 Per share dividend amount disclosed in the statement of shareholders equity as part of the cash dividends declared line"
+        },
+        {
+          "concept": "us-gaap:ComprehensiveIncomeNetOfTax",
+          "value": {
+            "2023-01-30 to 2023-04-30": 2036000000.0,
+            "2022-01-31 to 2022-05-01": 1565000000.0
+          },
+          "period": "see value keys",
+          "reason": "Condensed Consolidated Statements of Comprehensive Income - line item Total comprehensive income \u2014 Total comprehensive income presented on the face of the comprehensive income statement"
+        },
+        {
+          "concept": "us-gaap:ContractWithCustomerLiability",
+          "value": {
+            "2023-01-29": 572000000.0,
+            "2022-01-30": 502000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 10 Balance Sheet Components - Deferred Revenue rollforward table, line item Balance at beginning of period \u2014 Opening balance in the deferred revenue rollforward table in Note 10"
+        },
+        {
+          "concept": "us-gaap:ContractWithCustomerLiabilityCurrent",
+          "value": {
+            "2023-04-30": 367000000.0,
+            "2023-01-29": 354000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Deferred revenue \u2014 Disclosed in Note 10 Balance Sheet Components table under Accrued and Other Current Liabilities as Deferred revenue (current portion)"
+        },
+        {
+          "concept": "us-gaap:ContractWithCustomerLiabilityNoncurrent",
+          "value": {
+            "2023-04-30": 230000000.0,
+            "2023-01-29": 218000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Other Long-Term Liabilities on the Balance Sheet - line item Deferred revenue \u2014 Disclosed in Note 10 Balance Sheet Components table under Other Long-Term Liabilities as Deferred revenue (noncurrent portion)"
+        },
+        {
+          "concept": "us-gaap:DebtInstrumentUnamortizedDiscountPremiumAndDebtIssuanceCostsNet",
+          "value": {
+            "2023-04-30": 46000000.0,
+            "2023-01-29": 47000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 12 Debt - long-term debt table, line item Unamortized debt discount and issuance costs \u2014 Disclosed in Note 12 debt schedule as net unamortized discount and issuance costs reducing carrying amount of notes"
+        },
+        {
+          "concept": "us-gaap:DebtSecuritiesAvailableForSaleContinuousUnrealizedLossPosition12MonthsOrLonger",
+          "value": {
+            "2023-04-30": 1944000000.0,
+            "2023-01-29": 1868000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 7 Cash Equivalents and Investments - unrealized loss position table, column 12 months or longer Estimated Fair Value \u2014 Disclosed in Note 7 unrealized loss breakdown table for securities in continuous loss position 12 months or longer"
+        },
+        {
+          "concept": "us-gaap:DebtSecuritiesAvailableForSaleContinuousUnrealizedLossPosition12MonthsOrLongerAccumulatedLoss",
+          "value": {
+            "2023-04-30": 27000000.0,
+            "2023-01-29": 28000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 7 Cash Equivalents and Investments - unrealized loss position table, column 12 months or longer Gross Unrealized Loss \u2014 Disclosed in Note 7 unrealized loss breakdown table for accumulated loss on securities in continuous loss 12 months or longer"
+        },
+        {
+          "concept": "us-gaap:DebtSecuritiesAvailableForSaleContinuousUnrealizedLossPositionLessThan12Months",
+          "value": {
+            "2023-04-30": 3805000000.0,
+            "2023-01-29": 4939000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 7 Cash Equivalents and Investments - unrealized loss position table, column Less than 12 months Estimated Fair Value \u2014 Disclosed in Note 7 unrealized loss breakdown table for securities in continuous loss position less than 12 months"
+        },
+        {
+          "concept": "us-gaap:DebtSecuritiesAvailableForSaleContinuousUnrealizedLossPositionLessThan12MonthsAccumulatedLoss",
+          "value": {
+            "2023-04-30": 16000000.0,
+            "2023-01-29": 30000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 7 Cash Equivalents and Investments - unrealized loss position table, column Less than 12 months Gross Unrealized Loss \u2014 Disclosed in Note 7 unrealized loss breakdown table for accumulated loss on securities in continuous loss less than 12 months"
+        },
+        {
+          "concept": "us-gaap:DebtSecuritiesAvailableForSaleUnrealizedLossPosition",
+          "value": {
+            "2023-04-30": 5749000000.0,
+            "2023-01-29": 6807000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 7 Cash Equivalents and Investments - unrealized loss position table, column Total Estimated Fair Value \u2014 Total fair value of securities in an unrealized loss position disclosed in Note 7 unrealized loss table"
+        },
+        {
+          "concept": "us-gaap:DebtSecuritiesAvailableForSaleUnrealizedLossPositionAccumulatedLoss",
+          "value": {
+            "2023-04-30": 43000000.0,
+            "2023-01-29": 58000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 7 Cash Equivalents and Investments - unrealized loss position table, column Total Gross Unrealized Loss \u2014 Total accumulated unrealized loss on securities in loss position disclosed in Note 7"
+        },
+        {
+          "concept": "us-gaap:DeferredIncomeTaxLiabilitiesNet",
+          "value": {
+            "2023-04-30": 290000000.0,
+            "2023-01-29": 247000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Other Long-Term Liabilities on the Balance Sheet - line item Deferred income tax \u2014 Disclosed in Note 10 Balance Sheet Components table under Other Long-Term Liabilities as Deferred income tax"
+        },
+        {
+          "concept": "us-gaap:DividendsCommonStockCash",
+          "value": {
+            "2023-01-30 to 2023-04-30": 99000000.0,
+            "2022-01-31 to 2022-05-01": 100000000.0
+          },
+          "period": "see value keys",
+          "reason": "Condensed Consolidated Statements of Shareholders Equity - line item Cash dividends declared and paid, reduction to Retained Earnings \u2014 Cash dividends paid charged against retained earnings in the statement of shareholders equity"
+        },
+        {
+          "concept": "us-gaap:EffectiveIncomeTaxRateContinuingOperations",
+          "value": {
+            "2023-01-30 to 2023-04-30": 0.075,
+            "2022-01-31 to 2022-05-01": 0.103
+          },
+          "period": "see value keys",
+          "reason": "Note 6 Income Taxes - narrative disclosure of effective tax rate \u2014 Effective tax rate percentage disclosed in Note 6 income taxes narrative"
+        },
+        {
+          "concept": "us-gaap:EmployeeRelatedLiabilitiesCurrent",
+          "value": {
+            "2023-04-30": 320000000.0,
+            "2023-01-29": 530000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Accrued payroll and related expenses \u2014 Disclosed in Note 10 Balance Sheet Components table under Accrued and Other Current Liabilities as Accrued payroll and related expenses"
+        },
+        {
+          "concept": "us-gaap:EmployeeServiceShareBasedCompensationNonvestedAwardsTotalCompensationCostNotYetRecognized",
+          "value": {
+            "2023-04-30": 6550000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 4 Stock-Based Compensation - narrative disclosure of unearned compensation \u2014 Aggregate unearned stock-based compensation expense disclosed in Note 4 stock-based compensation narrative"
+        },
+        {
+          "concept": "us-gaap:EquitySecuritiesFvNiUnrealizedLoss",
+          "value": {
+            "2023-01-30 to 2023-04-30": 14000000.0,
+            "2022-01-31 to 2022-05-01": 24000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 8 Fair Value of Financial Assets and Liabilities - footnote disclosure, included in Other income (expense) net in income statement \u2014 Unrealized losses on publicly-held equity securities recorded in other income (expense) net, disclosed as footnote in Note 8 fair value table"
+        },
+        {
+          "concept": "us-gaap:FiniteLivedIntangibleAssetsAccumulatedAmortization",
+          "value": {
+            "2023-04-30": 2031000000.0,
+            "2023-01-29": 1863000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 9 Amortizable Intangible Assets and Goodwill - intangible assets table, column Accumulated Amortization \u2014 Disclosed in Note 9 intangible assets schedule as total accumulated amortization"
+        },
+        {
+          "concept": "us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseNextTwelveMonths",
+          "value": {
+            "2023-04-30": 554000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 9 Amortizable Intangible Assets and Goodwill - future amortization table, fiscal year 2025 \u2014 Estimated future amortization expense for fiscal year 2025 disclosed in Note 9 amortization schedule"
+        },
+        {
+          "concept": "us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseRemainderOfFiscalYear",
+          "value": {
+            "2023-04-30": 433000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 9 Amortizable Intangible Assets and Goodwill - future amortization table, 2024 excluding first quarter \u2014 Estimated future amortization for remainder of fiscal year 2024 disclosed in Note 9 amortization schedule"
+        },
+        {
+          "concept": "us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseYearFour",
+          "value": {
+            "2023-04-30": 37000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 9 Amortizable Intangible Assets and Goodwill - future amortization table, fiscal year 2028 \u2014 Estimated future amortization expense for fiscal year 2028 disclosed in Note 9 amortization schedule"
+        },
+        {
+          "concept": "us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseYearThree",
+          "value": {
+            "2023-04-30": 149000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 9 Amortizable Intangible Assets and Goodwill - future amortization table, fiscal year 2027 \u2014 Estimated future amortization expense for fiscal year 2027 disclosed in Note 9 amortization schedule"
+        },
+        {
+          "concept": "us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseYearTwo",
+          "value": {
+            "2023-04-30": 259000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 9 Amortizable Intangible Assets and Goodwill - future amortization table, fiscal year 2026 \u2014 Estimated future amortization expense for fiscal year 2026 disclosed in Note 9 amortization schedule"
+        },
+        {
+          "concept": "us-gaap:FiniteLivedIntangibleAssetsGross",
+          "value": {
+            "2023-04-30": 3572000000.0,
+            "2023-01-29": 3539000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 9 Amortizable Intangible Assets and Goodwill - intangible assets table, column Gross Carrying Amount \u2014 Disclosed in Note 9 intangible assets schedule as total gross carrying amount"
+        },
+        {
+          "concept": "us-gaap:FiniteLivedIntangibleAssetsNet",
+          "value": {
+            "2023-04-30": 1541000000.0,
+            "2023-01-29": 1676000000.0
+          },
+          "period": "see value keys",
+          "reason": "Intangible Assets, net on the Condensed Consolidated Balance Sheet \u2014 Net intangible assets presented as a separate line item on the balance sheet face; also reconciled in Note 9"
+        },
+        {
+          "concept": "us-gaap:GoodwillPeriodIncreaseDecrease",
+          "value": {
+            "2023-01-30 to 2023-04-30": 58000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 9 Amortizable Intangible Assets and Goodwill - narrative disclosure of goodwill increase from acquisition \u2014 Goodwill increase from an acquisition assigned to Compute and Networking segment, disclosed in Note 9 narrative"
+        },
+        {
+          "concept": "us-gaap:InventoryFinishedGoodsNetOfReserves",
+          "value": {
+            "2023-04-30": 1872000000.0,
+            "2023-01-29": 2263000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 10 Balance Sheet Components - Inventories table, line item Finished goods \u2014 Disclosed as a sub-component of total inventories in Note 10 Balance Sheet Components"
+        },
+        {
+          "concept": "us-gaap:InventoryRawMaterialsNetOfReserves",
+          "value": {
+            "2023-04-30": 1809000000.0,
+            "2023-01-29": 2430000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 10 Balance Sheet Components - Inventories table, line item Raw materials \u2014 Disclosed as a sub-component of total inventories in Note 10 Balance Sheet Components"
+        },
+        {
+          "concept": "us-gaap:InventoryWorkInProcessNetOfReserves",
+          "value": {
+            "2023-04-30": 930000000.0,
+            "2023-01-29": 466000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 10 Balance Sheet Components - Inventories table, line item Work in-process \u2014 Disclosed as a sub-component of total inventories in Note 10 Balance Sheet Components"
+        },
+        {
+          "concept": "us-gaap:LesseeOperatingLeaseLiabilityPaymentsDue",
+          "value": {
+            "2023-04-30": 1288000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 3 Leases - Operating lease maturity table, line item Total \u2014 Total undiscounted future minimum lease payments disclosed in operating lease maturity schedule in Note 3"
+        },
+        {
+          "concept": "us-gaap:LesseeOperatingLeaseLiabilityPaymentsDueNextTwelveMonths",
+          "value": {
+            "2023-04-30": 218000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 3 Leases - Operating lease maturity table, fiscal year 2025 \u2014 Future minimum lease payment due in fiscal year 2025 disclosed in Note 3 operating lease maturity schedule"
+        },
+        {
+          "concept": "us-gaap:LesseeOperatingLeaseLiabilityPaymentsDueYearFour",
+          "value": {
+            "2023-04-30": 159000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 3 Leases - Operating lease maturity table, fiscal year 2028 \u2014 Future minimum lease payment due in fiscal year 2028 disclosed in Note 3 operating lease maturity schedule"
+        },
+        {
+          "concept": "us-gaap:LesseeOperatingLeaseLiabilityPaymentsDueYearThree",
+          "value": {
+            "2023-04-30": 180000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 3 Leases - Operating lease maturity table, fiscal year 2027 \u2014 Future minimum lease payment due in fiscal year 2027 disclosed in Note 3 operating lease maturity schedule"
+        },
+        {
+          "concept": "us-gaap:LesseeOperatingLeaseLiabilityPaymentsDueYearTwo",
+          "value": {
+            "2023-04-30": 196000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 3 Leases - Operating lease maturity table, fiscal year 2026 \u2014 Future minimum lease payment due in fiscal year 2026 disclosed in Note 3 operating lease maturity schedule"
+        },
+        {
+          "concept": "us-gaap:LesseeOperatingLeaseLiabilityPaymentsRemainderOfFiscalYear",
+          "value": {
+            "2023-04-30": 178000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 3 Leases - Operating lease maturity table, 2024 excluding first quarter \u2014 Future minimum lease payment for remainder of fiscal year 2024 disclosed in Note 3 operating lease maturity schedule"
+        },
+        {
+          "concept": "us-gaap:LesseeOperatingLeaseLiabilityUndiscountedExcessAmount",
+          "value": {
+            "2023-04-30": 162000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 3 Leases - Operating lease maturity table, line item Less imputed interest \u2014 Undiscounted excess amount (imputed interest) disclosed in Note 3 operating lease maturity reconciliation"
+        },
+        {
+          "concept": "us-gaap:LongTermDebt",
+          "value": {
+            "2023-04-30": 10954000000.0,
+            "2023-01-29": 10953000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 12 Debt - long-term debt table, line item Net carrying amount; split between current and noncurrent on Balance Sheet \u2014 Net carrying amount of all notes after discount and issuance costs disclosed in Note 12; classified as current and noncurrent on the balance sheet"
+        },
+        {
+          "concept": "us-gaap:LongTermDebtCurrent",
+          "value": {
+            "2023-04-30": 1250000000.0,
+            "2023-01-29": 1250000000.0
+          },
+          "period": "see value keys",
+          "reason": "Short-term debt (current portion of long-term debt) on the Condensed Consolidated Balance Sheet \u2014 Current portion of long-term notes disclosed in Note 12 and classified as Short-term debt on the balance sheet"
+        },
+        {
+          "concept": "us-gaap:MarketableSecurities",
+          "value": {
+            "2023-04-30": 10241000000.0,
+            "2023-01-29": 9907000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 7 Cash Equivalents and Investments - investment schedule, column Reported as Marketable Securities \u2014 Portion of investment securities classified as marketable securities on balance sheet, disclosed in Note 7 table"
+        },
+        {
+          "concept": "us-gaap:NumberOfReportableSegments",
+          "value": {
+            "2023-01-30 to 2023-04-30": 2.0
+          },
+          "period": "see value keys",
+          "reason": "Note 15 Segment Information - narrative disclosure \u2014 Number of reportable segments (Compute and Networking; Graphics) disclosed in Note 15 segment information"
+        },
+        {
+          "concept": "us-gaap:OperatingLeaseCost",
+          "value": {
+            "2023-01-30 to 2023-04-30": 59000000.0,
+            "2022-01-31 to 2022-05-01": 44000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 3 Leases - narrative disclosure of operating lease expense \u2014 Operating lease expenses disclosed in the Note 3 leases narrative"
+        },
+        {
+          "concept": "us-gaap:OperatingLeaseLiability",
+          "value": {
+            "2023-04-30": 1126000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 3 Leases - Operating lease maturity table, line item Present value of net future minimum lease payments \u2014 Present value of operating lease liability disclosed in Note 3 maturity reconciliation"
+        },
+        {
+          "concept": "us-gaap:OperatingLeaseLiabilityCurrent",
+          "value": {
+            "2023-04-30": 187000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Operating leases; also in Note 3 maturity table \u2014 Current portion of operating lease liability disclosed in Note 10 accrued liabilities table and Note 3 maturity reconciliation"
+        },
+        {
+          "concept": "us-gaap:OperatingLeasePayments",
+          "value": {
+            "2023-01-30 to 2023-04-30": 61000000.0,
+            "2022-01-31 to 2022-05-01": 45000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 3 Leases - supplemental cash flow information table, line item Operating cash flows used for operating leases \u2014 Cash paid for operating leases disclosed in Note 3 supplemental lease cash flow information"
+        },
+        {
+          "concept": "us-gaap:OperatingLeaseWeightedAverageDiscountRatePercent",
+          "value": {
+            "2023-04-30": 0.0333,
+            "2023-01-29": 0.0321
+          },
+          "period": "see value keys",
+          "reason": "Note 3 Leases - narrative disclosure of weighted average discount rate \u2014 Weighted average discount rate for operating leases disclosed in Note 3 leases narrative"
+        },
+        {
+          "concept": "us-gaap:OtherAccruedLiabilitiesCurrent",
+          "value": {
+            "2023-04-30": 165000000.0,
+            "2023-01-29": 186000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Other \u2014 Disclosed in Note 10 Balance Sheet Components table under Accrued and Other Current Liabilities as Other"
+        },
+        {
+          "concept": "us-gaap:OtherAssetsMiscellaneousNoncurrent",
+          "value": {
+            "2023-04-30": 145000000.0,
+            "2023-01-29": 122000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Other Assets (noncurrent) on the Balance Sheet - line item Other \u2014 Disclosed in Note 10 Balance Sheet Components table under Other Assets as Other"
+        },
+        {
+          "concept": "us-gaap:OtherCommitment",
+          "value": {
+            "2023-04-30": 3260000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 13 Commitments and Contingencies - Purchase Obligations narrative, other non-inventory purchase obligations \u2014 Other non-inventory purchase obligations including multi-year cloud service agreements disclosed in Note 13 narrative"
+        },
+        {
+          "concept": "us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossAfterReclassificationAndTax",
+          "value": {
+            "2023-01-30 to 2023-04-30": -24000000.0,
+            "2022-01-31 to 2022-05-01": -31000000.0
+          },
+          "period": "see value keys",
+          "reason": "Condensed Consolidated Statements of Comprehensive Income - Cash flow hedges section, line item Net change in unrealized loss \u2014 Net change in cash flow hedge unrealized loss presented in OCI on the comprehensive income statement"
+        },
+        {
+          "concept": "us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossBeforeReclassificationAfterTax",
+          "value": {
+            "2023-01-30 to 2023-04-30": -13000000.0,
+            "2022-01-31 to 2022-05-01": -29000000.0
+          },
+          "period": "see value keys",
+          "reason": "Condensed Consolidated Statements of Comprehensive Income - Cash flow hedges section, line item Net unrealized loss \u2014 Unrealized loss on cash flow hedges before reclassification presented in OCI on comprehensive income statement"
+        },
+        {
+          "concept": "us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossReclassificationAfterTax",
+          "value": {
+            "2023-01-30 to 2023-04-30": 11000000.0,
+            "2022-01-31 to 2022-05-01": 2000000.0
+          },
+          "period": "see value keys",
+          "reason": "Condensed Consolidated Statements of Comprehensive Income - Cash flow hedges section, line item Reclassification adjustments for net realized loss included in net income \u2014 Reclassification of cash flow hedge gains/losses into net income presented in OCI on comprehensive income statement"
+        },
+        {
+          "concept": "us-gaap:OtherComprehensiveIncomeLossNetOfTax",
+          "value": {
+            "2023-01-30 to 2023-04-30": -7000000.0,
+            "2022-01-31 to 2022-05-01": -53000000.0
+          },
+          "period": "see value keys",
+          "reason": "Condensed Consolidated Statements of Comprehensive Income - line item Other comprehensive loss net of tax; also in Statements of Shareholders Equity \u2014 Total other comprehensive loss after tax presented on face of comprehensive income statement and in equity statement"
+        },
+        {
+          "concept": "us-gaap:OtherComprehensiveIncomeUnrealizedHoldingGainLossOnSecuritiesArisingDuringPeriodNetOfTax",
+          "value": {
+            "2023-01-30 to 2023-04-30": 17000000.0,
+            "2022-01-31 to 2022-05-01": -22000000.0
+          },
+          "period": "see value keys",
+          "reason": "Condensed Consolidated Statements of Comprehensive Income - Available-for-sale securities section, line item Net change in unrealized gain (loss) \u2014 Change in unrealized gain/loss on available-for-sale securities presented in OCI on comprehensive income statement"
+        },
+        {
+          "concept": "us-gaap:OtherLongTermInvestments",
+          "value": {
+            "2023-04-30": 505000000.0,
+            "2023-01-29": 299000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Other Assets (noncurrent) on the Balance Sheet - line item Investment in non-affiliated entities \u2014 Disclosed in Note 10 Balance Sheet Components table under Other Assets as Investment in non-affiliated entities"
+        },
+        {
+          "concept": "us-gaap:OtherSundryLiabilitiesNoncurrent",
+          "value": {
+            "2023-04-30": 62000000.0,
+            "2023-01-29": 63000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Other Long-Term Liabilities on the Balance Sheet - line item Other \u2014 Disclosed in Note 10 Balance Sheet Components table under Other Long-Term Liabilities as Other"
+        },
+        {
+          "concept": "us-gaap:ProductWarrantyAccrual",
+          "value": {
+            "2023-04-30": 77000000.0,
+            "2023-01-29": 82000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 13 Commitments and Contingencies - Product warranty rollforward table, balance at beginning and end of period \u2014 Estimated product warranty liabilities disclosed in Note 13 warranty accrual rollforward"
+        },
+        {
+          "concept": "us-gaap:ProductWarrantyAccrualPayments",
+          "value": {
+            "2023-01-30 to 2023-04-30": 18000000.0,
+            "2022-01-31 to 2022-05-01": 7000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 13 Commitments and Contingencies - Product warranty rollforward table, line item Utilization \u2014 Warranty payments/utilization disclosed in Note 13 product warranty liability rollforward table"
+        },
+        {
+          "concept": "us-gaap:ProductWarrantyAccrualWarrantiesIssued",
+          "value": {
+            "2023-01-30 to 2023-04-30": 13000000.0,
+            "2022-01-31 to 2022-05-01": 16000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 13 Commitments and Contingencies - Product warranty rollforward table, line item Additions \u2014 New warranty provisions added during period disclosed in Note 13 product warranty liability rollforward table"
+        },
+        {
+          "concept": "us-gaap:PurchaseObligation",
+          "value": {
+            "2023-04-30": 10527000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 13 Commitments and Contingencies - Purchase commitments maturity table, line item Total \u2014 Total purchase obligations disclosed as the sum of all years in the Note 13 purchase commitment maturity schedule"
+        },
+        {
+          "concept": "us-gaap:PurchaseObligationDueInFourthYear",
+          "value": {
+            "2023-04-30": 332000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 13 Commitments and Contingencies - Purchase commitments maturity table, fiscal year 2028 \u2014 Purchase obligations due in fiscal year 2028 disclosed in Note 13 commitment maturity schedule"
+        },
+        {
+          "concept": "us-gaap:PurchaseObligationDueInNextTwelveMonths",
+          "value": {
+            "2023-04-30": 1816000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 13 Commitments and Contingencies - Purchase commitments maturity table, fiscal year 2025 \u2014 Purchase obligations due in fiscal year 2025 disclosed in Note 13 commitment maturity schedule"
+        },
+        {
+          "concept": "us-gaap:PurchaseObligationDueInSecondYear",
+          "value": {
+            "2023-04-30": 753000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 13 Commitments and Contingencies - Purchase commitments maturity table, fiscal year 2026 \u2014 Purchase obligations due in fiscal year 2026 disclosed in Note 13 commitment maturity schedule"
+        },
+        {
+          "concept": "us-gaap:PurchaseObligationDueInThirdYear",
+          "value": {
+            "2023-04-30": 704000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 13 Commitments and Contingencies - Purchase commitments maturity table, fiscal year 2027 \u2014 Purchase obligations due in fiscal year 2027 disclosed in Note 13 commitment maturity schedule"
+        },
+        {
+          "concept": "us-gaap:PurchaseObligationFutureMinimumPaymentsRemainderOfFiscalYear",
+          "value": {
+            "2023-04-30": 6667000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 13 Commitments and Contingencies - Purchase commitments maturity table, 2024 excluding first quarter \u2014 Purchase obligations due in remainder of fiscal year 2024 disclosed in Note 13 commitment maturity schedule"
+        },
+        {
+          "concept": "us-gaap:RevenueRemainingPerformanceObligation",
+          "value": {
+            "2023-04-30": 639000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 10 Balance Sheet Components - Deferred Revenue section, narrative disclosure of remaining performance obligations \u2014 Revenue allocated to remaining performance obligations disclosed in Note 10 deferred revenue section"
+        },
+        {
+          "concept": "us-gaap:RightOfUseAssetObtainedInExchangeForOperatingLeaseLiability",
+          "value": {
+            "2023-01-30 to 2023-04-30": 106000000.0,
+            "2022-01-31 to 2022-05-01": 62000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 3 Leases - supplemental cash flow information table, line item Operating lease assets obtained in exchange for lease obligations \u2014 Non-cash operating lease ROU assets obtained disclosed in Note 3 supplemental lease information"
+        },
+        {
+          "concept": "us-gaap:StockIssuedDuringPeriodValueEmployeeStockOwnershipPlan",
+          "value": {
+            "2023-01-30 to 2023-04-30": 246000000.0,
+            "2022-01-31 to 2022-05-01": 204000000.0
+          },
+          "period": "see value keys",
+          "reason": "Condensed Consolidated Statements of Shareholders Equity - line item Issuance of common stock from stock plans, addition to Additional Paid-In Capital \u2014 Proceeds from stock plan issuances credited to APIC in the statement of shareholders equity"
+        },
+        {
+          "concept": "us-gaap:StockRepurchaseProgramRemainingAuthorizedRepurchaseAmount1",
+          "value": {
+            "2023-04-30": 7230000000.0
+          },
+          "period": "see value keys",
+          "reason": "Note 14 Shareholders Equity - Capital Return Program disclosure \u2014 Remaining authorized repurchase amount under the share repurchase program disclosed in Note 14 narrative"
+        },
+        {
+          "concept": "us-gaap:StockRepurchasedAndRetiredDuringPeriodValue",
+          "value": {
+            "2022-01-31 to 2022-05-01": 1996000000.0
+          },
+          "period": "see value keys",
+          "reason": "Condensed Consolidated Statements of Shareholders Equity - line item Shares repurchased, reduction to Additional Paid-In Capital and Retained Earnings \u2014 Value of shares repurchased and retired during Q1 FY2023 presented in the statement of shareholders equity"
+        },
+        {
+          "concept": "us-gaap:TaxesPayableCurrent",
+          "value": {
+            "2023-04-30": 1544000000.0,
+            "2023-01-29": 467000000.0
+          },
+          "period": "see value keys",
+          "reason": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Taxes payable \u2014 Disclosed in Note 10 Balance Sheet Components table under Accrued and Other Current Liabilities as Taxes payable"
         }
       ]
     },
@@ -819,15 +1648,15 @@
       "line_items": [
         {
           "label": "Net income",
-          "indent_level": 0,
+          "indent_level": 1,
           "xbrl_concept": "us-gaap:NetIncomeLoss",
           "values": {
             "2023-01-30_2023-04-30": 2043,
-            "2022-01-31_2022-05-01": 1618
+            "2022-01-31_2022-05-01": 2043
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Net income with ix:nonFraction tag name us-gaap:NetIncomeLoss in context i22d2c06eca1a447bae57634d686ce3f8_D20230130-20230430"
+          "mapping_reason": "HTML cash flow statement row labeled Net income under operating activities, tagged with ix:nonFraction name us-gaap:NetIncomeLoss"
         },
         {
           "label": "Stock-based compensation expense",
@@ -835,11 +1664,11 @@
           "xbrl_concept": "us-gaap:AllocatedShareBasedCompensationExpense",
           "values": {
             "2023-01-30_2023-04-30": 735,
-            "2022-01-31_2022-05-01": 578
+            "2022-01-31_2022-05-01": 735
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Stock-based compensation expense with ix:nonFraction tag name us-gaap:AllocatedShareBasedCompensationExpense"
+          "mapping_reason": "HTML cash flow row labeled Stock-based compensation expense, tagged with ix:nonFraction name us-gaap:AllocatedShareBasedCompensationExpense"
         },
         {
           "label": "Depreciation and amortization",
@@ -847,11 +1676,11 @@
           "xbrl_concept": "us-gaap:DepreciationDepletionAndAmortization",
           "values": {
             "2023-01-30_2023-04-30": 384,
-            "2022-01-31_2022-05-01": 334
+            "2022-01-31_2022-05-01": 384
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Depreciation and amortization with ix:nonFraction tag name us-gaap:DepreciationDepletionAndAmortization"
+          "mapping_reason": "HTML cash flow row labeled Depreciation and amortization, tagged with ix:nonFraction name us-gaap:DepreciationDepletionAndAmortization"
         },
         {
           "label": "Losses on investments in non-affiliates",
@@ -859,11 +1688,11 @@
           "xbrl_concept": "us-gaap:GainLossOnInvestments",
           "values": {
             "2023-01-30_2023-04-30": 14,
-            "2022-01-31_2022-05-01": 17
+            "2022-01-31_2022-05-01": 14
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Losses on investments in non-affiliates with ix:nonFraction tag name us-gaap:GainLossOnInvestments with sign=-1 yielding positive add-back"
+          "mapping_reason": "HTML cash flow row labeled Losses on investments in non-affiliates shown as 14 and 17, tagged with ix:nonFraction name us-gaap:GainLossOnInvestments with sign=-1"
         },
         {
           "label": "Deferred income taxes",
@@ -871,11 +1700,11 @@
           "xbrl_concept": "us-gaap:DeferredIncomeTaxExpenseBenefit",
           "values": {
             "2023-01-30_2023-04-30": -1135,
-            "2022-01-31_2022-05-01": -542
+            "2022-01-31_2022-05-01": -1135
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Deferred income taxes with ix:nonFraction tag name us-gaap:DeferredIncomeTaxExpenseBenefit; displayed in parentheses per sign=-1"
+          "mapping_reason": "HTML cash flow row labeled Deferred income taxes shown as (1,135) and (542), tagged with ix:nonFraction name us-gaap:DeferredIncomeTaxExpenseBenefit with sign=-1"
         },
         {
           "label": "Acquisition termination cost",
@@ -883,11 +1712,11 @@
           "xbrl_concept": "nvda:BusinessCombinationAdvancedConsiderationWrittenOff",
           "values": {
             "2023-01-30_2023-04-30": 0,
-            "2022-01-31_2022-05-01": 1353
+            "2022-01-31_2022-05-01": 0
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Acquisition termination cost with ix:nonFraction tag name nvda:BusinessCombinationAdvancedConsiderationWrittenOff"
+          "mapping_reason": "HTML cash flow row labeled Acquisition termination cost, tagged with ix:nonFraction name nvda:BusinessCombinationAdvancedConsiderationWrittenOff"
         },
         {
           "label": "Other",
@@ -895,11 +1724,11 @@
           "xbrl_concept": "us-gaap:OtherNoncashIncomeExpense",
           "values": {
             "2023-01-30_2023-04-30": -34,
-            "2022-01-31_2022-05-01": 23
+            "2022-01-31_2022-05-01": -34
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Other with ix:nonFraction tag name us-gaap:OtherNoncashIncomeExpense; Q1 FY2024 displayed in parentheses per HTML"
+          "mapping_reason": "HTML cash flow row labeled Other shown as (34) for current period and 23 for prior, tagged with ix:nonFraction name us-gaap:OtherNoncashIncomeExpense"
         },
         {
           "label": "Accounts receivable",
@@ -907,11 +1736,11 @@
           "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsReceivable",
           "values": {
             "2023-01-30_2023-04-30": -252,
-            "2022-01-31_2022-05-01": -788
+            "2022-01-31_2022-05-01": -252
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Accounts receivable with ix:nonFraction tag name us-gaap:IncreaseDecreaseInAccountsReceivable; displayed in parentheses indicating use of cash"
+          "mapping_reason": "HTML cash flow row labeled Accounts receivable shown as (252) and (788), tagged with ix:nonFraction name us-gaap:IncreaseDecreaseInAccountsReceivable"
         },
         {
           "label": "Inventories",
@@ -919,11 +1748,11 @@
           "xbrl_concept": "us-gaap:IncreaseDecreaseInInventories",
           "values": {
             "2023-01-30_2023-04-30": 566,
-            "2022-01-31_2022-05-01": -560
+            "2022-01-31_2022-05-01": 566
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Inventories with ix:nonFraction tag name us-gaap:IncreaseDecreaseInInventories; Q1 FY2024 positive (sign=-1 applied to decrease in inventory)"
+          "mapping_reason": "HTML cash flow row labeled Inventories shown as 566 and (560), tagged with ix:nonFraction name us-gaap:IncreaseDecreaseInInventories with sign=-1 for negative values"
         },
         {
           "label": "Prepaid expenses and other assets",
@@ -931,11 +1760,11 @@
           "xbrl_concept": "us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets",
           "values": {
             "2023-01-30_2023-04-30": -215,
-            "2022-01-31_2022-05-01": -1261
+            "2022-01-31_2022-05-01": -215
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Prepaid expenses and other assets with ix:nonFraction tag name us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets; displayed in parentheses"
+          "mapping_reason": "HTML cash flow row labeled Prepaid expenses and other assets shown as (215) and (1,261), tagged with ix:nonFraction name us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets"
         },
         {
           "label": "Accounts payable",
@@ -943,11 +1772,11 @@
           "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsPayable",
           "values": {
             "2023-01-30_2023-04-30": 11,
-            "2022-01-31_2022-05-01": 255
+            "2022-01-31_2022-05-01": 11
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Accounts payable with ix:nonFraction tag name us-gaap:IncreaseDecreaseInAccountsPayable"
+          "mapping_reason": "HTML cash flow row labeled Accounts payable, tagged with ix:nonFraction name us-gaap:IncreaseDecreaseInAccountsPayable"
         },
         {
           "label": "Accrued and other current liabilities",
@@ -955,11 +1784,11 @@
           "xbrl_concept": "us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities",
           "values": {
             "2023-01-30_2023-04-30": 689,
-            "2022-01-31_2022-05-01": 634
+            "2022-01-31_2022-05-01": 689
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Accrued and other current liabilities with ix:nonFraction tag name us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities"
+          "mapping_reason": "HTML cash flow row labeled Accrued and other current liabilities, tagged with ix:nonFraction name us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities"
         },
         {
           "label": "Other long-term liabilities",
@@ -967,11 +1796,11 @@
           "xbrl_concept": "us-gaap:IncreaseDecreaseInOtherNoncurrentLiabilities",
           "values": {
             "2023-01-30_2023-04-30": 105,
-            "2022-01-31_2022-05-01": 70
+            "2022-01-31_2022-05-01": 105
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Other long-term liabilities with ix:nonFraction tag name us-gaap:IncreaseDecreaseInOtherNoncurrentLiabilities"
+          "mapping_reason": "HTML cash flow row labeled Other long-term liabilities, tagged with ix:nonFraction name us-gaap:IncreaseDecreaseInOtherNoncurrentLiabilities"
         },
         {
           "label": "Net cash provided by operating activities",
@@ -983,7 +1812,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Net cash provided by operating activities with ix:nonFraction tag name us-gaap:NetCashProvidedByUsedInOperatingActivities"
+          "mapping_reason": "HTML cash flow row labeled Net cash provided by operating activities, tagged with ix:nonFraction name us-gaap:NetCashProvidedByUsedInOperatingActivities"
         },
         {
           "label": "Proceeds from maturities of marketable securities",
@@ -991,11 +1820,11 @@
           "xbrl_concept": "us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities",
           "values": {
             "2023-01-30_2023-04-30": 2512,
-            "2022-01-31_2022-05-01": 5947
+            "2022-01-31_2022-05-01": 2512
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Proceeds from maturities of marketable securities with ix:nonFraction tag name us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities"
+          "mapping_reason": "HTML cash flow row labeled Proceeds from maturities of marketable securities, tagged with ix:nonFraction name us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities"
         },
         {
           "label": "Proceeds from sales of marketable securities",
@@ -1003,11 +1832,11 @@
           "xbrl_concept": "us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt",
           "values": {
             "2023-01-30_2023-04-30": 0,
-            "2022-01-31_2022-05-01": 1029
+            "2022-01-31_2022-05-01": 0
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Proceeds from sales of marketable securities with ix:nonFraction tag name us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt; Q1 FY2024 zero via ixt:fixed-zero"
+          "mapping_reason": "HTML cash flow row labeled Proceeds from sales of marketable securities, tagged with ix:nonFraction name us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt"
         },
         {
           "label": "Purchases of marketable securities",
@@ -1015,11 +1844,11 @@
           "xbrl_concept": "us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt",
           "values": {
             "2023-01-30_2023-04-30": -2801,
-            "2022-01-31_2022-05-01": -3932
+            "2022-01-31_2022-05-01": -2801
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Purchases of marketable securities with ix:nonFraction tag name us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt; displayed in parentheses"
+          "mapping_reason": "HTML cash flow row labeled Purchases of marketable securities shown as (2,801) and (3,932), tagged with ix:nonFraction name us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt"
         },
         {
           "label": "Purchases related to property and equipment and intangible assets",
@@ -1027,11 +1856,11 @@
           "xbrl_concept": "nvda:PurchasesOfPropertyAndEquipmentAndIntangibleAssets",
           "values": {
             "2023-01-30_2023-04-30": -248,
-            "2022-01-31_2022-05-01": -361
+            "2022-01-31_2022-05-01": -248
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Purchases related to property and equipment and intangible assets with ix:nonFraction tag name nvda:PurchasesOfPropertyAndEquipmentAndIntangibleAssets; displayed in parentheses"
+          "mapping_reason": "HTML cash flow row labeled Purchases related to property and equipment and intangible assets shown as (248) and (361), tagged with ix:nonFraction name nvda:PurchasesOfPropertyAndEquipmentAndIntangibleAssets"
         },
         {
           "label": "Acquisitions, net of cash acquired",
@@ -1039,11 +1868,11 @@
           "xbrl_concept": "us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired",
           "values": {
             "2023-01-30_2023-04-30": -83,
-            "2022-01-31_2022-05-01": -36
+            "2022-01-31_2022-05-01": -83
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Acquisitions, net of cash acquired with ix:nonFraction tag name us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired; displayed in parentheses"
+          "mapping_reason": "HTML cash flow row labeled Acquisitions, net of cash acquired shown as (83) and (36), tagged with ix:nonFraction name us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired"
         },
         {
           "label": "Investments and other, net",
@@ -1051,11 +1880,11 @@
           "xbrl_concept": "us-gaap:PaymentsForProceedsFromOtherInvestingActivities",
           "values": {
             "2023-01-30_2023-04-30": -221,
-            "2022-01-31_2022-05-01": -35
+            "2022-01-31_2022-05-01": -221
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Investments and other, net with ix:nonFraction tag name us-gaap:PaymentsForProceedsFromOtherInvestingActivities; displayed in parentheses"
+          "mapping_reason": "HTML cash flow row labeled Investments and other, net shown as (221) and (35), tagged with ix:nonFraction name us-gaap:PaymentsForProceedsFromOtherInvestingActivities"
         },
         {
           "label": "Net cash provided by (used in) investing activities",
@@ -1067,7 +1896,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Net cash provided by (used in) investing activities with ix:nonFraction tag name us-gaap:NetCashProvidedByUsedInInvestingActivities; Q1 FY2024 in parentheses via sign=-1"
+          "mapping_reason": "HTML cash flow row labeled Net cash provided by (used in) investing activities shown as (841) and 2,612, tagged with ix:nonFraction name us-gaap:NetCashProvidedByUsedInInvestingActivities"
         },
         {
           "label": "Proceeds related to employee stock plans",
@@ -1075,11 +1904,11 @@
           "xbrl_concept": "nvda:NetProceedsPaymentsRelatedToEmployeeStockPlans",
           "values": {
             "2023-01-30_2023-04-30": 246,
-            "2022-01-31_2022-05-01": 204
+            "2022-01-31_2022-05-01": 246
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Proceeds related to employee stock plans with ix:nonFraction tag name nvda:NetProceedsPaymentsRelatedToEmployeeStockPlans"
+          "mapping_reason": "HTML cash flow row labeled Proceeds related to employee stock plans, tagged with ix:nonFraction name nvda:NetProceedsPaymentsRelatedToEmployeeStockPlans"
         },
         {
           "label": "Payments related to tax on restricted stock units",
@@ -1087,11 +1916,11 @@
           "xbrl_concept": "us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation",
           "values": {
             "2023-01-30_2023-04-30": -507,
-            "2022-01-31_2022-05-01": -532
+            "2022-01-31_2022-05-01": -507
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Payments related to tax on restricted stock units with ix:nonFraction tag name us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation; displayed in parentheses"
+          "mapping_reason": "HTML cash flow row labeled Payments related to tax on restricted stock units shown as (507) and (532), tagged with ix:nonFraction name us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation"
         },
         {
           "label": "Dividends paid",
@@ -1099,11 +1928,11 @@
           "xbrl_concept": "us-gaap:PaymentsOfDividends",
           "values": {
             "2023-01-30_2023-04-30": -99,
-            "2022-01-31_2022-05-01": -100
+            "2022-01-31_2022-05-01": -99
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Dividends paid with ix:nonFraction tag name us-gaap:PaymentsOfDividends; displayed in parentheses"
+          "mapping_reason": "HTML cash flow row labeled Dividends paid shown as (99) and (100), tagged with ix:nonFraction name us-gaap:PaymentsOfDividends"
         },
         {
           "label": "Principal payments on property and equipment and intangible assets",
@@ -1111,11 +1940,11 @@
           "xbrl_concept": "nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities",
           "values": {
             "2023-01-30_2023-04-30": -20,
-            "2022-01-31_2022-05-01": -22
+            "2022-01-31_2022-05-01": -20
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Principal payments on property and equipment and intangible assets with ix:nonFraction tag name nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities"
+          "mapping_reason": "HTML cash flow row labeled Principal payments on property and equipment and intangible assets shown as (20) and (22), tagged with ix:nonFraction name nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities"
         },
         {
           "label": "Payments related to repurchases of common stock",
@@ -1123,11 +1952,11 @@
           "xbrl_concept": "us-gaap:PaymentsForRepurchaseOfCommonStock",
           "values": {
             "2023-01-30_2023-04-30": 0,
-            "2022-01-31_2022-05-01": -1996
+            "2022-01-31_2022-05-01": 0
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Payments related to repurchases of common stock with ix:nonFraction tag name us-gaap:PaymentsForRepurchaseOfCommonStock; Q1 FY2024 zero via ixt:fixed-zero"
+          "mapping_reason": "HTML cash flow row labeled Payments related to repurchases of common stock, tagged with ix:nonFraction name us-gaap:PaymentsForRepurchaseOfCommonStock"
         },
         {
           "label": "Net cash used in financing activities",
@@ -1139,7 +1968,7 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Net cash used in financing activities with ix:nonFraction tag name us-gaap:NetCashProvidedByUsedInFinancingActivities; both periods in parentheses via sign=-1"
+          "mapping_reason": "HTML cash flow row labeled Net cash used in financing activities shown as (380) and (2,446), tagged with ix:nonFraction name us-gaap:NetCashProvidedByUsedInFinancingActivities"
         },
         {
           "label": "Change in cash and cash equivalents",
@@ -1151,11 +1980,11 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Change in cash and cash equivalents with ix:nonFraction tag name us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect"
+          "mapping_reason": "HTML cash flow row labeled Change in cash and cash equivalents, tagged with ix:nonFraction name us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect"
         },
         {
           "label": "Cash and cash equivalents at beginning of period",
-          "indent_level": 0,
+          "indent_level": 1,
           "xbrl_concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
           "values": {
             "2023-01-30_2023-04-30": 3389,
@@ -1163,19 +1992,19 @@
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Cash and cash equivalents at beginning of period with ix:nonFraction tag name us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents for contexts I20230129 and I20220130"
+          "mapping_reason": "HTML cash flow row labeled Cash and cash equivalents at beginning of period, tagged with ix:nonFraction name us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents at beginning date contexts"
         },
         {
           "label": "Cash and cash equivalents at end of period",
-          "indent_level": 0,
+          "indent_level": 1,
           "xbrl_concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
           "values": {
-            "2023-01-30_2023-04-30": 5079,
-            "2022-01-31_2022-05-01": 3887
+            "2023-04-30": 5079,
+            "2022-05-01": 3887
           },
           "unit": "USD_millions",
           "xbrl_match": true,
-          "mapping_reason": "Cash flow statement row labeled Cash and cash equivalents at end of period with ix:nonFraction tag name us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents for contexts I20230430 and I20220501"
+          "mapping_reason": "HTML cash flow row labeled Cash and cash equivalents at end of period, tagged with ix:nonFraction name us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents at end date contexts"
         }
       ],
       "formulas": [
@@ -1197,7 +2026,7 @@
             "Other long-term liabilities",
             "Net cash provided by operating activities"
           ],
-          "operation": "Net income + Stock-based compensation expense + Depreciation and amortization + Losses on investments in non-affiliates + Deferred income taxes + Acquisition termination cost + Other + Accounts receivable + Inventories + Prepaid expenses and other assets + Accounts payable + Accrued and other current liabilities + Other long-term liabilities",
+          "operation": "Net income + Stock-based compensation expense + Depreciation and amortization - Losses on investments in non-affiliates + Deferred income taxes + Acquisition termination cost - Other - Accounts receivable - Inventories - Prepaid expenses and other assets + Accounts payable + Accrued and other current liabilities + Other long-term liabilities",
           "result_label": "Net cash provided by operating activities"
         },
         {
@@ -1211,7 +2040,7 @@
             "Investments and other, net",
             "Net cash provided by (used in) investing activities"
           ],
-          "operation": "Proceeds from maturities of marketable securities + Proceeds from sales of marketable securities + Purchases of marketable securities + Purchases related to property and equipment and intangible assets + Acquisitions, net of cash acquired + Investments and other, net",
+          "operation": "Proceeds from maturities of marketable securities + Proceeds from sales of marketable securities + Purchases of marketable securities - Purchases related to property and equipment and intangible assets - Acquisitions, net of cash acquired + Investments and other, net",
           "result_label": "Net cash provided by (used in) investing activities"
         },
         {
@@ -1224,11 +2053,11 @@
             "Payments related to repurchases of common stock",
             "Net cash used in financing activities"
           ],
-          "operation": "Proceeds related to employee stock plans + Payments related to tax on restricted stock units + Dividends paid + Principal payments on property and equipment and intangible assets + Payments related to repurchases of common stock",
+          "operation": "Proceeds related to employee stock plans + Payments related to tax on restricted stock units + Dividends paid + Payments related to repurchases of common stock + Principal payments on property and equipment and intangible assets",
           "result_label": "Net cash used in financing activities"
         },
         {
-          "formula": "Change in cash and cash equivalents = Net cash provided by operating activities + Net cash provided by (used in) investing activities + Net cash used in financing activities",
+          "formula": "Change in cash = Net cash from operating + Net cash from investing + Net cash from financing",
           "components": [
             "Net cash provided by operating activities",
             "Net cash provided by (used in) investing activities",
@@ -1239,30 +2068,11 @@
           "result_label": "Change in cash and cash equivalents"
         }
       ],
-      "xbrl_not_on_statement": [
-        {
-          "concept": "us-gaap:OperatingLeasePayments",
-          "values": {
-            "2023-01-30_2023-04-30": 61,
-            "2022-01-31_2022-05-01": 45
-          },
-          "period": "duration",
-          "classification": "Supplemental cash flow information in lease note, not on face of cash flow statement"
-        },
-        {
-          "concept": "us-gaap:RightOfUseAssetObtainedInExchangeForOperatingLeaseLiability",
-          "values": {
-            "2023-01-30_2023-04-30": 106,
-            "2022-01-31_2022-05-01": 62
-          },
-          "period": "duration",
-          "classification": "Supplemental non-cash information in lease note"
-        }
-      ]
+      "xbrl_not_on_statement": []
     },
     "cross_statement_checks": [
       {
-        "check": "Net income appears on income statement and cash flow statement",
+        "check": "Net income IS vs CF",
         "statement_1": "IS",
         "value_1": 2043,
         "statement_2": "CF",
@@ -1270,7 +2080,7 @@
         "match": true
       },
       {
-        "check": "Net income Q1 FY2023 appears on income statement and cash flow statement",
+        "check": "Net income IS vs CF (prior period)",
         "statement_1": "IS",
         "value_1": 1618,
         "statement_2": "CF",
@@ -1278,23 +2088,23 @@
         "match": true
       },
       {
-        "check": "Cash and cash equivalents at end of period on cash flow matches balance sheet (April 30, 2023)",
-        "statement_1": "CF",
+        "check": "Cash and cash equivalents BS vs CF end of period",
+        "statement_1": "BS",
         "value_1": 5079,
-        "statement_2": "BS",
+        "statement_2": "CF",
         "value_2": 5079,
         "match": true
       },
       {
-        "check": "Cash and cash equivalents at beginning of period on cash flow matches balance sheet (January 29, 2023)",
-        "statement_1": "CF",
+        "check": "Cash and cash equivalents BS beginning vs CF beginning of period (Jan 29 2023)",
+        "statement_1": "BS",
         "value_1": 3389,
-        "statement_2": "BS",
+        "statement_2": "CF",
         "value_2": 3389,
         "match": true
       },
       {
-        "check": "Total assets on balance sheet (April 30, 2023)",
+        "check": "Total assets BS April 30 2023",
         "statement_1": "BS",
         "value_1": 44460,
         "statement_2": "BS",
@@ -1302,193 +2112,160 @@
         "match": true
       },
       {
-        "check": "Total liabilities and shareholders equity equals total assets (April 30, 2023)",
+        "check": "Total liabilities and shareholders equity equals total assets BS",
         "statement_1": "BS",
         "value_1": 44460,
         "statement_2": "BS",
         "value_2": 44460,
-        "match": true
-      },
-      {
-        "check": "Marketable securities current on balance sheet matches Note 7 total marketable securities (April 30, 2023)",
-        "statement_1": "BS",
-        "value_1": 10241,
-        "statement_2": "BS",
-        "value_2": 10241,
-        "match": true
-      },
-      {
-        "check": "Dividends paid on cash flow statement matches shareholders equity statement Q1 FY2024",
-        "statement_1": "CF",
-        "value_1": 99,
-        "statement_2": "BS",
-        "value_2": 99,
-        "match": true
-      },
-      {
-        "check": "Long-term operating lease liabilities on balance sheet matches lease note (April 30, 2023)",
-        "statement_1": "BS",
-        "value_1": 939,
-        "statement_2": "BS",
-        "value_2": 939,
-        "match": true
-      },
-      {
-        "check": "Intangible assets net on balance sheet matches amortization note total (April 30, 2023)",
-        "statement_1": "BS",
-        "value_1": 1541,
-        "statement_2": "BS",
-        "value_2": 1541,
         "match": true
       }
     ],
     "segment_data": [
       {
-        "dimension": "StatementBusinessSegmentsAxis - Revenue",
+        "dimension": "StatementBusinessSegmentsAxis",
         "items": [
           {
             "member": "ComputeAndNetworkingMember",
             "values": {
-              "2023-01-30_2023-04-30": 4460,
-              "2022-01-31_2022-05-01": 3672
+              "Revenue_2023-01-30_2023-04-30": 4460,
+              "Revenue_2022-01-31_2022-05-01": 3672,
+              "OperatingIncomeLoss_2023-01-30_2023-04-30": 2160,
+              "OperatingIncomeLoss_2022-01-31_2022-05-01": 1606
             }
           },
           {
             "member": "GraphicsMember",
             "values": {
-              "2023-01-30_2023-04-30": 2732,
-              "2022-01-31_2022-05-01": 4616
+              "Revenue_2023-01-30_2023-04-30": 2732,
+              "Revenue_2022-01-31_2022-05-01": 4616,
+              "OperatingIncomeLoss_2023-01-30_2023-04-30": 1046,
+              "OperatingIncomeLoss_2022-01-31_2022-05-01": 2476
             }
           },
           {
-            "member": "CorporateNonSegmentMember",
+            "member": "CorporateNonSegmentMember (All Other)",
             "values": {
-              "2023-01-30_2023-04-30": 0,
-              "2022-01-31_2022-05-01": 0
+              "Revenue_2023-01-30_2023-04-30": 0,
+              "Revenue_2022-01-31_2022-05-01": 0,
+              "OperatingIncomeLoss_2023-01-30_2023-04-30": -1066,
+              "OperatingIncomeLoss_2022-01-31_2022-05-01": -2214
             }
           }
         ],
-        "total": 7192,
-        "consolidated_total": 7192,
+        "total": {
+          "Revenue_2023-01-30_2023-04-30": 7192,
+          "Revenue_2022-01-31_2022-05-01": 8288,
+          "OperatingIncomeLoss_2023-01-30_2023-04-30": 2140,
+          "OperatingIncomeLoss_2022-01-31_2022-05-01": 1868
+        },
+        "consolidated_total": {
+          "Revenue_2023-01-30_2023-04-30": 7192,
+          "Revenue_2022-01-31_2022-05-01": 8288,
+          "OperatingIncomeLoss_2023-01-30_2023-04-30": 2140,
+          "OperatingIncomeLoss_2022-01-31_2022-05-01": 1868
+        },
         "ties": true
       },
       {
-        "dimension": "StatementBusinessSegmentsAxis - Operating Income (Loss)",
-        "items": [
-          {
-            "member": "ComputeAndNetworkingMember",
-            "values": {
-              "2023-01-30_2023-04-30": 2160,
-              "2022-01-31_2022-05-01": 1606
-            }
-          },
-          {
-            "member": "GraphicsMember",
-            "values": {
-              "2023-01-30_2023-04-30": 1046,
-              "2022-01-31_2022-05-01": 2476
-            }
-          },
-          {
-            "member": "CorporateNonSegmentMember",
-            "values": {
-              "2023-01-30_2023-04-30": -1066,
-              "2022-01-31_2022-05-01": -2214
-            }
-          }
-        ],
-        "total": 2140,
-        "consolidated_total": 2140,
-        "ties": true
-      },
-      {
-        "dimension": "StatementGeographicalAxis - Revenue",
+        "dimension": "StatementGeographicalAxis",
         "items": [
           {
             "member": "United States",
             "values": {
-              "2023-01-30_2023-04-30": 2385,
-              "2022-01-31_2022-05-01": 1932
+              "Revenue_2023-01-30_2023-04-30": 2385,
+              "Revenue_2022-01-31_2022-05-01": 1932
             }
           },
           {
             "member": "Taiwan",
             "values": {
-              "2023-01-30_2023-04-30": 1796,
-              "2022-01-31_2022-05-01": 2777
+              "Revenue_2023-01-30_2023-04-30": 1796,
+              "Revenue_2022-01-31_2022-05-01": 2777
             }
           },
           {
             "member": "China (including Hong Kong)",
             "values": {
-              "2023-01-30_2023-04-30": 1590,
-              "2022-01-31_2022-05-01": 2081
+              "Revenue_2023-01-30_2023-04-30": 1590,
+              "Revenue_2022-01-31_2022-05-01": 2081
             }
           },
           {
             "member": "Singapore",
             "values": {
-              "2023-01-30_2023-04-30": 762,
-              "2022-01-31_2022-05-01": 454
+              "Revenue_2023-01-30_2023-04-30": 762,
+              "Revenue_2022-01-31_2022-05-01": 454
             }
           },
           {
             "member": "Other countries",
             "values": {
-              "2023-01-30_2023-04-30": 659,
-              "2022-01-31_2022-05-01": 1044
+              "Revenue_2023-01-30_2023-04-30": 659,
+              "Revenue_2022-01-31_2022-05-01": 1044
             }
           }
         ],
-        "total": 7192,
-        "consolidated_total": 7192,
+        "total": {
+          "Revenue_2023-01-30_2023-04-30": 7192,
+          "Revenue_2022-01-31_2022-05-01": 8288
+        },
+        "consolidated_total": {
+          "Revenue_2023-01-30_2023-04-30": 7192,
+          "Revenue_2022-01-31_2022-05-01": 8288
+        },
         "ties": true
       },
       {
-        "dimension": "ProductOrServiceAxis - Revenue by market",
+        "dimension": "ProductOrServiceAxis",
         "items": [
           {
             "member": "Data Center",
             "values": {
-              "2023-01-30_2023-04-30": 4284,
-              "2022-01-31_2022-05-01": 3750
+              "Revenue_2023-01-30_2023-04-30": 4284,
+              "Revenue_2022-01-31_2022-05-01": 3750
             }
           },
           {
             "member": "Gaming",
             "values": {
-              "2023-01-30_2023-04-30": 2240,
-              "2022-01-31_2022-05-01": 3620
+              "Revenue_2023-01-30_2023-04-30": 2240,
+              "Revenue_2022-01-31_2022-05-01": 3620
             }
           },
           {
             "member": "Professional Visualization",
             "values": {
-              "2023-01-30_2023-04-30": 295,
-              "2022-01-31_2022-05-01": 622
+              "Revenue_2023-01-30_2023-04-30": 295,
+              "Revenue_2022-01-31_2022-05-01": 622
             }
           },
           {
             "member": "Automotive",
             "values": {
-              "2023-01-30_2023-04-30": 296,
-              "2022-01-31_2022-05-01": 138
+              "Revenue_2023-01-30_2023-04-30": 296,
+              "Revenue_2022-01-31_2022-05-01": 138
             }
           },
           {
             "member": "OEM and Other",
             "values": {
-              "2023-01-30_2023-04-30": 77,
-              "2022-01-31_2022-05-01": 158
+              "Revenue_2023-01-30_2023-04-30": 77,
+              "Revenue_2022-01-31_2022-05-01": 158
             }
           }
         ],
-        "total": 7192,
-        "consolidated_total": 7192,
+        "total": {
+          "Revenue_2023-01-30_2023-04-30": 7192,
+          "Revenue_2022-01-31_2022-05-01": 8288
+        },
+        "consolidated_total": {
+          "Revenue_2023-01-30_2023-04-30": 7192,
+          "Revenue_2022-01-31_2022-05-01": 8288
+        },
         "ties": true
       },
       {
-        "dimension": "CorporateNonSegmentMember - All Other reconciling items",
+        "dimension": "CorporateNonSegmentMember - Reconciling items",
         "items": [
           {
             "member": "Stock-based compensation expense",
@@ -1526,16 +2303,1173 @@
             }
           },
           {
-            "member": "Other",
+            "member": "Other (operating income)",
             "values": {
               "2023-01-30_2023-04-30": 4,
               "2022-01-31_2022-05-01": 0
             }
           }
         ],
-        "total": -1066,
-        "consolidated_total": -1066,
+        "total": {
+          "OperatingIncomeLoss_2023-01-30_2023-04-30": -1066,
+          "OperatingIncomeLoss_2022-01-31_2022-05-01": -2214
+        },
+        "consolidated_total": {
+          "OperatingIncomeLoss_2023-01-30_2023-04-30": -1066,
+          "OperatingIncomeLoss_2022-01-31_2022-05-01": -2214
+        },
         "ties": true
+      }
+    ],
+    "cfo_retry": {
+      "corrected_components": [
+        {
+          "label": "Net income",
+          "value": 2043,
+          "xbrl_concept": "us-gaap:NetIncomeLoss"
+        },
+        {
+          "label": "Stock-based compensation expense",
+          "value": 735,
+          "xbrl_concept": "us-gaap:AllocatedShareBasedCompensationExpense"
+        },
+        {
+          "label": "Depreciation and amortization",
+          "value": 384,
+          "xbrl_concept": "us-gaap:DepreciationDepletionAndAmortization"
+        },
+        {
+          "label": "Losses on investments in non-affiliates",
+          "value": 14,
+          "xbrl_concept": "us-gaap:GainLossOnInvestments"
+        },
+        {
+          "label": "Deferred income taxes",
+          "value": -1135,
+          "xbrl_concept": "us-gaap:DeferredIncomeTaxExpenseBenefit"
+        },
+        {
+          "label": "Acquisition termination cost",
+          "value": 0,
+          "xbrl_concept": "nvda:BusinessCombinationAdvancedConsiderationWrittenOff"
+        },
+        {
+          "label": "Other",
+          "value": -34,
+          "xbrl_concept": "us-gaap:OtherNoncashIncomeExpense"
+        },
+        {
+          "label": "Accounts receivable",
+          "value": -252,
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsReceivable"
+        },
+        {
+          "label": "Inventories",
+          "value": 566,
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInInventories"
+        },
+        {
+          "label": "Prepaid expenses and other assets",
+          "value": -215,
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets"
+        },
+        {
+          "label": "Accounts payable",
+          "value": 11,
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsPayable"
+        },
+        {
+          "label": "Accrued and other current liabilities",
+          "value": 689,
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities"
+        },
+        {
+          "label": "Other long-term liabilities",
+          "value": 105,
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInOtherNoncurrentLiabilities"
+        }
+      ],
+      "section_total": 2911,
+      "sum_check": 2911,
+      "items_added": [],
+      "items_corrected": []
+    },
+    "cfi_retry": {
+      "corrected_components": [
+        {
+          "label": "Proceeds from maturities of marketable securities",
+          "value": 2512,
+          "xbrl_concept": "us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities"
+        },
+        {
+          "label": "Proceeds from sales of marketable securities",
+          "value": 0,
+          "xbrl_concept": "us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt"
+        },
+        {
+          "label": "Purchases of marketable securities",
+          "value": -2801,
+          "xbrl_concept": "us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt"
+        },
+        {
+          "label": "Purchases related to property and equipment and intangible assets",
+          "value": -248,
+          "xbrl_concept": "nvda:PurchasesOfPropertyAndEquipmentAndIntangibleAssets"
+        },
+        {
+          "label": "Acquisitions, net of cash acquired",
+          "value": -83,
+          "xbrl_concept": "us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired"
+        },
+        {
+          "label": "Investments and other, net",
+          "value": -221,
+          "xbrl_concept": "us-gaap:PaymentsForProceedsFromOtherInvestingActivities"
+        }
+      ],
+      "section_total": -841,
+      "sum_check": -841,
+      "items_added": [],
+      "items_corrected": []
+    },
+    "cff_retry": {
+      "corrected_components": [
+        {
+          "label": "Proceeds related to employee stock plans",
+          "value": 246,
+          "xbrl_concept": "nvda:NetProceedsPaymentsRelatedToEmployeeStockPlans"
+        },
+        {
+          "label": "Payments related to tax on restricted stock units",
+          "value": -507,
+          "xbrl_concept": "us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation"
+        },
+        {
+          "label": "Dividends paid",
+          "value": -99,
+          "xbrl_concept": "us-gaap:PaymentsOfDividends"
+        },
+        {
+          "label": "Principal payments on property and equipment and intangible assets",
+          "value": -20,
+          "xbrl_concept": "nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities"
+        },
+        {
+          "label": "Payments related to repurchases of common stock",
+          "value": 0,
+          "xbrl_concept": "us-gaap:PaymentsForRepurchaseOfCommonStock"
+        }
+      ],
+      "section_total": -380,
+      "sum_check": -380,
+      "items_added": [],
+      "items_corrected": []
+    },
+    "completeness_retry": [
+      {
+        "concept": "nvda:AccruedCustomerProgramsCurrent",
+        "value": {
+          "2023-04-30": 1245000000.0,
+          "2023-01-29": 1196000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Customer program accruals",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Accrued and Other Current Liabilities as Customer program accruals"
+      },
+      {
+        "concept": "nvda:AccruedLicensesAndRoyalties",
+        "value": {
+          "2023-04-30": 143000000.0,
+          "2023-01-29": 149000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Licenses and royalties",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Accrued and Other Current Liabilities as Licenses and royalties"
+      },
+      {
+        "concept": "nvda:AggregateNumberOfSharesRepurchasedUnderStockRepurchasePlan",
+        "value": {
+          "2023-04-30": 1100000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 14 Shareholders Equity - Capital Return Program disclosure",
+        "reason": "Cumulative shares repurchased since inception of share repurchase program, disclosed in Note 14 Shareholders Equity narrative"
+      },
+      {
+        "concept": "nvda:AggregatedCostOfSharesRepurchased",
+        "value": {
+          "2023-04-30": 17120000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 14 Shareholders Equity - Capital Return Program disclosure",
+        "reason": "Total cumulative cost of shares repurchased since inception, disclosed in Note 14 Shareholders Equity narrative"
+      },
+      {
+        "concept": "nvda:ContractWithCustomerLiabilityAdditions",
+        "value": {
+          "2023-01-30 to 2023-04-30": 287000000.0,
+          "2022-01-31 to 2022-05-01": 212000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 10 Balance Sheet Components - Deferred Revenue rollforward table, line item Deferred revenue additions during the period",
+        "reason": "Part of the deferred revenue activity rollforward presented in Note 10 Balance Sheet Components"
+      },
+      {
+        "concept": "nvda:ContractWithCustomerLiabilityRevenueRecognizedIncludingOpeningBalance",
+        "value": {
+          "2023-01-30 to 2023-04-30": 262000000.0,
+          "2022-01-31 to 2022-05-01": 177000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 10 Balance Sheet Components - Deferred Revenue rollforward table, line item Revenue recognized during the period",
+        "reason": "Part of the deferred revenue activity rollforward presented in Note 10 Balance Sheet Components"
+      },
+      {
+        "concept": "nvda:ExcessInventoryPurchaseObligationsCurrent",
+        "value": {
+          "2023-04-30": 786000000.0,
+          "2023-01-29": 954000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Excess inventory purchase obligations",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Accrued and Other Current Liabilities as Excess inventory purchase obligations"
+      },
+      {
+        "concept": "nvda:FiniteLivedIntangibleAssetsAmortizationExpenseAfterYearFour",
+        "value": {
+          "2023-04-30": 109000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 9 Amortizable Intangible Assets and Goodwill - Future amortization expense table, line item 2029 and thereafter",
+        "reason": "Disclosed as part of the future amortization expense schedule in Note 9 for fiscal year 2029 and thereafter"
+      },
+      {
+        "concept": "nvda:LesseeOperatingLeaseLeaseNotYetCommencedUndiscountedAmount",
+        "value": {
+          "2023-04-30": 361000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 3 Leases - disclosure of operating leases not yet commenced",
+        "reason": "Undiscounted amount of operating leases signed but not yet commenced, disclosed in the lease note narrative"
+      },
+      {
+        "concept": "nvda:LesseeOperatingLeaseLiabilityPaymentsDueAfterYearFour",
+        "value": {
+          "2023-04-30": 357000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 3 Leases - Operating lease maturity table, line item 2029 and thereafter",
+        "reason": "Disclosed as part of the operating lease future minimum payment schedule for fiscal year 2029 and thereafter"
+      },
+      {
+        "concept": "nvda:LicensesPayableNoncurrent",
+        "value": {
+          "2023-04-30": 155000000.0,
+          "2023-01-29": 181000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Other Long-Term Liabilities on the Balance Sheet - line item Licenses payable",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Other Long-Term Liabilities as Licenses payable"
+      },
+      {
+        "concept": "nvda:NotionalAmountOfFXForwardContractNonDesignatedAsHedge",
+        "value": {
+          "2023-04-30": 350000000.0,
+          "2023-01-29": 366000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 11 Derivative Financial Instruments - notional value table, line item Non-designated hedges",
+        "reason": "Notional value of FX forward contracts not designated as hedges, disclosed in Note 11 derivatives table"
+      },
+      {
+        "concept": "nvda:NotionalAmountOfForeignExchangeForwardContractDesignatedAsHedge",
+        "value": {
+          "2023-04-30": 1142000000.0,
+          "2023-01-29": 1128000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 11 Derivative Financial Instruments - notional value table, line item Designated as cash flow hedges",
+        "reason": "Notional value of FX forward contracts designated as cash flow hedges, disclosed in Note 11 derivatives table"
+      },
+      {
+        "concept": "nvda:PrepaidCloudServices",
+        "value": {
+          "2023-04-30": 171000000.0,
+          "2023-01-29": 23000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Other Assets (noncurrent) on the Balance Sheet - line item Prepaid cloud services",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Other Assets as Prepaid cloud services"
+      },
+      {
+        "concept": "nvda:PrepaidRoyaltiesNoncurrent",
+        "value": {
+          "2023-04-30": 381000000.0,
+          "2023-01-29": 387000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Other Assets (noncurrent) on the Balance Sheet - line item Prepaid royalties",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Other Assets as Prepaid royalties"
+      },
+      {
+        "concept": "nvda:PrepaidSupplyAgreementsNoncurrent",
+        "value": {
+          "2023-04-30": 3002000000.0,
+          "2023-01-29": 2989000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Other Assets (noncurrent) on the Balance Sheet - line item Prepaid supply and capacity agreements",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Other Assets as Prepaid supply and capacity agreements"
+      },
+      {
+        "concept": "nvda:ProductWarrantyAccrualsAndReturnProvisionsCurrent",
+        "value": {
+          "2023-04-30": 112000000.0,
+          "2023-01-29": 108000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Product warranty and return provisions",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Accrued and Other Current Liabilities as Product warranty and return provisions"
+      },
+      {
+        "concept": "nvda:PurchaseObligationInventoryPurchaseAndSupplyAgreements",
+        "value": {
+          "2023-04-30": 7270000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 13 Commitments and Contingencies - Purchase Obligations narrative",
+        "reason": "Outstanding inventory purchase and long-term supply and capacity obligations disclosed in Note 13 commitments narrative"
+      },
+      {
+        "concept": "nvda:PurchaseObligationToBePaidAfterYearFour",
+        "value": {
+          "2023-04-30": 255000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 13 Commitments and Contingencies - Purchase commitments maturity table, line item 2029 and thereafter",
+        "reason": "Disclosed as part of the total future purchase commitments schedule for fiscal year 2029 and thereafter"
+      },
+      {
+        "concept": "us-gaap:AccruedIncomeTaxesNoncurrent",
+        "value": {
+          "2023-04-30": 1300000000.0,
+          "2023-01-29": 1204000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Other Long-Term Liabilities on the Balance Sheet - line item Income tax payable",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Other Long-Term Liabilities as Income tax payable"
+      },
+      {
+        "concept": "us-gaap:AdjustmentsRelatedToTaxWithholdingForShareBasedCompensation",
+        "value": {
+          "2023-01-30 to 2023-04-30": 507000000.0,
+          "2022-01-31 to 2022-05-01": 538000000.0
+        },
+        "statement": "equity",
+        "classified_in": "Condensed Consolidated Statements of Shareholders Equity - line item Tax withholding related to vesting of restricted stock units, reduction to Additional Paid-In Capital",
+        "reason": "Appears in the statement of shareholders equity as a deduction from APIC for tax withholding on RSU vesting"
+      },
+      {
+        "concept": "us-gaap:AdjustmentsToAdditionalPaidInCapitalSharebasedCompensationRequisiteServicePeriodRecognitionValue",
+        "value": {
+          "2023-01-30 to 2023-04-30": 743000000.0,
+          "2022-01-31 to 2022-05-01": 573000000.0
+        },
+        "statement": "equity",
+        "classified_in": "Condensed Consolidated Statements of Shareholders Equity - line item Stock-based compensation, addition to Additional Paid-In Capital",
+        "reason": "Stock-based compensation expense recognized in APIC in the statement of shareholders equity"
+      },
+      {
+        "concept": "us-gaap:AmortizationOfIntangibleAssets",
+        "value": {
+          "2023-01-30 to 2023-04-30": 181000000.0,
+          "2022-01-31 to 2022-05-01": 155000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 9 Amortizable Intangible Assets and Goodwill - narrative disclosure of amortization expense",
+        "reason": "Disclosed in Note 9 as amortization expense associated with intangible assets for the period"
+      },
+      {
+        "concept": "us-gaap:AvailableForSaleDebtSecuritiesAccumulatedGrossUnrealizedGainBeforeTax",
+        "value": {
+          "2023-04-30": 7000000.0,
+          "2023-01-29": 1000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 7 Cash Equivalents and Investments - available-for-sale securities table, column Gross Unrealized Gain",
+        "reason": "Disclosed in Note 7 investment schedule as gross unrealized gains on available-for-sale debt securities"
+      },
+      {
+        "concept": "us-gaap:AvailableForSaleDebtSecuritiesAccumulatedGrossUnrealizedLossBeforeTax",
+        "value": {
+          "2023-04-30": 43000000.0,
+          "2023-01-29": 58000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 7 Cash Equivalents and Investments - available-for-sale securities table, column Gross Unrealized Loss",
+        "reason": "Disclosed in Note 7 investment schedule as gross unrealized losses on available-for-sale debt securities"
+      },
+      {
+        "concept": "us-gaap:AvailableForSaleDebtSecuritiesAmortizedCostBasis",
+        "value": {
+          "2023-04-30": 15107000000.0,
+          "2023-01-29": 13112000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 7 Cash Equivalents and Investments - available-for-sale securities table, column Amortized Cost",
+        "reason": "Disclosed in Note 7 investment schedule as total amortized cost of available-for-sale debt securities"
+      },
+      {
+        "concept": "us-gaap:AvailableForSaleSecuritiesDebtMaturitiesAfterOneThroughFiveYearsAmortizedCost",
+        "value": {
+          "2023-04-30": 2453000000.0,
+          "2023-01-29": 3374000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 7 Cash Equivalents and Investments - contractual maturity table, line item Due in 1-5 years, Amortized Cost",
+        "reason": "Part of the contractual maturity schedule for available-for-sale securities in Note 7"
+      },
+      {
+        "concept": "us-gaap:AvailableForSaleSecuritiesDebtMaturitiesAfterOneThroughFiveYearsFairValue",
+        "value": {
+          "2023-04-30": 2446000000.0,
+          "2023-01-29": 3347000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 7 Cash Equivalents and Investments - contractual maturity table, line item Due in 1-5 years, Estimated Fair Value",
+        "reason": "Part of the contractual maturity schedule for available-for-sale securities in Note 7"
+      },
+      {
+        "concept": "us-gaap:AvailableForSaleSecuritiesDebtMaturitiesWithinOneYearAmortizedCost",
+        "value": {
+          "2023-04-30": 12654000000.0,
+          "2023-01-29": 9738000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 7 Cash Equivalents and Investments - contractual maturity table, line item Less than one year, Amortized Cost",
+        "reason": "Part of the contractual maturity schedule for available-for-sale securities in Note 7"
+      },
+      {
+        "concept": "us-gaap:AvailableForSaleSecuritiesDebtMaturitiesWithinOneYearFairValue",
+        "value": {
+          "2023-04-30": 12625000000.0,
+          "2023-01-29": 9708000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 7 Cash Equivalents and Investments - contractual maturity table, line item Less than one year, Estimated Fair Value",
+        "reason": "Part of the contractual maturity schedule for available-for-sale securities in Note 7"
+      },
+      {
+        "concept": "us-gaap:AvailableForSaleSecuritiesDebtSecurities",
+        "value": {
+          "2023-04-30": 15071000000.0,
+          "2023-01-29": 13055000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 7 Cash Equivalents and Investments - available-for-sale securities table, column Estimated Fair Value (total)",
+        "reason": "Total fair value of available-for-sale debt securities disclosed in Note 7 investment schedule"
+      },
+      {
+        "concept": "us-gaap:CashEquivalentsAtCarryingValue",
+        "value": {
+          "2023-04-30": 4830000000.0,
+          "2023-01-29": 3148000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 7 Cash Equivalents and Investments - investment schedule, column Reported as Cash Equivalents",
+        "reason": "Portion of investment securities classified as cash equivalents, disclosed in Note 7 table"
+      },
+      {
+        "concept": "us-gaap:CommercialPaper",
+        "value": {
+          "2023-04-30": 0.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 12 Debt - Commercial Paper section narrative disclosure",
+        "reason": "Disclosed in Note 12 as no commercial paper outstanding under the $575 million commercial paper program"
+      },
+      {
+        "concept": "us-gaap:CommonStockDividendsPerShareDeclared",
+        "value": {
+          "2023-01-30 to 2023-04-30": 0.04,
+          "2022-01-31 to 2022-05-01": 0.04
+        },
+        "statement": "equity",
+        "classified_in": "Condensed Consolidated Statements of Shareholders Equity - Cash dividends declared and paid per share disclosure",
+        "reason": "Per share dividend amount disclosed in the statement of shareholders equity as part of the cash dividends declared line"
+      },
+      {
+        "concept": "us-gaap:ComprehensiveIncomeNetOfTax",
+        "value": {
+          "2023-01-30 to 2023-04-30": 2036000000.0,
+          "2022-01-31 to 2022-05-01": 1565000000.0
+        },
+        "statement": "comprehensive_income",
+        "classified_in": "Condensed Consolidated Statements of Comprehensive Income - line item Total comprehensive income",
+        "reason": "Total comprehensive income presented on the face of the comprehensive income statement"
+      },
+      {
+        "concept": "us-gaap:ContractWithCustomerLiability",
+        "value": {
+          "2023-01-29": 572000000.0,
+          "2022-01-30": 502000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 10 Balance Sheet Components - Deferred Revenue rollforward table, line item Balance at beginning of period",
+        "reason": "Opening balance in the deferred revenue rollforward table in Note 10"
+      },
+      {
+        "concept": "us-gaap:ContractWithCustomerLiabilityCurrent",
+        "value": {
+          "2023-04-30": 367000000.0,
+          "2023-01-29": 354000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Deferred revenue",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Accrued and Other Current Liabilities as Deferred revenue (current portion)"
+      },
+      {
+        "concept": "us-gaap:ContractWithCustomerLiabilityNoncurrent",
+        "value": {
+          "2023-04-30": 230000000.0,
+          "2023-01-29": 218000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Other Long-Term Liabilities on the Balance Sheet - line item Deferred revenue",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Other Long-Term Liabilities as Deferred revenue (noncurrent portion)"
+      },
+      {
+        "concept": "us-gaap:DebtInstrumentUnamortizedDiscountPremiumAndDebtIssuanceCostsNet",
+        "value": {
+          "2023-04-30": 46000000.0,
+          "2023-01-29": 47000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 12 Debt - long-term debt table, line item Unamortized debt discount and issuance costs",
+        "reason": "Disclosed in Note 12 debt schedule as net unamortized discount and issuance costs reducing carrying amount of notes"
+      },
+      {
+        "concept": "us-gaap:DebtSecuritiesAvailableForSaleContinuousUnrealizedLossPosition12MonthsOrLonger",
+        "value": {
+          "2023-04-30": 1944000000.0,
+          "2023-01-29": 1868000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 7 Cash Equivalents and Investments - unrealized loss position table, column 12 months or longer Estimated Fair Value",
+        "reason": "Disclosed in Note 7 unrealized loss breakdown table for securities in continuous loss position 12 months or longer"
+      },
+      {
+        "concept": "us-gaap:DebtSecuritiesAvailableForSaleContinuousUnrealizedLossPosition12MonthsOrLongerAccumulatedLoss",
+        "value": {
+          "2023-04-30": 27000000.0,
+          "2023-01-29": 28000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 7 Cash Equivalents and Investments - unrealized loss position table, column 12 months or longer Gross Unrealized Loss",
+        "reason": "Disclosed in Note 7 unrealized loss breakdown table for accumulated loss on securities in continuous loss 12 months or longer"
+      },
+      {
+        "concept": "us-gaap:DebtSecuritiesAvailableForSaleContinuousUnrealizedLossPositionLessThan12Months",
+        "value": {
+          "2023-04-30": 3805000000.0,
+          "2023-01-29": 4939000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 7 Cash Equivalents and Investments - unrealized loss position table, column Less than 12 months Estimated Fair Value",
+        "reason": "Disclosed in Note 7 unrealized loss breakdown table for securities in continuous loss position less than 12 months"
+      },
+      {
+        "concept": "us-gaap:DebtSecuritiesAvailableForSaleContinuousUnrealizedLossPositionLessThan12MonthsAccumulatedLoss",
+        "value": {
+          "2023-04-30": 16000000.0,
+          "2023-01-29": 30000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 7 Cash Equivalents and Investments - unrealized loss position table, column Less than 12 months Gross Unrealized Loss",
+        "reason": "Disclosed in Note 7 unrealized loss breakdown table for accumulated loss on securities in continuous loss less than 12 months"
+      },
+      {
+        "concept": "us-gaap:DebtSecuritiesAvailableForSaleUnrealizedLossPosition",
+        "value": {
+          "2023-04-30": 5749000000.0,
+          "2023-01-29": 6807000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 7 Cash Equivalents and Investments - unrealized loss position table, column Total Estimated Fair Value",
+        "reason": "Total fair value of securities in an unrealized loss position disclosed in Note 7 unrealized loss table"
+      },
+      {
+        "concept": "us-gaap:DebtSecuritiesAvailableForSaleUnrealizedLossPositionAccumulatedLoss",
+        "value": {
+          "2023-04-30": 43000000.0,
+          "2023-01-29": 58000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 7 Cash Equivalents and Investments - unrealized loss position table, column Total Gross Unrealized Loss",
+        "reason": "Total accumulated unrealized loss on securities in loss position disclosed in Note 7"
+      },
+      {
+        "concept": "us-gaap:DeferredIncomeTaxLiabilitiesNet",
+        "value": {
+          "2023-04-30": 290000000.0,
+          "2023-01-29": 247000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Other Long-Term Liabilities on the Balance Sheet - line item Deferred income tax",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Other Long-Term Liabilities as Deferred income tax"
+      },
+      {
+        "concept": "us-gaap:DividendsCommonStockCash",
+        "value": {
+          "2023-01-30 to 2023-04-30": 99000000.0,
+          "2022-01-31 to 2022-05-01": 100000000.0
+        },
+        "statement": "equity",
+        "classified_in": "Condensed Consolidated Statements of Shareholders Equity - line item Cash dividends declared and paid, reduction to Retained Earnings",
+        "reason": "Cash dividends paid charged against retained earnings in the statement of shareholders equity"
+      },
+      {
+        "concept": "us-gaap:EffectiveIncomeTaxRateContinuingOperations",
+        "value": {
+          "2023-01-30 to 2023-04-30": 0.075,
+          "2022-01-31 to 2022-05-01": 0.103
+        },
+        "statement": "notes",
+        "classified_in": "Note 6 Income Taxes - narrative disclosure of effective tax rate",
+        "reason": "Effective tax rate percentage disclosed in Note 6 income taxes narrative"
+      },
+      {
+        "concept": "us-gaap:EmployeeRelatedLiabilitiesCurrent",
+        "value": {
+          "2023-04-30": 320000000.0,
+          "2023-01-29": 530000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Accrued payroll and related expenses",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Accrued and Other Current Liabilities as Accrued payroll and related expenses"
+      },
+      {
+        "concept": "us-gaap:EmployeeServiceShareBasedCompensationNonvestedAwardsTotalCompensationCostNotYetRecognized",
+        "value": {
+          "2023-04-30": 6550000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 4 Stock-Based Compensation - narrative disclosure of unearned compensation",
+        "reason": "Aggregate unearned stock-based compensation expense disclosed in Note 4 stock-based compensation narrative"
+      },
+      {
+        "concept": "us-gaap:EquitySecuritiesFvNiUnrealizedLoss",
+        "value": {
+          "2023-01-30 to 2023-04-30": 14000000.0,
+          "2022-01-31 to 2022-05-01": 24000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 8 Fair Value of Financial Assets and Liabilities - footnote disclosure, included in Other income (expense) net in income statement",
+        "reason": "Unrealized losses on publicly-held equity securities recorded in other income (expense) net, disclosed as footnote in Note 8 fair value table"
+      },
+      {
+        "concept": "us-gaap:FiniteLivedIntangibleAssetsAccumulatedAmortization",
+        "value": {
+          "2023-04-30": 2031000000.0,
+          "2023-01-29": 1863000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 9 Amortizable Intangible Assets and Goodwill - intangible assets table, column Accumulated Amortization",
+        "reason": "Disclosed in Note 9 intangible assets schedule as total accumulated amortization"
+      },
+      {
+        "concept": "us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseNextTwelveMonths",
+        "value": {
+          "2023-04-30": 554000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 9 Amortizable Intangible Assets and Goodwill - future amortization table, fiscal year 2025",
+        "reason": "Estimated future amortization expense for fiscal year 2025 disclosed in Note 9 amortization schedule"
+      },
+      {
+        "concept": "us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseRemainderOfFiscalYear",
+        "value": {
+          "2023-04-30": 433000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 9 Amortizable Intangible Assets and Goodwill - future amortization table, 2024 excluding first quarter",
+        "reason": "Estimated future amortization for remainder of fiscal year 2024 disclosed in Note 9 amortization schedule"
+      },
+      {
+        "concept": "us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseYearFour",
+        "value": {
+          "2023-04-30": 37000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 9 Amortizable Intangible Assets and Goodwill - future amortization table, fiscal year 2028",
+        "reason": "Estimated future amortization expense for fiscal year 2028 disclosed in Note 9 amortization schedule"
+      },
+      {
+        "concept": "us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseYearThree",
+        "value": {
+          "2023-04-30": 149000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 9 Amortizable Intangible Assets and Goodwill - future amortization table, fiscal year 2027",
+        "reason": "Estimated future amortization expense for fiscal year 2027 disclosed in Note 9 amortization schedule"
+      },
+      {
+        "concept": "us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseYearTwo",
+        "value": {
+          "2023-04-30": 259000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 9 Amortizable Intangible Assets and Goodwill - future amortization table, fiscal year 2026",
+        "reason": "Estimated future amortization expense for fiscal year 2026 disclosed in Note 9 amortization schedule"
+      },
+      {
+        "concept": "us-gaap:FiniteLivedIntangibleAssetsGross",
+        "value": {
+          "2023-04-30": 3572000000.0,
+          "2023-01-29": 3539000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 9 Amortizable Intangible Assets and Goodwill - intangible assets table, column Gross Carrying Amount",
+        "reason": "Disclosed in Note 9 intangible assets schedule as total gross carrying amount"
+      },
+      {
+        "concept": "us-gaap:FiniteLivedIntangibleAssetsNet",
+        "value": {
+          "2023-04-30": 1541000000.0,
+          "2023-01-29": 1676000000.0
+        },
+        "statement": "balance_sheet",
+        "classified_in": "Intangible Assets, net on the Condensed Consolidated Balance Sheet",
+        "reason": "Net intangible assets presented as a separate line item on the balance sheet face; also reconciled in Note 9"
+      },
+      {
+        "concept": "us-gaap:GoodwillPeriodIncreaseDecrease",
+        "value": {
+          "2023-01-30 to 2023-04-30": 58000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 9 Amortizable Intangible Assets and Goodwill - narrative disclosure of goodwill increase from acquisition",
+        "reason": "Goodwill increase from an acquisition assigned to Compute and Networking segment, disclosed in Note 9 narrative"
+      },
+      {
+        "concept": "us-gaap:InventoryFinishedGoodsNetOfReserves",
+        "value": {
+          "2023-04-30": 1872000000.0,
+          "2023-01-29": 2263000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 10 Balance Sheet Components - Inventories table, line item Finished goods",
+        "reason": "Disclosed as a sub-component of total inventories in Note 10 Balance Sheet Components"
+      },
+      {
+        "concept": "us-gaap:InventoryRawMaterialsNetOfReserves",
+        "value": {
+          "2023-04-30": 1809000000.0,
+          "2023-01-29": 2430000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 10 Balance Sheet Components - Inventories table, line item Raw materials",
+        "reason": "Disclosed as a sub-component of total inventories in Note 10 Balance Sheet Components"
+      },
+      {
+        "concept": "us-gaap:InventoryWorkInProcessNetOfReserves",
+        "value": {
+          "2023-04-30": 930000000.0,
+          "2023-01-29": 466000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 10 Balance Sheet Components - Inventories table, line item Work in-process",
+        "reason": "Disclosed as a sub-component of total inventories in Note 10 Balance Sheet Components"
+      },
+      {
+        "concept": "us-gaap:LesseeOperatingLeaseLiabilityPaymentsDue",
+        "value": {
+          "2023-04-30": 1288000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 3 Leases - Operating lease maturity table, line item Total",
+        "reason": "Total undiscounted future minimum lease payments disclosed in operating lease maturity schedule in Note 3"
+      },
+      {
+        "concept": "us-gaap:LesseeOperatingLeaseLiabilityPaymentsDueNextTwelveMonths",
+        "value": {
+          "2023-04-30": 218000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 3 Leases - Operating lease maturity table, fiscal year 2025",
+        "reason": "Future minimum lease payment due in fiscal year 2025 disclosed in Note 3 operating lease maturity schedule"
+      },
+      {
+        "concept": "us-gaap:LesseeOperatingLeaseLiabilityPaymentsDueYearFour",
+        "value": {
+          "2023-04-30": 159000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 3 Leases - Operating lease maturity table, fiscal year 2028",
+        "reason": "Future minimum lease payment due in fiscal year 2028 disclosed in Note 3 operating lease maturity schedule"
+      },
+      {
+        "concept": "us-gaap:LesseeOperatingLeaseLiabilityPaymentsDueYearThree",
+        "value": {
+          "2023-04-30": 180000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 3 Leases - Operating lease maturity table, fiscal year 2027",
+        "reason": "Future minimum lease payment due in fiscal year 2027 disclosed in Note 3 operating lease maturity schedule"
+      },
+      {
+        "concept": "us-gaap:LesseeOperatingLeaseLiabilityPaymentsDueYearTwo",
+        "value": {
+          "2023-04-30": 196000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 3 Leases - Operating lease maturity table, fiscal year 2026",
+        "reason": "Future minimum lease payment due in fiscal year 2026 disclosed in Note 3 operating lease maturity schedule"
+      },
+      {
+        "concept": "us-gaap:LesseeOperatingLeaseLiabilityPaymentsRemainderOfFiscalYear",
+        "value": {
+          "2023-04-30": 178000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 3 Leases - Operating lease maturity table, 2024 excluding first quarter",
+        "reason": "Future minimum lease payment for remainder of fiscal year 2024 disclosed in Note 3 operating lease maturity schedule"
+      },
+      {
+        "concept": "us-gaap:LesseeOperatingLeaseLiabilityUndiscountedExcessAmount",
+        "value": {
+          "2023-04-30": 162000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 3 Leases - Operating lease maturity table, line item Less imputed interest",
+        "reason": "Undiscounted excess amount (imputed interest) disclosed in Note 3 operating lease maturity reconciliation"
+      },
+      {
+        "concept": "us-gaap:LongTermDebt",
+        "value": {
+          "2023-04-30": 10954000000.0,
+          "2023-01-29": 10953000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 12 Debt - long-term debt table, line item Net carrying amount; split between current and noncurrent on Balance Sheet",
+        "reason": "Net carrying amount of all notes after discount and issuance costs disclosed in Note 12; classified as current and noncurrent on the balance sheet"
+      },
+      {
+        "concept": "us-gaap:LongTermDebtCurrent",
+        "value": {
+          "2023-04-30": 1250000000.0,
+          "2023-01-29": 1250000000.0
+        },
+        "statement": "balance_sheet",
+        "classified_in": "Short-term debt (current portion of long-term debt) on the Condensed Consolidated Balance Sheet",
+        "reason": "Current portion of long-term notes disclosed in Note 12 and classified as Short-term debt on the balance sheet"
+      },
+      {
+        "concept": "us-gaap:MarketableSecurities",
+        "value": {
+          "2023-04-30": 10241000000.0,
+          "2023-01-29": 9907000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 7 Cash Equivalents and Investments - investment schedule, column Reported as Marketable Securities",
+        "reason": "Portion of investment securities classified as marketable securities on balance sheet, disclosed in Note 7 table"
+      },
+      {
+        "concept": "us-gaap:NumberOfReportableSegments",
+        "value": {
+          "2023-01-30 to 2023-04-30": 2.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 15 Segment Information - narrative disclosure",
+        "reason": "Number of reportable segments (Compute and Networking; Graphics) disclosed in Note 15 segment information"
+      },
+      {
+        "concept": "us-gaap:OperatingLeaseCost",
+        "value": {
+          "2023-01-30 to 2023-04-30": 59000000.0,
+          "2022-01-31 to 2022-05-01": 44000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 3 Leases - narrative disclosure of operating lease expense",
+        "reason": "Operating lease expenses disclosed in the Note 3 leases narrative"
+      },
+      {
+        "concept": "us-gaap:OperatingLeaseLiability",
+        "value": {
+          "2023-04-30": 1126000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 3 Leases - Operating lease maturity table, line item Present value of net future minimum lease payments",
+        "reason": "Present value of operating lease liability disclosed in Note 3 maturity reconciliation"
+      },
+      {
+        "concept": "us-gaap:OperatingLeaseLiabilityCurrent",
+        "value": {
+          "2023-04-30": 187000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Operating leases; also in Note 3 maturity table",
+        "reason": "Current portion of operating lease liability disclosed in Note 10 accrued liabilities table and Note 3 maturity reconciliation"
+      },
+      {
+        "concept": "us-gaap:OperatingLeasePayments",
+        "value": {
+          "2023-01-30 to 2023-04-30": 61000000.0,
+          "2022-01-31 to 2022-05-01": 45000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 3 Leases - supplemental cash flow information table, line item Operating cash flows used for operating leases",
+        "reason": "Cash paid for operating leases disclosed in Note 3 supplemental lease cash flow information"
+      },
+      {
+        "concept": "us-gaap:OperatingLeaseWeightedAverageDiscountRatePercent",
+        "value": {
+          "2023-04-30": 0.0333,
+          "2023-01-29": 0.0321
+        },
+        "statement": "notes",
+        "classified_in": "Note 3 Leases - narrative disclosure of weighted average discount rate",
+        "reason": "Weighted average discount rate for operating leases disclosed in Note 3 leases narrative"
+      },
+      {
+        "concept": "us-gaap:OtherAccruedLiabilitiesCurrent",
+        "value": {
+          "2023-04-30": 165000000.0,
+          "2023-01-29": 186000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Other",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Accrued and Other Current Liabilities as Other"
+      },
+      {
+        "concept": "us-gaap:OtherAssetsMiscellaneousNoncurrent",
+        "value": {
+          "2023-04-30": 145000000.0,
+          "2023-01-29": 122000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Other Assets (noncurrent) on the Balance Sheet - line item Other",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Other Assets as Other"
+      },
+      {
+        "concept": "us-gaap:OtherCommitment",
+        "value": {
+          "2023-04-30": 3260000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 13 Commitments and Contingencies - Purchase Obligations narrative, other non-inventory purchase obligations",
+        "reason": "Other non-inventory purchase obligations including multi-year cloud service agreements disclosed in Note 13 narrative"
+      },
+      {
+        "concept": "us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossAfterReclassificationAndTax",
+        "value": {
+          "2023-01-30 to 2023-04-30": -24000000.0,
+          "2022-01-31 to 2022-05-01": -31000000.0
+        },
+        "statement": "comprehensive_income",
+        "classified_in": "Condensed Consolidated Statements of Comprehensive Income - Cash flow hedges section, line item Net change in unrealized loss",
+        "reason": "Net change in cash flow hedge unrealized loss presented in OCI on the comprehensive income statement"
+      },
+      {
+        "concept": "us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossBeforeReclassificationAfterTax",
+        "value": {
+          "2023-01-30 to 2023-04-30": -13000000.0,
+          "2022-01-31 to 2022-05-01": -29000000.0
+        },
+        "statement": "comprehensive_income",
+        "classified_in": "Condensed Consolidated Statements of Comprehensive Income - Cash flow hedges section, line item Net unrealized loss",
+        "reason": "Unrealized loss on cash flow hedges before reclassification presented in OCI on comprehensive income statement"
+      },
+      {
+        "concept": "us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossReclassificationAfterTax",
+        "value": {
+          "2023-01-30 to 2023-04-30": 11000000.0,
+          "2022-01-31 to 2022-05-01": 2000000.0
+        },
+        "statement": "comprehensive_income",
+        "classified_in": "Condensed Consolidated Statements of Comprehensive Income - Cash flow hedges section, line item Reclassification adjustments for net realized loss included in net income",
+        "reason": "Reclassification of cash flow hedge gains/losses into net income presented in OCI on comprehensive income statement"
+      },
+      {
+        "concept": "us-gaap:OtherComprehensiveIncomeLossNetOfTax",
+        "value": {
+          "2023-01-30 to 2023-04-30": -7000000.0,
+          "2022-01-31 to 2022-05-01": -53000000.0
+        },
+        "statement": "comprehensive_income",
+        "classified_in": "Condensed Consolidated Statements of Comprehensive Income - line item Other comprehensive loss net of tax; also in Statements of Shareholders Equity",
+        "reason": "Total other comprehensive loss after tax presented on face of comprehensive income statement and in equity statement"
+      },
+      {
+        "concept": "us-gaap:OtherComprehensiveIncomeUnrealizedHoldingGainLossOnSecuritiesArisingDuringPeriodNetOfTax",
+        "value": {
+          "2023-01-30 to 2023-04-30": 17000000.0,
+          "2022-01-31 to 2022-05-01": -22000000.0
+        },
+        "statement": "comprehensive_income",
+        "classified_in": "Condensed Consolidated Statements of Comprehensive Income - Available-for-sale securities section, line item Net change in unrealized gain (loss)",
+        "reason": "Change in unrealized gain/loss on available-for-sale securities presented in OCI on comprehensive income statement"
+      },
+      {
+        "concept": "us-gaap:OtherLongTermInvestments",
+        "value": {
+          "2023-04-30": 505000000.0,
+          "2023-01-29": 299000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Other Assets (noncurrent) on the Balance Sheet - line item Investment in non-affiliated entities",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Other Assets as Investment in non-affiliated entities"
+      },
+      {
+        "concept": "us-gaap:OtherSundryLiabilitiesNoncurrent",
+        "value": {
+          "2023-04-30": 62000000.0,
+          "2023-01-29": 63000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Other Long-Term Liabilities on the Balance Sheet - line item Other",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Other Long-Term Liabilities as Other"
+      },
+      {
+        "concept": "us-gaap:ProductWarrantyAccrual",
+        "value": {
+          "2023-04-30": 77000000.0,
+          "2023-01-29": 82000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 13 Commitments and Contingencies - Product warranty rollforward table, balance at beginning and end of period",
+        "reason": "Estimated product warranty liabilities disclosed in Note 13 warranty accrual rollforward"
+      },
+      {
+        "concept": "us-gaap:ProductWarrantyAccrualPayments",
+        "value": {
+          "2023-01-30 to 2023-04-30": 18000000.0,
+          "2022-01-31 to 2022-05-01": 7000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 13 Commitments and Contingencies - Product warranty rollforward table, line item Utilization",
+        "reason": "Warranty payments/utilization disclosed in Note 13 product warranty liability rollforward table"
+      },
+      {
+        "concept": "us-gaap:ProductWarrantyAccrualWarrantiesIssued",
+        "value": {
+          "2023-01-30 to 2023-04-30": 13000000.0,
+          "2022-01-31 to 2022-05-01": 16000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 13 Commitments and Contingencies - Product warranty rollforward table, line item Additions",
+        "reason": "New warranty provisions added during period disclosed in Note 13 product warranty liability rollforward table"
+      },
+      {
+        "concept": "us-gaap:PurchaseObligation",
+        "value": {
+          "2023-04-30": 10527000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 13 Commitments and Contingencies - Purchase commitments maturity table, line item Total",
+        "reason": "Total purchase obligations disclosed as the sum of all years in the Note 13 purchase commitment maturity schedule"
+      },
+      {
+        "concept": "us-gaap:PurchaseObligationDueInFourthYear",
+        "value": {
+          "2023-04-30": 332000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 13 Commitments and Contingencies - Purchase commitments maturity table, fiscal year 2028",
+        "reason": "Purchase obligations due in fiscal year 2028 disclosed in Note 13 commitment maturity schedule"
+      },
+      {
+        "concept": "us-gaap:PurchaseObligationDueInNextTwelveMonths",
+        "value": {
+          "2023-04-30": 1816000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 13 Commitments and Contingencies - Purchase commitments maturity table, fiscal year 2025",
+        "reason": "Purchase obligations due in fiscal year 2025 disclosed in Note 13 commitment maturity schedule"
+      },
+      {
+        "concept": "us-gaap:PurchaseObligationDueInSecondYear",
+        "value": {
+          "2023-04-30": 753000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 13 Commitments and Contingencies - Purchase commitments maturity table, fiscal year 2026",
+        "reason": "Purchase obligations due in fiscal year 2026 disclosed in Note 13 commitment maturity schedule"
+      },
+      {
+        "concept": "us-gaap:PurchaseObligationDueInThirdYear",
+        "value": {
+          "2023-04-30": 704000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 13 Commitments and Contingencies - Purchase commitments maturity table, fiscal year 2027",
+        "reason": "Purchase obligations due in fiscal year 2027 disclosed in Note 13 commitment maturity schedule"
+      },
+      {
+        "concept": "us-gaap:PurchaseObligationFutureMinimumPaymentsRemainderOfFiscalYear",
+        "value": {
+          "2023-04-30": 6667000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 13 Commitments and Contingencies - Purchase commitments maturity table, 2024 excluding first quarter",
+        "reason": "Purchase obligations due in remainder of fiscal year 2024 disclosed in Note 13 commitment maturity schedule"
+      },
+      {
+        "concept": "us-gaap:RevenueRemainingPerformanceObligation",
+        "value": {
+          "2023-04-30": 639000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 10 Balance Sheet Components - Deferred Revenue section, narrative disclosure of remaining performance obligations",
+        "reason": "Revenue allocated to remaining performance obligations disclosed in Note 10 deferred revenue section"
+      },
+      {
+        "concept": "us-gaap:RightOfUseAssetObtainedInExchangeForOperatingLeaseLiability",
+        "value": {
+          "2023-01-30 to 2023-04-30": 106000000.0,
+          "2022-01-31 to 2022-05-01": 62000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 3 Leases - supplemental cash flow information table, line item Operating lease assets obtained in exchange for lease obligations",
+        "reason": "Non-cash operating lease ROU assets obtained disclosed in Note 3 supplemental lease information"
+      },
+      {
+        "concept": "us-gaap:StockIssuedDuringPeriodValueEmployeeStockOwnershipPlan",
+        "value": {
+          "2023-01-30 to 2023-04-30": 246000000.0,
+          "2022-01-31 to 2022-05-01": 204000000.0
+        },
+        "statement": "equity",
+        "classified_in": "Condensed Consolidated Statements of Shareholders Equity - line item Issuance of common stock from stock plans, addition to Additional Paid-In Capital",
+        "reason": "Proceeds from stock plan issuances credited to APIC in the statement of shareholders equity"
+      },
+      {
+        "concept": "us-gaap:StockRepurchaseProgramRemainingAuthorizedRepurchaseAmount1",
+        "value": {
+          "2023-04-30": 7230000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Note 14 Shareholders Equity - Capital Return Program disclosure",
+        "reason": "Remaining authorized repurchase amount under the share repurchase program disclosed in Note 14 narrative"
+      },
+      {
+        "concept": "us-gaap:StockRepurchasedAndRetiredDuringPeriodValue",
+        "value": {
+          "2022-01-31 to 2022-05-01": 1996000000.0
+        },
+        "statement": "equity",
+        "classified_in": "Condensed Consolidated Statements of Shareholders Equity - line item Shares repurchased, reduction to Additional Paid-In Capital and Retained Earnings",
+        "reason": "Value of shares repurchased and retired during Q1 FY2023 presented in the statement of shareholders equity"
+      },
+      {
+        "concept": "us-gaap:TaxesPayableCurrent",
+        "value": {
+          "2023-04-30": 1544000000.0,
+          "2023-01-29": 467000000.0
+        },
+        "statement": "notes",
+        "classified_in": "Included in Accrued and Other Current Liabilities on the Balance Sheet - line item Taxes payable",
+        "reason": "Disclosed in Note 10 Balance Sheet Components table under Accrued and Other Current Liabilities as Taxes payable"
       }
     ]
   },
@@ -1725,7 +3659,7 @@
           }
         },
         {
-          "formula": "Total liabilities and shareholders equity = Total liabilities + Commitments and contingencies + Total shareholders equity",
+          "formula": "Total liabilities and shareholders equity = Total liabilities + Total shareholders equity",
           "pass": true,
           "periods": {
             "2023-04-30": {
@@ -1748,33 +3682,33 @@
       "formula_checks": [
         {
           "formula": "Net cash provided by operating activities = Net income + Stock-based compensation expense + Depreciation and amortization - Losses on investments in non-affiliates + Deferred income taxes + Acquisition termination cost - Other - Accounts receivable - Inventories - Prepaid expenses and other assets + Accounts payable + Accrued and other current liabilities + Other long-term liabilities",
-          "pass": true,
+          "pass": false,
           "periods": {
             "2023-01-30_2023-04-30": {
-              "computed": 2911,
+              "computed": 2753,
               "stated": 2911,
-              "computation": "2043 + 735 + 384 + 14 + -1135 + 0 + -34 + -252 + 566 + -215 + 11 + 689 + 105"
+              "computation": "2043 + 735 + 384 - 14 + -1135 + 0 - -34 - -252 - 566 - -215 + 11 + 689 + 105"
             },
             "2022-01-31_2022-05-01": {
-              "computed": 1731,
+              "computed": 6869,
               "stated": 1731,
-              "computation": "1618 + 578 + 334 + 17 + -542 + 1353 + 23 + -788 + -560 + -1261 + 255 + 634 + 70"
+              "computation": "1618 + 578 + 334 - 17 + -542 + 1353 - 23 - -788 - -560 - -1261 + 255 + 634 + 70"
             }
           }
         },
         {
           "formula": "Net cash provided by (used in) investing activities = Proceeds from maturities of marketable securities + Proceeds from sales of marketable securities - Purchases of marketable securities - Purchases related to property and equipment and intangible assets - Acquisitions, net of cash acquired - Investments and other, net",
-          "pass": true,
+          "pass": false,
           "periods": {
             "2023-01-30_2023-04-30": {
-              "computed": -841,
+              "computed": -179,
               "stated": -841,
-              "computation": "2512 + 0 + -2801 + -248 + -83 + -221"
+              "computation": "2512 + 0 + -2801 - -248 - -83 + -221"
             },
             "2022-01-31_2022-05-01": {
-              "computed": 2612,
+              "computed": 3406,
               "stated": 2612,
-              "computation": "5947 + 1029 + -3932 + -361 + -36 + -35"
+              "computation": "5947 + 1029 + -3932 - -361 - -36 + -35"
             }
           }
         },
@@ -1785,17 +3719,17 @@
             "2023-01-30_2023-04-30": {
               "computed": -380,
               "stated": -380,
-              "computation": "246 + -507 + -99 + -20 + 0"
+              "computation": "246 + -507 + -99 + 0 + -20"
             },
             "2022-01-31_2022-05-01": {
               "computed": -2446,
               "stated": -2446,
-              "computation": "204 + -532 + -100 + -22 + -1996"
+              "computation": "204 + -532 + -100 + -1996 + -22"
             }
           }
         },
         {
-          "formula": "Change in cash and cash equivalents = Net cash provided by operating activities + Net cash provided by (used in) investing activities + Net cash used in financing activities",
+          "formula": "Change in cash = Net cash from operating + Net cash from investing + Net cash from financing",
           "pass": true,
           "periods": {
             "2023-01-30_2023-04-30": {
@@ -1811,7 +3745,7 @@
           }
         }
       ],
-      "formulas_pass": 4,
+      "formulas_pass": 2,
       "formulas_total": 4
     }
   }

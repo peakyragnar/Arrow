@@ -1,51 +1,45 @@
 {
   "ticker": "NVDA",
-  "reporting_unit": "Filing reports in USD millions. All monetary values multiplied by 1,000,000 to convert to raw USD. Shares reported in millions and multiplied by 1,000,000 to convert to raw count.",
+  "reporting_unit": "Filing reports in USD millions. All monetary values multiplied by 1,000,000 to convert to raw dollars. Shares reported in millions and multiplied by 1,000,000 to convert to raw count.",
   "company_mapping": {
-    "revenue": "us-gaap:Revenues - Income statement line labeled Revenue",
-    "cogs": "us-gaap:CostOfRevenue - Income statement line labeled Cost of revenue",
-    "gross_profit": "us-gaap:GrossProfit - Income statement line labeled Gross profit (explicitly reported)",
-    "operating_income": "us-gaap:OperatingIncomeLoss - Income statement line labeled Income from operations",
-    "pretax_income": "us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest - Income statement line labeled Income before income tax",
-    "income_tax_expense": "us-gaap:IncomeTaxExpenseBenefit - Income statement line labeled Income tax expense",
-    "net_income": "us-gaap:NetIncomeLoss - Income statement and cash flow statement starting line labeled Net income; both match at 2043 for Q1 FY2024; no noncontrolling interest disclosed so consolidated equals parent",
-    "interest_expense": "us-gaap:InterestExpense - Income statement line labeled Interest expense; reported gross separately from Interest income; displayed in parentheses indicating expense; negated per policy",
-    "sbc": "us-gaap:AllocatedShareBasedCompensationExpense - Cash flow statement addback labeled Stock-based compensation expense",
-    "dna": "us-gaap:DepreciationDepletionAndAmortization - Cash flow statement addback labeled Depreciation and amortization; single line captures all D&A",
-    "diluted_shares": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding - Income statement line labeled Diluted weighted average shares; reported in millions, converted to raw count",
-    "cash": "us-gaap:CashAndCashEquivalentsAtCarryingValue - Balance sheet line labeled Cash and cash equivalents",
-    "short_term_investments": "us-gaap:MarketableSecuritiesCurrent - Balance sheet line labeled Marketable securities (current)",
-    "accounts_receivable": "us-gaap:AccountsReceivableNetCurrent - Balance sheet line labeled Accounts receivable, net",
-    "inventory": "us-gaap:InventoryNet - Balance sheet line labeled Inventories",
-    "accounts_payable": "us-gaap:AccountsPayableCurrent - Balance sheet line labeled Accounts payable; reported as standalone line, no combination needed",
-    "total_assets": "us-gaap:Assets - Balance sheet line labeled Total assets",
-    "equity": "us-gaap:StockholdersEquity - Balance sheet line labeled Total shareholders equity; no noncontrolling interest present",
-    "short_term_debt": "us-gaap:DebtCurrent - Balance sheet line labeled Short-term debt",
-    "long_term_debt": "us-gaap:LongTermDebtNoncurrent - Balance sheet line labeled Long-term debt",
-    "operating_lease_liabilities": "Current portion: embedded in us-gaap:AccruedLiabilitiesCurrent (not broken out on face of balance sheet; cross-statement check confirms long-term is 939M); non-current: us-gaap:OperatingLeaseLiabilityNoncurrent labeled Long-term operating lease liabilities = 939M. Current operating lease liability is not separately disclosed on the balance sheet face; it is included within Accrued and other current liabilities. From supplemental lease data (us-gaap:OperatingLeasePayments = 61M in Q1 FY2024) the current portion can be estimated but is not explicitly broken out. For total operating lease liabilities, only the non-current amount of 939M is confirmed on the balance sheet face. NOTE: current operating lease liability is not separately available from this filing extraction; total is therefore approximated as non-current only (939M) unless notes provide current breakout not present in this extraction.",
-    "cfo": "us-gaap:NetCashProvidedByUsedInOperatingActivities - Cash flow statement line labeled Net cash provided by operating activities",
-    "capex": "nvda:PurchasesOfPropertyAndEquipmentAndIntangibleAssets - Cash flow investing line labeled Purchases related to property and equipment and intangible assets; reported negative (outflow); retained as negative per policy",
-    "acquisitions": "us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired - Cash flow investing line labeled Acquisitions, net of cash acquired; reported negative (outflow); retained as negative per policy",
-    "rd_expense": "us-gaap:ResearchAndDevelopmentExpense - Income statement line labeled Research and development",
-    "interest_income": "us-gaap:InvestmentIncomeInterest - Income statement line labeled Interest income; needed for metric 16 gross interest check and metric 21 unlevered FCF",
-    "operating_lease_liabilities_noncurrent": "us-gaap:OperatingLeaseLiabilityNoncurrent - Balance sheet line labeled Long-term operating lease liabilities",
-    "operating_lease_payments_cash": "us-gaap:OperatingLeasePayments - Supplemental cash flow in lease note (xbrl_not_on_statement); needed as proxy for cash paid for interest cross-check and lease context",
-    "cash_paid_for_interest": "Not explicitly disclosed as a supplemental cash flow item in this extraction; metric 21 will use income statement interest expense as approximation per formula rules",
-    "sga_expense": "us-gaap:SellingGeneralAndAdministrativeExpense - Income statement line labeled Sales, general and administrative",
-    "acquisition_termination_cost": "nvda:BusinessCombinationAdvancedConsiderationWrittenOff - Income statement and cash flow line labeled Acquisition termination cost",
-    "diluted_eps": "us-gaap:EarningsPerShareDiluted - Income statement line labeled Diluted net income per share",
-    "basic_eps": "us-gaap:EarningsPerShareBasic - Income statement line labeled Basic net income per share",
-    "basic_shares": "us-gaap:WeightedAverageNumberOfSharesOutstandingBasic - Income statement line labeled Basic weighted average shares",
-    "shares_outstanding": "us-gaap:CommonStockSharesOutstanding - XBRL not on statement; balance sheet equity section disclosure",
-    "segment_compute_and_networking_revenue": "StatementBusinessSegmentsAxis ComputeAndNetworkingMember Revenue",
-    "segment_graphics_revenue": "StatementBusinessSegmentsAxis GraphicsMember Revenue",
-    "segment_compute_and_networking_operating_income": "StatementBusinessSegmentsAxis ComputeAndNetworkingMember Operating Income",
-    "segment_graphics_operating_income": "StatementBusinessSegmentsAxis GraphicsMember Operating Income",
-    "revenue_data_center": "ProductOrServiceAxis Data Center member",
-    "revenue_gaming": "ProductOrServiceAxis Gaming member",
-    "revenue_professional_visualization": "ProductOrServiceAxis Professional Visualization member",
-    "revenue_automotive": "ProductOrServiceAxis Automotive member",
-    "revenue_oem_and_other": "ProductOrServiceAxis OEM and Other member"
+    "revenue": "us-gaap:Revenues \u2014 IS line item labeled Revenue",
+    "cogs": "us-gaap:CostOfRevenue \u2014 IS line item labeled Cost of revenue",
+    "gross_profit": "us-gaap:GrossProfit \u2014 IS line item labeled Gross profit (also computable as Revenue minus Cost of revenue)",
+    "operating_income": "us-gaap:OperatingIncomeLoss \u2014 IS line item labeled Income from operations",
+    "pretax_income": "us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest \u2014 IS line item labeled Income before income tax",
+    "income_tax_expense": "us-gaap:IncomeTaxExpenseBenefit \u2014 IS line item labeled Income tax expense",
+    "net_income": "us-gaap:NetIncomeLoss \u2014 IS line item labeled Net income; confirmed same value used as CF starting line (2043M for current period); no NCI so consolidated equals parent",
+    "interest_expense": "us-gaap:InterestExpense \u2014 IS line item labeled Interest expense, reported as gross expense (66M current period); filing discloses interest income and interest expense separately so gross interest expense is used as the conservative denominator; stored as negative per policy",
+    "sbc": "us-gaap:AllocatedShareBasedCompensationExpense \u2014 CF addback labeled Stock-based compensation expense (735M). Note: equity statement shows 743M APIC recognition but CF addback of 735M is the canonical source per metric rules",
+    "dna": "us-gaap:DepreciationDepletionAndAmortization \u2014 CF addback labeled Depreciation and amortization (384M); this is the total D&A addback used for all metrics; intangible amortization detail of 181M available in Note 9 (us-gaap:AmortizationOfIntangibleAssets) but the CF aggregate is the canonical source",
+    "diluted_shares": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding \u2014 IS line item labeled Weighted average shares - Diluted (2490M shares, converted to raw count 2,490,000,000)",
+    "cash": "us-gaap:CashAndCashEquivalentsAtCarryingValue \u2014 BS line item labeled Cash and cash equivalents",
+    "short_term_investments": "us-gaap:MarketableSecuritiesCurrent \u2014 BS line item labeled Marketable securities (current); confirmed by Note 7 disclosure",
+    "accounts_receivable": "us-gaap:AccountsReceivableNetCurrent \u2014 BS line item labeled Accounts receivable, net; pure trade AR, no combined line requiring breakout",
+    "inventory": "us-gaap:InventoryNet \u2014 BS line item labeled Inventories; detail breakout available in Note 10 (raw materials 1809M, WIP 930M, finished goods 1872M per XBRL notes)",
+    "accounts_payable": "us-gaap:AccountsPayableCurrent \u2014 BS line item labeled Accounts payable; reported as a separate line item so no breakout from a combined line is needed",
+    "total_assets": "us-gaap:Assets \u2014 BS line item labeled Total assets",
+    "equity": "us-gaap:StockholdersEquity \u2014 BS line item labeled Total shareholders equity; no NCI present so this equals consolidated equity",
+    "short_term_debt": "us-gaap:DebtCurrent \u2014 BS line item labeled Short-term debt (1250M); confirmed by Note 12 XBRL (us-gaap:LongTermDebtCurrent = 1250M) as current portion of long-term notes; us-gaap:CommercialPaper = 0 per Note 12",
+    "long_term_debt": "us-gaap:LongTermDebtNoncurrent \u2014 BS line item labeled Long-term debt (9704M); Note 12 discloses total net carrying amount of 10954M split as 1250M current and 9704M noncurrent",
+    "operating_lease_liabilities": "Total operating lease liabilities = current (us-gaap:OperatingLeaseLiabilityCurrent from XBRL notes = 187M, embedded in Accrued and other current liabilities on BS) plus non-current (us-gaap:OperatingLeaseLiabilityNoncurrent on BS face = 939M); total = 1126M, confirmed by us-gaap:OperatingLeaseLiability = 1126M in Note 3 maturity reconciliation. Current portion NOT separately broken out on BS face but disclosed in Note 10 and Note 3.",
+    "cfo": "us-gaap:NetCashProvidedByUsedInOperatingActivities \u2014 CF line item labeled Net cash provided by operating activities",
+    "capex": "nvda:PurchasesOfPropertyAndEquipmentAndIntangibleAssets \u2014 CF investing line item labeled Purchases related to property and equipment and intangible assets (-248M); NVDA uses a combined capex line that includes intangible asset purchases; stored as negative per policy",
+    "acquisitions": "us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired \u2014 CF investing line item labeled Acquisitions, net of cash acquired (-83M); stored as negative per policy",
+    "rd_expense": "us-gaap:ResearchAndDevelopmentExpense \u2014 IS line item labeled Research and development",
+    "interest_income": "us-gaap:InvestmentIncomeInterest \u2014 IS line item labeled Interest income; needed for metric 21 (Unlevered FCF) context and net debt context",
+    "operating_lease_liabilities_current": "us-gaap:OperatingLeaseLiabilityCurrent from XBRL notes (Note 10 / Note 3) = 187M at 2023-04-30; embedded within Accrued and other current liabilities on BS face",
+    "operating_lease_liabilities_noncurrent": "us-gaap:OperatingLeaseLiabilityNoncurrent \u2014 BS line item labeled Long-term operating lease liabilities = 939M",
+    "inventory_raw_materials": "us-gaap:InventoryRawMaterialsNetOfReserves \u2014 Note 10 detail = 1809M at 2023-04-30",
+    "inventory_wip": "us-gaap:InventoryWorkInProcessNetOfReserves \u2014 Note 10 detail = 930M at 2023-04-30",
+    "inventory_finished_goods": "us-gaap:InventoryFinishedGoodsNetOfReserves \u2014 Note 10 detail = 1872M at 2023-04-30",
+    "cash_paid_for_interest": "Not separately disclosed in this 10-Q filing supplemental section; approximate with income-statement interest expense per metric 21 fallback rule",
+    "segment_compute_networking_revenue": "Segment data ComputeAndNetworkingMember Revenue",
+    "segment_graphics_revenue": "Segment data GraphicsMember Revenue",
+    "segment_compute_networking_operating_income": "Segment data ComputeAndNetworkingMember OperatingIncomeLoss",
+    "segment_graphics_operating_income": "Segment data GraphicsMember OperatingIncomeLoss",
+    "amortization_of_intangibles": "us-gaap:AmortizationOfIntangibleAssets from Note 9 XBRL = 181M; sub-component of total D&A of 384M",
+    "effective_tax_rate_reported": "us-gaap:EffectiveIncomeTaxRateContinuingOperations from Note 6 = 7.5% for Q1 FY2024"
   },
   "period_end": "2023-04-30",
   "period_start": "2023-01-30",
@@ -68,10 +62,10 @@
       "Income before income tax": 2209000000,
       "Income tax expense": 166000000,
       "Net income": 2043000000,
-      "Basic net income per share": 0.83,
-      "Diluted net income per share": 0.82,
-      "Basic weighted average shares": 2470000000,
-      "Diluted weighted average shares": 2490000000
+      "Basic EPS": 0.83,
+      "Diluted EPS": 0.82,
+      "Weighted average shares - Basic": 2470000000,
+      "Weighted average shares - Diluted": 2490000000
     },
     "balance_sheet": {
       "Cash and cash equivalents": 5079000000,
@@ -95,7 +89,6 @@
       "Long-term operating lease liabilities": 939000000,
       "Other long-term liabilities": 2037000000,
       "Total liabilities": 19940000000,
-      "Commitments and contingencies": null,
       "Preferred stock": 0,
       "Common stock": 2000000,
       "Additional paid-in capital": 12453000000,
@@ -158,61 +151,103 @@
     "equity": 24520000000,
     "short_term_debt": 1250000000,
     "long_term_debt": 9704000000,
-    "operating_lease_liabilities": 939000000,
-    "operating_lease_liabilities_current": null,
-    "operating_lease_liabilities_noncurrent": 939000000,
+    "operating_lease_liabilities": 1126000000,
     "cfo": 2911000000,
     "capex": -248000000,
     "acquisitions": -83000000,
     "rd_expense": 1875000000,
     "interest_income": 150000000,
-    "sga_expense": 633000000,
-    "acquisition_termination_cost": 0,
-    "cash_paid_for_interest": null,
-    "basic_shares": 2470000000,
-    "diluted_eps": 0.82,
-    "basic_eps": 0.83,
-    "shares_outstanding_period_end": 2473000000,
-    "operating_lease_payments_cash": 61000000,
-    "right_of_use_asset_obtained": 106000000
+    "operating_lease_liabilities_current": 187000000,
+    "operating_lease_liabilities_noncurrent": 939000000,
+    "inventory_raw_materials": 1809000000,
+    "inventory_wip": 930000000,
+    "inventory_finished_goods": 1872000000,
+    "amortization_of_intangibles": 181000000,
+    "effective_tax_rate_reported": 0.075,
+    "cash_paid_for_interest": null
   },
   "segments": {
-    "by_reportable_segment_revenue": {
-      "Compute and Networking": 4460000000,
-      "Graphics": 2732000000,
-      "Corporate and Other": 0,
-      "Total": 7192000000
+    "by_business_segment": {
+      "period": "2023-01-30_2023-04-30",
+      "compute_and_networking": {
+        "revenue": 4460000000,
+        "operating_income": 2160000000
+      },
+      "graphics": {
+        "revenue": 2732000000,
+        "operating_income": 1046000000
+      },
+      "corporate_and_other": {
+        "revenue": 0,
+        "operating_income": -1066000000
+      },
+      "total": {
+        "revenue": 7192000000,
+        "operating_income": 2140000000
+      },
+      "corporate_reconciling_items": {
+        "stock_based_compensation_expense": -735000000,
+        "acquisition_related_and_other_costs": -173000000,
+        "unallocated_cost_of_revenue_and_operating_expenses": -154000000,
+        "ip_related_and_legal_settlement_costs": -8000000,
+        "acquisition_termination_cost": 0,
+        "other": 4000000
+      }
     },
-    "by_reportable_segment_operating_income": {
-      "Compute and Networking": 2160000000,
-      "Graphics": 1046000000,
-      "Corporate and Other (reconciling)": -1066000000,
-      "Total": 2140000000
+    "by_product": {
+      "period": "2023-01-30_2023-04-30",
+      "data_center": 4284000000,
+      "gaming": 2240000000,
+      "professional_visualization": 295000000,
+      "automotive": 296000000,
+      "oem_and_other": 77000000,
+      "total": 7192000000
     },
-    "corporate_reconciling_items": {
-      "Stock-based compensation expense": -735000000,
-      "Acquisition-related and other costs": -173000000,
-      "Unallocated cost of revenue and operating expenses": -154000000,
-      "IP-related and legal settlement costs": -8000000,
-      "Acquisition termination cost": 0,
-      "Other": 4000000,
-      "Total corporate and other": -1066000000
+    "by_geography": {
+      "period": "2023-01-30_2023-04-30",
+      "united_states": 2385000000,
+      "taiwan": 1796000000,
+      "china_including_hong_kong": 1590000000,
+      "singapore": 762000000,
+      "other_countries": 659000000,
+      "total": 7192000000
     },
-    "by_market_revenue": {
-      "Data Center": 4284000000,
-      "Gaming": 2240000000,
-      "Professional Visualization": 295000000,
-      "Automotive": 296000000,
-      "OEM and Other": 77000000,
-      "Total": 7192000000
+    "prior_year_by_business_segment": {
+      "period": "2022-01-31_2022-05-01",
+      "compute_and_networking": {
+        "revenue": 3672000000,
+        "operating_income": 1606000000
+      },
+      "graphics": {
+        "revenue": 4616000000,
+        "operating_income": 2476000000
+      },
+      "corporate_and_other": {
+        "revenue": 0,
+        "operating_income": -2214000000
+      },
+      "total": {
+        "revenue": 8288000000,
+        "operating_income": 1868000000
+      }
     },
-    "by_geography_revenue": {
-      "United States": 2385000000,
-      "Taiwan": 1796000000,
-      "China (including Hong Kong)": 1590000000,
-      "Singapore": 762000000,
-      "Other countries": 659000000,
-      "Total": 7192000000
+    "prior_year_by_product": {
+      "period": "2022-01-31_2022-05-01",
+      "data_center": 3750000000,
+      "gaming": 3620000000,
+      "professional_visualization": 622000000,
+      "automotive": 138000000,
+      "oem_and_other": 158000000,
+      "total": 8288000000
+    },
+    "prior_year_by_geography": {
+      "period": "2022-01-31_2022-05-01",
+      "united_states": 1932000000,
+      "taiwan": 2777000000,
+      "china_including_hong_kong": 2081000000,
+      "singapore": 454000000,
+      "other_countries": 1044000000,
+      "total": 8288000000
     }
   }
 }
