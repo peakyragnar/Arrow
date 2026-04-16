@@ -235,14 +235,42 @@ PART 1 — AS-REPORTED NORMALIZATION:
 Normalize the three financial statements (IS, BS, CF) so every item has a consistent name. Use the data exactly as reported — do not adjust values. If accrued liabilities includes operating lease current, leave it as-is. The quarterly derivation (Stage 3) needs the as-reported numbers so YTD subtraction works correctly.
 
 PART 2 — ANALYTICAL DERIVATIONS:
-Read the metric formulas below. Determine what additional analytical items are needed that are not directly on the statement face. These are SEPARATE derived values, not replacements for the as-reported data. For example:
-- Total operating lease liabilities = current (from notes/xbrl_not_on_statement) + non-current (from BS)
-- Pure accounts payable = breakout from notes if BS combines AP with accrued
-- Gross interest expense = from notes if IS reports net
+Read the metric formulas below. Determine where each standard analytical input comes from in this company's data. These are SEPARATE derived values, not replacements for the as-reported data.
 
-Find these in the extraction's xbrl_not_on_statement data. If a formula input does not exist for this company, explain why in the company_mapping.
+Some inputs map directly to a statement line item. Others require combining items (e.g., total operating lease liabilities = current from notes + non-current from BS). Others may not exist for this company (e.g., no COGS for a software company — set to null).
+
+Find hidden items in the extraction's xbrl_not_on_statement data. For each input, document the mapping in company_mapping.
 
 Determine the reporting unit from the extraction data and convert all values to RAW dollars. Do not assume any unit — check the extraction values and the XBRL data to determine the scale.
+
+STANDARD ANALYTICAL FIELD NAMES (use these exact keys in the analytical section):
+- revenue: total revenue / net revenue
+- cogs: cost of revenue / cost of goods sold (null if not reported)
+- gross_profit: gross profit (null if no COGS)
+- operating_income: operating income / income from operations
+- pretax_income: income before income taxes
+- income_tax_expense: income tax provision
+- net_income: net income (consolidated, same as CF starting line)
+- interest_expense: GROSS interest expense as a NEGATIVE number (find gross in notes if IS reports net)
+- sbc: stock-based compensation (CF addback, positive)
+- dna: depreciation and amortization (CF addback, positive, sum all D&A components)
+- diluted_shares: diluted weighted average shares (raw count, not millions)
+- cash: cash and cash equivalents
+- short_term_investments: marketable securities / short-term investments (0 if none)
+- accounts_receivable: accounts receivable, net (pure trade AR)
+- inventory: inventories (0 if not applicable)
+- accounts_payable: accounts payable (pure trade AP — find breakout in notes if combined with accrued)
+- total_assets: total assets
+- equity: total stockholders equity (parent only, not including NCI)
+- short_term_debt: current debt + commercial paper + short-term borrowings (0 if none)
+- long_term_debt: long-term debt (non-current)
+- operating_lease_liabilities: TOTAL operating lease liabilities (current + non-current, no double counting)
+- cfo: net cash from operating activities
+- capex: capital expenditures as a NEGATIVE number
+- acquisitions: acquisitions net of cash as a NEGATIVE number (0 if none)
+- rd_expense: research and development expense (null if not reported)
+
+Include any additional analytical items the metric formulas require beyond this list (e.g., inventory breakdown, SBC by function, segment data). Use descriptive field names for those.
 
 METRIC FORMULAS:
 {formulas_md}
@@ -257,7 +285,7 @@ Output ONLY valid JSON:
   "ticker": "{ticker}",
   "reporting_unit": "description of what unit the filing reports in and how you converted",
   "company_mapping": {{
-    "description of each analytical input": "which XBRL concept(s) or line items it maps to, and why"
+    "analytical_field_name": "which XBRL concept(s) or line items it maps to, and why"
   }},
   "period_end": "YYYY-MM-DD",
   "period_start": "YYYY-MM-DD",
@@ -278,9 +306,9 @@ Output ONLY valid JSON:
     }}
   }},
   "analytical": {{
-    "operating_lease_liabilities": value,
-    "operating_lease_current": value,
-    "operating_lease_noncurrent": value,
+    "revenue": value,
+    "operating_income": value,
+    "cfo": value,
     ...
   }},
   "segments": {{ ... }}
