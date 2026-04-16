@@ -34,6 +34,100 @@ def clean_html(html):
     return cleaned
 
 
+def check_fact_completeness(ai_result, xbrl_facts):
+    """Compare XBRL facts sent to the AI against what it reported.
+
+    Returns a list of unaccounted XBRL concepts (concept names that appear
+    in the facts but not in line_items or xbrl_not_on_statement).
+    """
+    # Collect all concepts the AI reported
+    reported = set()
+    for stmt in ['income_statement', 'balance_sheet', 'cash_flow']:
+        stmt_data = ai_result.get(stmt, {})
+        for item in stmt_data.get('line_items', []):
+            c = item.get('xbrl_concept')
+            if c:
+                reported.add(c)
+        for item in stmt_data.get('xbrl_not_on_statement', []):
+            c = item.get('concept')
+            if c:
+                reported.add(c)
+
+    # Collect all undimensioned numeric concepts from the XBRL facts we sent
+    sent = {}
+    for f in xbrl_facts:
+        if f['value_numeric'] is not None:
+            concept = f['concept']
+            if concept.startswith('us-gaap:') or ':' in concept:
+                # Skip dei:, ecd:, srt: non-financial concepts
+                prefix = concept.split(':')[0]
+                if prefix in ('dei', 'ecd', 'srt'):
+                    continue
+                if concept not in sent:
+                    sent[concept] = []
+                val = f['value_numeric']
+                period = f.get('period', {})
+                sent[concept].append({'value': val, 'period': period})
+
+    # Find gaps
+    unaccounted = {}
+    for concept, facts in sent.items():
+        if concept not in reported:
+            unaccounted[concept] = facts
+
+    return unaccounted
+
+
+def extract_note_html_for_concepts(html, unaccounted_concepts, calculations):
+    """Extract HTML sections containing unaccounted XBRL concepts.
+
+    Uses calculation linkbase role names to find which note section
+    each concept belongs to, then extracts that HTML section.
+    """
+    import re
+
+    # Map concepts to cal linkbase roles
+    concept_to_roles = {}
+    for section in (calculations or []):
+        role = section['role']
+        for formula in section['formulas']:
+            parent = formula['parent']
+            concept_to_roles.setdefault(parent, set()).add(role)
+            for child in formula['children']:
+                concept_to_roles.setdefault(child['concept'], set()).add(role)
+
+    # Find which roles are needed
+    needed_roles = set()
+    for concept in unaccounted_concepts:
+        if concept in concept_to_roles:
+            needed_roles.update(concept_to_roles[concept])
+
+    # Also find concepts directly in the HTML by their ix:nonFraction tags
+    sections = []
+    for concept in unaccounted_concepts:
+        escaped = re.escape(concept)
+        pattern = rf'<ix:nonFraction[^>]*name="{escaped}"'
+        matches = list(re.finditer(pattern, html))
+        if matches:
+            for m in matches:
+                start = max(0, m.start() - 3000)
+                end = min(len(html), m.start() + 3000)
+                sections.append(html[start:end])
+
+    if sections:
+        # Deduplicate overlapping sections
+        unique = []
+        seen_starts = set()
+        for s in sections:
+            sig = s[:100]
+            if sig not in seen_starts:
+                seen_starts.add(sig)
+                unique.append(s)
+        return '\n\n'.join(unique)
+
+    return None
+
+
 def extract_statement_html(html, presentation):
     """Extract just the financial statement sections from the filing HTML.
 
@@ -574,6 +668,7 @@ def main():
     parser.add_argument('--output', help='Save output to file')
     parser.add_argument('--model', default='claude-sonnet-4-6', help='Model to use (claude-sonnet-4-6, claude-opus-4-6, gemini-3-flash-preview, gpt-5, etc.)')
     parser.add_argument('--test', action='store_true', help='Write output to test/ subdirectory instead of main directory')
+    parser.add_argument('--full-html', action='store_true', help='Send full HTML instead of stripped statements (auto-selected for small filings)')
     args = parser.parse_args()
 
     # Step 1: Parse XBRL facts
@@ -593,10 +688,23 @@ def main():
     html_cleaned = clean_html(html_content)
     print(f"  Full HTML: {len(html_content):,} chars -> cleaned: {len(html_cleaned):,} chars (~{len(html_cleaned)//4:,} tokens)")
 
-    # Extract just the financial statement sections for the first pass
+    # Decide HTML strategy based on size
+    # Full HTML under 500K tokens total prompt → send everything, no retry needed
+    # Over 500K → strip to statements, use completeness retry for notes
     html_statements = extract_statement_html(html_content, parsed.get('presentation', []))
     html_statements = clean_html(html_statements)
-    print(f"  Statement HTML: {len(html_statements):,} chars (~{len(html_statements)//4:,} tokens)")
+
+    # Estimate total prompt with full HTML vs stripped
+    full_html_tokens = len(html_cleaned) // 4
+    stripped_tokens = len(html_statements) // 4
+    use_full_html = args.full_html or full_html_tokens < 150000  # ~150K token threshold for HTML portion
+
+    if use_full_html:
+        html_for_prompt = html_cleaned
+        print(f"  Using FULL HTML: {len(html_cleaned):,} chars (~{full_html_tokens:,} tokens)")
+    else:
+        html_for_prompt = html_statements
+        print(f"  Using STRIPPED HTML: {len(html_statements):,} chars (~{stripped_tokens:,} tokens) [full would be ~{full_html_tokens:,} tokens]")
 
     # Step 3: Filter XBRL facts
     xbrl_facts = [f for f in parsed['facts'] if not f['dimensioned']]
@@ -618,8 +726,8 @@ def main():
     if definitions:
         print(f"  {len(definitions)} definition sections")
 
-    # Step 4: Build prompt and call model (use stripped HTML for first pass)
-    prompt = build_prompt(html_statements, xbrl_facts, args.statement, meta, dim_facts,
+    # Step 4: Build prompt and call model
+    prompt = build_prompt(html_for_prompt, xbrl_facts, args.statement, meta, dim_facts,
                           calculations, presentation, definitions)
     print(f"\nTotal prompt size: ~{len(prompt)//4} tokens")
     print(f"Sending to {args.model}...\n")
@@ -904,6 +1012,158 @@ CRITICAL: Output must be valid JSON. No apostrophes in strings."""
                     else:
                         print(f"  STILL MISMATCHED: {corrected_sum} vs {section_total}")
                         ai_result[section['result_key'] + '_unresolved'] = True
+
+        # === XBRL FACT COMPLETENESS CHECK ===
+        unaccounted = check_fact_completeness(ai_result, xbrl_facts)
+        print(f"\nXBRL fact completeness: {len(xbrl_facts) - len(unaccounted)} accounted, {len(unaccounted)} unaccounted")
+
+        if unaccounted and use_full_html:
+            # Already sent full HTML — AI had everything and still missed these.
+            # Log them but don't retry with the same context.
+            print(f"  Full HTML was sent — logging {len(unaccounted)} unaccounted facts (no retry)")
+            ai_result['unaccounted_facts'] = list(unaccounted.keys())
+
+        elif unaccounted:
+            # Extract targeted HTML sections for the missing concepts
+            note_html = extract_note_html_for_concepts(html_content, unaccounted.keys(), calculations)
+            note_html_cleaned = clean_html(note_html) if note_html else None
+
+            if note_html_cleaned:
+                print(f"  Targeted notes HTML: {len(note_html_cleaned):,} chars (~{len(note_html_cleaned)//4:,} tokens)")
+
+                # Build retry prompt with the missing concepts and targeted HTML
+                missing_list = []
+                for concept, facts in sorted(unaccounted.items()):
+                    vals = []
+                    for f in facts[:2]:  # show up to 2 values per concept
+                        v = f['value']
+                        p = f['period']
+                        if p.get('type') == 'instant':
+                            vals.append(f"{v} as of {p.get('date')}")
+                        elif p.get('type') == 'duration':
+                            vals.append(f"{v} for {p.get('startDate')} to {p.get('endDate')}")
+                    missing_list.append(f"  {concept}: {'; '.join(vals)}")
+
+                missing_text = '\n'.join(missing_list)
+
+                completeness_prompt = f"""You previously extracted financial statements for {meta['ticker']} but did not account for the following XBRL facts.
+
+For each fact below, determine where it belongs:
+- Which financial statement or note section is it related to?
+- Is it a sub-component of a line item already on the statement face?
+- Where is it classified (e.g., "included in Accrued and other current liabilities")?
+
+UNACCOUNTED XBRL FACTS:
+{missing_text}
+
+RELEVANT FILING HTML (notes sections):
+{note_html_cleaned}
+
+Output ONLY valid JSON — a list of items:
+[
+  {{
+    "concept": "us-gaap:ConceptName",
+    "value": {{"period_key": value}},
+    "statement": "income_statement/balance_sheet/cash_flow/notes",
+    "classified_in": "description of where this item lives",
+    "reason": "brief explanation"
+  }}
+]
+
+CRITICAL: Output must be valid JSON. No apostrophes in strings."""
+
+                print(f"  Completeness retry: {len(unaccounted)} concepts, sending targeted HTML...")
+
+                retry_text = ""
+                if args.model.startswith('gemini'):
+                    from google import genai
+                    gemini_client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
+                    retry_resp = gemini_client.models.generate_content(
+                        model=args.model,
+                        contents=completeness_prompt,
+                        config=genai.types.GenerateContentConfig(max_output_tokens=16384),
+                    )
+                    retry_text = retry_resp.text
+                    input_tokens += retry_resp.usage_metadata.prompt_token_count
+                    output_tokens += retry_resp.usage_metadata.candidates_token_count
+                elif args.model.startswith('gpt'):
+                    from openai import OpenAI
+                    oai_client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+                    retry_resp = oai_client.chat.completions.create(
+                        model=args.model,
+                        max_completion_tokens=16384,
+                        messages=[{"role": "user", "content": completeness_prompt}],
+                    )
+                    retry_text = retry_resp.choices[0].message.content
+                    input_tokens += retry_resp.usage.prompt_tokens
+                    output_tokens += retry_resp.usage.completion_tokens
+                else:
+                    client = anthropic.Anthropic()
+                    with client.messages.stream(
+                        model=args.model,
+                        max_tokens=16384,
+                        messages=[{"role": "user", "content": completeness_prompt}],
+                    ) as stream:
+                        for text in stream.text_stream:
+                            retry_text += text
+                            print(".", end="", flush=True)
+                        print()
+                        resp = stream.get_final_message()
+                        input_tokens += resp.usage.input_tokens
+                        output_tokens += resp.usage.output_tokens
+
+                # Parse retry result
+                retry_json = retry_text.strip()
+                fb = retry_json.find('[')
+                lb = retry_json.rfind(']')
+                if fb != -1 and lb != -1:
+                    retry_json = retry_json[fb:lb + 1]
+                try:
+                    completeness_items = json.loads(retry_json)
+                except json.JSONDecodeError:
+                    import re as re2
+                    retry_json = retry_json.replace('\u2018', "'").replace('\u2019', "'")
+                    retry_json = re2.sub(r'[\x00-\x1f]', ' ', retry_json)
+                    retry_json = re2.sub(r',\s*([}\]])', r'\1', retry_json)
+                    try:
+                        completeness_items = json.loads(retry_json)
+                    except json.JSONDecodeError:
+                        completeness_items = None
+
+                if completeness_items and isinstance(completeness_items, list):
+                    # Merge into xbrl_not_on_statement for the appropriate statements
+                    added = 0
+                    for item in completeness_items:
+                        stmt = item.get('statement', 'notes')
+                        concept = item.get('concept', '')
+                        if stmt in ('income_statement', 'balance_sheet', 'cash_flow'):
+                            not_on = ai_result.get(stmt, {}).setdefault('xbrl_not_on_statement', [])
+                            not_on.append({
+                                'concept': concept,
+                                'value': item.get('value'),
+                                'period': 'see value keys',
+                                'reason': item.get('classified_in', '') + ' — ' + item.get('reason', ''),
+                            })
+                            added += 1
+                        else:
+                            # Notes-only items — add to balance_sheet xbrl_not_on_statement as default
+                            not_on = ai_result.get('balance_sheet', {}).setdefault('xbrl_not_on_statement', [])
+                            not_on.append({
+                                'concept': concept,
+                                'value': item.get('value'),
+                                'period': 'see value keys',
+                                'reason': item.get('classified_in', '') + ' — ' + item.get('reason', ''),
+                            })
+                            added += 1
+
+                    print(f"  Completeness retry: added {added} items to xbrl_not_on_statement")
+
+                    # Store the completeness results for audit
+                    ai_result['completeness_retry'] = completeness_items
+                else:
+                    print("  Completeness retry: failed to parse response")
+            else:
+                print(f"  No HTML found for {len(unaccounted)} unaccounted concepts (not in filing HTML)")
 
         # Display each statement
         print("=" * 80)
