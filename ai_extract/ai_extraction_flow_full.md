@@ -80,7 +80,7 @@ python3 ai_extract/analyze_statement.py --ticker NVDA --accession {ACCESSION} --
 
 4. **XBRL FACTS** — all tagged values (existing)
 
-5. **FILING HTML** — the full rendered filing (existing)
+5. **FILING HTML (stripped)** — only the financial statement tables, not the full filing. The `extract_statement_html()` function uses ix:nonFraction tag positions and the presentation linkbase to identify the IS, BS, and CF sections in the HTML. This reduces HTML from ~122K tokens to ~27K tokens (78% reduction).
 
 ### Prompt Instructions (principle-based)
 
@@ -91,9 +91,15 @@ python3 ai_extract/analyze_statement.py --ticker NVDA --accession {ACCESSION} --
 - Extract all disaggregation data, verify each breakdown sums to the consolidated total
 - Report anything that doesn't tie
 
-### Retry Loop
+### Incremental HTML Retry
 
-If formulas don't balance, cross-statement values don't match, or XBRL facts are unaccounted for — the AI retries until everything ties. Same mechanism as today.
+If formulas don't balance on the first pass (stripped HTML), the retry sends the **full filing HTML** so the AI can search the notes for missing components. The cal linkbase role names (e.g., `BalanceSheetComponentsScheduleofAccruedandOtherCurrentLiabilitiesDetails`) identify which note section contains the needed data — a future optimization can send only the targeted note section instead of the full filing.
+
+Typical flow:
+1. **First pass**: stripped HTML (~27K tokens) — cheap, handles most filings
+2. **Verification**: formulas tie? Cross-statement checks pass?
+3. **If yes**: done ($1.41 for NVDA Q1 FY26 on Sonnet)
+4. **If no**: retry with full HTML (~122K tokens) targeting the specific sections that failed
 
 ### Outputs
 

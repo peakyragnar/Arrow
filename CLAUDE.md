@@ -79,7 +79,7 @@ See `ai_extract/ai_extraction_flow_full.md` for the complete design.
 
 **Step 2 — Deterministic Parse** (`parse_xbrl.py`): Parses all XBRL files into `parsed_xbrl.json`. Extracts every tagged fact, every declared formula with signed weights, every concept-to-statement mapping, and every dimension hierarchy. No AI — pure parsing.
 
-**Step 3 — AI Extraction** (`analyze_statement.py`): AI receives the parsed linkbase data + filing HTML. The linkbase data tells it the structure — which concepts belong on which statement, what the formula relationships are, what dimensions exist. The AI's job is to verify every formula ties, read precise values from HTML where XBRL rounds, account for every tagged fact, and extract all disaggregation data. Retries until everything ties. Outputs per-filing JSON (training data) + updates mapped.json.
+**Step 3 — AI Extraction** (`analyze_statement.py`): AI receives the parsed linkbase data + stripped filing HTML (just the three financial statement tables, not the full filing — 78% token reduction). The linkbase data tells it the structure — which concepts belong on which statement, what the formula relationships are, what dimensions exist. The AI's job is to verify every formula ties, read precise values from HTML where XBRL rounds, account for every tagged fact, and extract all disaggregation data. If verification fails on the first pass, retries with full HTML to resolve missing items from the notes. Outputs per-filing JSON (training data) + updates mapped.json.
 
 **Step 4 — Cross-Filing Normalization** (`ai_formula.py`): AI reads extractions across filings. Normalizes labels (XBRL concept names are consistent across filings, reducing this work). Decomposes aggregated items using note-level data from Step 3. Verifies no double counting.
 
@@ -110,7 +110,9 @@ See `ai_extract/ai_extraction_flow_full.md` for the complete design.
 
 ## Current Status
 
-- NVDA: 12 filings extracted, 12 quarters, 264/264 fields match golden eval (template-based prompt, tagged as `v1-template-prompt`)
-- Linkbase-based pipeline: fetch + parse working for all 9 companies. Prompt rewrite in progress.
+- NVDA: 12 filings extracted, 264/264 fields match golden eval (template-based prompt, tagged as `v1-template-prompt`)
+- Linkbase-based Stage 1 prompt: tested on NVDA Q1 FY26, IS/BS match verified exactly. Cost: $1.41/filing (Sonnet, stripped HTML). No retries needed.
+- Linkbase download + parse working for all 9 companies (24 NVDA filings, 169 total across all tickers)
 - Deterministic pipeline archived in `deterministic-flow/` (9 companies validated, 0 mismatches)
+- Stage 2 prompt rewrite pending
 - `calculate.py` reads from deterministic output — switchover to `quarterly.json` pending
