@@ -1017,13 +1017,7 @@ CRITICAL: Output must be valid JSON. No apostrophes in strings."""
         unaccounted = check_fact_completeness(ai_result, xbrl_facts)
         print(f"\nXBRL fact completeness: {len(xbrl_facts) - len(unaccounted)} accounted, {len(unaccounted)} unaccounted")
 
-        if unaccounted and use_full_html:
-            # Already sent full HTML — AI had everything and still missed these.
-            # Log them but don't retry with the same context.
-            print(f"  Full HTML was sent — logging {len(unaccounted)} unaccounted facts (no retry)")
-            ai_result['unaccounted_facts'] = list(unaccounted.keys())
-
-        elif unaccounted:
+        if unaccounted:
             # Extract targeted HTML sections for the missing concepts
             note_html = extract_note_html_for_concepts(html_content, unaccounted.keys(), calculations)
             note_html_cleaned = clean_html(note_html) if note_html else None
