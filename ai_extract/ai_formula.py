@@ -226,6 +226,8 @@ def normalize_all_periods(ticker, model='claude-sonnet-4-6', max_retries=3):
     Then runs quarterly derivation as verification — if results are impossible,
     retries with specific error feedback.
     """
+    import glob as _glob
+
     extract_dir = os.path.join(os.path.dirname(__file__), ticker)
     mapped_path = os.path.join(extract_dir, 'mapped.json')
     formulas_md = load_formulas_md()
@@ -233,18 +235,46 @@ def normalize_all_periods(ticker, model='claude-sonnet-4-6', max_retries=3):
     with open(mapped_path) as f:
         mapped_data = json.load(f)
 
-    mapped_json_str = json.dumps(mapped_data, indent=2)
-    print(f"  mapped.json: {len(mapped_data)} periods, ~{len(mapped_json_str)//4:,} tokens")
+    # Build slimmed per-filing extractions (drop mapping_reason etc. to save tokens)
+    test_dir = os.path.join(extract_dir, 'test')
+    filing_dir = extract_dir if not os.path.isdir(test_dir) else test_dir
+    filing_paths = sorted(_glob.glob(os.path.join(filing_dir, 'q*_fy*_10*.json')))
+    filing_paths = [p for p in filing_paths if 'formula' not in os.path.basename(p)
+                    and 'stripped' not in os.path.basename(p)]
+
+    slim_filings = {}
+    for fpath in filing_paths:
+        fname = os.path.basename(fpath)
+        with open(fpath) as f:
+            data = json.load(f)
+        ai = data.get('ai_extraction', data)
+
+        slim = {'source': fname}
+        for stmt in ['income_statement', 'balance_sheet', 'cash_flow']:
+            s = ai.get(stmt, {})
+            slim[stmt] = {
+                'line_items': [{'label': i['label'], 'xbrl_concept': i.get('xbrl_concept'),
+                               'values': i.get('values', {})}
+                              for i in s.get('line_items', [])],
+                'xbrl_not_on_statement': [{'concept': i.get('concept'), 'value': i.get('value'),
+                                          'reason': i.get('reason', '')}
+                                         for i in s.get('xbrl_not_on_statement', [])]
+            }
+        slim['segment_data'] = ai.get('segment_data', [])
+        slim_filings[fname] = slim
+
+    extraction_str = json.dumps(slim_filings, indent=2)
+    print(f"  {len(slim_filings)} filings, ~{len(extraction_str)//4:,} tokens (slimmed)")
 
     prompt = f"""You are a financial analyst normalizing extracted data across all filings for {ticker}.
 
 You have two inputs:
-1. Verified extractions from ALL filings, organized by period (mapped.json). Each period contains line_items, formulas, and xbrl_not_on_statement for IS/BS/CF — all verified with math checks.
+1. Verified extractions from ALL {len(slim_filings)} filings for {ticker}. Each filing contains line_items, xbrl_not_on_statement for IS/BS/CF — all verified with math checks. Filings are keyed by filename (e.g., q1_fy24_10q.json = Q1 fiscal year 2024, 10-Q filing).
 2. The metric formulas that will be computed from this data.
 
-Your job: produce one normalized analytical dataset across all periods.
+Your job: produce one normalized analytical dataset with one entry per filing.
 
-READ ALL PERIODS FIRST. Before producing any output, review every period's extraction to understand this company's reporting structure — what it reports, how it names things, what changes between filings, where items are hidden.
+READ ALL FILINGS FIRST. Before producing any output, review every filing's extraction to understand this company's reporting structure — what it reports, how it names things, what changes between filings, where items are hidden.
 
 ANALYTICAL DERIVATIONS:
 Read the metric formulas. For each analytical input the formulas need, determine where it comes from in this company's data. Apply the same mapping consistently across ALL periods.
@@ -288,8 +318,8 @@ Determine the reporting unit from the extraction data and convert all values to 
 METRIC FORMULAS:
 {formulas_md}
 
-EXTRACTION DATA (ALL PERIODS):
-{mapped_json_str}
+EXTRACTION DATA (ALL FILINGS):
+{extraction_str}
 
 STANDARD ANALYTICAL FIELD NAMES (use these exact keys):
 - revenue: total revenue / net revenue
