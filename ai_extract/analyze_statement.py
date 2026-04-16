@@ -34,7 +34,56 @@ def clean_html(html):
     return cleaned
 
 
-def build_prompt(html_content, xbrl_facts, statement_type, meta, segment_facts=None):
+def format_linkbase_for_prompt(calculations, presentation, definitions):
+    """Format parsed linkbase data into readable prompt text."""
+    sections = []
+
+    # Calculation relationships
+    if calculations:
+        cal_lines = ["CALCULATION RELATIONSHIPS (declared by the company in this filing):"]
+        for section in calculations:
+            cal_lines.append(f"\n  {section['role']}:")
+            for formula in section['formulas']:
+                parent = formula['parent'].split(':')[-1]
+                children_str = ' '.join(
+                    ('+' if c['weight'] > 0 else '-') + c['concept'].split(':')[-1]
+                    for c in formula['children']
+                )
+                cal_lines.append(f"    {parent} = {children_str}")
+        sections.append('\n'.join(cal_lines))
+
+    # Presentation structure — just the three financial statements
+    if presentation:
+        pres_lines = ["PRESENTATION STRUCTURE (which concepts belong on each statement, in display order):"]
+        stmt_keywords = ['StatementsofIncome', 'BalanceSheets', 'StatementsofCashFlows']
+        for section in presentation:
+            if any(kw in section['role'] for kw in stmt_keywords):
+                pres_lines.append(f"\n  {section['role']}:")
+                for entry in section['structure']:
+                    parent_short = entry['parent'].split(':')[-1]
+                    children_short = [c.split(':')[-1] for c in entry['children']]
+                    pres_lines.append(f"    {parent_short} -> {', '.join(children_short)}")
+        sections.append('\n'.join(pres_lines))
+
+    # Dimension hierarchies — segment/geography/product related
+    if definitions:
+        dim_lines = ["DIMENSION HIERARCHIES (segment, geography, product dimensions in this filing):"]
+        segment_keywords = ['Segment', 'Geographic', 'Revenue', 'Product', 'Market']
+        for section in definitions:
+            if any(kw.lower() in section['role'].lower() for kw in segment_keywords):
+                dim_lines.append(f"\n  {section['role']}:")
+                for entry in section['hierarchies']:
+                    parent_short = entry['parent'].split(':')[-1]
+                    children_short = [c['concept'].split(':')[-1] for c in entry['children']]
+                    dim_lines.append(f"    {parent_short}: {', '.join(children_short)}")
+        if len(dim_lines) > 1:
+            sections.append('\n'.join(dim_lines))
+
+    return '\n\n'.join(sections)
+
+
+def build_prompt(html_content, xbrl_facts, statement_type, meta, segment_facts=None,
+                 calculations=None, presentation=None, definitions=None):
     """Build the prompt for Claude."""
 
     # Format XBRL facts as a readable list
@@ -238,161 +287,75 @@ Rules:
 - Do NOT verify the math yourself — just report what you found."""
 
     elif statement_type == 'all':
-        task = """You are a data extraction tool. You have two inputs:
-1. The full HTML filing (find all three financial statements: income statement, balance sheet, cash flow statement)
+        # Format linkbase data for prompt
+        linkbase_text = ""
+        if calculations or presentation or definitions:
+            linkbase_text = format_linkbase_for_prompt(
+                calculations or [], presentation or [], definitions or [])
+
+        task = f"""You are a financial data extraction and verification tool. You have three inputs:
+1. The full HTML filing (contains all three financial statements and notes)
 2. The XBRL-tagged facts (the raw structured data)
+3. The XBRL linkbase data (calculation relationships, presentation structure, and dimension hierarchies declared by the company in this filing)
+
+{linkbase_text}
 
 Output ONLY valid JSON with this structure:
 
-{
-  "income_statement": {
+{{
+  "income_statement": {{
     "line_items": [...],
     "formulas": [...],
     "xbrl_not_on_statement": [...]
-  },
-  "balance_sheet": {
+  }},
+  "balance_sheet": {{
     "line_items": [...],
     "formulas": [...],
     "xbrl_not_on_statement": [...]
-  },
-  "cash_flow": {
+  }},
+  "cash_flow": {{
     "line_items": [...],
     "formulas": [...],
     "xbrl_not_on_statement": [...]
-  },
-  "cross_statement_checks": [
-    {
-      "check": "Net income on IS matches Net income on CF",
-      "is_value": 18775,
-      "cf_value": 18775,
-      "match": true
-    }
-  ]
-}
+  }},
+  "cross_statement_checks": [...],
+  "segment_data": [...]
+}}
 
 Each statement section follows the same format:
 
 line_items: every line item on the statement, in presentation order.
-- label: the line item text as shown
+- label: the line item text as shown in the filing
 - indent_level: hierarchy depth (0=top level/totals, 1=sub-items, 2=sub-sub-items)
 - xbrl_concept: the XBRL concept name from the ix:nonFraction tag, cross-referenced against XBRL facts
-- values: XBRL values are the source of truth for sign and magnitude. Use XBRL fact values, not HTML display values. HTML may show parentheses for presentation but XBRL defines canonical sign convention (expenses are positive debits). Key format: for duration items use "startDate_endDate", for instant items use just the date.
+- values: use the PRECISE value from the HTML filing, not the XBRL fact value. XBRL facts may be rounded (e.g. decimals="-8" rounds to hundreds of millions). The HTML shows the exact reported number. Convert to millions as integers. Key format: for duration items use "startDate_endDate", for instant items use just the date.
 - unit: one of "USD_millions", "USD_per_share", or "shares_millions"
-- xbrl_match: did the ix:nonFraction tag value match the XBRL fact? true/false. For section headers with no numeric values, set to null (not false).
+- xbrl_match: did the ix:nonFraction tag value match the XBRL fact? true/false. If the XBRL fact is rounded to a different precision than the HTML display, note this in mapping_reason but still set to true.
 - mapping_reason: explain HOW you matched this line item to the XBRL concept. Be specific about HTML text and tags.
 
-formulas: every subtotal relationship. CRITICAL — each formula MUST use this exact structure:
-  {"formula": "human readable description", "components": ["Label A", "Label B", "Label C"], "operation": "Label A + Label B", "result_label": "Label C"}
-  The "operation" field MUST be a math expression using exact label names from line_items connected by + and - operators. Example: "Revenue - Cost of revenue" NOT {"operation": "subtract", "operands": [...]}. The verification script evaluates the operation string by substituting label names with values.
-- Income statement: Revenue - COGS = Gross Profit, opex sums, operating income, other income sums, pretax, net income
-- Balance sheet: current asset sums, total assets, current liability sums, total liabilities, equity sums, assets = liabilities + equity
-- Cash flow: CFO components sum, CFI components sum, CFF components sum, CFO+CFI+CFF = change in cash, beginning + change = ending cash
+formulas: every calculation relationship from the CALCULATION RELATIONSHIPS section above that applies to this statement. For each declared formula, report it using the exact line item labels from your line_items. Structure:
+  {{"formula": "human readable description", "components": ["Label A", "Label B", "Label C"], "operation": "Label A + Label B", "result_label": "Label C"}}
+  The "operation" field MUST be a math expression using exact label names from line_items connected by + and - operators. Use the weights from the calculation relationships to determine the sign (weight +1.0 = add, weight -1.0 = subtract). The verification script evaluates the operation string by substituting label names with values.
 
-xbrl_not_on_statement: XBRL facts related to that statement but NOT appearing as line items. Include concept, value, period, and reason explaining where it likely lives.
+xbrl_not_on_statement: for every XBRL fact related to this statement that does NOT appear as a line item on the statement face, report the concept, value, period, and where it is classified. Nothing unaccounted for — every fact must be placed.
 
-cross_statement_checks: verify these ties between statements:
-- Net income on IS = Net income starting CF
-- Ending cash on CF = Cash on BS (current period)
-- Beginning cash on CF = Cash on BS (prior period)
-- Retained earnings change on BS = Net income - Dividends - Share repurchases + any other items charged to retained earnings. Account for ALL items that affect retained earnings, not just net income and dividends.
+cross_statement_checks: identify every value that appears on more than one statement and verify they match. Report each as:
+  {{"check": "description", "statement_1": "IS/BS/CF", "value_1": X, "statement_2": "IS/BS/CF", "value_2": X, "match": true/false}}
 
-## LAYER 2 — CALCULATION COMPONENT VERIFICATION
+segment_data: extract all revenue and operating income disaggregation from the dimensioned XBRL facts. Use the DIMENSION HIERARCHIES above to identify what breakdowns exist. For each breakdown, report:
+  {{"dimension": "axis name", "items": [{{"member": "member name", "values": {{"period": value}}}}], "total": X, "consolidated_total": X, "ties": true/false}}
+  Each breakdown total MUST equal the corresponding consolidated total from the financial statements. If it does not, flag the discrepancy. Extract ALL periods reported (current + comparatives).
 
-After extracting the three statements, search the ENTIRE filing (statement face, notes, supplemental disclosures, dimensioned XBRL facts) to ensure all components needed for downstream calculations are captured. Do not assume a component is absent — actively look for it.
+Rules:
+- Extract ALL periods reported in the filing (current + comparatives).
+- Do NOT verify the math yourself — just report what you found. The verification script checks independently.
+- Do NOT include analysis, observations, or commentary.
+- CRITICAL: Output must be valid JSON. In ALL string values, never use apostrophes or single quotes. Use "shareholders equity" not "shareholders' equity". Use "does not" not "doesn't". This applies to labels, mapping_reason, and all other string fields."""
 
-Add a "calculation_components" section to your output with these items:
-
-1. OPERATING LEASES: Find BOTH current and non-current operating lease liabilities.
-   - Current portion is often HIDDEN inside "Accrued and other current liabilities." Check the notes.
-   - Check for XBRL tag OperatingLeaseLiabilityCurrentStatementOfFinancialPositionExtensibleList — it tells you where current portion is classified.
-   - If a total OperatingLeaseLiability exists, use it. If only the split exists, sum current + non-current.
-   - If this is a 10-Q and you cannot find them, flag it.
-   Output: {"current": X, "noncurrent": X, "total": X, "current_location": "where found"}
-
-2. DEPRECIATION AND AMORTIZATION: Check CF statement for ALL D&A-related lines.
-   - May be one line or SPLIT into: depreciation (PP&E), amortization of intangibles, amortization of debt costs, capitalized contract cost amortization, depletion (mining companies).
-   - Search for every CF line containing "depreci", "amortiz", or "deplet".
-   - Report each component and the total. Also check notes for breakdowns.
-   Output: {"total": X, "components": [{"label": "...", "value": X}], "is_single_line": true/false}
-
-3. ACCOUNTS PAYABLE: Must be PURE trade AP, not combined with accrued liabilities.
-   - If BS shows "Accounts payable and accrued liabilities" combined — find pure AP in the notes.
-   - Check for dimensioned contexts (related vs non-related party splits).
-   Output: {"value": X, "is_pure": true/false, "combined_with": null or "description", "note_breakout": X or null}
-
-4. ACCOUNTS RECEIVABLE: Must be pure trade AR.
-   - If combined with other receivables, find pure AR in notes.
-   - Check for dimensioned contexts.
-   Output: {"value": X, "is_pure": true/false, "combined_with": null or "description", "note_breakout": X or null}
-
-5. CAPEX: Capital expenditures on PP&E and intangible assets.
-   - Concept names vary between companies and years (PaymentsToAcquirePropertyPlantAndEquipment vs PaymentsToAcquireProductiveAssets etc).
-   - Check supplemental disclosures for "Capital expenditures incurred but not yet paid."
-   Output: {"cf_value": X, "supplemental_not_yet_paid": X or null, "includes_intangibles": true/false}
-
-6. ACQUISITIONS: Cash paid for acquisitions net of cash acquired.
-   - May have MULTIPLE acquisition lines in same period. Sum all.
-   - Search both us-gaap and company extension namespaces for concepts containing "acquire" or "acquisition."
-   Output: {"total": X, "items": [{"concept": "...", "value": X}]}
-
-7. SHORT-TERM DEBT: Current portion of long-term debt, commercial paper, notes payable, short-term borrowings.
-   - If none found, confirm truly zero.
-   Output: {"value": X, "components": [...], "confirmed_zero": true/false}
-
-8. SBC: Stock-based compensation from CF statement addback.
-   - Also report the note breakdown by function if disclosed.
-   Output: {"cf_value": X, "note_by_function": {...} or null}
-
-9. INTEREST EXPENSE: Must be GROSS interest expense, not net of interest income.
-   - If IS shows "Interest expense, net" — find gross in notes.
-   Output: {"gross": X, "income": X, "net": X, "source": "description"}
-
-10. TAX RATE: Income tax expense and pretax income.
-    - FLAG if pretax income is negative (use 21% fallback).
-    - FLAG if tax expense is negative (refund).
-    Output: {"tax_expense": X, "pretax_income": X, "effective_rate": X, "flags": [...]}
-
-11. INVENTORY: Total and breakdown if disclosed.
-    - If company has no inventory (software/services), confirm truly zero.
-    Output: {"total": X, "raw_materials": X or null, "wip": X or null, "finished_goods": X or null}
-
-Use values from the CURRENT period (most recent quarter-end for BS items, current quarter/YTD for flow items).
-
-## LAYER 3 — SEGMENT DATA
-
-After extracting the three statements and calculation components, extract all segment/geographic/product revenue breakdowns from the filing.
-
-Add a "segment_data" section to your output with these items:
-
-1. BUSINESS SEGMENTS: Revenue by operating segment (e.g., Compute & Networking, Graphics).
-   - Look in the XBRL dimensioned facts (StatementBusinessSegmentsAxis) and filing notes.
-   - Also extract operating income by segment if disclosed.
-   Output: {"segments": [{"name": "...", "revenue": X, "operating_income": X or null}], "revenue_total": X}
-
-2. GEOGRAPHY: Revenue by geographic region.
-   - Look in XBRL dimensioned facts (StatementGeographicalAxis) and filing notes.
-   Output: {"regions": [{"name": "...", "revenue": X}], "revenue_total": X}
-
-3. PRODUCT/SERVICE: Revenue by product or service category.
-   - Look in XBRL dimensioned facts (ProductOrServiceAxis) and filing notes.
-   Output: {"products": [{"name": "...", "revenue": X}], "revenue_total": X}
-
-4. CUSTOMER CONCENTRATION: Major customer data if disclosed.
-   - Look in XBRL dimensioned facts (MajorCustomersAxis) and filing notes.
-   Output: {"customers": [{"name": "...", "pct_of_revenue": X}]}
-
-For each breakdown, the revenue_total MUST equal the total revenue from the income statement. If it does not, flag the discrepancy. Use values for ALL periods reported (current + comparatives), keyed the same way as financial statement values.
-
-If a segment type is not disclosed in this filing, omit it (do not output an empty list).
-
-Do NOT include analysis, observations, or commentary.
-Do NOT verify the math yourself — just report what you found.
-CRITICAL: Output must be valid JSON. In ALL string values, never use apostrophes or single quotes. Use "shareholders equity" not "shareholders' equity". Use "does not" not "doesn't". This applies to labels, mapping_reason, and all other string fields."""
-
-    # Format segment XBRL facts
+    # Format dimensioned XBRL facts
     segment_text = ""
     if segment_facts:
-        segment_text = "\n\nSEGMENT/GEOGRAPHY XBRL FACTS (dimensioned facts for segment analysis):\n"
+        segment_text = "\n\nDIMENSIONED XBRL FACTS (segment, geography, product, and other dimensioned facts):\n"
         seen = set()
         for f in segment_facts:
             key = (f['concept'], f['context_ref'])
@@ -515,6 +478,7 @@ def main():
     parser.add_argument('--statement', default='income', choices=['income', 'balance_sheet', 'cash_flow', 'all'])
     parser.add_argument('--output', help='Save output to file')
     parser.add_argument('--model', default='claude-sonnet-4-6', help='Model to use (claude-sonnet-4-6, claude-opus-4-6, gemini-3-flash-preview, gpt-5, etc.)')
+    parser.add_argument('--test', action='store_true', help='Write output to test/ subdirectory instead of main directory')
     args = parser.parse_args()
 
     # Step 1: Parse XBRL facts
@@ -538,19 +502,25 @@ def main():
     xbrl_facts = [f for f in parsed['facts'] if not f['dimensioned']]
     print(f"  {len(xbrl_facts)} undimensioned XBRL facts")
 
-    # Include segment/geography dimensioned facts for segment extraction
-    segment_dims = {
-        'us-gaap:StatementBusinessSegmentsAxis',
-        'srt:StatementGeographicalAxis',
-        'srt:ProductOrServiceAxis',
-        'srt:MajorCustomersAxis',
-    }
-    segment_facts = [f for f in parsed['facts'] if f['dimensioned']
-                     and any(d['dimension'] in segment_dims for d in f.get('dimensions', []))]
-    print(f"  {len(segment_facts)} segment/geography XBRL facts")
+    # Include all dimensioned facts for segment extraction
+    dim_facts = [f for f in parsed['facts'] if f['dimensioned']]
+    print(f"  {len(dim_facts)} dimensioned XBRL facts")
+
+    # Linkbase data
+    calculations = parsed.get('calculations', [])
+    presentation = parsed.get('presentation', [])
+    definitions = parsed.get('definitions', [])
+    if calculations:
+        total_formulas = sum(len(s['formulas']) for s in calculations)
+        print(f"  {len(calculations)} calculation sections, {total_formulas} formulas")
+    if presentation:
+        print(f"  {len(presentation)} presentation sections")
+    if definitions:
+        print(f"  {len(definitions)} definition sections")
 
     # Step 4: Build prompt and call model
-    prompt = build_prompt(html_cleaned, xbrl_facts, args.statement, meta, segment_facts)
+    prompt = build_prompt(html_cleaned, xbrl_facts, args.statement, meta, dim_facts,
+                          calculations, presentation, definitions)
     print(f"\nTotal prompt size: ~{len(prompt)//4} tokens")
     print(f"Sending to {args.model}...\n")
 
