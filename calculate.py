@@ -16,6 +16,7 @@ import json
 import os
 
 OUTPUT_DIR = "output"
+AI_EXTRACT_DIR = "ai_extract"
 DASHBOARD_DATA_DIR = "dashboard/data"
 
 PERIOD_ORDER = {"Q1": 1, "Q2": 2, "Q3": 3, "Q4": 4}
@@ -56,8 +57,8 @@ def ttm_computed(records, idx, func):
 
 def tax_rate_ttm(records, idx):
     """TTM effective tax rate, fallback 21% if pretax income <= 0."""
-    tax = ttm(records, idx, "income_tax_expense_q")
-    pretax = ttm(records, idx, "pretax_income_q")
+    tax = ttm(records, idx, "income_tax_expense")
+    pretax = ttm(records, idx, "pretax_income")
     if tax is None or pretax is None or pretax <= 0:
         return 0.21
     rate = tax / pretax
@@ -68,31 +69,31 @@ def tax_rate_ttm(records, idx):
 
 def invested_capital(record):
     """Adjusted invested capital from a single quarter's balance sheet."""
-    fields = ["equity_q", "short_term_debt_q", "long_term_debt_q",
-              "operating_lease_liabilities_q", "cash_q",
-              "short_term_investments_q", "rd_asset_q"]
+    fields = ["equity", "short_term_debt", "long_term_debt",
+              "operating_lease_liabilities", "cash",
+              "short_term_investments", "rd_asset"]
     vals = {f: record.get(f) for f in fields}
     if any(v is None for v in vals.values()):
         return None
-    return (vals["equity_q"] + vals["short_term_debt_q"] + vals["long_term_debt_q"]
-            + vals["operating_lease_liabilities_q"]
-            - vals["cash_q"] - vals["short_term_investments_q"]
-            + vals["rd_asset_q"])
+    return (vals["equity"] + vals["short_term_debt"] + vals["long_term_debt"]
+            + vals["operating_lease_liabilities"]
+            - vals["cash"] - vals["short_term_investments"]
+            + vals["rd_asset"])
 
 
-def gross_profit_q(record):
+def gross_profit_fn(record):
     """Quarterly gross profit."""
-    rev = record.get("revenue_q")
-    cogs = record.get("cogs_q")
+    rev = record.get("revenue")
+    cogs = record.get("cogs")
     if rev is None or cogs is None:
         return None
     return rev - cogs
 
 
-def adj_nopat_q(record, tax_rate):
+def adj_nopat_fn(record, tax_rate):
     """Single quarter adjusted NOPAT."""
-    oi = record.get("operating_income_q")
-    rd_adj = record.get("rd_OI_adjustment_q")
+    oi = record.get("operating_income")
+    rd_adj = record.get("rd_OI_adjustment")
     if oi is None or rd_adj is None:
         return None
     return (oi + rd_adj) * (1 - tax_rate)
@@ -100,9 +101,9 @@ def adj_nopat_q(record, tax_rate):
 
 def nwc(record):
     """Net working capital: AR + Inventory - AP."""
-    ar = record.get("accounts_receivable_q")
-    inv = record.get("inventory_q")
-    ap = record.get("accounts_payable_q")
+    ar = record.get("accounts_receivable")
+    inv = record.get("inventory")
+    ap = record.get("accounts_payable")
     if any(v is None for v in [ar, inv, ap]):
         return None
     return ar + inv - ap
@@ -118,8 +119,8 @@ def normalize_splits(records):
     # Collect split events walking chronologically
     split_events = []  # list of (index, ratio) where ratio = shares[i+1] / shares[i]
     for i in range(len(records) - 1):
-        cur = records[i].get("diluted_shares_q")
-        nxt = records[i + 1].get("diluted_shares_q")
+        cur = records[i].get("diluted_shares")
+        nxt = records[i + 1].get("diluted_shares")
         if cur is None or nxt is None or cur == 0:
             continue
         ratio = nxt / cur
@@ -148,11 +149,11 @@ def normalize_splits(records):
             factors[i] *= ratio
 
     for i, record in enumerate(records):
-        shares = record.get("diluted_shares_q")
+        shares = record.get("diluted_shares")
         if shares is not None:
-            record["diluted_shares_split_adjusted_q"] = round(shares * factors[i])
+            record["diluted_shares_split_adjusted"] = round(shares * factors[i])
         else:
-            record["diluted_shares_split_adjusted_q"] = None
+            record["diluted_shares_split_adjusted"] = None
 
 
 # ── Metric functions ──────────────────────────────────────────────────────────
@@ -163,7 +164,7 @@ def calc_roic(records, idx):
     if idx < 4:
         return {"roic_adjusted": None}
     tax = tax_rate_ttm(records, idx)
-    nopat = ttm_computed(records, idx, lambda r: adj_nopat_q(r, tax))
+    nopat = ttm_computed(records, idx, lambda r: adj_nopat_fn(r, tax))
     ic_end = invested_capital(records[idx])
     ic_begin = invested_capital(records[idx - 4])
     if any(v is None for v in [nopat, ic_end, ic_begin]):
@@ -178,8 +179,8 @@ def calc_roiic(records, idx):
         return {"roiic": None}
     tax_cur = tax_rate_ttm(records, idx)
     tax_prior = tax_rate_ttm(records, idx - 4)
-    nopat_cur = ttm_computed(records, idx, lambda r: adj_nopat_q(r, tax_cur))
-    nopat_prior = ttm_computed(records, idx - 4, lambda r: adj_nopat_q(r, tax_prior))
+    nopat_cur = ttm_computed(records, idx, lambda r: adj_nopat_fn(r, tax_cur))
+    nopat_prior = ttm_computed(records, idx - 4, lambda r: adj_nopat_fn(r, tax_prior))
     ic_cur = invested_capital(records[idx])
     ic_prior = invested_capital(records[idx - 4])
     if any(v is None for v in [nopat_cur, nopat_prior, ic_cur, ic_prior]):
@@ -194,15 +195,15 @@ def calc_reinvestment_rate(records, idx):
     if idx < 4:
         return {"reinvestment_rate": None, "reinvestment_ttm": None}
 
-    capex = ttm(records, idx, "capex_q")
-    dna = ttm(records, idx, "dna_q")
-    acq = ttm(records, idx, "acquisitions_q")
+    capex = ttm(records, idx, "capex")
+    dna = ttm(records, idx, "dna")
+    acq = ttm(records, idx, "acquisitions")
 
     nwc_cur = nwc(records[idx])
     nwc_prior = nwc(records[idx - 4])
 
-    rd_asset_cur = records[idx].get("rd_asset_q")
-    rd_asset_prior = records[idx - 4].get("rd_asset_q")
+    rd_asset_cur = records[idx].get("rd_asset")
+    rd_asset_prior = records[idx - 4].get("rd_asset")
 
     if any(v is None for v in [capex, dna, acq, nwc_cur, nwc_prior,
                                 rd_asset_cur, rd_asset_prior]):
@@ -215,7 +216,7 @@ def calc_reinvestment_rate(records, idx):
     reinvestment = abs(capex) + delta_nwc + abs(acq) - dna + delta_rd_asset
 
     tax = tax_rate_ttm(records, idx)
-    nopat = ttm_computed(records, idx, lambda r: adj_nopat_q(r, tax))
+    nopat = ttm_computed(records, idx, lambda r: adj_nopat_fn(r, tax))
 
     return {
         "reinvestment_ttm": round(reinvestment),
@@ -227,8 +228,8 @@ def calc_gross_profit_growth(records, idx):
     """Metric 4: Gross Profit TTM Growth YoY"""
     if idx < 7:
         return {"gross_profit_ttm_growth": None}
-    gp_cur = ttm_computed(records, idx, gross_profit_q)
-    gp_prior = ttm_computed(records, idx - 4, gross_profit_q)
+    gp_cur = ttm_computed(records, idx, gross_profit_fn)
+    gp_prior = ttm_computed(records, idx - 4, gross_profit_fn)
     if any(v is None for v in [gp_cur, gp_prior]):
         return {"gross_profit_ttm_growth": None}
     return {"gross_profit_ttm_growth": safe_divide(gp_cur - gp_prior, gp_prior,
@@ -239,8 +240,8 @@ def calc_revenue_growth_yoy(records, idx):
     """Metric 5a: Revenue Growth YoY (TTM)"""
     if idx < 7:
         return {"revenue_growth_yoy": None}
-    rev_cur = ttm(records, idx, "revenue_q")
-    rev_prior = ttm(records, idx - 4, "revenue_q")
+    rev_cur = ttm(records, idx, "revenue")
+    rev_prior = ttm(records, idx - 4, "revenue")
     if any(v is None for v in [rev_cur, rev_prior]):
         return {"revenue_growth_yoy": None}
     return {"revenue_growth_yoy": safe_divide(rev_cur - rev_prior, rev_prior,
@@ -251,8 +252,8 @@ def calc_revenue_growth_qoq(records, idx):
     """Metric 5b: Revenue Growth QoQ Annualized"""
     if idx < 1:
         return {"revenue_growth_qoq_ann": None}
-    cur = records[idx].get("revenue_q")
-    prior = records[idx - 1].get("revenue_q")
+    cur = records[idx].get("revenue")
+    prior = records[idx - 1].get("revenue")
     if cur is None or prior is None or prior <= 0:
         return {"revenue_growth_qoq_ann": None}
     return {"revenue_growth_qoq_ann": (cur / prior) ** 4 - 1}
@@ -262,10 +263,10 @@ def calc_incremental_gross_margin(records, idx):
     """Metric 6: Incremental Gross Margin = Delta GP TTM / Delta Revenue TTM"""
     if idx < 7:
         return {"incremental_gross_margin": None}
-    gp_cur = ttm_computed(records, idx, gross_profit_q)
-    gp_prior = ttm_computed(records, idx - 4, gross_profit_q)
-    rev_cur = ttm(records, idx, "revenue_q")
-    rev_prior = ttm(records, idx - 4, "revenue_q")
+    gp_cur = ttm_computed(records, idx, gross_profit_fn)
+    gp_prior = ttm_computed(records, idx - 4, gross_profit_fn)
+    rev_cur = ttm(records, idx, "revenue")
+    rev_prior = ttm(records, idx - 4, "revenue")
     if any(v is None for v in [gp_cur, gp_prior, rev_cur, rev_prior]):
         return {"incremental_gross_margin": None}
     delta_rev = rev_cur - rev_prior
@@ -277,10 +278,10 @@ def calc_incremental_operating_margin(records, idx):
     """Metric 7: Incremental Operating Margin = Delta OI TTM / Delta Revenue TTM"""
     if idx < 7:
         return {"incremental_operating_margin": None}
-    oi_cur = ttm(records, idx, "operating_income_q")
-    oi_prior = ttm(records, idx - 4, "operating_income_q")
-    rev_cur = ttm(records, idx, "revenue_q")
-    rev_prior = ttm(records, idx - 4, "revenue_q")
+    oi_cur = ttm(records, idx, "operating_income")
+    oi_prior = ttm(records, idx - 4, "operating_income")
+    rev_cur = ttm(records, idx, "revenue")
+    rev_prior = ttm(records, idx - 4, "revenue")
     if any(v is None for v in [oi_cur, oi_prior, rev_cur, rev_prior]):
         return {"incremental_operating_margin": None}
     return {"incremental_operating_margin": safe_divide(oi_cur - oi_prior,
@@ -292,8 +293,8 @@ def calc_nopat_margin(records, idx):
     if idx < 3:
         return {"nopat_margin": None}
     tax = tax_rate_ttm(records, idx)
-    nopat = ttm_computed(records, idx, lambda r: adj_nopat_q(r, tax))
-    rev = ttm(records, idx, "revenue_q")
+    nopat = ttm_computed(records, idx, lambda r: adj_nopat_fn(r, tax))
+    rev = ttm(records, idx, "revenue")
     if any(v is None for v in [nopat, rev]):
         return {"nopat_margin": None}
     return {"nopat_margin": safe_divide(nopat, rev, suppress_negative=True)}
@@ -303,9 +304,9 @@ def calc_cfo_nopat(records, idx):
     """Metric 9: CFO / NOPAT"""
     if idx < 3:
         return {"cfo_over_nopat": None}
-    cfo = ttm(records, idx, "cfo_q")
+    cfo = ttm(records, idx, "cfo")
     tax = tax_rate_ttm(records, idx)
-    nopat = ttm_computed(records, idx, lambda r: adj_nopat_q(r, tax))
+    nopat = ttm_computed(records, idx, lambda r: adj_nopat_fn(r, tax))
     if any(v is None for v in [cfo, nopat]):
         return {"cfo_over_nopat": None}
     return {"cfo_over_nopat": safe_divide(cfo, nopat, suppress_negative=True)}
@@ -315,10 +316,10 @@ def calc_fcf_nopat(records, idx):
     """Metric 10: FCF / NOPAT = (CFO - CapEx) / NOPAT"""
     if idx < 3:
         return {"fcf_over_nopat": None}
-    cfo = ttm(records, idx, "cfo_q")
-    capex = ttm(records, idx, "capex_q")
+    cfo = ttm(records, idx, "cfo")
+    capex = ttm(records, idx, "capex")
     tax = tax_rate_ttm(records, idx)
-    nopat = ttm_computed(records, idx, lambda r: adj_nopat_q(r, tax))
+    nopat = ttm_computed(records, idx, lambda r: adj_nopat_fn(r, tax))
     if any(v is None for v in [cfo, capex, nopat]):
         return {"fcf_over_nopat": None}
     fcf = cfo - abs(capex)  # capex stored negative, CFO - |CapEx|
@@ -329,10 +330,10 @@ def calc_accruals_ratio(records, idx):
     """Metric 11: Accruals Ratio = (Net Income TTM - CFO TTM) / Avg Total Assets"""
     if idx < 4:
         return {"accruals_ratio": None}
-    ni = ttm(records, idx, "net_income_q")
-    cfo = ttm(records, idx, "cfo_q")
-    assets_cur = records[idx].get("total_assets_q")
-    assets_prior = records[idx - 4].get("total_assets_q")
+    ni = ttm(records, idx, "net_income")
+    cfo = ttm(records, idx, "cfo")
+    assets_cur = records[idx].get("total_assets")
+    assets_prior = records[idx - 4].get("total_assets")
     if any(v is None for v in [ni, cfo, assets_cur, assets_prior]):
         return {"accruals_ratio": None}
     avg_assets = (assets_cur + assets_prior) / 2
@@ -356,8 +357,8 @@ def calc_sbc_pct_revenue(records, idx):
     """Metric 13: SBC as % of Revenue TTM"""
     if idx < 3:
         return {"sbc_pct_revenue": None}
-    sbc = ttm(records, idx, "sbc_q")
-    rev = ttm(records, idx, "revenue_q")
+    sbc = ttm(records, idx, "sbc")
+    rev = ttm(records, idx, "revenue")
     if any(v is None for v in [sbc, rev]):
         return {"sbc_pct_revenue": None}
     return {"sbc_pct_revenue": safe_divide(sbc, rev, suppress_negative=True)}
@@ -367,8 +368,8 @@ def calc_diluted_share_growth(records, idx):
     """Metric 14: Diluted Share Count Growth YoY (same quarter)"""
     if idx < 4:
         return {"diluted_share_growth": None}
-    cur = records[idx].get("diluted_shares_split_adjusted_q")
-    prior = records[idx - 4].get("diluted_shares_split_adjusted_q")
+    cur = records[idx].get("diluted_shares_split_adjusted")
+    prior = records[idx - 4].get("diluted_shares_split_adjusted")
     if cur is None or prior is None or prior == 0:
         return {"diluted_share_growth": None}
     return {"diluted_share_growth": (cur - prior) / prior}
@@ -377,21 +378,21 @@ def calc_diluted_share_growth(records, idx):
 def calc_net_debt(records, idx):
     """Metric 15: Net Debt and Net Debt / EBITDA TTM"""
     r = records[idx]
-    fields = ["short_term_debt_q", "long_term_debt_q", "operating_lease_liabilities_q",
-              "cash_q", "short_term_investments_q"]
+    fields = ["short_term_debt", "long_term_debt", "operating_lease_liabilities",
+              "cash", "short_term_investments"]
     vals = {f: r.get(f) for f in fields}
     if any(v is None for v in vals.values()):
         return {"net_debt": None, "net_debt_ebitda": None}
 
-    nd = (vals["short_term_debt_q"] + vals["long_term_debt_q"]
-          + vals["operating_lease_liabilities_q"]
-          - vals["cash_q"] - vals["short_term_investments_q"])
+    nd = (vals["short_term_debt"] + vals["long_term_debt"]
+          + vals["operating_lease_liabilities"]
+          - vals["cash"] - vals["short_term_investments"])
 
     # EBITDA ratio needs TTM
     ratio = None
     if idx >= 3:
-        oi = ttm(records, idx, "operating_income_q")
-        dna = ttm(records, idx, "dna_q")
+        oi = ttm(records, idx, "operating_income")
+        dna = ttm(records, idx, "dna")
         if oi is not None and dna is not None:
             ebitda = oi + dna
             ratio = safe_divide(nd, ebitda)
@@ -401,8 +402,8 @@ def calc_net_debt(records, idx):
 
 def calc_interest_coverage(records, idx):
     """Metric 16: Interest Coverage = OI / |Interest Expense|"""
-    oi = records[idx].get("operating_income_q")
-    ie = records[idx].get("interest_expense_q")
+    oi = records[idx].get("operating_income")
+    ie = records[idx].get("interest_expense")
     if oi is None or ie is None or ie == 0:
         return {"interest_coverage": None}
     return {"interest_coverage": safe_divide(oi, abs(ie))}
@@ -412,7 +413,7 @@ def calc_revenue_per_employee(records, idx):
     """Metric 18: Revenue per Employee = Revenue TTM / Employee Count"""
     if idx < 3:
         return {"revenue_per_employee": None}
-    rev = ttm(records, idx, "revenue_q")
+    rev = ttm(records, idx, "revenue")
     emp = records[idx].get("employee_count")
     if rev is None or emp is None or emp == 0:
         return {"revenue_per_employee": None}
@@ -424,7 +425,7 @@ def calc_working_capital_intensity(records, idx):
     if idx < 3:
         return {"working_capital_intensity": None}
     wc = nwc(records[idx])
-    rev = ttm(records, idx, "revenue_q")
+    rev = ttm(records, idx, "revenue")
     if wc is None or rev is None:
         return {"working_capital_intensity": None}
     return {"working_capital_intensity": safe_divide(wc, rev, suppress_negative=True)}
@@ -435,11 +436,11 @@ def calc_dso_dio_dpo(records, idx):
     if idx < 3:
         return {"dso": None, "dio": None, "dpo": None}
     r = records[idx]
-    ar = r.get("accounts_receivable_q")
-    inv = r.get("inventory_q")
-    ap = r.get("accounts_payable_q")
-    rev = ttm(records, idx, "revenue_q")
-    cogs = ttm(records, idx, "cogs_q")
+    ar = r.get("accounts_receivable")
+    inv = r.get("inventory")
+    ap = r.get("accounts_payable")
+    rev = ttm(records, idx, "revenue")
+    cogs = ttm(records, idx, "cogs")
 
     dso = safe_divide(ar, rev) * 365 if ar is not None and rev else None
     dio = safe_divide(inv, cogs) * 365 if inv is not None and cogs else None
@@ -452,9 +453,9 @@ def calc_unlevered_fcf(records, idx):
     """Metric 21: Unlevered FCF = CFO + |Interest| * (1 - Tax Rate) - |CapEx|"""
     if idx < 3:
         return {"unlevered_fcf": None}
-    cfo = ttm(records, idx, "cfo_q")
-    ie = ttm(records, idx, "interest_expense_q")
-    capex = ttm(records, idx, "capex_q")
+    cfo = ttm(records, idx, "cfo")
+    ie = ttm(records, idx, "interest_expense")
+    capex = ttm(records, idx, "capex")
     if any(v is None for v in [cfo, ie, capex]):
         return {"unlevered_fcf": None}
     tax = tax_rate_ttm(records, idx)
@@ -499,14 +500,14 @@ def forward_fill_lease_liabilities(records):
     last_value = 0
     filled = 0
     for r in records:
-        val = r.get("operating_lease_liabilities_q", 0) or 0
+        val = r.get("operating_lease_liabilities", 0) or 0
         if val != 0:
             last_value = val
         elif last_value != 0:
-            r["operating_lease_liabilities_q"] = last_value
+            r["operating_lease_liabilities"] = last_value
             filled += 1
     if filled:
-        print(f"  Forward-filled operating_lease_liabilities_q for {filled} quarters")
+        print(f"  Forward-filled operating_lease_liabilities for {filled} quarters")
 
 
 def calculate_all_metrics(records):
@@ -531,9 +532,15 @@ def calculate_all_metrics(records):
 
 def process_ticker(ticker):
     """Process a single ticker: read extraction output, calculate metrics, write dashboard data."""
-    input_path = os.path.join(OUTPUT_DIR, f"{ticker.lower()}.json")
-    if not os.path.exists(input_path):
-        print(f"No extraction output found at {input_path}")
+    # Try ai_extract quarterly.json first, fall back to legacy output/
+    ai_path = os.path.join(AI_EXTRACT_DIR, ticker, "quarterly.json")
+    legacy_path = os.path.join(OUTPUT_DIR, f"{ticker.lower()}.json")
+    if os.path.exists(ai_path):
+        input_path = ai_path
+    elif os.path.exists(legacy_path):
+        input_path = legacy_path
+    else:
+        print(f"No extraction output found at {ai_path} or {legacy_path}")
         return False
 
     print(f"\n{'='*60}")

@@ -551,6 +551,128 @@ def derive_quarterly(filing_results):
     return records
 
 
+def derive_quarterly_v2(filing_results):
+    """
+    Pure arithmetic: derive quarterly values from v2 per-filing data.
+
+    Takes a list of v2 AI mapping results and produces one quarterly record
+    per period using the standardized analytical field names.
+
+    - Q1 10-Q: already quarterly, use as-is
+    - Q2/Q3 10-Q: IS is quarterly, CF is YTD (subtract prior YTD)
+    - 10-K: IS and CF are annual (subtract Q1+Q2+Q3 to get Q4)
+    """
+    # BS fields — instant values, no derivation needed
+    bs_fields = {
+        'cash', 'short_term_investments', 'accounts_receivable', 'inventory',
+        'accounts_payable', 'total_assets', 'equity', 'short_term_debt',
+        'long_term_debt', 'operating_lease_liabilities', 'operating_lease_current',
+        'operating_lease_noncurrent', 'goodwill',
+    }
+
+    # Non-cumulative — never derived by subtraction
+    non_cumulative = {
+        'diluted_shares', 'basic_shares', 'diluted_eps', 'basic_eps',
+        'effective_tax_rate',
+    }
+
+    # CF flow fields — these are YTD in Q2/Q3 10-Qs
+    cf_flow_fields = {
+        'cfo', 'capex', 'acquisitions', 'sbc', 'dna',
+    }
+
+    quarterly_filings = []
+    annual_filings = []
+
+    for result in filing_results:
+        form = result.get('form', '')
+        if form == '10-K':
+            annual_filings.append(result)
+        else:
+            quarterly_filings.append(result)
+
+    # Build quarterly records from 10-Q filings
+    records = {}
+    for result in quarterly_filings:
+        analytical = result.get('analytical', {})
+        pe = result.get('period_end', '')
+        ps = result.get('period_start', '')
+        cf_is_ytd = result.get('cf_is_ytd', False)
+
+        rec = {'period_end': pe, 'period_start': ps}
+
+        for field, val in analytical.items():
+            if not isinstance(val, (int, float)):
+                continue  # skip notes/strings
+
+            if field in bs_fields or field in non_cumulative:
+                rec[field] = val
+            elif not cf_is_ytd:
+                # Q1: everything is quarterly
+                rec[field] = val
+            elif field in cf_flow_fields:
+                # CF fields with YTD — store as YTD, derive later
+                rec[f'{field}_ytd'] = val
+            else:
+                # IS field from quarterly column — use directly
+                rec[field] = val
+
+        records[pe] = rec
+
+    # Derive quarterly CF from YTD
+    sorted_pes = sorted(records.keys())
+
+    all_ytd_fields = set()
+    for pe in sorted_pes:
+        for k in records[pe]:
+            if k.endswith('_ytd'):
+                all_ytd_fields.add(k[:-4])
+
+    for field in all_ytd_fields:
+        ytd_key = f'{field}_ytd'
+        prev_ytd = 0
+
+        for pe in sorted_pes:
+            rec = records[pe]
+            if ytd_key in rec:
+                ytd_val = rec[ytd_key]
+                rec[field] = ytd_val - prev_ytd
+                prev_ytd = ytd_val
+                del rec[ytd_key]
+            elif field in rec:
+                prev_ytd = rec[field]
+
+    # Derive Q4 from 10-K annual minus Q1+Q2+Q3
+    for annual in annual_filings:
+        analytical = annual.get('analytical', {})
+        pe = annual.get('period_end', '')
+        ps = annual.get('period_start', '')
+
+        rec = {'period_end': pe, 'period_start': ps}
+
+        prior_pes = [p for p in sorted_pes if p < pe]
+        prior_3 = prior_pes[-3:] if len(prior_pes) >= 3 else prior_pes
+
+        for field, annual_val in analytical.items():
+            if not isinstance(annual_val, (int, float)):
+                continue
+
+            if field in bs_fields:
+                rec[field] = annual_val
+            elif field in non_cumulative:
+                rec[field] = annual_val
+            else:
+                prior_sum = sum(records[p].get(field, 0) for p in prior_3 if p in records)
+                if len(prior_3) == 3 and all(field in records.get(p, {}) for p in prior_3):
+                    rec[field] = annual_val - prior_sum
+                else:
+                    rec[field] = annual_val
+
+        records[pe] = rec
+
+    return records
+
+
 def merge_quarters(records, ticker):
     """
     Smart merge: combine quarterly records, only overwrite if value is different.
@@ -581,7 +703,7 @@ def merge_quarters(records, ticker):
     result = []
     for pe in sorted(merged.keys()):
         rec = merged[pe]
-        if 'revenue_q' in rec:
+        if 'revenue_q' in rec or 'revenue' in rec:
             rec['ticker'] = ticker
             rec = {k: v for k, v in rec.items() if v is not None}
             result.append(rec)
