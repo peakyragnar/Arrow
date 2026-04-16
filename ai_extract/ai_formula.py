@@ -305,11 +305,18 @@ For 10-K filings:
 - CF fields: use ANNUAL values.
 - BS fields: use year-end snapshot values.
 - The derivation script computes Q4 = annual minus Q1+Q2+Q3.
+- diluted_shares: use the ANNUAL reported value directly. This is NOT a flow — the derivation script passes it through as-is for Q4. Do not subtract.
+- diluted_eps: do NOT include for 10-K filings. Q4 EPS is computed downstream as Q4 net_income / diluted_shares. Including annual EPS would be wrong.
+
+NON-FLOW FIELDS (never derived by subtraction):
+- diluted_shares, basic_shares: weighted averages, passed through directly
+- diluted_eps, basic_eps: do NOT output for 10-K filings (annual EPS != Q4 EPS). For 10-Q filings, use the quarterly reported EPS.
+- effective_tax_rate: use the reported rate for that period
 
 If you pick the wrong value (e.g., YTD revenue instead of quarterly, or quarterly CF instead of YTD), the derivation will produce impossible results (negative revenue, negative CFO for a profitable company). The math will catch it.
 
 Handle these cross-period issues:
-- STOCK SPLITS: if diluted shares jumps by a large multiple between periods, normalize all pre-split periods to post-split basis (divide shares, multiply EPS)
+- STOCK SPLITS: if diluted shares jumps by a large multiple between periods, normalize all pre-split periods to post-split basis (divide shares by the split ratio). Do NOT adjust EPS — EPS is already reported on a per-share basis and the filing reports it in the correct basis for that period. Only adjust shares.
 - REPORTING CHANGES: if the company changed its structure between filings (new segments, renamed items), map both sides consistently
 - SIGN CONVENTIONS: ensure signs are consistent across all periods for each field
 
