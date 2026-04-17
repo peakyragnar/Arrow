@@ -2,27 +2,26 @@
 
 ## Purpose
 
-When calculating ROIC and other return metrics, R&D must be treated as a capital expenditure rather than an operating expense. This requires:
+When calculating ROIC and other return metrics, R&D is treated as a capital
+expenditure rather than an operating expense. This requires:
 
-1. **R&D Asset** — the unamortized balance of all R&D spending still "in service"
-2. **Amortization Expense** — the portion of past R&D that expires each quarter
-3. **Operating Income Adjustment** — the difference between reported R&D expense and amortization
+1. **R&D Asset** — unamortized balance of all R&D spending still "in service"
+2. **R&D Amortization** — portion of past R&D that expires each quarter
+3. **Operating-income adjustment** — difference between reported R&D expense
+   and amortization
 
 ## Assumptions
 
-- **Amortization method:** Straight-line
+- **Method:** straight-line
 - **Useful life:** 5 years = 20 quarters
-- **Frequency:** Quarterly
+- **Frequency:** quarterly
 
 ## Definitions
 
-Let `R&D(t)` = R&D expense in quarter `t` (the current quarter).
-Let `R&D(t-j)` = R&D expense `j` quarters ago.
-Let `N` = amortization life in quarters (default 20).
+Let `R&D(t)` = R&D expense in quarter `t`, `R&D(t-j)` = R&D expense `j`
+quarters ago, `N` = amortization life in quarters (default 20).
 
 ## R&D Asset
-
-The R&D Asset at quarter `t` is the sum of all unamortized R&D from the current quarter and the prior 19 quarters. Each vintage is weighted by its remaining life fraction:
 
 ```
 Asset(t) = Σ  R&D(t-j) × (N - j) / N     for j = 0 to N-1
@@ -31,18 +30,18 @@ Asset(t) = Σ  R&D(t-j) × (N - j) / N     for j = 0 to N-1
 Expanded:
 
 ```
-Asset(t) = R&D(t)   × 20/20
+Asset(t) = R&D(t)    × 20/20
          + R&D(t-1)  × 19/20
          + R&D(t-2)  × 18/20
          + ...
          + R&D(t-19) × 1/20
 ```
 
-**Intuition:** The most recent quarter's R&D is fully capitalized (20/20). Each older quarter has one more period amortized away. R&D from 20+ quarters ago is fully amortized and drops out.
+The most recent quarter's R&D is fully capitalized (20/20). Each older
+vintage has one more period amortized away. R&D from 20+ quarters ago is
+fully amortized and drops out.
 
-## Amortization Expense
-
-The quarterly amortization is the sum of each vintage's per-quarter amortization charge:
+## R&D Amortization
 
 ```
 Amort(t) = Σ  R&D(t-j) / N     for j = 0 to N-1
@@ -51,47 +50,41 @@ Amort(t) = Σ  R&D(t-j) / N     for j = 0 to N-1
 Expanded:
 
 ```
-Amort(t) = R&D(t)/20 + R&D(t-1)/20 + R&D(t-2)/20 + ... + R&D(t-19)/20
+Amort(t) = R&D(t)/20 + R&D(t-1)/20 + ... + R&D(t-19)/20
          = SUM(R&D(t) through R&D(t-19)) / 20
 ```
 
-**Intuition:** Every quarter of R&D in the 20-quarter window contributes exactly 1/20th of itself as amortization. This is simply the average of the last 20 quarters' R&D.
+Every quarter of R&D in the 20-quarter window contributes exactly 1/20th of
+itself as amortization. This is the average of the last 20 quarters' R&D.
 
-## Operating Income Adjustment
+## Operating-Income Adjustment
 
 ```
 OI_Adjustment(t) = R&D(t) - Amort(t)
+Adjusted_OI(t)   = Reported_OI(t) + R&D(t) - Amort(t)
+Adjusted_IC(t)   = Reported_IC(t) + R&D_Asset(t)
 ```
 
-- **Positive** when current R&D > amortization → company is investing more than it consumes → capitalization increases operating income vs. reported
-- **Negative** when current R&D < amortization → R&D is declining → capitalization decreases operating income
-- **Near zero** when R&D is stable over time
+## Data Requirements — 20 real quarters
 
-## Adjusted Operating Income
+The calculation uses **20 actual quarterly R&D values**. No synthesis from
+annuals, no division of annual figures by 4, no approximation.
 
-```
-Adjusted_OI(t) = Reported_OI(t) + R&D(t) - Amort(t)
-```
+Quarterly R&D comes from two sources, in priority order:
 
-This adds back the full R&D expense (which was deducted on the income statement) and subtracts only the amortization charge.
+1. **`ai_extract/{TICKER}/quarterly.json`** — the authoritative Stage 2
+   output for periods that have been run through the AI pipeline.
+2. **`ai_extract/{TICKER}/rd_history.json`** — deterministic supplement for
+   historical periods not run through Stage 2. Built by a standalone script
+   (`ai_extract/extract_rd_history.py`) that reads the XBRL instance doc of
+   each on-disk filing, extracts `us-gaap:ResearchAndDevelopmentExpense` with
+   period-type filtering (3-month for 10-Qs, 12-month for 10-Ks, Q4 derived
+   from annual − Q1 − Q2 − Q3), and writes one record per quarter. No AI.
 
-## Adjusted Invested Capital
-
-```
-Adjusted_IC(t) = Reported_IC(t) + R&D_Asset(t)
-```
-
-The R&D Asset is added to invested capital because it represents a capitalized investment that generates future returns.
-
-## Data Requirements
-
-A full calculation requires 20 quarters of R&D history. When only 12 quarters of actual data are available:
-
-- Use 3 prior fiscal years of annual R&D (from 10-K filings)
-- Divide each annual figure by 4 to estimate quarterly R&D for those years
-- This provides 12 estimated quarters + 12 actual quarters = 24 quarters total
-- Quarters with 20+ periods of lookback history have exact coverage
-- The annual/4 approximation introduces minimal error because the oldest vintages carry the smallest weights (1/20 to 8/20)
+`calculate.py` reads `quarterly.json` first. If fewer than 20 quarters are
+present, it fills the gap from `rd_history.json` for the older periods
+below the earliest Stage 2 quarter. No overlap — each period sourced from
+exactly one file.
 
 ## Worked Example: Constant R&D
 
@@ -103,20 +96,10 @@ If R&D is constant at $100M per quarter:
 | R&D Asset | $1,050M | $100M × (20+19+18+...+1)/20 = $100M × 10.5 |
 | OI Adjustment | $0 | $100M - $100M = $0 |
 
-When R&D is perfectly stable, capitalization has no effect on operating income — only on the balance sheet (invested capital increases by the R&D Asset).
+When R&D is stable, capitalization has no effect on operating income — only
+on the balance sheet (invested capital increases by the R&D Asset).
 
-## Spreadsheet Layout
+## Benchmark
 
-The template uses a single-column vertical layout per company:
-
-| Row | Column A | Column B (Input) | Column C (Output) | Column D (Output) |
-|-----|----------|-------------------|--------------------|--------------------|
-| 7 | FY Year 1 (oldest annual) | Annual R&D | — | — |
-| 8 | FY Year 2 | Annual R&D | — | — |
-| 9 | FY Year 3 | Annual R&D | — | — |
-| 10 | Q1 (oldest quarterly) | Quarterly R&D | Amortization | R&D Asset |
-| 11 | Q2 | Quarterly R&D | Amortization | R&D Asset |
-| ... | ... | ... | ... | ... |
-| 21 | Q12 (most recent) | Quarterly R&D | Amortization | R&D Asset |
-
-A hidden helper column constructs the full 24-quarter series by dividing each annual input by 4 for the first 12 quarters, then using actuals for the remaining 12.
+Every computed value for NVDA (amortization, asset, OI adjustment per
+quarter) must match `golden_eval.xlsx`. Zero drift tolerated.

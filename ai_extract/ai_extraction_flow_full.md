@@ -133,75 +133,175 @@ Output format unchanged: `line_items`, `formulas`, `xbrl_not_on_statement`, `seg
 
 ---
 
-## Step 4: All-Periods Normalization + Quarterly Derivation (Stage 2)
+## Step 4: Stage 2 — Statements + Normalized Buckets
 
 ```bash
-python3 ai_extract/ai_formula.py --ticker NVDA --v3
+python3 ai_extract/ai_formula.py --ticker NVDA --test
 ```
 
-One AI call sees all filings at once. Input: slimmed per-filing extractions (~96K tokens for 12 NVDA filings) + `formulas.md`.
+Stage 2 produces two layers of output, both verified by math. Every output
+matches the schema described here; nothing is invented for a specific company.
 
-AI does:
-- Read all filings to understand this company's reporting structure
-- For each analytical input the metric formulas need, determine where it comes from across all periods
-- Normalize field names consistently across all periods
-- Handle stock splits (normalize pre-split shares to post-split basis)
-- Forward-fill annual-only values (e.g., operating lease liabilities disclosed only in 10-K) with explicit flags
-- Handle reporting changes between filings (renamed items, new segments)
+### Layer 1 — As-reported statements (deterministic)
 
-Verification (deterministic, runs after AI returns):
-1. **Quarterly derivation** — Q1 pass-through, Q2/Q3 CF YTD subtraction, Q4 = annual - Q1-Q2-Q3. This IS the primary verification: wrong period values produce impossible results.
-2. **Sanity checks** — revenue must be positive, no impossible sign flips
-3. **Formula checks** — revenue - cogs = gross_profit, pretax - tax = net_income
-4. **Field presence** — every standard field in every period
-5. **Split normalization** — diluted shares within 2x range across all quarters
-6. **Forward-fill audit** — verify flagged items genuinely don't exist in that filing's XBRL
-7. **Continuity** — no 5x jumps between consecutive quarters
+For each of IS / BS / CF:
 
-If any check fails, the failures are sent back to the AI for retry (max 3). The retry prompt includes the specific errors.
+- **Rows** — merged across all Stage 1 filings by `xbrl_concept`. Multiple
+  label variants are collected into a joined `labels` list (one row per
+  concept). Both `line_items` and `xbrl_not_on_statement` (note detail) are
+  captured; rows tagged `is_note_detail: true` when they came from the notes.
+- **Values per quarter** — selected deterministically from each filing's
+  current-period column per period-type rule:
+  - 10-Q IS: shortest duration ending at filing period_end (the 3-month column).
+  - 10-Q CF: longest duration ending at filing period_end (YTD).
+  - 10-K IS/CF: 12-month annual.
+  - BS (any form): instant at filing period_end.
+- **Q2/Q3 CF derivation** — Python: quarterly = YTD − prior YTD.
+- **Q4 derivation (flows)** — Python: Q4 = annual − Q1 − Q2 − Q3. Linear
+  derivation preserves formula ties.
+- **Formulas** — Stage 1's declared formulas are carried through (components
+  translated from labels to xbrl_concepts) and evaluated per quarter. Each
+  formula is scoped to the quarters of its source filing (a 10-Q's formula
+  applies to that 10-Q's quarter; a 10-K's formula applies to the annual and
+  — by linearity — to the derived Q4). Evaluated only where applicable, so no
+  spurious breaks when component structure drifts across filings.
 
-Outputs:
-- `formula_mapped_v3.json` — company mapping + analytical fields per period
-- `quarterly.json` — standalone quarterly values (single source of truth)
+No AI in Layer 1. Purely Python from Stage 1 output.
+
+### Layer 2 — Normalized buckets (AI judgment)
+
+The universal bucket lists are declared in `canonical_buckets.md` (same for
+every company, every statement). The AI is given the Layer 1 statements +
+`canonical_buckets.md` and assigns each as-reported row (including note
+detail) to exactly one **detail bucket**. Subtotals (`gross_profit`,
+`operating_income`, `total_assets`, `cfo`, etc.) are not assigned — they are
+computed arithmetically from the detail buckets per `canonical_buckets.md`.
+
+Per bucket, the AI outputs `source_concepts` (the xbrl_concepts feeding it)
+so every bucket value traces to specific as-reported rows.
+
+The AI also handles:
+- **Stock splits** — detect and normalize shares across pre/post-split periods.
+- **Forward-fills** — annual-only items may be forward-filled from the most
+  recent 10-K to the following Q1–Q3, but only when the concept is genuinely
+  absent from those quarters' raw XBRL. Forward-fills carry a receipt
+  listing `candidate_concepts` that the verifier re-checks against raw
+  `parsed_xbrl.json`. False fills are rejected.
+
+### Segments
+
+Segment data is collected from Stage 1's `segment_data`, quarterized
+(same period-type rule), and organized per axis. Each axis carries a
+`consolidated_by_quarter_and_metric` map; member values must sum to that
+consolidated total every quarter.
+
+### Verification battery (deterministic, runs after AI)
+
+1. **As-reported formula ties** — every Stage-1 formula ties in every quarter
+   where it applies. Scoped per source filing. (Informational; real
+   correctness signal is #2.)
+2. **Normalized formula ties** — every subtotal in `canonical_buckets.md` ties
+   in every quarter using bucket values. Hard requirement. No plugs.
+3. **Q1+Q2+Q3+Q4 = annual** — for every flow bucket and every fiscal year
+   where all five exist. Exact match.
+4. **Cross-statement invariants**:
+   - `total_assets == total_liabilities_and_equity` per quarter.
+   - `net_change_in_cash == cash_eop − cash_bop` per quarter (cash sourced
+     from BS instants).
+   - `income_statement.net_income == cash_flow.net_income_start` per quarter.
+5. **BS consistency across filings** — any period-end date appearing in
+   multiple filings must have identical BS instants across those filings.
+6. **Segment ties** — `sum(members) == consolidated_total` per axis, metric,
+   and quarter.
+7. **Analytical reconciliation** — every bucket value equals the signed sum
+   of its source rows' values for that quarter. No orphan values.
+8. **Forward-fill audit** — every flagged forward-fill re-checked against the
+   target period's raw `parsed_xbrl.json`. Any candidate concept present with
+   a non-null value fails the fill.
+
+### Retry loop
+
+Failures are echoed back to the AI with specific concepts, quarters, and
+deltas. Retries up to 3. If failures persist, Stage 2 hard-errors (exit
+code 2). No silent accept. No plugs.
+
+### Outputs
+
+| File | Purpose |
+|------|---------|
+| `formula_mapped_v3.json` | Full structure: statements (rows + buckets + formulas), segments, analytical, verification report |
+| `quarterly.json` | Flat per-quarter bucket values for `calculate.py` |
+| `{ticker}_full_check.csv` | Universal audit CSV: as-reported rows, normalized buckets, formulas, segments per statement |
+
+Outputs land in `ai_extract/{TICKER}/test/` during iteration (`--test` flag),
+or `ai_extract/{TICKER}/` in production.
 
 ---
 
-## Step 5: Metrics
+## Step 5: R&D History (optional, deterministic)
+
+```bash
+python3 ai_extract/extract_rd_history.py --ticker NVDA
+```
+
+Standalone, no AI. Reads every downloaded filing's XBRL instance doc,
+extracts `us-gaap:ResearchAndDevelopmentExpense` with period-type filtering
+(3-month for 10-Qs, 12-month for 10-Ks, Q4 derived from annual − Q1 − Q2 − Q3),
+and writes `ai_extract/{TICKER}/rd_history.json` — one record per quarter.
+
+Used only when fewer than 20 quarters have been run through Stage 2.
+`calculate.py` reads `quarterly.json` first and gap-fills older quarters
+from `rd_history.json` as needed for the 20-quarter capitalization schedule.
+See `rd_capitalization_reference.md`.
+
+---
+
+## Step 6: Metrics
 
 ```bash
 python3 calculate.py --ticker NVDA
 ```
 
-Reads `quarterly.json`, computes ROIC, margins, growth, and other metrics from `formulas.md`. Outputs dashboard data.
+Reads `quarterly.json` (and `rd_history.json` when needed), computes ROIC,
+margins, growth, and other metrics per `formulas.md`. Field names map 1:1
+to bucket names declared in `canonical_buckets.md` — no translation layer.
+Outputs dashboard data.
 
 ---
 
 ## What the AI Does vs. Doesn't Do
 
-| Task | Before (template) | After (linkbase + principles) |
-|------|-------------------|-------------------------------|
-| Discover statement structure | AI figures it out from HTML | Presentation linkbase provides it |
-| Discover formula relationships | AI figures it out (or prompt prescribes them) | Calculation linkbase provides them |
-| Find hidden items (e.g. leases in accrued) | Prompt tells AI exactly where to look | Cal linkbase declares the decomposition |
-| Find segment structure | Prompt prescribes 4 categories | Def linkbase provides dimension hierarchy |
-| Read precise values | AI reads HTML | AI reads HTML (still needed where XBRL rounds) |
-| Verify math | AI + verification script | AI + verification script (formulas from linkbase) |
-| Cross-filing normalization | AI in separate Stage 2 (per-filing) | AI in Stage 2 (all periods in one call) |
-| YTD to quarterly | Separate Stage 3 | Embedded in Stage 2 as verification |
-| Stock split normalization | Not handled | AI normalizes in Stage 2 (sees all periods) |
-| Annual-only forward fill | Hardcoded in calculate.py | AI flags and fills in Stage 2 |
+| Task | Deterministic | AI (judgment) |
+|------|---------------|---------------|
+| Statement structure | Presentation linkbase | — |
+| Formula relationships (Stage 1) | Calculation linkbase | — |
+| Hidden-item decomposition | Cal linkbase declares it | — |
+| Segment/dimension structure | Def linkbase | — |
+| Read precise values where XBRL rounds | — | AI reads HTML (Stage 1) |
+| Stage 1 fact completeness | — | AI accounts for every XBRL fact |
+| Stage 2 row merge across filings | By xbrl_concept; labels joined | — |
+| Stage 2 value selection per quarter | Period-type rule | — |
+| Stage 2 Q4 + Q2/Q3 derivations | Pure arithmetic | — |
+| Stage 2 bucket assignment | `canonical_buckets.md` fixes the names | AI assigns rows → buckets |
+| Stage 2 subtotals + invariants | Computed from bucket values | — |
+| Stock splits | — | AI normalizes across periods |
+| Annual-only forward-fill | Verifier audits against raw XBRL | AI flags, declares candidate concepts |
+| R&D history (pre-Stage-1) | Standard XBRL concept, deterministic | — |
 
 ---
 
 ## File Map
 
 ```
-fetch.py                              — Step 1: download filings + linkbases from EDGAR
+fetch.py                              — Step 1: download filings + linkbases from EDGAR (5 yrs)
 
 ai_extract/
   parse_xbrl.py                       — Step 2: deterministic parse → parsed_xbrl.json
-  analyze_statement.py                — Step 3: AI extraction + verification → per-filing .json + mapped.json
-  ai_formula.py                       — Step 4: all-periods normalization + quarterly derivation
+  analyze_statement.py                — Step 3: Stage 1 AI extraction → per-filing .json + mapped.json
+  ai_formula.py                       — Step 4: Stage 2 statements + buckets
+  export_full_check_csv.py            — Step 4: universal audit CSV renderer
+  extract_rd_history.py               — Step 5: deterministic R&D history (optional)
+  canonical_buckets.md                — Universal IS/BS/CF bucket lists + invariants
   ai_extraction_flow_full.md          — This document
 
 data/filings/{TICKER}/{ACCESSION}/
@@ -214,11 +314,16 @@ data/filings/{TICKER}/{ACCESSION}/
   parsed_xbrl.json                    — Deterministic parse output (Step 2)
 
 ai_extract/{TICKER}/
-  q*_fy*_10*.json                     — Per-filing extractions (immutable training data)
-  mapped.json                         — All periods, amendment-aware
-  formula_mapped_v3.json              — Analytical mapping + quarterly derivation output
-  quarterly.json                      — Standalone quarterly values (single source of truth)
+  q*_fy*_10*.json                     — Per-filing Stage 1 extractions (immutable training data)
+  mapped.json                         — All periods, amendment-aware index
+  formula_mapped_v3.json              — Stage 2: statements + buckets + segments + analytical
+  quarterly.json                      — Flat per-quarter bucket values (consumed by calculate.py)
+  rd_history.json                     — Deterministic R&D history for 20-quarter lookback
+  {ticker}_full_check.csv             — Universal audit CSV
+  test/                               — Active workspace while iterating
 
-calculate.py                          — Step 6: metrics from quarterly.json
+calculate.py                          — Step 6: metrics from quarterly.json + rd_history.json
 dashboard/                            — Chart.js app served locally
+formulas.md                           — Metric dictionary (references canonical_buckets.md)
+rd_capitalization_reference.md        — 20-quarter straight-line, real quarters only
 ```
