@@ -669,6 +669,10 @@ def main():
     parser.add_argument('--model', default='claude-sonnet-4-6', help='Model to use (claude-sonnet-4-6, claude-opus-4-6, gemini-3-flash-preview, gpt-5, etc.)')
     parser.add_argument('--test', action='store_true', help='Write output to test/ subdirectory instead of main directory')
     parser.add_argument('--full-html', action='store_true', help='Send full HTML instead of stripped statements (auto-selected for small filings)')
+    parser.add_argument('--allow-save-on-fail', action='store_true',
+                        help='Save output even if formula checks fail (default: refuse and delete stale file).')
+    parser.add_argument('--rebuild-mapped', action='store_true',
+                        help='After saving, regenerate mapped.json from scratch using all per-filing JSONs (avoids stale residue from prior runs).')
     args = parser.parse_args()
 
     # Step 1: Parse XBRL facts
@@ -1315,12 +1319,173 @@ CRITICAL: Output must be valid JSON. No apostrophes in strings."""
         }
 
     if args.output:
+        # === SAVE GATE ===
+        # Python-side enforcement: refuse to save if any formula check failed.
+        # The verification was computed by verify_formulas() — a deterministic
+        # Python routine, not an AI-graded claim. If any formula's `pass` is
+        # False, the filing's own arithmetic doesn't tie to what the AI
+        # extracted. Silently saving broken data poisons everything downstream.
+        verification_block = full_output.get('formula_verification', {})
+        failed_checks = []
+        if args.statement == 'all':
+            for stmt_name, v in verification_block.items():
+                for chk in v.get('formula_checks', []):
+                    if not chk.get('pass'):
+                        failed_checks.append((stmt_name, chk))
+        else:
+            for chk in verification_block.get('formula_checks', []):
+                if not chk.get('pass'):
+                    failed_checks.append((args.statement, chk))
+
+        if failed_checks and not args.allow_save_on_fail:
+            print("=" * 80)
+            print(f"SAVE REFUSED: {len(failed_checks)} formula checks failed.")
+            print("These formulas did not tie — saving would propagate broken data.")
+            print("Fix the prompt / re-run the filing / escalate to Opus, then try again.")
+            print("=" * 80)
+            for stmt_name, chk in failed_checks[:10]:
+                print(f"  [{stmt_name}] {chk.get('formula','')[:80]}")
+                for period, info in (chk.get('periods') or {}).items():
+                    if isinstance(info, dict):
+                        c = info.get('computed')
+                        s = info.get('stated')
+                        if c is not None and s is not None and c != s:
+                            print(f"    {period}: computed={c:,} stated={s:,} delta={c - s:+,}")
+            if len(failed_checks) > 10:
+                print(f"  ... and {len(failed_checks) - 10} more")
+            print("=" * 80)
+            # Delete any stale file at output path so downstream can't pick it up
+            if os.path.exists(args.output):
+                os.remove(args.output)
+                print(f"  Deleted stale file at {args.output}")
+            sys.exit(2)
+
         with open(args.output, 'w') as f:
             json.dump(full_output, f, indent=2)
         print(f"\nSaved to {args.output}")
 
         # Update mapped.json — organize data by period, overwrite if amendment
         update_mapped_json(full_output, args.ticker, os.path.basename(args.output))
+
+        if args.rebuild_mapped:
+            rebuild_mapped_from_scratch(args.ticker, args.output)
+
+
+def rebuild_mapped_from_scratch(ticker, output_path):
+    """Regenerate mapped.json from ALL per-filing JSONs in the same directory.
+
+    Prevents stale data from prior broken extractions persisting via the
+    incremental-merge path used by update_mapped_json. Processes files in
+    chronological order (by filename fiscal-year/quarter tag). Writes
+    mapped.json to the SAME directory as the per-filing JSONs (so test/
+    runs correctly produce test/mapped.json, not parent mapped.json).
+    """
+    import glob, re
+    out_dir = os.path.dirname(output_path)
+    mapped_path = os.path.join(out_dir, 'mapped.json')
+
+    pattern = re.compile(r'^q([1-4])_(fy|cy)(\d{2})_10([qk])(?:_stripped)?\.json$')
+    paths = sorted(glob.glob(os.path.join(out_dir, 'q*_fy*_10*.json'))
+                   + glob.glob(os.path.join(out_dir, 'q*_cy*_10*.json')))
+    bases = {os.path.basename(p).replace('_stripped', '') for p in paths
+             if '_stripped' not in os.path.basename(p)}
+    paths = [p for p in paths
+             if '_stripped' not in os.path.basename(p)
+             or os.path.basename(p).replace('_stripped', '') not in bases]
+
+    def sort_key(p):
+        m = pattern.match(os.path.basename(p))
+        if not m:
+            return (99, 99, 9)
+        qn, prefix, yy, form = m.groups()
+        return (int(yy), int(qn), 0 if form == 'q' else 1)
+    paths.sort(key=sort_key)
+
+    if os.path.exists(mapped_path):
+        os.remove(mapped_path)
+
+    print(f"  Rebuilding {mapped_path} from {len(paths)} per-filing JSONs...")
+
+    mapped = {}
+    for fp in paths:
+        fname = os.path.basename(fp)
+        with open(fp) as f:
+            full_output = json.load(f)
+        ai = full_output.get('ai_extraction', full_output)
+
+        for stmt_name in ['income_statement', 'balance_sheet', 'cash_flow']:
+            stmt = ai.get(stmt_name, {})
+            items = stmt.get('line_items', [])
+            formulas = stmt.get('formulas', [])
+            xbrl_not = stmt.get('xbrl_not_on_statement', [])
+            if not items and not xbrl_not:
+                continue
+
+            periods = set()
+            for it in items:
+                periods.update(it.get('values', {}).keys())
+            for it in xbrl_not:
+                vals = it.get('value', {}) or it.get('values', {})
+                if isinstance(vals, dict):
+                    periods.update(vals.keys())
+
+            for period in periods:
+                rec = mapped.setdefault(period, {
+                    'period': period,
+                    'income_statement': {'line_items': [], 'formulas': [], 'xbrl_not_on_statement': []},
+                    'balance_sheet': {'line_items': [], 'formulas': [], 'xbrl_not_on_statement': []},
+                    'cash_flow': {'line_items': [], 'formulas': [], 'xbrl_not_on_statement': []},
+                    'source_filings': [],
+                })
+
+                per_items = []
+                for it in items:
+                    v = it.get('values', {}).get(period)
+                    if v is not None:
+                        per_items.append({
+                            'label': it.get('label', ''),
+                            'xbrl_concept': it.get('xbrl_concept', ''),
+                            'value': v,
+                            'unit': it.get('unit', 'USD_millions'),
+                            'indent_level': it.get('indent_level', 0),
+                        })
+                per_notes = []
+                for it in xbrl_not:
+                    vals = it.get('value', {}) or it.get('values', {})
+                    v = vals.get(period) if isinstance(vals, dict) else None
+                    if v is not None:
+                        per_notes.append({
+                            'concept': it.get('concept', ''),
+                            'value': v,
+                            'period_type': it.get('period', ''),
+                            'classification': it.get('classification', ''),
+                        })
+                if per_items:
+                    rec[stmt_name]['line_items'] = per_items
+                    rec[stmt_name]['formulas'] = formulas
+                if per_notes:
+                    rec[stmt_name]['xbrl_not_on_statement'] = per_notes
+                if fname not in rec['source_filings']:
+                    rec['source_filings'].append(fname)
+
+        # Segments attach to the filing's latest period
+        seg = ai.get('segment_data', [])
+        if seg:
+            is_items = ai.get('income_statement', {}).get('line_items', [])
+            if is_items:
+                vals = is_items[0].get('values', {})
+                ks = list(vals.keys())
+                if ks:
+                    def _end(k):
+                        return k.split('_')[-1]
+                    current = max(ks, key=_end)
+                    if current in mapped:
+                        mapped[current]['segment_data'] = seg
+
+    out = [mapped[p] for p in sorted(mapped.keys())]
+    with open(mapped_path, 'w') as f:
+        json.dump(out, f, indent=2)
+    print(f"  mapped.json rebuilt: {len(out)} periods")
 
 
 def update_mapped_json(full_output, ticker, source_filename):
