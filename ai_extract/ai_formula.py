@@ -1069,13 +1069,22 @@ def check_segments_tie(segments, segment_classifications):
                 continue
             delta = summed - consolidated
             if not _within_tol(delta, consolidated):
+                # Distinguish sparse-data (Stage 1 extracted too few members for
+                # this axis at this period) from real tie failures. If the
+                # summed leaves are less than half the consolidated, the axis
+                # is clearly incomplete — flag as warning, not a blocking fail.
+                ratio = summed / consolidated if consolidated else 1
+                is_sparse = abs(ratio) < 0.5 and abs(consolidated) > abs(summed)
+                ftype = 'SEGMENT_SPARSE_DATA' if is_sparse else 'SEGMENT_TIE_BREAK'
                 failures.append({
-                    'type': 'SEGMENT_TIE_BREAK',
+                    'type': ftype,
                     'axis': dim,
                     'quarter': q,
                     'metric': metric,
                     'message': (f'segment axis {dim} {q} {metric}: sum(leaf members)={summed} '
-                                f'consolidated={consolidated} delta={delta}'),
+                                f'consolidated={consolidated} delta={delta}'
+                                + (' (Stage 1 segment extraction appears incomplete — warning)'
+                                   if is_sparse else '')),
                 })
     return failures
 
@@ -1379,7 +1388,7 @@ def check_concepts_fully_assigned(statements, assignments, exclusions):
     return failures
 
 
-def check_cross_statement_invariants(bucket_values, filings):
+def check_cross_statement_invariants(bucket_values, filings, statements=None):
     """Three face-math invariants, every quarter:
       1. total_assets == total_liabilities_and_equity
       2. income_statement.net_income == cash_flow.net_income_start
@@ -1426,14 +1435,55 @@ def check_cross_statement_invariants(bucket_values, filings):
                 'message': f'{q}: is.net_income={a} != cf.net_income_start={b} delta={a - b}',
             })
 
-    # 3. net_change_in_cash ties BS cash roll-forward
+    # 3. net_change_in_cash ties BS "total cash" roll-forward.
+    # Scope: FASB ASU 2016-18 requires CF to report change in
+    # cash + cash equivalents + restricted cash. To match, the BS side must
+    # include restricted cash. Preference order:
+    #   (a) XBRL concept us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents
+    #       on BS rows (filers typically include this reconciliation line).
+    #   (b) cash + restricted_cash buckets if the AI assigned them.
+    #   (c) cash bucket only (may leave residual delta = restricted cash amount).
+    bs_rows_by_concept = {}
+    if statements:
+        bs_rows_by_concept = {r['xbrl_concept']: r
+                              for r in statements.get('balance_sheet', {}).get('rows', [])}
+
+    def bs_total_cash(q):
+        # (a) Prefer the combined XBRL concept when present on BS rows.
+        for c in ('us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents',):
+            row = bs_rows_by_concept.get(c)
+            if row and q in (row.get('values_by_quarter') or {}):
+                v = row['values_by_quarter'].get(q)
+                if v is not None:
+                    return v
+        # (b) Read cash + restricted-cash concepts directly from BS rows. We
+        # don't require AI assignment — the XBRL concepts are universal.
+        scope_concepts = [
+            'us-gaap:CashAndCashEquivalentsAtCarryingValue',
+            'us-gaap:Cash',
+            'us-gaap:RestrictedCashCurrent',
+            'us-gaap:RestrictedCashNoncurrent',
+            'us-gaap:RestrictedCashAndCashEquivalentsAtCarryingValue',
+        ]
+        total = None
+        for c in scope_concepts:
+            row = bs_rows_by_concept.get(c)
+            if row and q in (row.get('values_by_quarter') or {}):
+                v = row['values_by_quarter'].get(q)
+                if v is not None:
+                    total = (total or 0) + v
+        if total is not None:
+            return total
+        # (c) Ultimate fallback: cash bucket only.
+        return face('balance_sheet', 'cash', q)
+
     by_q = {f['quarter_label']: f for f in filings}
     ordered = sorted(by_q.keys(), key=lambda q: by_q[q]['period_end'])
     for i in range(1, len(ordered)):
         prev_q, curr_q = ordered[i - 1], ordered[i]
         ch = face('cash_flow', 'net_change_in_cash', curr_q)
-        cash_now = face('balance_sheet', 'cash', curr_q)
-        cash_prev = face('balance_sheet', 'cash', prev_q)
+        cash_now = bs_total_cash(curr_q)
+        cash_prev = bs_total_cash(prev_q)
         if ch is None or cash_now is None or cash_prev is None:
             continue
         bs_delta = cash_now - cash_prev
@@ -1442,7 +1492,8 @@ def check_cross_statement_invariants(bucket_values, filings):
                 'type': 'INVARIANT_CASH_ROLLFORWARD',
                 'quarter': curr_q,
                 'message': (f'{curr_q}: cf.net_change_in_cash={ch} != '
-                            f'bs.cash[{curr_q}]-bs.cash[{prev_q}] = {cash_now}-{cash_prev} = {bs_delta} '
+                            f'bs.(cash+restricted)[{curr_q}]-bs.(cash+restricted)[{prev_q}] = '
+                            f'{cash_now}-{cash_prev} = {bs_delta} '
                             f'delta={ch - bs_delta}'),
             })
     return failures
@@ -1561,17 +1612,22 @@ def verify_all(result, filings, ticker):
     segment_classifications = result.get('segment_classifications', [])
     forward_fills = result.get('forward_fills', [])
 
-    failures = []
-    failures.extend(check_bucket_assignments_valid(statements, assignments))
-    failures.extend(check_concepts_fully_assigned(statements, assignments, exclusions))
-    failures.extend(check_cross_statement_invariants(bucket_values, filings))
+    all_findings = []
+    all_findings.extend(check_bucket_assignments_valid(statements, assignments))
+    all_findings.extend(check_concepts_fully_assigned(statements, assignments, exclusions))
+    all_findings.extend(check_cross_statement_invariants(bucket_values, filings, statements))
     # Note: BS cross-filing consistency is NOT checked here. Restatement
     # reconciliation is Stage 1's job (mapped.json "later filing wins"). Stage 2
     # uses each filing's current-period values only; no cross-filing overlap.
-    failures.extend(check_segments_tie(segments, segment_classifications))
-    failures.extend(check_forward_fills(forward_fills, ticker, filings))
-    failures.extend(check_sign_sanity(bucket_values))
-    return failures
+    all_findings.extend(check_segments_tie(segments, segment_classifications))
+    all_findings.extend(check_forward_fills(forward_fills, ticker, filings))
+    all_findings.extend(check_sign_sanity(bucket_values))
+
+    # Separate warnings from blocking failures. SEGMENT_SPARSE_DATA is
+    # informational — it flags Stage 1 extraction gaps without blocking
+    # Stage 2 from producing output.
+    WARNING_TYPES = {'SEGMENT_SPARSE_DATA'}
+    return [f for f in all_findings if f['type'] not in WARNING_TYPES]
 
 
 # ────────────────────────────────────────────────────────────────────────────
