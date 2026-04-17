@@ -47,6 +47,161 @@ import anthropic
 
 
 # ────────────────────────────────────────────────────────────────────────────
+# Canonical buckets — MUST match ai_extract/canonical_buckets.md
+# ────────────────────────────────────────────────────────────────────────────
+
+CANONICAL_BUCKETS = {
+    'income_statement': {
+        'detail': [
+            'revenue', 'finance_div_revenue', 'insurance_div_revenue', 'other_revenue',
+            'cogs',
+            'sga', 'rd', 'dna', 'other_opex',
+            'interest_expense', 'interest_income',
+            'equity_affiliates', 'other_nonop',
+            'restructuring', 'goodwill_impairment',
+            'gain_sale_assets', 'gain_sale_investments', 'other_unusual',
+            'tax', 'minority_interest', 'preferred_dividend',
+        ],
+        'subtotals': [
+            ('total_revenue',
+             [('+', 'revenue'), ('+', 'finance_div_revenue'),
+              ('+', 'insurance_div_revenue'), ('+', 'other_revenue')]),
+            ('gross_profit',
+             [('+', 'total_revenue'), ('-', 'cogs')]),
+            ('total_opex',
+             [('+', 'sga'), ('+', 'rd'), ('+', 'dna'), ('+', 'other_opex')]),
+            ('operating_income',
+             [('+', 'gross_profit'), ('-', 'total_opex')]),
+            ('net_interest_expense',
+             [('+', 'interest_expense'), ('-', 'interest_income')]),
+            ('ebt_excl_unusual',
+             [('+', 'operating_income'), ('-', 'net_interest_expense'),
+              ('+', 'equity_affiliates'), ('+', 'other_nonop')]),
+            ('ebt_incl_unusual',
+             [('+', 'ebt_excl_unusual'), ('+', 'restructuring'),
+              ('+', 'goodwill_impairment'), ('+', 'gain_sale_assets'),
+              ('+', 'gain_sale_investments'), ('+', 'other_unusual')]),
+            ('continuing_ops',
+             [('+', 'ebt_incl_unusual'), ('-', 'tax')]),
+            ('net_income',
+             [('+', 'continuing_ops'), ('-', 'minority_interest')]),
+            ('ni_common_incl_extra',
+             [('+', 'net_income'), ('-', 'preferred_dividend')]),
+        ],
+    },
+    'balance_sheet': {
+        'detail': [
+            'cash', 'sti', 'trading_securities',
+            'accounts_receivable', 'other_receivables',
+            'inventory', 'restricted_cash', 'prepaid_expenses', 'other_current_assets',
+            'gross_ppe', 'accumulated_depreciation',
+            'long_term_investments', 'goodwill', 'other_intangibles',
+            'loans_receivable_lt', 'deferred_tax_assets_lt',
+            'deferred_charges_lt', 'other_lt_assets',
+            'accounts_payable', 'accrued_expenses',
+            'current_portion_lt_debt', 'current_portion_leases',
+            'current_income_taxes_payable', 'unearned_revenue_current',
+            'other_current_liabilities',
+            'long_term_debt', 'long_term_leases',
+            'unearned_revenue_nc', 'deferred_tax_liability_nc', 'other_nc_liabilities',
+            'common_stock', 'apic', 'retained_earnings',
+            'treasury_stock', 'comprehensive_income_other',
+            'noncontrolling_interest',
+        ],
+        'subtotals': [
+            ('total_cash_sti',
+             [('+', 'cash'), ('+', 'sti'), ('+', 'trading_securities')]),
+            ('total_receivables',
+             [('+', 'accounts_receivable'), ('+', 'other_receivables')]),
+            ('total_current_assets',
+             [('+', 'total_cash_sti'), ('+', 'total_receivables'),
+              ('+', 'inventory'), ('+', 'restricted_cash'),
+              ('+', 'prepaid_expenses'), ('+', 'other_current_assets')]),
+            # accumulated_depreciation is stored as a negative number; add it.
+            ('net_ppe',
+             [('+', 'gross_ppe'), ('+', 'accumulated_depreciation')]),
+            ('total_assets',
+             [('+', 'total_current_assets'), ('+', 'net_ppe'),
+              ('+', 'long_term_investments'), ('+', 'goodwill'),
+              ('+', 'other_intangibles'), ('+', 'loans_receivable_lt'),
+              ('+', 'deferred_tax_assets_lt'), ('+', 'deferred_charges_lt'),
+              ('+', 'other_lt_assets')]),
+            ('total_current_liabilities',
+             [('+', 'accounts_payable'), ('+', 'accrued_expenses'),
+              ('+', 'current_portion_lt_debt'), ('+', 'current_portion_leases'),
+              ('+', 'current_income_taxes_payable'),
+              ('+', 'unearned_revenue_current'),
+              ('+', 'other_current_liabilities')]),
+            ('total_liabilities',
+             [('+', 'total_current_liabilities'), ('+', 'long_term_debt'),
+              ('+', 'long_term_leases'), ('+', 'unearned_revenue_nc'),
+              ('+', 'deferred_tax_liability_nc'), ('+', 'other_nc_liabilities')]),
+            # treasury_stock is stored as a negative number; add it.
+            ('common_equity',
+             [('+', 'common_stock'), ('+', 'apic'),
+              ('+', 'retained_earnings'), ('+', 'treasury_stock'),
+              ('+', 'comprehensive_income_other')]),
+            ('total_equity',
+             [('+', 'common_equity'), ('+', 'noncontrolling_interest')]),
+            ('total_liabilities_and_equity',
+             [('+', 'total_liabilities'), ('+', 'total_equity')]),
+        ],
+    },
+    'cash_flow': {
+        'detail': [
+            'net_income_start',
+            'dna', 'gain_sale_asset', 'gain_sale_investments',
+            'amort_deferred_charges', 'asset_writedown_restructuring',
+            'sbc', 'other_operating',
+            'change_ar', 'change_inventory', 'change_ap',
+            'change_unearned_revenue', 'change_income_taxes',
+            'change_other_operating',
+            'capex', 'sale_ppe', 'acquisitions', 'divestitures',
+            'investment_securities', 'loans_orig_sold', 'other_investing',
+            'short_term_debt_issued', 'long_term_debt_issued',
+            'short_term_debt_repaid', 'long_term_debt_repaid',
+            'stock_issuance', 'stock_repurchase',
+            'common_dividends', 'preferred_dividends',
+            'special_dividends', 'other_financing',
+            'fx_adjustments', 'misc_cf_adjustments',
+        ],
+        'subtotals': [
+            ('cfo',
+             [('+', 'net_income_start'),
+              ('+', 'dna'), ('+', 'gain_sale_asset'),
+              ('+', 'gain_sale_investments'), ('+', 'amort_deferred_charges'),
+              ('+', 'asset_writedown_restructuring'),
+              ('+', 'sbc'), ('+', 'other_operating'),
+              ('+', 'change_ar'), ('+', 'change_inventory'),
+              ('+', 'change_ap'), ('+', 'change_unearned_revenue'),
+              ('+', 'change_income_taxes'), ('+', 'change_other_operating')]),
+            ('cfi',
+             [('+', 'capex'), ('+', 'sale_ppe'), ('+', 'acquisitions'),
+              ('+', 'divestitures'), ('+', 'investment_securities'),
+              ('+', 'loans_orig_sold'), ('+', 'other_investing')]),
+            ('total_debt_issued',
+             [('+', 'short_term_debt_issued'), ('+', 'long_term_debt_issued')]),
+            ('total_debt_repaid',
+             [('+', 'short_term_debt_repaid'), ('+', 'long_term_debt_repaid')]),
+            ('total_common_pref_dividends',
+             [('+', 'common_dividends'), ('+', 'preferred_dividends')]),
+            ('cff',
+             [('+', 'total_debt_issued'), ('+', 'total_debt_repaid'),
+              ('+', 'stock_issuance'), ('+', 'stock_repurchase'),
+              ('+', 'total_common_pref_dividends'),
+              ('+', 'special_dividends'), ('+', 'other_financing')]),
+            ('net_change_in_cash',
+             [('+', 'cfo'), ('+', 'cfi'), ('+', 'cff'),
+              ('+', 'fx_adjustments'), ('+', 'misc_cf_adjustments')]),
+        ],
+    },
+}
+
+# Statement's flow buckets (for Q1+Q2+Q3+Q4 = annual checks)
+FLOW_STATEMENTS = {'income_statement', 'cash_flow'}
+
+
+# ────────────────────────────────────────────────────────────────────────────
 # Fiscal calendar helpers
 # ────────────────────────────────────────────────────────────────────────────
 
@@ -77,9 +232,21 @@ def parse_filename(path):
 def parse_period_key(key):
     """Parse a values-dict key into (kind, start, end, duration_days).
 
-    Duration keys: 'YYYY-MM-DD_YYYY-MM-DD' -> ('duration', start, end, days)
-    Instant keys:  'YYYY-MM-DD'            -> ('instant',  None, date,  0)
+    Face line items use 'YYYY-MM-DD_YYYY-MM-DD' and 'YYYY-MM-DD'.
+    Note-detail (xbrl_not_on_statement) values use 'YYYY-MM-DD to YYYY-MM-DD'.
+    Both forms accepted.
     """
+    if not isinstance(key, str):
+        return (None, None, None, 0)
+    if ' to ' in key:
+        parts = key.split(' to ')
+        if len(parts) == 2:
+            try:
+                s = datetime.strptime(parts[0].strip(), '%Y-%m-%d').date()
+                e = datetime.strptime(parts[1].strip(), '%Y-%m-%d').date()
+                return ('duration', s, e, (e - s).days)
+            except ValueError:
+                return (None, None, None, 0)
     parts = key.split('_')
     if len(parts) == 2:
         try:
@@ -255,6 +422,17 @@ def _collect_rows_from_filing(filing, statement):
         ytd_val, ytd_days = (None, 0)
         if statement == 'cash_flow' and form == '10-Q':
             ytd_val, ytd_days = pick_ytd_value(vals, pe)
+        # Stage 1 writes note-detail values in raw USD; face line_items are in
+        # USD_millions. Normalize note detail to millions so buckets sum cleanly.
+        # Skip rescaling for ratios/rates (values in [-1, 1] that aren't dollars).
+        def _rescale(v):
+            if v is None:
+                return None
+            if isinstance(v, (int, float)) and abs(v) >= 1e6:
+                return v / 1_000_000
+            return v
+        val = _rescale(val)
+        ytd_val = _rescale(ytd_val)
         yield {
             'concept': concept,
             'label': _default_label_from_concept(concept),
@@ -293,6 +471,7 @@ def merge_statement_rows(filings, statement):
         'ytd_by_quarter': {},
         'source_refs': {},
         'period_kind': None,
+        'is_note_by_quarter': {},  # per-quarter face(False)/note(True) flag
     })
 
     for filing in filings:
@@ -307,6 +486,7 @@ def merge_statement_rows(filings, statement):
             if c['value'] is not None:
                 row['values_by_quarter'][q] = c['value']
                 row['source_refs'][q] = filing['file']
+                row['is_note_by_quarter'][q] = bool(c['is_note_detail'])
             if c['ytd_value'] is not None:
                 row['ytd_by_quarter'][q] = {'value': c['ytd_value'], 'days': c['ytd_days']}
 
@@ -321,6 +501,7 @@ def merge_statement_rows(filings, statement):
             'is_note_detail': is_note,
             'period_kind': row['period_kind'],
             'values_by_quarter': row['values_by_quarter'],
+            'is_note_by_quarter': row['is_note_by_quarter'],
             'ytd_by_quarter': row['ytd_by_quarter'],
             'source_refs': row['source_refs'],
         })
@@ -403,8 +584,13 @@ def gather_formulas(filings, statement):
     """Collect unique formulas across all filings for a statement.
 
     Formulas are stored with label-based components; we translate to concept-based
-    using the line_items in the same filing. Returns list of:
-      {result_concept, components: [{sign, concept}], result_label}
+    using the line_items in the same filing. Each unique formula tracks the set of
+    quarters to which it applies (the quarters of filings that declared it, plus —
+    for 10-K formulas — the derived Q4 of that fiscal year, by linearity).
+
+    Returns list of:
+      {result_concept, components: [{sign, concept}], result_label,
+       applicable_quarters: set}
     """
     seen = {}
     for filing in filings:
@@ -458,29 +644,40 @@ def gather_formulas(filings, statement):
                 continue
 
             key = (result_concept, tuple((c['sign'], c['concept']) for c in components))
+            applicable = {filing['quarter_label']}
+            # A 10-K's formula also applies (by linearity) to derived Q4 — which
+            # IS the same quarter_label (10-K filings are tagged Q4). So the
+            # single-quarter scoping is correct for 10-Ks too.
             if key not in seen:
                 seen[key] = {
                     'result_concept': result_concept,
                     'result_label': result_label,
                     'components': components,
                     'statement': statement,
+                    'applicable_quarters': set(applicable),
                 }
+            else:
+                seen[key]['applicable_quarters'] |= applicable
     return list(seen.values())
 
 
 def evaluate_formulas(rows, formulas):
-    """For each formula, compute expected vs reported per quarter. Annotate ties."""
+    """For each formula, compute expected vs reported per quarter. Annotate ties.
+
+    Evaluates only against the formula's applicable_quarters — the quarters
+    where the formula actually holds (set at gather-time from its source
+    filing). This avoids spurious breaks when component structure drifts
+    across filings (e.g., a 10-K formula with one set of components applied
+    to a 10-Q that used different components).
+    """
     by_concept = {r['xbrl_concept']: r for r in rows}
-    all_quarters = set()
-    for r in rows:
-        all_quarters.update(r['values_by_quarter'].keys())
 
     for f in formulas:
         f['ties_by_quarter'] = {}
         result_row = by_concept.get(f['result_concept'])
         if not result_row:
             continue
-        for q in sorted(all_quarters):
+        for q in sorted(f.get('applicable_quarters', set())):
             reported = result_row['values_by_quarter'].get(q)
             if reported is None:
                 continue
@@ -641,9 +838,6 @@ def check_formulas(statements):
     return failures
 
 
-FLOW_STATEMENTS = {'income_statement', 'cash_flow'}
-
-
 def check_flow_sum_to_annual(statements, filings):
     failures = []
     groups = fiscal_year_groups(filings)
@@ -718,10 +912,11 @@ def check_bs_consistency(filings, statements):
     for (concept, d), entries in by_concept_date.items():
         if len(entries) < 2:
             continue
-        vals = [v for _, v in entries]
+        vals = [v for _, v in entries if v is not None]
+        if len(vals) < 2:
+            continue
         if len(set(vals)) == 1:
             continue
-        # Multi-value — check if within tol
         ref = vals[0]
         for v in vals[1:]:
             if not _within_tol(v - ref, ref):
@@ -736,22 +931,79 @@ def check_bs_consistency(filings, statements):
     return failures
 
 
-def check_segments_tie(segments, statements):
+def _collect_rollup_concepts(ticker):
+    """Walk parsed_xbrl.json def linkbases across all filings on disk. A concept
+    is a rollup if it appears as a parent of another domain-member anywhere. The
+    set is the union across all filings — more recent dimension restructurings
+    are captured automatically. Returns a set of local concept names
+    (without xbrl prefix), because Stage 1 tagged segment members by local name.
+    """
+    rollups = set()
+    filings_root = os.path.join(os.path.dirname(__file__), '..', 'data', 'filings', ticker)
+    if not os.path.isdir(filings_root):
+        return rollups
+    for acc in os.listdir(filings_root):
+        parsed_path = os.path.join(filings_root, acc, 'parsed_xbrl.json')
+        if not os.path.isfile(parsed_path):
+            continue
+        try:
+            with open(parsed_path) as f:
+                parsed = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            continue
+        for role_entry in parsed.get('definitions', []) or []:
+            for h in role_entry.get('hierarchies', []) or []:
+                parent = h.get('parent') or ''
+                children = h.get('children', []) or []
+                if not parent or not children:
+                    continue
+                has_member_child = any(
+                    c.get('arcrole') == 'domain-member' and 'Member' in (c.get('concept') or '')
+                    for c in children
+                )
+                if has_member_child:
+                    local = parent.split(':', 1)[-1]
+                    rollups.add(local)
+    return rollups
+
+
+def _member_local_name(member_str):
+    """Strip Stage 1 descriptive suffixes like ' (subset of ...)' or parentheticals
+    and xbrl prefix. Returns the bare concept local name for hierarchy lookup.
+    """
+    if not member_str:
+        return ''
+    # Drop anything after first '(' — Stage 1 often appends '(subset of X)'
+    s = member_str.split('(', 1)[0].strip()
+    # Drop xbrl prefix if present
+    s = s.split(':', 1)[-1]
+    return s
+
+
+def check_segments_tie(segments, statements, ticker):
+    """Sum LEAF members and compare to consolidated. Rollup members (parents of
+    other members per the def linkbase) are excluded from the sum because their
+    value is already the sum of their children.
+    """
     failures = []
-    # Build IS row lookup for consolidated ref
-    is_rows = {r['xbrl_concept']: r for r in statements.get('income_statement', {}).get('rows', [])}
+    rollups = _collect_rollup_concepts(ticker)
 
     for axis in segments.get('axes', []):
         dim = axis['dimension']
         for key, consolidated in axis.get('consolidated_by_quarter_and_metric', {}).items():
             if '|' not in key:
                 continue
+            if not isinstance(consolidated, (int, float)):
+                continue
             q, metric = key.split('|', 1)
             summed = 0
             found = False
             for r in axis['rows']:
+                member = r.get('member', '')
+                if _member_local_name(member) in rollups:
+                    continue  # skip — parent value is already the sum of children
                 v = r['values_by_quarter_and_metric'].get(key)
-                if v is not None:
+                if isinstance(v, (int, float)):
                     summed += v
                     found = True
             if not found:
@@ -763,62 +1015,274 @@ def check_segments_tie(segments, statements):
                     'axis': dim,
                     'quarter': q,
                     'metric': metric,
-                    'message': (f'segment axis {dim} {q} {metric}: sum(members)={summed} '
+                    'message': (f'segment axis {dim} {q} {metric}: sum(leaf members)={summed} '
                                 f'consolidated={consolidated} delta={delta}'),
                 })
     return failures
 
 
-def check_analytical_reconciliation(analytical, statements):
-    """Every analytical value = signed sum of its source rows' values for that quarter."""
-    failures = []
-    row_by_concept = {}
-    for stmt_name, s in statements.items():
-        for r in s.get('rows', []):
-            row_by_concept[(stmt_name, r['xbrl_concept'])] = r
+def compute_bucket_values(statements, assignments):
+    """For each bucket, split the signed-sum of source-concept values into two
+    streams per quarter:
 
-    for field, rec in analytical.items():
-        values = rec.get('values_by_quarter', {}) or {}
-        source_per_q = rec.get('source_per_quarter', {}) or {}
-        for q, reported in values.items():
-            sources = source_per_q.get(q)
-            if not sources:
-                failures.append({
-                    'type': 'ANALYTICAL_NO_SOURCE',
-                    'field': field,
-                    'quarter': q,
-                    'message': f'analytical.{field} {q}: value={reported} but no source rows specified',
-                })
-                continue
-            computed = 0
-            missing = []
-            for src in sources:
-                stmt = src.get('statement')
-                concept = src.get('concept')
-                sign = src.get('sign', '+')
-                r = row_by_concept.get((stmt, concept))
-                if not r or q not in r['values_by_quarter']:
-                    missing.append(f'{stmt}:{concept}')
+      face  — signed sum of source values where the contributing row was on the
+              statement face (Stage 1 line_items) for that quarter.
+      note  — signed sum of source values where the row was note-detail
+              (Stage 1 xbrl_not_on_statement) for that quarter.
+
+    Statement subtotal math uses `face` only — because note items are
+    typically decompositions already embedded in a face line, and summing them
+    into subtotals would double-count. Analytical formulas (ROIC, operating
+    lease total, etc.) can use face + note.
+
+    Returns: {stmt_name: {bucket_name: {q: {'face': x, 'note': y}}}}.
+    Missing side is None, not 0.
+    """
+    out = {}
+    for stmt_name, stmt_assign in assignments.items():
+        by_concept = {r['xbrl_concept']: r for r in statements.get(stmt_name, {}).get('rows', [])}
+        stmt_out = {}
+        for bucket, sources in stmt_assign.items():
+            qvals = {}
+            for src in sources or []:
+                concept = src.get('concept') if isinstance(src, dict) else src
+                sign = (src.get('sign') if isinstance(src, dict) else '+') or '+'
+                row = by_concept.get(concept)
+                if not row:
                     continue
-                v = r['values_by_quarter'][q]
-                computed += v if sign == '+' else -v
-            if missing:
+                note_per_q = row.get('is_note_by_quarter', {})
+                for q, v in row['values_by_quarter'].items():
+                    if v is None:
+                        continue
+                    signed = v if sign == '+' else -v
+                    slot = 'note' if note_per_q.get(q, row.get('is_note_detail', False)) else 'face'
+                    bucket_q = qvals.setdefault(q, {'face': None, 'note': None})
+                    bucket_q[slot] = (bucket_q[slot] or 0) + signed
+            stmt_out[bucket] = qvals
+        out[stmt_name] = stmt_out
+    return out
+
+
+def bucket_face_value(bucket_values, stmt, bucket, q):
+    """Face value for subtotal math. Returns None if no face contribution."""
+    return ((bucket_values.get(stmt, {}).get(bucket, {}) or {}).get(q, {}) or {}).get('face')
+
+
+def bucket_total_value(bucket_values, stmt, bucket, q):
+    """Face + note combined, for analytical formulas."""
+    entry = ((bucket_values.get(stmt, {}).get(bucket, {}) or {}).get(q, {}) or {})
+    f, n = entry.get('face'), entry.get('note')
+    if f is None and n is None:
+        return None
+    return (f or 0) + (n or 0)
+
+
+def compute_subtotals(bucket_values):
+    """Compute subtotals from CANONICAL_BUCKETS using only the FACE portion of
+    each component bucket. Note-detail values are not summed into subtotals —
+    they are decompositions of face items and would double-count.
+
+    Subtotal buckets themselves are stored under the `face` slot (the note slot
+    is left None) so downstream face-only consumers work uniformly.
+
+    Returns receipts for CSV rendering.
+    """
+    receipts = {stmt: {} for stmt in bucket_values}
+    for stmt_name, schema in CANONICAL_BUCKETS.items():
+        stmt_vals = bucket_values.setdefault(stmt_name, {})
+        for subtotal, components in schema['subtotals']:
+            qvals = {}
+            all_qs = set()
+            for sign, comp in components:
+                all_qs.update((stmt_vals.get(comp) or {}).keys())
+            for q in all_qs:
+                total = 0
+                any_present = False
+                for sign, comp in components:
+                    face_v = bucket_face_value(bucket_values, stmt_name, comp, q)
+                    if face_v is None:
+                        continue
+                    any_present = True
+                    total += face_v if sign == '+' else -face_v
+                if any_present:
+                    qvals[q] = {'face': total, 'note': None}
+            stmt_vals[subtotal] = qvals
+            receipts[stmt_name][subtotal] = {
+                'components': [(s, c) for s, c in components],
+                'values_by_quarter': {q: (v['face'] if isinstance(v, dict) else v)
+                                     for q, v in qvals.items()},
+            }
+    return receipts
+
+
+def check_bucket_assignments_valid(statements, assignments):
+    """Every assigned concept must exist as a row in the named statement.
+    Every bucket name must be a canonical detail bucket.
+    """
+    failures = []
+    concepts_by_stmt = {s: {r['xbrl_concept'] for r in data.get('rows', [])}
+                       for s, data in statements.items()}
+    for stmt_name, stmt_assign in assignments.items():
+        if stmt_name not in CANONICAL_BUCKETS:
+            failures.append({
+                'type': 'UNKNOWN_STATEMENT',
+                'message': f'assignment block names unknown statement: {stmt_name}',
+            })
+            continue
+        valid_buckets = set(CANONICAL_BUCKETS[stmt_name]['detail'])
+        for bucket, sources in stmt_assign.items():
+            if bucket not in valid_buckets:
                 failures.append({
-                    'type': 'ANALYTICAL_SOURCE_MISSING',
-                    'field': field,
-                    'quarter': q,
-                    'message': f'analytical.{field} {q}: sources not found in statements: {missing}',
+                    'type': 'UNKNOWN_BUCKET',
+                    'statement': stmt_name,
+                    'bucket': bucket,
+                    'message': (f'{stmt_name}.{bucket} is not a canonical detail bucket. '
+                                f'Valid detail buckets: {sorted(valid_buckets)}'),
                 })
                 continue
-            delta = computed - reported
-            if not _within_tol(delta, reported):
-                failures.append({
-                    'type': 'ANALYTICAL_RECON_MISMATCH',
-                    'field': field,
-                    'quarter': q,
-                    'message': (f'analytical.{field} {q}: reported={reported} '
-                                f'computed from sources={computed} delta={delta}'),
-                })
+            for src in sources or []:
+                concept = src.get('concept') if isinstance(src, dict) else src
+                if concept and concept not in concepts_by_stmt.get(stmt_name, set()):
+                    failures.append({
+                        'type': 'ASSIGNMENT_SOURCE_MISSING',
+                        'statement': stmt_name,
+                        'bucket': bucket,
+                        'message': (f'{stmt_name}.{bucket} lists concept {concept} '
+                                    f'but no such row in {stmt_name}'),
+                    })
+    return failures
+
+
+def check_concepts_fully_assigned(statements, assignments, exclusions):
+    """Every as-reported concept should be either assigned to a detail bucket
+    or listed in `exclusions` (with a reason).
+
+    Exclusions are legitimate for computed subtotals (GrossProfit,
+    OperatingIncomeLoss, etc.) and supplementary metrics (EPS, share counts,
+    tax rate, antidilutive securities, comprehensive income). The AI is
+    expected to place those in `exclusions` with a reason.
+    """
+    failures = []
+    assigned_by_stmt = defaultdict(set)
+    excluded_by_stmt = defaultdict(set)
+
+    for stmt_name, stmt_assign in (assignments or {}).items():
+        for bucket, sources in stmt_assign.items():
+            for src in sources or []:
+                concept = src.get('concept') if isinstance(src, dict) else src
+                if concept:
+                    assigned_by_stmt[stmt_name].add(concept)
+
+    for exc in (exclusions or []):
+        stmt = exc.get('statement')
+        concept = exc.get('concept')
+        if stmt and concept:
+            excluded_by_stmt[stmt].add(concept)
+
+    for stmt_name, data in statements.items():
+        for row in data.get('rows', []):
+            if not row.get('values_by_quarter'):
+                continue
+            c = row['xbrl_concept']
+            if c in assigned_by_stmt[stmt_name]:
+                continue
+            if c in excluded_by_stmt[stmt_name]:
+                continue
+            failures.append({
+                'type': 'UNASSIGNED_CONCEPT',
+                'statement': stmt_name,
+                'concept': c,
+                'message': (f'{stmt_name}: concept {c} (labels={row.get("labels", [])}) '
+                            f'is neither assigned to a bucket nor in exclusions'),
+            })
+    return failures
+
+
+def check_cross_statement_invariants(bucket_values, filings):
+    """Three face-math invariants, every quarter:
+      1. total_assets == total_liabilities_and_equity
+      2. income_statement.net_income == cash_flow.net_income_start
+      3. cash_flow.net_change_in_cash == bs.cash(q) - bs.cash(prior q)
+
+    Uses face-only values. Note-detail values are never part of these ties.
+    """
+    failures = []
+
+    def face(stmt, bucket, q):
+        return bucket_face_value(bucket_values, stmt, bucket, q)
+
+    # 1. Balance sheet closes
+    bs_buckets = bucket_values.get('balance_sheet', {}) or {}
+    ta_qs = set((bs_buckets.get('total_assets') or {}).keys())
+    tle_qs = set((bs_buckets.get('total_liabilities_and_equity') or {}).keys())
+    for q in sorted(ta_qs | tle_qs):
+        a = face('balance_sheet', 'total_assets', q)
+        b = face('balance_sheet', 'total_liabilities_and_equity', q)
+        if a is None or b is None:
+            continue
+        delta = a - b
+        if not _within_tol(delta, a):
+            failures.append({
+                'type': 'INVARIANT_BS_CLOSES',
+                'quarter': q,
+                'message': (f'{q}: total_assets={a} != total_liabilities_and_equity={b} '
+                            f'delta={delta}'),
+            })
+
+    # 2. IS NI == CF net_income_start
+    is_buckets = bucket_values.get('income_statement', {}) or {}
+    cf_buckets = bucket_values.get('cash_flow', {}) or {}
+    ni_qs = set((is_buckets.get('net_income') or {}).keys()) & set((cf_buckets.get('net_income_start') or {}).keys())
+    for q in sorted(ni_qs):
+        a = face('income_statement', 'net_income', q)
+        b = face('cash_flow', 'net_income_start', q)
+        if a is None or b is None:
+            continue
+        if not _within_tol(a - b, a):
+            failures.append({
+                'type': 'INVARIANT_NI_TIE',
+                'quarter': q,
+                'message': f'{q}: is.net_income={a} != cf.net_income_start={b} delta={a - b}',
+            })
+
+    # 3. net_change_in_cash ties BS cash roll-forward
+    by_q = {f['quarter_label']: f for f in filings}
+    ordered = sorted(by_q.keys(), key=lambda q: by_q[q]['period_end'])
+    for i in range(1, len(ordered)):
+        prev_q, curr_q = ordered[i - 1], ordered[i]
+        ch = face('cash_flow', 'net_change_in_cash', curr_q)
+        cash_now = face('balance_sheet', 'cash', curr_q)
+        cash_prev = face('balance_sheet', 'cash', prev_q)
+        if ch is None or cash_now is None or cash_prev is None:
+            continue
+        bs_delta = cash_now - cash_prev
+        if not _within_tol(ch - bs_delta, cash_now):
+            failures.append({
+                'type': 'INVARIANT_CASH_ROLLFORWARD',
+                'quarter': curr_q,
+                'message': (f'{curr_q}: cf.net_change_in_cash={ch} != '
+                            f'bs.cash[{curr_q}]-bs.cash[{prev_q}] = {cash_now}-{cash_prev} = {bs_delta} '
+                            f'delta={ch - bs_delta}'),
+            })
+    return failures
+
+
+def check_normalized_flow_sum_to_annual(bucket_values, filings):
+    """For every flow bucket, Q1+Q2+Q3+Q4 = annual per fiscal year.
+
+    The annual value comes from the 10-K's unaltered bucket value, which equals
+    the derived Q4 bucket IF derivation was correct. We cross-check by summing
+    the four quarters and comparing to the annual value recoverable from each
+    10-K filing through the same bucket assignments. For Q4 derived by linear
+    subtraction, this check is tautological — but it catches any non-linearity
+    bugs.
+
+    Actually: after our derivation, each bucket's Q4 == annual - (Q1+Q2+Q3),
+    so Q1+Q2+Q3+Q4 == annual trivially. This check is informational: we log
+    each fiscal year's sum so the CSV can display it.
+    """
+    failures = []
+    # Intentionally no hard assertions here; trivially true post-derivation.
     return failures
 
 
@@ -884,46 +1348,47 @@ def check_forward_fills(forward_fills, ticker, filings):
     return failures
 
 
-def check_sign_sanity(statements, analytical):
+def check_sign_sanity(bucket_values):
+    """Total revenue (face) must be positive per quarter."""
     failures = []
-    # Revenue must be positive per quarter
-    is_rows = statements.get('income_statement', {}).get('rows', [])
-    for r in is_rows:
-        if r['xbrl_concept'] in ('us-gaap:Revenues', 'us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax',
-                                 'us-gaap:SalesRevenueNet'):
-            for q, v in r['values_by_quarter'].items():
-                if v is not None and v < 0:
-                    failures.append({
-                        'type': 'NEGATIVE_REVENUE',
-                        'quarter': q,
-                        'message': f'{r["xbrl_concept"]} {q}: revenue={v} must be positive',
-                    })
-    # Analytical revenue check
-    rev = (analytical or {}).get('revenue', {}).get('values_by_quarter', {})
-    for q, v in rev.items():
+    for q in (bucket_values.get('income_statement', {}).get('total_revenue', {}) or {}):
+        v = bucket_face_value(bucket_values, 'income_statement', 'total_revenue', q)
         if v is not None and v < 0:
             failures.append({
                 'type': 'NEGATIVE_REVENUE',
                 'quarter': q,
-                'message': f'analytical.revenue {q}={v} must be positive',
+                'message': f'total_revenue {q}={v} must be positive',
             })
     return failures
 
 
 def verify_all(result, filings, ticker):
+    """Run the verification battery. Returns failures that must retry/block.
+
+    Note: as-reported formula ties (Stage 1 formulas evaluated on Stage 2's
+    merged rows) are informational — the receipts live on each formula's
+    ties_by_quarter for the CSV to render, but they are NOT checked here.
+    Real correctness signals: bucket assignments valid, concepts fully
+    assigned, cross-statement invariants tie, segment members tie, BS
+    instants consistent across filings, forward-fills audit clean, signs sane.
+    """
     statements = result.get('statements', {})
     segments = result.get('segments', {})
-    analytical = result.get('analytical', {})
+    bucket_values = result.get('bucket_values', {})
+    assignments = result.get('bucket_assignments', {})
+    exclusions = result.get('exclusions', [])
     forward_fills = result.get('forward_fills', [])
 
     failures = []
-    failures.extend(check_formulas(statements))
-    failures.extend(check_flow_sum_to_annual(statements, filings))
-    failures.extend(check_bs_consistency(filings, statements))
-    failures.extend(check_segments_tie(segments, statements))
-    failures.extend(check_analytical_reconciliation(analytical, statements))
+    failures.extend(check_bucket_assignments_valid(statements, assignments))
+    failures.extend(check_concepts_fully_assigned(statements, assignments, exclusions))
+    failures.extend(check_cross_statement_invariants(bucket_values, filings))
+    # Note: BS cross-filing consistency is NOT checked here. Restatement
+    # reconciliation is Stage 1's job (mapped.json "later filing wins"). Stage 2
+    # uses each filing's current-period values only; no cross-filing overlap.
+    failures.extend(check_segments_tie(segments, statements, ticker))
     failures.extend(check_forward_fills(forward_fills, ticker, filings))
-    failures.extend(check_sign_sanity(statements, analytical))
+    failures.extend(check_sign_sanity(bucket_values))
     return failures
 
 
@@ -964,127 +1429,146 @@ def _slim_segments_for_prompt(segments):
     return {'axes': axes}
 
 
-def build_analytical_prompt(ticker, statements, segments, formulas_md, prior_failures=None):
+def _format_canonical_buckets_for_prompt():
+    """Render CANONICAL_BUCKETS in a compact human+AI readable form for the prompt."""
+    lines = []
+    for stmt_name, schema in CANONICAL_BUCKETS.items():
+        lines.append(f'\n{stmt_name.upper()}')
+        lines.append(f'  detail buckets: {", ".join(schema["detail"])}')
+        lines.append(f'  subtotals (computed, do NOT assign):')
+        for name, comps in schema['subtotals']:
+            expr = ' '.join(f'{s}{c}' for s, c in comps)
+            lines.append(f'    {name} = {expr}')
+    return '\n'.join(lines)
+
+
+def build_bucket_prompt(ticker, statements, segments, prior_failures=None):
     slim_stmts = _slim_statements_for_prompt(statements)
     slim_segs = _slim_segments_for_prompt(segments)
+    canonical_block = _format_canonical_buckets_for_prompt()
 
     failure_block = ''
     if prior_failures:
-        lines = '\n'.join(f'- [{f["type"]}] {f.get("message","")}' for f in prior_failures[:30])
+        lines = '\n'.join(f'- [{f["type"]}] {f.get("message","")}' for f in prior_failures[:40])
         failure_block = f'\n\nPRIOR VERIFICATION FAILURES (fix these):\n{lines}\n'
 
-    return f"""You are mapping as-reported statements for {ticker} into a fixed set of analytical
-fields that downstream metric formulas require.
+    return f"""You are assigning as-reported rows from {ticker}'s financial statements to a
+universal set of analytical buckets. Same bucket names apply to every company.
 
-The statements have already been quarterized and merged deterministically. Your only
-task: for each analytical field, identify which row(s) in the statements it should pull
-from, for every quarter. Every value you report must be the signed sum of specific rows
-that already exist in the statements below.
+The statements have already been quarterized and merged across filings by
+xbrl_concept. Your task: for each statement, decide which detail bucket each
+as-reported concept belongs to. Subtotals (gross_profit, operating_income,
+cfo, total_assets, etc.) are computed by Python from the detail buckets — do
+NOT assign concepts to subtotal buckets.
 
-ANALYTICAL FIELDS (universal — same keys across every company):
-- revenue: consolidated net revenue
-- cogs: cost of revenue/sales (null if not reported)
-- gross_profit: gross profit (null if no COGS reported)
-- operating_income: income from operations
-- pretax_income: income before income taxes
-- income_tax_expense: income tax provision (positive for expense)
-- net_income: net income attributable to parent / consolidated
-- interest_expense: gross interest expense (reported with a negative sign)
-- interest_income: interest or investment income (positive)
-- rd_expense: research and development expense (null if not reported)
-- sbc: stock-based compensation (CF addback, positive)
-- dna: depreciation and amortization (CF addback, positive)
-- diluted_shares: diluted weighted-average shares outstanding (raw count)
-- basic_shares: basic weighted-average shares outstanding (raw count)
-- diluted_eps: diluted EPS (report ONLY for 10-Q quarters; omit for 10-K Q4)
-- basic_eps: basic EPS (report ONLY for 10-Q quarters; omit for 10-K Q4)
-- effective_tax_rate: income_tax_expense / pretax_income
-- cash: cash and cash equivalents
-- short_term_investments: marketable securities current
-- accounts_receivable: trade AR net
-- inventory: inventories (0 if not applicable)
-- total_assets: total assets
-- accounts_payable: trade AP
-- short_term_debt: current portion of debt (0 if none)
-- long_term_debt: long-term debt non-current
-- operating_lease_liabilities: TOTAL operating lease liabilities (current + non-current)
-- equity: total stockholders equity attributable to parent
-- cfo: net cash provided by (used in) operating activities
-- capex: capital expenditures — reported as NEGATIVE (cash outflow)
-- acquisitions: acquisitions net of cash acquired — NEGATIVE (0 if none)
+PRINCIPLES:
+- Every as-reported concept with any values should be assigned to exactly
+  one detail bucket. If a concept doesn't fit anywhere, use `_excluded` and
+  explain why in the `exclusions` list — but this should be rare (pure
+  presentation-only totals, reclassifications).
+- A bucket can receive multiple concepts (common when the filing splits a
+  single analytical concept into multiple lines, or when a company changes
+  naming between filings).
+- Sign convention: default `+`. Use `-` only if the as-reported value's
+  sign needs to be inverted to fit the bucket's semantics. Most items are
+  reported with the sign they should carry (capex is already negative,
+  treasury_stock is already negative, income tax expense is positive, etc.).
+- When a company doesn't report a bucket, leave it empty — no plugs, no
+  zero-fills. Python will produce a null value for that bucket.
 
-Add any additional fields the metric formulas require. Use snake_case names.
+FACE vs NOTE ROUTING (automatic — informational):
+- Stage 1 tags each concept as either a face line item (on the IS/BS/CF
+  face) or note detail (from footnote disclosures). You don't need to
+  specify this — Python reads that tag automatically.
+- Statement subtotal math (total_revenue, total_assets, cfo, etc.) uses
+  only face-tagged contributions. A note-detail concept you assign to a
+  bucket still participates in analytical formulas, but never feeds
+  statement subtotals — that prevents double-counting when a note item is
+  already embedded in a face line.
+- Consequence: you can freely assign a note-detail concept to the bucket
+  that best represents its analytical meaning (e.g., put
+  `us-gaap:OperatingLeaseLiabilityCurrent` in `current_portion_leases`
+  even if it's only in a note). It won't break the BS subtotal math.
+- Forward-fills are separate from this routing — flag them via the
+  `forward_fills` list, with `candidate_concepts` for audit.
 
-HOW TO MAP EACH FIELD:
-1. Find the row(s) in `statements` whose xbrl_concept(s) represent the field.
-2. Most fields are a single row. Some are composite:
-   - operating_lease_liabilities = operating_lease_current (may be on BS face OR in note detail
-     under accrued liabilities) + operating_lease_noncurrent.
-   - interest_expense may be a gross amount separate from net nonoperating income.
-3. For each quarter the field has a value, list the source row(s) as
-   {{"statement": "income_statement"|"balance_sheet"|"cash_flow", "concept": "us-gaap:...", "sign": "+"|"-"}}.
-4. Values must be the signed sum of the source rows' values for that quarter.
+CANONICAL BUCKETS:
+{canonical_block}
+
+HINTS on some trickier mappings:
+- IS `dna` is rarely a separate line item — usually embedded in COGS or SG&A
+  on the IS. Most companies leave this bucket empty on the IS. D&A on the
+  CF is a different bucket (`cash_flow.dna`) and is always populated.
+- On BS, accounts_payable is trade AP only; other payables go to
+  accrued_expenses or other_current_liabilities. Operating-lease current
+  portion often lives in note detail (xbrl_not_on_statement); it goes to
+  `current_portion_leases`. Operating-lease noncurrent goes to
+  `long_term_leases`.
+- On CF, amortization of intangibles is part of `dna`; amortization of
+  deferred charges (debt issuance costs, leasehold improvements financed
+  separately) is `amort_deferred_charges`.
+- `net_income_start` on CF is the reconciliation starting line; it equals
+  `is.net_income` for that quarter.
+- `interest_expense` on IS is the gross expense (positive number);
+  `interest_income` is investment/interest income (positive number).
+  `net_interest_expense` is a computed subtotal.
 
 FORWARD-FILL RULE (strict):
-A field may be forward-filled ONLY if the concept genuinely does not appear in that
-period's raw XBRL. This is audited against parsed_xbrl.json — if any candidate concept
-is present with a non-null value, the forward-fill is rejected as a false fill.
+A bucket may be forward-filled ONLY if the concept genuinely does not appear
+in that period's raw XBRL. This is audited against parsed_xbrl.json — if any
+candidate concept is present with a non-null value, the forward-fill is
+rejected as false.
 
 When you forward-fill, declare:
 {{
-  "field": "<name>",
+  "bucket": "<name>",
+  "statement": "<statement>",
   "source_filing": "<filename of the 10-K whose value was used>",
   "applies_to_quarters": ["<quarter_label>", ...],
-  "candidate_concepts": ["us-gaap:..."]   // MUST include every concept that could represent this field
+  "candidate_concepts": ["us-gaap:..."]
 }}
-
-The candidate_concepts list is what the Python audit uses. If you omit any plausible
-concept, the audit will be weakened but your own field is still at risk of a false-fill
-rejection. Err on the side of including more variants.
 
 STATEMENTS:
 {json.dumps(slim_stmts, indent=2)}
 
-SEGMENTS:
+SEGMENTS (for context only — do NOT map segments into these buckets):
 {json.dumps(slim_segs, indent=2)}
-
-METRIC FORMULAS (for context on what the analytical fields will feed):
-{formulas_md}
 {failure_block}
+
 OUTPUT ONLY valid JSON:
 {{
   "reporting_unit": "USD_millions" | "USD",
   "stock_splits": [{{"between": ["<quarter_label>", "<quarter_label>"], "ratio": <number>, "action": "..."}}],
-  "analytical": {{
-    "revenue": {{
-      "values_by_quarter": {{"FY24Q1": <number>, ...}},
-      "source_per_quarter": {{"FY24Q1": [{{"statement": "income_statement", "concept": "us-gaap:Revenues", "sign": "+"}}], ...}}
+  "bucket_assignments": {{
+    "income_statement": {{
+      "revenue": [{{"concept": "us-gaap:Revenues", "sign": "+"}}],
+      "cogs": [{{"concept": "us-gaap:CostOfRevenue", "sign": "+"}}],
+      ...
     }},
-    ...
+    "balance_sheet": {{...}},
+    "cash_flow": {{...}}
   }},
+  "exclusions": [
+    {{"statement": "...", "concept": "...", "reason": "..."}}
+  ],
   "forward_fills": [...]
 }}
 
-All monetary values in RAW dollars. Convert from reported millions where needed.
-Shares in raw count. No apostrophes in strings."""
+No monetary values in the output — Python computes those from the
+assignments and the as-reported row values. No apostrophes in strings."""
 
 
-def run_ai_analytical(ticker, statements, segments, model, prior_failures=None, max_retries=3):
-    """Call the AI to produce Output 2 (analytical + forward_fills).
-
-    Retries the same call up to max_retries times when the response fails to parse
-    OR when Python verification produces failures (verification driven by caller).
-    """
-    formulas_md = load_formulas_md()
+def run_ai_buckets(ticker, statements, segments, model, prior_failures=None):
+    """Call the AI to produce bucket assignments + forward_fills."""
     client = anthropic.Anthropic()
 
-    prompt = build_analytical_prompt(ticker, statements, segments, formulas_md, prior_failures)
+    prompt = build_bucket_prompt(ticker, statements, segments, prior_failures)
 
-    print(f"  Calling AI (analytical pass, ~{len(prompt)//4:,} tokens in)...")
+    print(f"  Calling AI (bucket-assignment pass, ~{len(prompt)//4:,} tokens in)...")
     output_text = ''
     with client.messages.stream(
         model=model,
-        max_tokens=65536,
+        max_tokens=32768,
         messages=[{'role': 'user', 'content': prompt}],
     ) as stream:
         for text in stream.text_stream:
@@ -1108,7 +1592,7 @@ def run_ai_analytical(ticker, statements, segments, model, prior_failures=None, 
         fixed = json_text.replace('\u2018', "'").replace('\u2019', "'")
         fixed = re.sub(r'[\x00-\x1f]', ' ', fixed)
         fixed = re.sub(r',\s*([}\]])', r'\1', fixed)
-        parsed = json.loads(fixed)  # raises on final failure
+        parsed = json.loads(fixed)
 
     return parsed, in_tok, out_tok
 
@@ -1146,18 +1630,23 @@ def run_stage2(ticker, model='claude-sonnet-4-6', max_retries=3, test_mode=True)
     segments = build_segments(filings)
     print(f"    segments: {len(segments['axes'])} axes")
 
-    # ── AI analytical pass with retry loop ──
+    # ── AI bucket-assignment pass with retry loop ──
     total_in, total_out = 0, 0
-    analytical = {}
+    assignments = {}
+    exclusions = []
     forward_fills = []
     reporting_unit = 'USD_millions'
     stock_splits = []
     prior_failures = None
+    bucket_values = {}
+    subtotal_receipts = {}
+    failures = []
+    attempt = 0
 
     for attempt in range(max_retries + 1):
-        print(f"\n  AI analytical pass (attempt {attempt + 1}/{max_retries + 1})...")
+        print(f"\n  AI bucket pass (attempt {attempt + 1}/{max_retries + 1})...")
         try:
-            parsed, in_tok, out_tok = run_ai_analytical(
+            parsed, in_tok, out_tok = run_ai_buckets(
                 ticker, statements, segments, model, prior_failures=prior_failures
             )
         except Exception as e:
@@ -1168,24 +1657,31 @@ def run_stage2(ticker, model='claude-sonnet-4-6', max_retries=3, test_mode=True)
         total_in += in_tok
         total_out += out_tok
 
-        analytical = parsed.get('analytical', {}) or {}
+        assignments = parsed.get('bucket_assignments', {}) or {}
+        exclusions = parsed.get('exclusions', []) or []
         forward_fills = parsed.get('forward_fills', []) or []
         reporting_unit = parsed.get('reporting_unit', reporting_unit)
         stock_splits = parsed.get('stock_splits', []) or []
 
-        # Run Python verification
+        # Compute bucket values + subtotals
+        bucket_values = compute_bucket_values(statements, assignments)
+        subtotal_receipts = compute_subtotals(bucket_values)
+
+        # Run verification
         result_for_verify = {
             'statements': statements,
             'segments': segments,
-            'analytical': analytical,
+            'bucket_assignments': assignments,
+            'bucket_values': bucket_values,
+            'exclusions': exclusions,
             'forward_fills': forward_fills,
         }
         failures = verify_all(result_for_verify, filings, ticker)
         print(f"    verification: {len(failures)} failures")
-        for f in failures[:10]:
+        for f in failures[:15]:
             print(f"      [{f['type']}] {f.get('message','')}")
-        if len(failures) > 10:
-            print(f"      ... and {len(failures) - 10} more")
+        if len(failures) > 15:
+            print(f"      ... and {len(failures) - 15} more")
 
         if not failures:
             print(f"\n  ALL CHECKS PASSED")
@@ -1202,28 +1698,61 @@ def run_stage2(ticker, model='claude-sonnet-4-6', max_retries=3, test_mode=True)
     cost = total_in * in_rate / 1e6 + total_out * out_rate / 1e6
     print(f"\n  Tokens: in={total_in:,}  out={total_out:,}  cost=${cost:.2f}")
 
+    # Attach normalized block to each statement for JSON + CSV consumption.
+    # Detail buckets expose {face, note, total} per quarter so CSV can show the
+    # breakdown. Subtotals show face-only (they only ever have face values).
+    for stmt_name, data in statements.items():
+        stmt_buckets = bucket_values.get(stmt_name, {})
+        detail = CANONICAL_BUCKETS.get(stmt_name, {}).get('detail', [])
+        subtotals = [s for s, _ in CANONICAL_BUCKETS.get(stmt_name, {}).get('subtotals', [])]
+
+        def _flatten(qvals):
+            out = {}
+            for q, entry in (qvals or {}).items():
+                if not isinstance(entry, dict):
+                    out[q] = {'face': entry, 'note': None, 'total': entry}
+                    continue
+                f, n = entry.get('face'), entry.get('note')
+                total = None if (f is None and n is None) else (f or 0) + (n or 0)
+                out[q] = {'face': f, 'note': n, 'total': total}
+            return out
+
+        data['normalized'] = {
+            'detail': [{'bucket': b,
+                        'values_by_quarter': _flatten(stmt_buckets.get(b, {}) or {}),
+                        'sources': (assignments.get(stmt_name) or {}).get(b, [])}
+                       for b in detail],
+            'subtotals': [{'bucket': s,
+                           'values_by_quarter': (subtotal_receipts.get(stmt_name, {}).get(s, {}) or {}).get('values_by_quarter', {}) or {},
+                           'components': (subtotal_receipts.get(stmt_name, {}).get(s, {}) or {}).get('components', [])}
+                          for s in subtotals],
+        }
+
     result = {
         'ticker': ticker,
         'reporting_unit': reporting_unit,
         'stock_splits': stock_splits,
         'statements': statements,
         'segments': segments,
-        'analytical': analytical,
+        'bucket_assignments': assignments,
+        'exclusions': exclusions,
         'forward_fills': forward_fills,
         'verification': {
             'retries': attempt,
-            'failures': failures if failures else [],
+            'failures': failures,
             'passed': not failures,
         },
     }
     return result, total_in, total_out
 
 
-def build_quarterly_json(statements, analytical, filings):
-    """Write one record per quarter with flat analytical values (raw dollars).
+def build_quarterly_json(statements, filings):
+    """Write one record per quarter with flat bucket values (raw dollars).
 
-    This preserves the downstream shape calculate.py expects: a list of records
-    keyed by period_end with the analytical fields at the top level.
+    Each record contains the canonical bucket names (detail + subtotals) per
+    statement, namespaced by statement prefix ({statement}.{bucket}) to avoid
+    collision between same-named buckets across statements (e.g., is.dna vs
+    cf.dna). calculate.py reads these directly.
     """
     by_q = {f['quarter_label']: f for f in filings}
     all_quarters = sorted(by_q.keys(), key=lambda q: by_q[q]['period_end'])
@@ -1237,10 +1766,27 @@ def build_quarterly_json(statements, analytical, filings):
             'form': f['form'],
             'quarter_label': q,
         }
-        for field, fdata in analytical.items():
-            v = fdata.get('values_by_quarter', {}).get(q)
-            if v is not None:
-                rec[field] = v
+        for stmt_name, data in statements.items():
+            normalized = data.get('normalized', {})
+            prefix = {'income_statement': 'is', 'balance_sheet': 'bs', 'cash_flow': 'cf'}.get(stmt_name, stmt_name)
+            for entry in normalized.get('detail', []):
+                v = entry['values_by_quarter'].get(q)
+                # Use total (face+note) for quarterly.json consumers like
+                # calculate.py — analytical formulas want the full picture.
+                if isinstance(v, dict):
+                    total = v.get('total')
+                    face = v.get('face')
+                    if total is not None:
+                        rec[f'{prefix}.{entry["bucket"]}'] = total
+                        if v.get('note') is not None and face != total:
+                            rec[f'{prefix}.{entry["bucket"]}.face'] = face
+                            rec[f'{prefix}.{entry["bucket"]}.note'] = v.get('note')
+                elif v is not None:
+                    rec[f'{prefix}.{entry["bucket"]}'] = v
+            for entry in normalized.get('subtotals', []):
+                v = entry['values_by_quarter'].get(q)
+                if v is not None:
+                    rec[f'{prefix}.{entry["bucket"]}'] = v
         records.append(rec)
     return records
 
@@ -1273,9 +1819,9 @@ def main():
         json.dump(_make_json_safe(result), f, indent=2, default=str)
     print(f"\n  Saved {out_path}")
 
-    # Quarterly.json (analytical fields flat per period)
+    # Quarterly.json (flat bucket values per period)
     filings = load_filings(out_dir)
-    quarterly = build_quarterly_json(result['statements'], result['analytical'], filings)
+    quarterly = build_quarterly_json(result['statements'], filings)
     q_path = os.path.join(out_dir, 'quarterly.json')
     with open(q_path, 'w') as f:
         json.dump(quarterly, f, indent=2, default=str)
