@@ -94,7 +94,7 @@ CANONICAL_BUCKETS = {
             'cash', 'sti', 'trading_securities',
             'accounts_receivable', 'other_receivables',
             'inventory', 'restricted_cash', 'prepaid_expenses', 'other_current_assets',
-            'gross_ppe', 'accumulated_depreciation',
+            'net_ppe',
             'long_term_investments', 'goodwill', 'other_intangibles',
             'loans_receivable_lt', 'deferred_tax_assets_lt',
             'deferred_charges_lt', 'other_lt_assets',
@@ -117,9 +117,6 @@ CANONICAL_BUCKETS = {
              [('+', 'total_cash_sti'), ('+', 'total_receivables'),
               ('+', 'inventory'), ('+', 'restricted_cash'),
               ('+', 'prepaid_expenses'), ('+', 'other_current_assets')]),
-            # accumulated_depreciation is stored as a negative number; add it.
-            ('net_ppe',
-             [('+', 'gross_ppe'), ('+', 'accumulated_depreciation')]),
             ('total_assets',
              [('+', 'total_current_assets'), ('+', 'net_ppe'),
               ('+', 'long_term_investments'), ('+', 'goodwill'),
@@ -168,8 +165,13 @@ CANONICAL_BUCKETS = {
         'subtotals': [
             ('cfo',
              [('+', 'net_income_start'),
-              ('+', 'dna'), ('+', 'gain_sale_asset'),
-              ('+', 'gain_sale_investments'), ('+', 'amort_deferred_charges'),
+              ('+', 'dna'),
+              # Gains are subtracted in the CFO reconciliation (non-cash gain
+              # reverses out of net income). XBRL stores gains as positive,
+              # losses as negative, so `-` works for both cases.
+              ('-', 'gain_sale_asset'),
+              ('-', 'gain_sale_investments'),
+              ('+', 'amort_deferred_charges'),
               ('+', 'asset_writedown_restructuring'),
               ('+', 'sbc'), ('+', 'other_operating'),
               ('+', 'change_ar'), ('+', 'change_inventory'),
@@ -737,7 +739,7 @@ def build_segments(filings):
             for it in seg.get('items', []) or []:
                 member = it.get('member') or 'Unknown'
                 vals = it.get('values', {}) or {}
-                mvals = _segment_metric_values(vals, pe, form)
+                mvals = _segment_metric_values(vals, pe, form, dimension=dim)
                 mrec = axis['members_by_key'][member]
                 mrec['member'] = member
                 for metric, val in mvals.items():
@@ -745,14 +747,14 @@ def build_segments(filings):
                     mrec['values_by_quarter_and_metric'][f'{q}|{metric}'] = val
 
             consolidated = seg.get('consolidated_total')
-            # Extract metric-specific consolidated values when present
             c_items = seg.get('consolidated_by_metric') or {}
             if c_items:
                 for metric, val in c_items.items():
                     axis['consolidated_by_quarter_and_metric'][f'{q}|{metric}'] = val
-            elif consolidated is not None and len(seg.get('items', [])) and seg.get('items', [])[0].get('values'):
-                # Fall back: first metric encountered maps to total
-                first_metrics = _segment_metric_values(seg['items'][0].get('values', {}), pe, form).keys()
+            elif consolidated is not None and seg.get('items'):
+                first_metrics = _segment_metric_values(
+                    seg['items'][0].get('values', {}), pe, form, dimension=dim
+                ).keys()
                 if first_metrics:
                     first_metric = list(first_metrics)[0]
                     axis['consolidated_by_quarter_and_metric'][f'{q}|{first_metric}'] = consolidated
@@ -774,15 +776,58 @@ def build_segments(filings):
     return {'axes': out_axes}
 
 
-def _segment_metric_values(values_dict, filing_period_end, form):
-    """From a segment item's values dict with 'Metric_periodkey' keys, pick the
-    current-period value per metric. Returns {metric: value}.
+_DATE_RANGE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}(?:_\d{4}-\d{2}-\d{2}| to \d{4}-\d{2}-\d{2})?$')
+
+
+def _infer_metric_from_dimension(dim_str):
+    """Extract a metric name from a Stage-1 dimension string when the values
+    dict doesn't prefix keys with the metric. Dimension strings look like:
+      'StatementBusinessSegmentsAxis - Revenue by Reportable Segment'
+      'StatementGeographicalAxis - Operating Income by Geography'
+      'ProductOrServiceAxis - Revenue by End Market'
+    The metric sits after ' - ' and before ' by '.
+    Fallback: 'Revenue' (most common).
     """
+    if not dim_str:
+        return 'Revenue'
+    parts = dim_str.split(' - ', 1)
+    tail = parts[1] if len(parts) == 2 else dim_str
+    for sep in (' by ', ':', ','):
+        if sep in tail:
+            tail = tail.split(sep, 1)[0]
+            break
+    tail = tail.strip()
+    # Collapse spaces into CamelCase-friendly form (e.g., "Operating Income" -> "OperatingIncome")
+    return ''.join(w[:1].upper() + w[1:] for w in tail.split()) or 'Revenue'
+
+
+def _segment_metric_values(values_dict, filing_period_end, form, dimension=''):
+    """From a segment item's values dict, pick the current-period value per
+    metric. Handles two Stage-1 formats:
+
+    Format A: 'Metric_startdate_enddate' (or 'Metric_enddate' for instants)
+       — newer filings; metric embedded in key.
+    Format B: 'startdate_enddate' or 'enddate'
+       — older filings and 10-Ks; no metric in key. The metric comes from
+       the dimension string ('... - Revenue by ...' -> 'Revenue').
+
+    Returns {metric: value}.
+    """
+    if not values_dict:
+        return {}
+    # Detect format by inspecting keys. If any key starts with a non-date alpha prefix,
+    # it's Format A.
+    is_format_b = all(_DATE_RANGE_RE.match(k) for k in values_dict.keys())
+
     by_metric = defaultdict(list)
     for k, v in values_dict.items():
-        if '_' not in k:
-            continue
-        metric, rest = k.split('_', 1)
+        if is_format_b:
+            metric = _infer_metric_from_dimension(dimension)
+            rest = k
+        else:
+            if '_' not in k:
+                continue
+            metric, rest = k.split('_', 1)
         kind, _, end, days = parse_period_key(rest)
         if end != filing_period_end:
             continue
@@ -980,13 +1025,42 @@ def _member_local_name(member_str):
     return s
 
 
+def _detect_display_rollups(members_with_values):
+    """Second-pass rollup detection by VALUE.
+
+    Stage 1 uses different member name conventions across filings — some 10-Ks
+    emit display labels ("Data Center", "Data Center - Compute") instead of
+    technical names ("DataCenterMember", "ComputeMember"). The def linkbase
+    doesn't help in that case.
+
+    Rule: member M is a rollup if there exist ≥2 other members whose names
+    start with `M + " - "` or `M + " "` AND whose values sum to M's value.
+    Universal across companies that use the "Parent" / "Parent - Child"
+    display convention.
+    """
+    rollups = set()
+    for m, v in members_with_values:
+        if v is None or not isinstance(v, (int, float)):
+            continue
+        children = [(cm, cv) for cm, cv in members_with_values
+                    if cm != m
+                    and (cm.startswith(m + ' - ') or cm.startswith(m + ' '))
+                    and isinstance(cv, (int, float))]
+        if len(children) >= 2:
+            child_sum = sum(cv for _, cv in children)
+            if abs(child_sum - v) <= max(2, abs(v) * 0.005):
+                rollups.add(m)
+    return rollups
+
+
 def check_segments_tie(segments, statements, ticker):
-    """Sum LEAF members and compare to consolidated. Rollup members (parents of
-    other members per the def linkbase) are excluded from the sum because their
-    value is already the sum of their children.
+    """Sum LEAF members and compare to consolidated. Two rollup-detection passes:
+      1. Definition-linkbase rollups (technical concept names like DataCenterMember).
+      2. Display-name rollups (where Stage 1 emitted labels like "Data Center" /
+         "Data Center - Compute"). Detected by value-sum match.
     """
     failures = []
-    rollups = _collect_rollup_concepts(ticker)
+    concept_rollups = _collect_rollup_concepts(ticker)
 
     for axis in segments.get('axes', []):
         dim = axis['dimension']
@@ -996,13 +1070,18 @@ def check_segments_tie(segments, statements, ticker):
             if not isinstance(consolidated, (int, float)):
                 continue
             q, metric = key.split('|', 1)
+
+            members_at_key = [(r.get('member', ''), r['values_by_quarter_and_metric'].get(key))
+                              for r in axis['rows']]
+            display_rollups = _detect_display_rollups(members_at_key)
+
             summed = 0
             found = False
-            for r in axis['rows']:
-                member = r.get('member', '')
-                if _member_local_name(member) in rollups:
-                    continue  # skip — parent value is already the sum of children
-                v = r['values_by_quarter_and_metric'].get(key)
+            for member, v in members_at_key:
+                if _member_local_name(member) in concept_rollups:
+                    continue
+                if member in display_rollups:
+                    continue
                 if isinstance(v, (int, float)):
                     summed += v
                     found = True
@@ -1179,6 +1258,14 @@ def check_concepts_fully_assigned(statements, assignments, exclusions):
         if stmt and concept:
             excluded_by_stmt[stmt].add(concept)
 
+    # Concepts we never expect to be assigned — they are note-level
+    # decompositions of a face concept that is already in a bucket. Tracking
+    # them separately would either duplicate or confuse the subtotal math.
+    AUTO_EXCLUDED_CONCEPTS = {
+        'us-gaap:PropertyPlantAndEquipmentGross',
+        'us-gaap:AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment',
+    }
+
     for stmt_name, data in statements.items():
         for row in data.get('rows', []):
             if not row.get('values_by_quarter'):
@@ -1187,6 +1274,8 @@ def check_concepts_fully_assigned(statements, assignments, exclusions):
             if c in assigned_by_stmt[stmt_name]:
                 continue
             if c in excluded_by_stmt[stmt_name]:
+                continue
+            if c in AUTO_EXCLUDED_CONCEPTS:
                 continue
             failures.append({
                 'type': 'UNASSIGNED_CONCEPT',
