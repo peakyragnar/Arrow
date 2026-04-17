@@ -152,7 +152,10 @@ CANONICAL_BUCKETS = {
             'sbc', 'other_operating',
             'change_ar', 'change_inventory', 'change_ap',
             'change_unearned_revenue', 'change_income_taxes',
-            'change_other_operating',
+            # "Other" working-capital changes split by cash-direction so every
+            # bucket is single-signed. AI picks which one a concept goes into.
+            'change_other_operating_assets',   # prepaid-type; increase = cash out
+            'change_other_operating_liabs',    # accrued-type; increase = cash in
             'capex', 'sale_ppe', 'acquisitions', 'divestitures',
             'investment_securities', 'loans_orig_sold', 'other_investing',
             'short_term_debt_issued', 'long_term_debt_issued',
@@ -163,50 +166,42 @@ CANONICAL_BUCKETS = {
             'fx_adjustments', 'misc_cf_adjustments',
         ],
         'subtotals': [
-            # CFO formula encodes the CASH-FLOW convention explicitly. AI is
-            # instructed to assign concepts with sign=+ (values as reported by
-            # XBRL). Signs below translate to cash impact:
-            #   + non-cash expense addbacks (D&A, SBC, amortization of costs)
-            #   - non-cash gains (reverse out of NI)
-            #   - working-capital asset increases (AR, Inventory) — cash out
-            #   + working-capital liability increases (AP, deferred revenue) — cash in
+            # All subtotal formulas here use sign=+ because:
+            # - AI assigns each concept with the sign needed to get the correct
+            #   cash-impact (e.g., `-` on IncreaseDecreaseInAccountsReceivable
+            #   to convert "AR went up by X" into "-X cash impact").
+            # - Some XBRL values already carry the sign (NVDA stores
+            #   PaymentsForRepurchaseOfCommonStock as negative), so AI uses `+`
+            #   there and the bucket naturally sums to the correct cash impact.
+            # Python just aggregates; the AI owns sign judgment.
             ('cfo',
              [('+', 'net_income_start'),
               ('+', 'dna'),
-              ('-', 'gain_sale_asset'),
-              ('-', 'gain_sale_investments'),
+              ('+', 'gain_sale_asset'),
+              ('+', 'gain_sale_investments'),
               ('+', 'amort_deferred_charges'),
               ('+', 'asset_writedown_restructuring'),
               ('+', 'sbc'), ('+', 'other_operating'),
-              ('-', 'change_ar'), ('-', 'change_inventory'),
+              ('+', 'change_ar'), ('+', 'change_inventory'),
               ('+', 'change_ap'), ('+', 'change_unearned_revenue'),
-              ('+', 'change_income_taxes'), ('+', 'change_other_operating')]),
-            # CFI components are assigned as raw XBRL positive values
-            # (payments are stored positive; proceeds are stored positive).
-            # Formula applies cash direction.
+              ('+', 'change_income_taxes'),
+              ('+', 'change_other_operating_assets'),
+              ('+', 'change_other_operating_liabs')]),
             ('cfi',
-             [('-', 'capex'),              # cash outflow
-              ('+', 'sale_ppe'),            # proceeds
-              ('-', 'acquisitions'),        # cash outflow
-              ('+', 'divestitures'),        # proceeds
-              ('+', 'investment_securities'),  # net (AI assigns net effect with +)
-              ('+', 'loans_orig_sold'),        # net
-              ('+', 'other_investing')]),      # net
+             [('+', 'capex'), ('+', 'sale_ppe'), ('+', 'acquisitions'),
+              ('+', 'divestitures'), ('+', 'investment_securities'),
+              ('+', 'loans_orig_sold'), ('+', 'other_investing')]),
             ('total_debt_issued',
              [('+', 'short_term_debt_issued'), ('+', 'long_term_debt_issued')]),
             ('total_debt_repaid',
              [('+', 'short_term_debt_repaid'), ('+', 'long_term_debt_repaid')]),
             ('total_common_pref_dividends',
              [('+', 'common_dividends'), ('+', 'preferred_dividends')]),
-            # CFF: issuances are inflows, repayments/repurchases/dividends are outflows.
             ('cff',
-             [('+', 'total_debt_issued'),
-              ('-', 'total_debt_repaid'),
-              ('+', 'stock_issuance'),
-              ('-', 'stock_repurchase'),
-              ('-', 'total_common_pref_dividends'),
-              ('-', 'special_dividends'),
-              ('+', 'other_financing')]),
+             [('+', 'total_debt_issued'), ('+', 'total_debt_repaid'),
+              ('+', 'stock_issuance'), ('+', 'stock_repurchase'),
+              ('+', 'total_common_pref_dividends'),
+              ('+', 'special_dividends'), ('+', 'other_financing')]),
             ('net_change_in_cash',
              [('+', 'cfo'), ('+', 'cfi'), ('+', 'cff'),
               ('+', 'fx_adjustments'), ('+', 'misc_cf_adjustments')]),
@@ -216,6 +211,52 @@ CANONICAL_BUCKETS = {
 
 # Statement's flow buckets (for Q1+Q2+Q3+Q4 = annual checks)
 FLOW_STATEMENTS = {'income_statement', 'cash_flow'}
+
+
+# Face concepts for subtotals. Stage 2 prefers reading these directly from
+# Stage 1's merged rows over reconstructing from detail-bucket sums — the
+# filing's own subtotals already tie by its own arithmetic. This is universal
+# US GAAP, not company-specific.
+SUBTOTAL_FACE_CONCEPTS = {
+    'income_statement': {
+        'total_revenue': ['us-gaap:Revenues',
+                          'us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax',
+                          'us-gaap:SalesRevenueNet'],
+        'gross_profit': ['us-gaap:GrossProfit'],
+        'total_opex': ['us-gaap:OperatingExpenses'],
+        'operating_income': ['us-gaap:OperatingIncomeLoss'],
+        'ebt_excl_unusual': [
+            'us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments',
+            'us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest',
+        ],
+        'ebt_incl_unusual': [
+            'us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest',
+        ],
+        'continuing_ops': ['us-gaap:IncomeLossFromContinuingOperations'],
+        'net_income': ['us-gaap:NetIncomeLoss', 'us-gaap:ProfitLoss'],
+        'ni_common_incl_extra': ['us-gaap:NetIncomeLossAvailableToCommonStockholdersBasic'],
+    },
+    'balance_sheet': {
+        'total_current_assets': ['us-gaap:AssetsCurrent'],
+        'total_assets': ['us-gaap:Assets'],
+        'total_current_liabilities': ['us-gaap:LiabilitiesCurrent'],
+        'total_liabilities': ['us-gaap:Liabilities'],
+        'common_equity': ['us-gaap:StockholdersEquity'],  # parent-only
+        'total_equity': ['us-gaap:StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest',
+                         'us-gaap:StockholdersEquity'],
+        'total_liabilities_and_equity': ['us-gaap:LiabilitiesAndStockholdersEquity'],
+    },
+    'cash_flow': {
+        'cfo': ['us-gaap:NetCashProvidedByUsedInOperatingActivities'],
+        'cfi': ['us-gaap:NetCashProvidedByUsedInInvestingActivities'],
+        'cff': ['us-gaap:NetCashProvidedByUsedInFinancingActivities'],
+        'net_change_in_cash': [
+            'us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect',
+            'us-gaap:CashAndCashEquivalentsPeriodIncreaseDecreaseExcludingExchangeRateEffect',
+            'us-gaap:CashAndCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect',
+        ],
+    },
+}
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -1064,10 +1105,9 @@ def compute_bucket_values(statements, assignments):
             qvals = {}
             for src in sources or []:
                 concept = src.get('concept') if isinstance(src, dict) else src
-                # Signs come from CANONICAL_BUCKETS formulas, not from AI.
-                # AI-provided signs are ignored to keep behavior deterministic
-                # across runs. Any sign inversion of raw XBRL values is the
-                # formula's responsibility (see CFO components in schema).
+                # No sign manipulation. Stage 1 values are already stored with
+                # the sign that makes the filing's own arithmetic tie (verified
+                # at Stage 1). Stage 2 sums values as stored.
                 row = by_concept.get(concept)
                 if not row:
                     continue
@@ -1164,7 +1204,28 @@ def derive_bucket_quarters(bucket_values, filings):
             stmt_buckets[bucket] = new_qvals
 
 
-def compute_subtotals(bucket_values):
+def compute_face_subtotals_from_rows(statements):
+    """Read subtotal values directly from the filing's own subtotal concepts
+    (Revenue, Assets, NetIncomeLoss, NetCashProvidedByUsedInOperatingActivities,
+    etc.). Returns {stmt: {subtotal: {q: value}}}.
+
+    Authoritative: the filer's own arithmetic ties these to the detail lines.
+    Stage 1 captured them as rows; Stage 2 just reads them.
+    """
+    out = {stmt: {} for stmt in SUBTOTAL_FACE_CONCEPTS}
+    for stmt_name, mapping in SUBTOTAL_FACE_CONCEPTS.items():
+        rows = statements.get(stmt_name, {}).get('rows', [])
+        rows_by_concept = {r['xbrl_concept']: r for r in rows}
+        for subtotal, concept_candidates in mapping.items():
+            for concept in concept_candidates:
+                row = rows_by_concept.get(concept)
+                if row and row.get('values_by_quarter'):
+                    out[stmt_name][subtotal] = dict(row['values_by_quarter'])
+                    break
+    return out
+
+
+def compute_subtotals(bucket_values, face_subtotals=None):
     """Compute subtotals from CANONICAL_BUCKETS using only the FACE portion of
     each component bucket. Note-detail values are not summed into subtotals —
     they are decompositions of face items and would double-count.
@@ -1175,29 +1236,52 @@ def compute_subtotals(bucket_values):
     Returns receipts for CSV rendering.
     """
     receipts = {stmt: {} for stmt in bucket_values}
+    face_subtotals = face_subtotals or {}
+
     for stmt_name, schema in CANONICAL_BUCKETS.items():
         stmt_vals = bucket_values.setdefault(stmt_name, {})
+        stmt_face = face_subtotals.get(stmt_name, {})
         for subtotal, components in schema['subtotals']:
-            qvals = {}
+            # Compute component sum (informational / fallback)
+            component_sums = {}
             all_qs = set()
-            for sign, comp in components:
+            for _, comp in components:
                 all_qs.update((stmt_vals.get(comp) or {}).keys())
             for q in all_qs:
                 total = 0
                 any_present = False
-                for sign, comp in components:
+                for _, comp in components:
                     face_v = bucket_face_value(bucket_values, stmt_name, comp, q)
                     if face_v is None:
                         continue
                     any_present = True
-                    total += face_v if sign == '+' else -face_v
+                    total += face_v  # no sign manipulation; Stage 1 values are pre-signed
                 if any_present:
-                    qvals[q] = {'face': total, 'note': None}
+                    component_sums[q] = total
+
+            face_values = stmt_face.get(subtotal, {})
+
+            qvals = {}
+            recon = {}
+            for q in set(component_sums) | set(face_values):
+                face_v = face_values.get(q)
+                comp_v = component_sums.get(q)
+                # Face (filer-reported) subtotal is authoritative when present
+                authoritative = face_v if face_v is not None else comp_v
+                if authoritative is not None:
+                    qvals[q] = {'face': authoritative, 'note': None}
+                if face_v is not None and comp_v is not None:
+                    recon[q] = {'face_subtotal': face_v,
+                                'component_sum': comp_v,
+                                'delta': comp_v - face_v}
+
             stmt_vals[subtotal] = qvals
             receipts[stmt_name][subtotal] = {
                 'components': [(s, c) for s, c in components],
-                'values_by_quarter': {q: (v['face'] if isinstance(v, dict) else v)
-                                     for q, v in qvals.items()},
+                'values_by_quarter': {q: v['face'] for q, v in qvals.items()},
+                'source': {q: ('face' if q in face_values else 'components')
+                           for q in qvals},
+                'recon_delta': recon,
             }
     return receipts
 
@@ -1266,6 +1350,14 @@ def check_concepts_fully_assigned(statements, assignments, exclusions):
         if stmt and concept:
             excluded_by_stmt[stmt].add(concept)
 
+    # Face-subtotal concepts (Revenue, Assets, NetIncomeLoss, CFO, etc.) are
+    # consumed directly by compute_subtotals from the Stage 1 rows — they are
+    # not expected to appear in detail-bucket assignments.
+    face_subtotal_concepts = {stmt: set() for stmt in SUBTOTAL_FACE_CONCEPTS}
+    for stmt_name, mapping in SUBTOTAL_FACE_CONCEPTS.items():
+        for _, concepts in mapping.items():
+            face_subtotal_concepts[stmt_name].update(concepts)
+
     for stmt_name, data in statements.items():
         for row in data.get('rows', []):
             if not row.get('values_by_quarter'):
@@ -1274,6 +1366,8 @@ def check_concepts_fully_assigned(statements, assignments, exclusions):
             if c in assigned_by_stmt[stmt_name]:
                 continue
             if c in excluded_by_stmt[stmt_name]:
+                continue
+            if c in face_subtotal_concepts.get(stmt_name, set()):
                 continue
             failures.append({
                 'type': 'UNASSIGNED_CONCEPT',
@@ -1601,12 +1695,17 @@ PRINCIPLES:
 - A bucket can receive multiple concepts (common when the filing splits a
   single analytical concept into multiple lines, or when a company changes
   naming between filings).
-- **Sign convention: ALWAYS use `sign: "+"`.** Do not infer signs. The
-  canonical subtotal formulas in Python already encode the correct cash-
-  flow / income-statement conventions (e.g., `capex` is subtracted from
-  CFI, `change_ar` is subtracted from CFO, gains are subtracted from CFO,
-  etc.). Your job is just to say "this concept's raw value belongs in this
-  bucket"; Python applies the right sign when computing subtotals.
+- **Do not provide signs.** Stage 1 already captured every value with the
+  sign the filing reports (verified because the filing's own subtotals
+  tie — otherwise Stage 1 would have failed verification). Stage 2 sums
+  those values as-is. You just say which bucket a concept belongs to;
+  Python sums. Omit the `sign` field from your output, or set it to `+`
+  if your JSON shape requires it; it is ignored either way.
+- **Statement subtotals are read directly from the filing's own XBRL
+  subtotal concepts** (e.g., `us-gaap:NetCashProvidedByUsedInOperatingActivities`
+  for CFO, `us-gaap:Assets` for total_assets). Python handles that; you do
+  not need to assign those subtotal concepts anywhere — they're read
+  automatically from the statement rows.
 - When a company doesn't report a bucket, leave it empty — no plugs, no
   zero-fills. Python will produce a null value for that bucket.
 
@@ -1641,6 +1740,22 @@ HINTS on some trickier mappings:
 - On CF, amortization of intangibles is part of `dna`; amortization of
   deferred charges (debt issuance costs, leasehold improvements financed
   separately) is `amort_deferred_charges`.
+- CF working-capital "other" is SPLIT into two buckets by cash direction
+  (don't lump them together):
+    - `change_other_operating_assets`: prepaid-type items where an increase
+      consumes cash. Typical concepts:
+      `us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets`,
+      `us-gaap:IncreaseDecreaseInPrepaidExpenseAndOtherAssets`,
+      and any "IncreaseDecreaseIn*Assets" working-capital item that's not AR
+      or inventory (those have their own buckets).
+    - `change_other_operating_liabs`: accrued-type items where an increase
+      generates cash. Typical concepts:
+      `us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities`,
+      `us-gaap:IncreaseDecreaseInOtherOperatingLiabilities`,
+      `us-gaap:IncreaseDecreaseInOtherNoncurrentLiabilities`,
+      and any "IncreaseDecreaseIn*Liabilit*" working-capital item that's not
+      AP, unearned revenue, or income taxes payable (those have their own
+      buckets).
 - `net_income_start` on CF is the reconciliation starting line; it equals
   `is.net_income` for that quarter.
 - `interest_expense` on IS is the gross expense (positive number);
@@ -1861,8 +1976,23 @@ def run_stage2(ticker, model='claude-sonnet-4-6', max_retries=3, test_mode=True)
         # concept drift within a bucket because aliased concepts have been
         # unified into the same bucket by the AI).
         derive_bucket_quarters(bucket_values, filings)
-        # Compute canonical subtotals from the derived standalone values.
-        subtotal_receipts = compute_subtotals(bucket_values)
+        # Face-authoritative subtotals — read XBRL subtotal concepts from
+        # Stage 1 rows. These tie by the filer's own arithmetic. We prefer
+        # these over reconstructing from details.
+        face_subtotals = compute_face_subtotals_from_rows(statements)
+        # Derive Q4/Q2/Q3 standalone on face subtotals the same way as buckets
+        # (wrap in the same {face, note} shape so derive_bucket_quarters works)
+        _face_sub_wrapped = {stmt: {s: {q: {'face': v, 'note': None}
+                                        for q, v in qs.items()}
+                                    for s, qs in stmt_data.items()}
+                             for stmt, stmt_data in face_subtotals.items()}
+        derive_bucket_quarters(_face_sub_wrapped, filings)
+        face_subtotals = {stmt: {s: {q: entry['face']
+                                     for q, entry in qs.items()
+                                     if entry.get('face') is not None}
+                                 for s, qs in stmt_data.items()}
+                          for stmt, stmt_data in _face_sub_wrapped.items()}
+        subtotal_receipts = compute_subtotals(bucket_values, face_subtotals)
 
         result_for_verify = {
             'statements': statements,

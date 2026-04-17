@@ -169,21 +169,23 @@ CASH FROM OPERATIONS (detail)
   sbc                    (stock-based compensation)
   other_operating
 
-  working-capital changes:
-  change_ar
-  change_inventory
-  change_ap
-  change_unearned_revenue
-  change_income_taxes
-  change_other_operating
+  working-capital changes (each bucket is single-signed by cash direction):
+  change_ar                            (increase = cash out; signed −)
+  change_inventory                     (increase = cash out; signed −)
+  change_ap                            (increase = cash in;  signed +)
+  change_unearned_revenue              (increase = cash in;  signed +)
+  change_income_taxes                  (increase = cash in;  signed +)
+  change_other_operating_assets        (prepaid-type; increase = cash out; signed −)
+  change_other_operating_liabs         (accrued-type; increase = cash in;  signed +)
 
 cfo                      = net_income_start
-                           + dna + gain_sale_asset + gain_sale_investments
+                           + dna − gain_sale_asset − gain_sale_investments
                            + amort_deferred_charges + asset_writedown_restructuring
                            + sbc + other_operating
-                           + change_ar + change_inventory + change_ap
+                           − change_ar − change_inventory + change_ap
                            + change_unearned_revenue + change_income_taxes
-                           + change_other_operating
+                           − change_other_operating_assets
+                           + change_other_operating_liabs
 
 CASH FROM INVESTING (detail)
   capex                  (negative)
