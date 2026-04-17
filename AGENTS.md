@@ -1,6 +1,34 @@
-# CLAUDE.md
+# AGENTS.md / CLAUDE.md
 
 Arrow is a financial data extraction and synthesis system. It extracts structured financial data from SEC filings using AI, computes analytical metrics, and will ultimately generate forward estimates with reasoning.
+
+## Repo Map
+
+- This file is the repo map / table of contents, not the encyclopedia.
+- Repository markdown docs + code are the system of record.
+- Use progressive disclosure: start here, then read only the deeper docs needed for the task.
+- Generated JSON/CSV artifacts are for inspection and validation, not policy truth.
+- `deterministic-flow/` code is archived. Do not use it for implementation guidance.
+
+### Source of Truth by Task
+
+- System overview + file map + current status → this file
+- Current strategy / direction → `plan.md`
+- Full extraction pipeline design → `ai_extract/ai_extraction_flow_full.md`
+- Universal bucket schema + subtotal formulas + invariants → `ai_extract/canonical_buckets.md`
+- Metric definitions + calculation rules → `formulas.md`
+- R&D capitalization math → `rd_capitalization_reference.md`
+- Deterministic parser behavior → `ai_extract/parse_xbrl.py`
+- Stage 1 extraction / retry behavior → `ai_extract/analyze_statement.py`
+- Stage 2 quarterization / bucket mapping / verification → `ai_extract/ai_formula.py`
+- Metric engine / dashboard output shape → `calculate.py`
+
+### Read Order
+
+1. Read this file first.
+2. Read the task-specific source-of-truth docs above.
+3. Read the relevant code.
+4. Read generated artifacts only after the docs/code path is clear.
 
 ## Principles
 
