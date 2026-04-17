@@ -1,1155 +1,571 @@
-NVDA — Stage 2 Audit CSV,,,,,,,,,,,,,
-generated: 2026-04-17T16:32:59,,,,,,,,,,,,,
-reporting_unit: USD_millions,,,,,,,,,,,,,
-quarters: 12,verification.passed: True,failures: 0,,,,,,,,,,,
-,,,,,,,,,,,,,
-── INCOME STATEMENT (USD millions) ──,,,,,,,,,,,,,
-,,,,,,,,,,,,,
-"  AS-REPORTED ROWS (from Stage 1, merged by xbrl_concept)",,,,,,,,,,,,,
-xbrl_concept / bucket,label,FY24Q1,FY24Q2,FY24Q3,FY24Q4,FY25Q1,FY25Q2,FY25Q3,FY25Q4,FY26Q1,FY26Q2,FY26Q3,FY26Q4
-us-gaap:GrossProfit,Gross profit,"4,648","9,462","13,400","44,301","20,406","22,574","26,156","97,858","26,668","33,853","41,849","153,463"
-us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest,Income before income tax,"2,209","6,981","10,522","33,818","17,279","19,214","22,316","84,026","21,910","31,206","37,936","141,450"
-us-gaap:NetIncomeLoss,Net income,"2,043","6,188","9,243","29,760","14,881","16,599","19,309","72,880","18,775","26,422","31,910","120,067"
-us-gaap:NonoperatingIncomeExpense,"Other income (expense), net | Total other income (expense), net | Total other income, net",69,181,105,846,370,572,447,"2,573",272,"2,766","1,926","11,063"
-us-gaap:OperatingExpenses,Total operating expenses,"2,508","2,662","2,983","11,329","3,497","3,932","4,287","16,405","5,030","5,413","5,839","23,076"
-us-gaap:OperatingIncomeLoss,Income from operations | Operating income,"2,140","6,800","10,417","32,972","16,909","18,642","21,869","81,453","21,638","28,440","36,010","130,387"
-us-gaap:Revenues,Revenue,"7,192","13,507","18,120","60,922","26,044","30,040","35,082","130,497","44,062","46,743","57,006","215,938"
-nvda:BusinessCombinationAdvancedConsiderationWrittenOff,Acquisition termination cost,0.0000,0.0000,0.0000,0.0000,,,,0.0000,,,,
-us-gaap:CostOfRevenue,Cost of revenue,"2,544","4,045","4,720","16,621","5,638","7,466","8,926","32,639","17,394","12,890","15,157","62,475"
-us-gaap:EarningsPerShareBasic,Basic | Basic EPS | Basic earnings per share | Basic net income per share,0.8300,2,4,12,6,0.6800,0.7900,3,0.7700,1,1,5
-us-gaap:EarningsPerShareDiluted,Diluted | Diluted EPS | Diluted earnings per share | Diluted net income per share,0.8200,2,4,12,6,0.6700,0.7800,3,0.7600,1,1,5
-us-gaap:IncomeTaxExpenseBenefit,Income tax expense | Income tax expense (benefit),166,793,"1,279","4,058","2,398","2,615","3,007","11,146","3,135","4,784","6,026","21,383"
-us-gaap:InterestExpense,Interest expense,66,65,63,257,64,,,,,,,
-us-gaap:InterestExpenseNonoperating,Interest expense,,,,,,61,61,247,63,62,61,259
-us-gaap:InvestmentIncomeInterest,Interest income,150,187,234,866,359,444,472,"1,786",515,592,624,"2,300"
-us-gaap:OtherNonoperatingIncomeExpense,"Other income (expense), net | Other income, net | Other, net",-15,59,-66,237,75,189,36,"1,034",-180,"2,236","1,363","9,022"
-us-gaap:ResearchAndDevelopmentExpense,Research and development,"1,875","2,040","2,294","8,675","2,720","3,090","3,390","12,914","3,989","4,291","4,705","18,497"
-us-gaap:SellingGeneralAndAdministrativeExpense,"Sales, general and administrative",633,622,689,"2,654",777,842,897,"3,491","1,041","1,122","1,134","4,579"
-us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding,Diluted (weighted average shares) | Diluted weighted average shares | Weighted average shares - Diluted,"2,490","2,499","2,494","2,494","2,489","24,848","24,774","24,804","24,611","24,532","24,483","24,514"
-us-gaap:WeightedAverageNumberOfSharesOutstandingBasic,Basic (weighted average shares) | Basic weighted average shares | Weighted average shares - Basic,"2,470","2,473","2,468","2,469","2,462","24,578","24,533","24,555","24,441","24,366","24,327","24,359"
-,,,,,,,,,,,,,
-,  — Note detail (xbrl_not_on_statement) —,,,,,,,,,,,,
-us-gaap:AllocatedShareBasedCompensationExpense,Allocated Share Based Compensation Expense,,,979,,,"1,154",,,,"1,624","1,655",
-us-gaap:AntidilutiveSecuritiesExcludedFromComputationOfEarningsPerShareAmount,Antidilutive Securities Excluded From Computation Of Earnings Per Share Amount,4,10,1,15,6,5,9,51,62,3,6,41
-us-gaap:ComprehensiveIncomeNetOfTax,Comprehensive Income Net Of Tax,,,,"29,830",,"16,764",,,,,,
-us-gaap:EffectiveIncomeTaxRateContinuingOperations,Effective Income Tax Rate Continuing Operations,,,,,0.1390,0.1360,13.5%,,,0.1530,0.1590,
-us-gaap:OtherComprehensiveIncomeAvailableforsaleSecuritiesAdjustmentNetOfTaxPortionAttributableToParent,Other Comprehensive Income Availableforsale Securities Adjustment Net Of Tax Portion Attributable To Parent,,,,80,,,,,,,,
-us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossAfterReclassificationAndTax,Other Comprehensive Income Loss Cash Flow Hedge Gain Loss After Reclassification And Tax,,,,-10,,15,,,,,,
-us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossBeforeReclassificationAfterTax,Other Comprehensive Income Loss Cash Flow Hedge Gain Loss Before Reclassification After Tax,,,,38,,23,,,,,,
-us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossReclassificationAfterTax,Other Comprehensive Income Loss Cash Flow Hedge Gain Loss Reclassification After Tax,,,,48,,8,,,,,,
-us-gaap:OtherComprehensiveIncomeLossNetOfTax,Other Comprehensive Income Loss Net Of Tax,,,,70,,165,,,,,,
-us-gaap:OtherComprehensiveIncomeLossReclassificationAdjustmentFromAOCIForSaleOfSecuritiesNetOfTax,Other Comprehensive Income Loss Reclassification Adjustment From A O C I For Sale Of Securities Net Of Tax,,,,0.0000,,,,,,,,
-us-gaap:OtherComprehensiveIncomeUnrealizedHoldingGainLossOnSecuritiesArisingDuringPeriodNetOfTax,Other Comprehensive Income Unrealized Holding Gain Loss On Securities Arising During Period Net Of Tax,,,,80,,150,,,,,,
-us-gaap:WeightedAverageNumberDilutedSharesOutstandingAdjustment,Weighted Average Number Diluted Shares Outstanding Adjustment,20,26,26,25,27,270,241,249,170,166,156,155
-,,,,,,,,,,,,,
-  NORMALIZED DETAIL BUCKETS,,,,,,,,,,,,,
-xbrl_concept / bucket,label,FY24Q1,FY24Q2,FY24Q3,FY24Q4,FY25Q1,FY25Q2,FY25Q3,FY25Q4,FY26Q1,FY26Q2,FY26Q3,FY26Q4
-revenue,← us-gaap:Revenues,"7,192","13,507","18,120","22,103","26,044","30,040","35,082","39,331","44,062","46,743","57,006","68,127"
-finance_div_revenue,← (not assigned),,,,,,,,,,,,
-insurance_div_revenue,← (not assigned),,,,,,,,,,,,
-other_revenue,← (not assigned),,,,,,,,,,,,
-cogs,← us-gaap:CostOfRevenue,"2,544","4,045","4,720","5,312","5,638","7,466","8,926","10,609","17,394","12,890","15,157","17,034"
-sga,← us-gaap:SellingGeneralAndAdministrativeExpense,633,622,689,710,777,842,897,975,"1,041","1,122","1,134","1,282"
-rd,← us-gaap:ResearchAndDevelopmentExpense,"1,875","2,040","2,294","2,466","2,720","3,090","3,390","3,714","3,989","4,291","4,705","5,512"
-dna,← (not assigned),,,,,,,,,,,,
-other_opex,← (not assigned),,,,,,,,,,,,
-interest_expense,"← us-gaap:InterestExpense, us-gaap:InterestExpenseNonoperating",66,65,63,63,64,61,61,61,63,62,61,73
-interest_income,← us-gaap:InvestmentIncomeInterest,150,187,234,295,359,444,472,511,515,592,624,569
-equity_affiliates,← (not assigned),,,,,,,,,,,,
-other_nonop,← us-gaap:OtherNonoperatingIncomeExpense,-15,59,-66,259,75,189,36,734,-180,"2,236","1,363","5,603"
-restructuring,← (not assigned),,,,,,,,,,,,
-goodwill_impairment,← (not assigned),,,,,,,,,,,,
-gain_sale_assets,← (not assigned),,,,,,,,,,,,
-gain_sale_investments,← (not assigned),,,,,,,,,,,,
-other_unusual,← nvda:BusinessCombinationAdvancedConsiderationWrittenOff,0.0000,0.0000,0.0000,0.0000,,,,0.0000,,,,
-tax,← us-gaap:IncomeTaxExpenseBenefit,166,793,"1,279","1,820","2,398","2,615","3,007","3,126","3,135","4,784","6,026","7,438"
-minority_interest,← (not assigned),,,,,,,,,,,,
-preferred_dividend,← (not assigned),,,,,,,,,,,,
-,,,,,,,,,,,,,
-  NORMALIZED SUBTOTALS (face-authoritative; recon_delta = components − face),,,,,,,,,,,,,
-xbrl_concept / bucket,label,FY24Q1,FY24Q2,FY24Q3,FY24Q4,FY25Q1,FY25Q2,FY25Q3,FY25Q4,FY26Q1,FY26Q2,FY26Q3,FY26Q4
-total_revenue,(value),"7,192","13,507","18,120","22,103","26,044","30,040","35,082","39,331","44,062","46,743","57,006","68,127"
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000
-gross_profit,(value),"4,648","9,462","13,400","16,791","20,406","22,574","26,156","28,722","26,668","33,853","41,849","51,093"
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),"5,088","8,090","9,440","10,624","11,276","14,932","17,852","21,218","34,788","25,780","30,314","34,068"
-total_opex,(value),"2,508","2,662","2,983","3,176","3,497","3,932","4,287","4,689","5,030","5,413","5,839","6,794"
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000
-operating_income,(value),"2,140","6,800","10,417","13,615","16,909","18,642","21,869","24,033","21,638","28,440","36,010","44,299"
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),"5,016","5,324","5,966","6,352","6,994","7,864","8,574","9,378","10,060","10,826","11,678","13,588"
-net_interest_expense,(value),216,252,297,358,423,505,533,572,578,654,685,642
-,(source),components,components,components,components,components,components,components,components,components,components,components,components
-ebt_excl_unusual,(value),"2,209","6,981","10,522","14,106","17,279","19,214","22,316","25,217","21,910","31,206","37,936","50,398"
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),132,130,126,126,128,122,122,122,126,124,122,146
-ebt_incl_unusual,(value),"2,209","6,981","10,522","14,106","17,279","19,214","22,316","25,217","21,910","31,206","37,936","50,398"
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000
-continuing_ops,(value),"2,375","7,774","11,801","15,926","19,677","21,829","25,323","28,343","25,045","35,990","43,962","57,836"
-,(source),components,components,components,components,components,components,components,components,components,components,components,components
-net_income,(value),"2,043","6,188","9,243","12,286","14,881","16,599","19,309","22,091","18,775","26,422","31,910","42,960"
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),332,"1,586","2,558","3,640","4,796","5,230","6,014","6,252","6,270","9,568","12,052","14,876"
-ni_common_incl_extra,(value),"2,043","6,188","9,243","12,286","14,881","16,599","19,309","22,091","18,775","26,422","31,910","42,960"
-,(source),components,components,components,components,components,components,components,components,components,components,components,components
-,,,,,,,,,,,,,
-"  AS-REPORTED FORMULA TIES (Stage 1 declared formulas, scoped per filing)",,,,,,,,,,,,,
-xbrl_concept / bucket,label,FY24Q1,FY24Q2,FY24Q3,FY24Q4,FY25Q1,FY25Q2,FY25Q3,FY25Q4,FY26Q1,FY26Q2,FY26Q3,FY26Q4
-  formula,us-gaap:GrossProfit = +us-gaap:Revenues -us-gaap:CostOfRevenue,,,,,,,,,,,,
-,  tie check,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK
-  formula,us-gaap:OperatingExpenses = +us-gaap:ResearchAndDevelopmentExpense +us-gaap:SellingGeneralAndAdministrativeExpense +nvda:BusinessCombinationAdvancedConsiderationWrittenOff,,,,,,,,,,,,
-,  tie check,OK,OK,OK,OK,,,,OK,,,,
-  formula,us-gaap:OperatingIncomeLoss = +us-gaap:GrossProfit -us-gaap:OperatingExpenses,,,,,,,,,,,,
-,  tie check,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK
-  formula,us-gaap:NonoperatingIncomeExpense = +us-gaap:InvestmentIncomeInterest -us-gaap:InterestExpense +us-gaap:OtherNonoperatingIncomeExpense,,,,,,,,,,,,
-,  tie check,OK,OK,OK,OK,OK,,,,,,,
-  formula,us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest = +us-gaap:OperatingIncomeLoss +us-gaap:NonoperatingIncomeExpense,,,,,,,,,,,,
-,  tie check,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK
-  formula,us-gaap:NetIncomeLoss = +us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest -us-gaap:IncomeTaxExpenseBenefit,,,,,,,,,,,,
-,  tie check,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK
-  formula,us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding = +us-gaap:WeightedAverageNumberOfSharesOutstandingBasic,,,,,,,,,,,,
-,  tie check,,Δ=-26,,Δ=-25,Δ=-27,Δ=-270,Δ=-241,Δ=-249,Δ=-170,Δ=-166,Δ=-156,Δ=-155
-  formula,us-gaap:OperatingExpenses = +us-gaap:ResearchAndDevelopmentExpense +us-gaap:SellingGeneralAndAdministrativeExpense,,,,,,,,,,,,
-,  tie check,,,,,OK,OK,OK,,OK,OK,OK,OK
-  formula,us-gaap:NonoperatingIncomeExpense = +us-gaap:InvestmentIncomeInterest -us-gaap:InterestExpenseNonoperating +us-gaap:OtherNonoperatingIncomeExpense,,,,,,,,,,,,
-,  tie check,,,,,,OK,OK,OK,OK,OK,OK,OK
-,,,,,,,,,,,,,
-── BALANCE SHEET (USD millions) ──,,,,,,,,,,,,,
-,,,,,,,,,,,,,
-"  AS-REPORTED ROWS (from Stage 1, merged by xbrl_concept)",,,,,,,,,,,,,
-xbrl_concept / bucket,label,FY24Q1,FY24Q2,FY24Q3,FY24Q4,FY25Q1,FY25Q2,FY25Q3,FY25Q4,FY26Q1,FY26Q2,FY26Q3,FY26Q4
-us-gaap:Assets,Total assets,"44,460","49,555","54,148","65,728","77,072","85,227","96,013","111,601","125,254","140,740","161,148","206,803"
-us-gaap:AssetsCurrent,Total current assets,"24,883","28,797","32,658","44,345","53,729","59,633","67,640","80,126","89,935","102,219","116,492","125,605"
-us-gaap:CommitmentsAndContingencies,Commitments And Contingencies | Commitments and contingencies,,,,,,,,0.0000,,0.0000,,0.0000
-us-gaap:Liabilities,Total liabilities,"19,940","22,054","20,883","22,750","27,930","27,070","30,114","32,274","41,411","40,609","42,251","49,510"
-us-gaap:LiabilitiesAndStockholdersEquity,Total liabilities and shareholders equity,"44,460","49,555","54,148","65,728","77,072","85,227","96,013","111,601","125,254","140,740","161,148","206,803"
-us-gaap:LiabilitiesCurrent,Total current liabilities,"7,260","10,334","9,101","10,631","15,223","13,969","16,479","18,047","26,542","24,257","26,075","32,163"
-us-gaap:StockholdersEquity,Stockholders Equity | Total shareholders equity,"24,520","27,501","33,265","42,978","49,142","58,157","65,899","79,327","83,843","100,131","118,897","157,293"
-us-gaap:AccountsPayableCurrent,Accounts payable,"1,141","1,929","2,380","2,699","2,715","3,680","5,353","6,310","7,331","9,064","8,624","9,812"
-us-gaap:AccountsReceivableNetCurrent,"Accounts receivable, net","4,080","7,066","8,309","9,999","12,365","14,132","17,693","23,065","22,132","27,808","33,391","38,466"
-us-gaap:AccruedLiabilitiesCurrent,Accrued and other current liabilities,"4,869","7,156","5,472","6,682","11,258","10,289","11,126","11,737","19,211","15,193","16,452","21,352"
-us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax,Accumulated other comprehensive income | Accumulated other comprehensive income (loss) | Accumulated other comprehensive loss,-50,-51,-88,27,-109,56,103,28,186,170,339,178
-us-gaap:AdditionalPaidInCapital,Additional paid-in capital,"12,453","12,629","12,991","13,132","12,651","12,115","11,821","11,237","11,475","11,200","10,626","10,118"
-us-gaap:CashAndCashEquivalentsAtCarryingValue,Cash and cash equivalents,"5,079","5,783","5,519","7,280","7,587","8,563","9,107","8,589","15,234","11,639","11,486","10,605"
-us-gaap:CommonStockValue,Common stock,2,2,2,2,2,25,25,24,24,24,24,24
-us-gaap:DebtCurrent,Short-term debt,"1,250","1,249","1,249","1,250","1,250",0.0000,0.0000,0.0000,,,999,999
-us-gaap:DeferredIncomeTaxAssetsNet,Deferred income tax assets,"4,568","5,398","5,982","6,081","7,798","9,578","10,276","10,979","13,318","13,570","13,674","13,258"
-us-gaap:Goodwill,Goodwill,"4,430","4,430","4,430","4,430","4,453","4,622","4,724","5,188","5,498","5,755","6,261","20,832"
-us-gaap:IntangibleAssetsNetExcludingGoodwill,"Intangible assets, net","1,541","1,395","1,251","1,112",986,952,838,807,769,755,936,"3,306"
-us-gaap:InventoryNet,Inventories,"4,611","4,319","4,779","5,282","5,864","6,675","7,654","10,080","11,333","14,962","19,784","21,403"
-us-gaap:LongTermDebtNoncurrent,Long-term debt,"9,704","8,456","8,457","8,459","8,460","8,461","8,462","8,463","8,464","8,466","7,468","7,469"
-us-gaap:MarketableSecuritiesCurrent,Marketable securities,"10,241","10,240","12,762","18,704","23,851","26,237","29,380","34,621","38,457","45,152","49,122",
-us-gaap:OperatingLeaseLiabilityNoncurrent,Long-term operating lease liabilities,939,"1,041","1,091","1,119","1,281","1,304","1,490","1,519","1,521","1,831","2,014","2,572"
-us-gaap:OperatingLeaseRightOfUseAsset,Operating lease assets,"1,094","1,235","1,316","1,346","1,532","1,556","1,755","1,793","1,810","2,084","2,281","2,867"
-us-gaap:OtherAssetsNoncurrent,Other assets,"4,204","4,501","4,667","4,500","4,568","4,001","5,437","6,425","6,788","7,216","11,724","8,301"
-us-gaap:OtherLiabilitiesNoncurrent,Other long-term liabilities,"2,037","2,223","2,234","2,541","2,966","3,336","3,683","4,245","4,884","6,055","6,694","7,306"
-us-gaap:PreferredStockValueOutstanding,Preferred stock,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000
-us-gaap:PrepaidExpenseAndOtherAssetsCurrent,Prepaid expenses and other current assets,872,"1,389","1,289","3,080","4,062","4,026","3,806","3,771","2,779","2,658","2,709","3,180"
-us-gaap:PropertyPlantAndEquipmentNet,"Property and equipment, net","3,740","3,799","3,844","3,914","4,006","4,885","5,343","6,283","7,136","9,141","9,780","10,383"
-us-gaap:RetainedEarningsAccumulatedDeficit,Retained earnings,"12,115","14,921","20,360","29,817","36,598","45,961","53,950","68,038","72,158","88,737","107,908","146,973"
-nvda:MarketableSecuritiesAndEquitySecuritiesFVNI,Marketable securities,,,,,,,,,,,,"51,951"
-,,,,,,,,,,,,,
-,  — Note detail (xbrl_not_on_statement) —,,,,,,,,,,,,
-nvda:AccruedCustomerProgramsCurrent,Accrued Customer Programs Current,"1,245","1,482","1,771","2,081","2,744","3,584","4,740","4,880","4,261","4,705","4,721","5,318"
-nvda:AccruedLicensesAndRoyalties,Accrued Licenses And Royalties,143,144,150,182,164,154,148,175,144,284,,
-nvda:AccruedShareRepurchaseLiabilityCurrent,Accrued Share Repurchase Liability Current,,217,117,187,262,130,180,132,306,185,,
-nvda:AggregateNumberOfSharesRepurchasedUnderStockRepurchasePlan,Aggregate Number Of Shares Repurchased Under Stock Repurchase Plan,"1,100",,,,,,,,,,,
-nvda:AggregatedCostOfSharesRepurchased,Aggregated Cost Of Shares Repurchased,"17,120",,,,,,,,,,,
-nvda:BusinessCombinationConsiderationPayable,Business Combination Consideration Payable,,,,,,,,,,,,"3,921"
-nvda:ContractWithCustomerLiabilityAdditions,Contract With Customer Liability Additions,,,,,,,,,,,,
-nvda:ContractWithCustomerLiabilityRevenueRecognizedIncludingOpeningBalance,Contract With Customer Liability Revenue Recognized Including Opening Balance,,,,,,,,,,,,
-nvda:ExcessInventoryPurchaseObligationsCurrent,Excess Inventory Purchase Obligations Current,786,870,"1,280","1,655","1,684","2,051","1,728","2,095","4,310","3,154","2,770","2,739"
-nvda:FiniteLivedIntangibleAssetsAmortizationExpenseAfterYearFour,Finite Lived Intangible Assets Amortization Expense After Year Four,109,,109,,,,,,,,,
-nvda:InventoryPurchaseObligationExceedingDemandProjectionsCancellationsAndPenaltiesExpense,Inventory Purchase Obligation Exceeding Demand Projections Cancellations And Penalties Expense,,,,,,,,,,,,
-nvda:LesseeOperatingLeaseLeaseNotYetCommencedUndiscountedAmount,Lessee Operating Lease Lease Not Yet Commenced Undiscounted Amount,361,,924,,,,,,,,,
-nvda:LesseeOperatingLeaseLiabilityPaymentsDueAfterYearFour,Lessee Operating Lease Liability Payments Due After Year Four,357,,454,,,,,,,,,
-nvda:LicensesPayableNoncurrent,Licenses Payable Noncurrent,155,127,113,80,60,,,116,112,325,,
-nvda:NotionalAmountOfFXForwardContractNonDesignatedAsHedge,Notional Amount Of F X Forward Contract Non Designated As Hedge,350,,,,,,,,,,,
-nvda:NotionalAmountOfForeignExchangeForwardContractDesignatedAsHedge,Notional Amount Of Foreign Exchange Forward Contract Designated As Hedge,"1,142",,,,,,,,,,,
-nvda:PrepaidCloudServices,Prepaid Cloud Services,171,170,60,,,,,,,,,
-nvda:PrepaidRoyaltiesNoncurrent,Prepaid Royalties Noncurrent,381,375,369,364,358,352,346,340,334,327,,
-nvda:PrepaidSupplyAgreementsNoncurrent,Prepaid Supply Agreements Noncurrent,"3,002","3,008",,,,,,,,,,
-nvda:PrepaidSupplyAndCapacityAgreementsNoncurrent,Prepaid Supply And Capacity Agreements Noncurrent,,,"2,927","2,458","2,232","1,313","2,041","1,747","2,079","1,776","1,536",
-nvda:PrepaidTaxesNoncurrent,Prepaid Taxes Noncurrent,,,,,,331,,,,,,
-nvda:ProductWarrantyAccrualsAndReturnProvisionsCurrent,Product Warranty Accruals And Return Provisions Current,112,168,299,,643,868,"1,107","1,373","2,168","2,245",,
-nvda:ProductWarrantyAccrualsCurrent,Product Warranty Accruals Current,,,,,,,,,,,"2,707",
-nvda:ProductWarrantyAndReturnProvisions,Product Warranty And Return Provisions,,,,415,,,,,,,,
-nvda:PurchaseObligationAndOtherCommitments,Purchase Obligation And Other Commitments,,,"4,430",,,,,,,,,
-nvda:PurchaseObligationInventoryPurchaseAndSupplyAgreements,Purchase Obligation Inventory Purchase And Supply Agreements,"7,270",,,,,,,,,,,
-nvda:PurchaseObligationInventoryPurchaseAndSupplyAndCapacityCommitmentRemainingMinimumAmountsCommitted,Purchase Obligation Inventory Purchase And Supply And Capacity Commitment Remaining Minimum Amounts Committed,,,"17,110",,,,,,,,,
-nvda:PurchaseObligationToBePaidAfterYearFour,Purchase Obligation To Be Paid After Year Four,255,,354,,,,,,,,,
-nvda:StockRepurchaseProgramAdditionalNumberOfSharesAuthorizedToBeRepurchased,Stock Repurchase Program Additional Number Of Shares Authorized To Be Repurchased,,,,,,,,,,,,
-nvda:UnrecognizedTaxBenefitsInterestOnIncomeTaxesReversed,Unrecognized Tax Benefits Interest On Income Taxes Reversed,,,,,,,,,,,,
-us-gaap:AccruedIncomeTaxesNoncurrent,Accrued Income Taxes Noncurrent,"1,300","1,350","1,206","1,361","1,553","1,670","1,945","2,188","2,509","3,081","3,532","3,958"
-us-gaap:AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment,Accumulated Depreciation Depletion And Amortization Property Plant And Equipment,,,,"3,509",,,,"4,401",,,,"6,587"
-us-gaap:AdjustmentsRelatedToTaxWithholdingForShareBasedCompensation,Adjustments Related To Tax Withholding For Share Based Compensation,,,,,,,,,,,,
-us-gaap:AdjustmentsToAdditionalPaidInCapitalSharebasedCompensationRequisiteServicePeriodRecognitionValue,Adjustments To Additional Paid In Capital Sharebased Compensation Requisite Service Period Recognition Value,,,,,,,,,,,,
-us-gaap:AmortizationOfIntangibleAssets,Amortization Of Intangible Assets,,,,,,,,,,,,
-us-gaap:AvailableForSaleDebtSecuritiesAccumulatedGrossUnrealizedGainBeforeTax,Available For Sale Debt Securities Accumulated Gross Unrealized Gain Before Tax,7,,2,,,,,,,,,
-us-gaap:AvailableForSaleDebtSecuritiesAccumulatedGrossUnrealizedLossBeforeTax,Available For Sale Debt Securities Accumulated Gross Unrealized Loss Before Tax,43,,49,,,,,,,,,
-us-gaap:AvailableForSaleDebtSecuritiesAmortizedCostBasis,Available For Sale Debt Securities Amortized Cost Basis,"15,107",,"18,111",,,,,,,,,
-us-gaap:AvailableForSaleSecuritiesDebtMaturitiesAfterOneThroughFiveYearsAmortizedCost,Available For Sale Securities Debt Maturities After One Through Five Years Amortized Cost,"2,453",,"6,706",,,,,,,,,
-us-gaap:AvailableForSaleSecuritiesDebtMaturitiesAfterOneThroughFiveYearsFairValue,Available For Sale Securities Debt Maturities After One Through Five Years Fair Value,"2,446",,"6,676",,,,,,,,,
-us-gaap:AvailableForSaleSecuritiesDebtMaturitiesWithinOneYearAmortizedCost,Available For Sale Securities Debt Maturities Within One Year Amortized Cost,"12,654",,"11,405",,,,,,,,,
-us-gaap:AvailableForSaleSecuritiesDebtMaturitiesWithinOneYearFairValue,Available For Sale Securities Debt Maturities Within One Year Fair Value,"12,625",,"11,388",,,,,,,,,
-us-gaap:AvailableForSaleSecuritiesDebtSecurities,Available For Sale Securities Debt Securities,"15,071",,"18,064",,,,,,,,,
-us-gaap:CashEquivalentsAtCarryingValue,Cash Equivalents At Carrying Value,"4,830",,"5,302",,,,,,,,,
-us-gaap:CommercialPaper,Commercial Paper,0.0000,,,,,,,,,,,
-us-gaap:CommonStockDividendsPerShareDeclared,Common Stock Dividends Per Share Declared,,,,,,,,,,,,
-us-gaap:CommonStockParOrStatedValuePerShare,Common Stock Par Or Stated Value Per Share,,,,0.0010,,,,0.0010,,,,0.0010
-us-gaap:CommonStockSharesAuthorized,Common Stock Shares Authorized,,,,"8,000",,,,"80,000",,,,"80,000"
-us-gaap:CommonStockSharesIssued,Common Stock Shares Issued,,,,"2,464",,,,"24,477",,,,"24,304"
-us-gaap:CommonStockSharesOutstanding,Common Stock Shares Outstanding,,,,"2,464",,,,"24,477",,,,"24,304"
-us-gaap:ComprehensiveIncomeNetOfTax,Comprehensive Income Net Of Tax,,,,,,,,,,,,
-us-gaap:ContractWithCustomerLiability,Contract With Customer Liability,,,,,"1,549",,,,,,,
-us-gaap:ContractWithCustomerLiabilityCurrent,Contract With Customer Liability Current,367,421,513,764,845,948,752,837,"1,074",980,"1,248","1,379"
-us-gaap:ContractWithCustomerLiabilityNoncurrent,Contract With Customer Liability Noncurrent,230,308,425,573,704,773,833,976,"1,004","1,055","1,165","1,193"
-us-gaap:DebtInstrumentUnamortizedDiscountPremiumAndDebtIssuanceCostsNet,Debt Instrument Unamortized Discount Premium And Debt Issuance Costs Net,46,45,44,,40,39,,,36,34,33,
-us-gaap:DebtSecuritiesAvailableForSaleContinuousUnrealizedLossPosition12MonthsOrLonger,Debt Securities Available For Sale Continuous Unrealized Loss Position12 Months Or Longer,"1,944",,"2,223",,,,,,,,,
-us-gaap:DebtSecuritiesAvailableForSaleContinuousUnrealizedLossPosition12MonthsOrLongerAccumulatedLoss,Debt Securities Available For Sale Continuous Unrealized Loss Position12 Months Or Longer Accumulated Loss,27,,16,,,,,,,,,
-us-gaap:DebtSecuritiesAvailableForSaleContinuousUnrealizedLossPositionLessThan12Months,Debt Securities Available For Sale Continuous Unrealized Loss Position Less Than12 Months,"3,805",,"6,318",,,,,,,,,
-us-gaap:DebtSecuritiesAvailableForSaleContinuousUnrealizedLossPositionLessThan12MonthsAccumulatedLoss,Debt Securities Available For Sale Continuous Unrealized Loss Position Less Than12 Months Accumulated Loss,16,,33,,,,,,,,,
-us-gaap:DebtSecuritiesAvailableForSaleUnrealizedLossPosition,Debt Securities Available For Sale Unrealized Loss Position,"5,749",,"8,541",,,,,,,,,
-us-gaap:DebtSecuritiesAvailableForSaleUnrealizedLossPositionAccumulatedLoss,Debt Securities Available For Sale Unrealized Loss Position Accumulated Loss,43,,49,,,,,,,,,
-us-gaap:DeferredIncomeTaxLiabilities,Deferred Income Tax Liabilities,,,,,,,,,,,,"4,611"
-us-gaap:DeferredIncomeTaxLiabilitiesNet,Deferred Income Tax Liabilities Net,290,373,424,462,583,697,790,886,"1,082","1,351","1,621","1,774"
-us-gaap:DeferredTaxAssetsGross,Deferred Tax Assets Gross,,,,,,,,,,,,"16,863"
-us-gaap:DeferredTaxAssetsLiabilitiesNet,Deferred Tax Assets Liabilities Net,,,,,,,,,,,,"11,484"
-us-gaap:DeferredTaxAssetsNet,Deferred Tax Assets Net,,,,,,,,,,,,"16,095"
-us-gaap:DeferredTaxAssetsValuationAllowance,Deferred Tax Assets Valuation Allowance,,,,,,,,,,,,768
-us-gaap:DividendsCommonStockCash,Dividends Common Stock Cash,,,,,,,,,,,,
-us-gaap:EffectiveIncomeTaxRateContinuingOperations,Effective Income Tax Rate Continuing Operations,,,,,,,,,,,,
-us-gaap:EmployeeRelatedLiabilitiesCurrent,Employee Related Liabilities Current,320,642,516,675,639,941,677,848,748,"1,227",895,"1,146"
-us-gaap:EmployeeServiceShareBasedCompensationNonvestedAwardsTotalCompensationCostNotYetRecognized,Employee Service Share Based Compensation Nonvested Awards Total Compensation Cost Not Yet Recognized,"6,550",,"9,030",,,,,,,,,
-us-gaap:EquitySecuritiesFVNINoncurrent,Equity Securities F V N I Noncurrent | Non-marketable equity securities,,,,,,"1,819","2,237","3,387","3,240","3,799","8,187","22,251"
-us-gaap:EquitySecuritiesFvNiUnrealizedLoss,Equity Securities Fv Ni Unrealized Loss,,,,,,,,,,,,
-us-gaap:EquitySecuritiesWithoutReadilyDeterminableFairValueAmount,Equity Securities Without Readily Determinable Fair Value Amount,,,,,,,,,,"3,799",,
-us-gaap:FiniteLivedIntangibleAssetsAccumulatedAmortization,Finite Lived Intangible Assets Accumulated Amortization,"2,031","1,700","1,841",,"2,104","2,242","2,391",,,"2,772","2,751","2,878"
-us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseNextTwelveMonths,Finite Lived Intangible Assets Amortization Expense Next Twelve Months,554,,554,,,,,,,,,
-us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseRemainderOfFiscalYear,Finite Lived Intangible Assets Amortization Expense Remainder Of Fiscal Year,433,,143,,,,,,,,,
-us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseYearFour,Finite Lived Intangible Assets Amortization Expense Year Four,37,,37,,,,,,,,,
-us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseYearThree,Finite Lived Intangible Assets Amortization Expense Year Three,149,,149,,,,,,,,,
-us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseYearTwo,Finite Lived Intangible Assets Amortization Expense Year Two,259,,259,,,,,,,,,
-us-gaap:FiniteLivedIntangibleAssetsGross,Finite Lived Intangible Assets Gross,"3,572","3,095","3,092",,"3,090","3,194","3,229",,,"3,527","3,687","6,184"
-us-gaap:FiniteLivedIntangibleAssetsNet,Finite Lived Intangible Assets Net,"1,541",,"1,251",,,,,,,755,,"3,306"
-us-gaap:GoodwillPeriodIncreaseDecrease,Goodwill Period Increase Decrease,,,,,,,,,,,,
-us-gaap:IncomeTaxExaminationIncreaseDecreaseInLiabilityFromPriorYear,Income Tax Examination Increase Decrease In Liability From Prior Year,,,-108,,,,,,,,,
-us-gaap:IncomeTaxesReceivableNoncurrent,Income Taxes Receivable Noncurrent,,,,,,,568,750,895,"1,042","1,369",
-us-gaap:InventoryFinishedGoodsNetOfReserves,Inventory Finished Goods Net Of Reserves,"1,872","1,629","1,778","2,058","2,248","2,669","2,927","3,273","3,469","8,708","6,840","8,774"
-us-gaap:InventoryRawMaterialsNetOfReserves,Inventory Raw Materials Net Of Reserves,"1,809","1,632","1,663","1,719","1,991","1,895","1,846","3,408","2,525","1,843","4,209","3,807"
-us-gaap:InventoryWorkInProcessNetOfReserves,Inventory Work In Process Net Of Reserves,930,"1,058","1,338","1,505","1,625","2,111","2,881","3,399","5,339","4,411","8,735","8,822"
-us-gaap:InventoryWriteDown,Inventory Write Down,,,,,,,,,,,,
-us-gaap:LesseeOperatingLeaseLiabilityPaymentsDue,Lessee Operating Lease Liability Payments Due,"1,288",,"1,508",,,,,,,,,
-us-gaap:LesseeOperatingLeaseLiabilityPaymentsDueNextTwelveMonths,Lessee Operating Lease Liability Payments Due Next Twelve Months,218,,269,,,,,,,,,
-us-gaap:LesseeOperatingLeaseLiabilityPaymentsDueYearFour,Lessee Operating Lease Liability Payments Due Year Four,159,,220,,,,,,,,,
-us-gaap:LesseeOperatingLeaseLiabilityPaymentsDueYearThree,Lessee Operating Lease Liability Payments Due Year Three,180,,233,,,,,,,,,
-us-gaap:LesseeOperatingLeaseLiabilityPaymentsDueYearTwo,Lessee Operating Lease Liability Payments Due Year Two,196,,248,,,,,,,,,
-us-gaap:LesseeOperatingLeaseLiabilityPaymentsRemainderOfFiscalYear,Lessee Operating Lease Liability Payments Remainder Of Fiscal Year,178,,84,,,,,,,,,
-us-gaap:LesseeOperatingLeaseLiabilityUndiscountedExcessAmount,Lessee Operating Lease Liability Undiscounted Excess Amount,162,,187,,,,,,,,,
-us-gaap:LongTermDebt,Long Term Debt,"10,954","9,705","9,706",,"9,710","8,461",,"8,463","8,464","8,466","8,467","8,468"
-us-gaap:LongTermDebtCurrent,Long Term Debt Current,"1,250","1,249","1,249",,"1,250",0.0000,,0.0000,,,999,999
-us-gaap:MarketableSecurities,Marketable Securities,"10,241",,"12,762",,,,,,,,,
-us-gaap:NoncurrentAssets,Noncurrent Assets,,,,,,,,,,,,"10,383"
-us-gaap:NumberOfReportableSegments,Number Of Reportable Segments,,,,,,,,,,,,
-us-gaap:OperatingLeaseCost,Operating Lease Cost,,,,,,,,,,,,
-us-gaap:OperatingLeaseLiability,Operating Lease Liability,"1,126","1,249","1,321","1,347","1,527","1,554",,,,"2,132","2,355","2,944"
-us-gaap:OperatingLeaseLiabilityCurrent,Operating Lease Liability Current,187,208,230,228,246,250,273,288,300,301,341,372
-us-gaap:OperatingLeasePayments,Operating Lease Payments,,,,,,,,,,,,
-us-gaap:OperatingLeaseWeightedAverageDiscountRatePercent,Operating Lease Weighted Average Discount Rate Percent,0.0333,,0.0364,,,,,,,,,
-us-gaap:OtherAccruedLiabilitiesCurrent,Other Accrued Liabilities Current,165,201,176,199,150,190,165,228,228,202,"1,196","1,373"
-us-gaap:OtherAssetsMiscellaneousNoncurrent,Other Assets Miscellaneous Noncurrent,145,148,139,132,228,186,245,201,240,272,632,
-us-gaap:OtherCommitment,Other Commitment,"3,260",,,,,,,,,,,
-us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossAfterReclassificationAndTax,Other Comprehensive Income Loss Cash Flow Hedge Gain Loss After Reclassification And Tax,,,,,,,,,,,,
-us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossBeforeReclassificationAfterTax,Other Comprehensive Income Loss Cash Flow Hedge Gain Loss Before Reclassification After Tax,,,,,,,,,,,,
-us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossReclassificationAfterTax,Other Comprehensive Income Loss Cash Flow Hedge Gain Loss Reclassification After Tax,,,,,,,,,,,,
-us-gaap:OtherComprehensiveIncomeLossNetOfTax,Other Comprehensive Income Loss Net Of Tax,,,,,,,,,,,,
-us-gaap:OtherComprehensiveIncomeUnrealizedHoldingGainLossOnSecuritiesArisingDuringPeriodNetOfTax,Other Comprehensive Income Unrealized Holding Gain Loss On Securities Arising During Period Net Of Tax,,,,,,,,,,,,
-us-gaap:OtherLongTermInvestments,Other Long Term Investments,505,800,"1,172","1,546","1,750",,,,,,,
-us-gaap:OtherSundryLiabilitiesNoncurrent,Other Sundry Liabilities Noncurrent,62,65,66,65,66,196,115,79,177,243,376,381
-us-gaap:PreferredStockParOrStatedValuePerShare,Preferred Stock Par Or Stated Value Per Share,,,,0.0010,,,,0.0010,,,,0.0010
-us-gaap:PreferredStockSharesAuthorized,Preferred Stock Shares Authorized,,,,2,,,,20,,,,2
-us-gaap:PreferredStockSharesIssued,Preferred Stock Shares Issued,,,,0.0000,,,,0.0000,,,,0.0000
-us-gaap:ProductWarrantyAccrual,Product Warranty Accrual,77,,142,,,,,,,,,
-us-gaap:ProductWarrantyAccrualClassifiedCurrent,Product Warranty Accrual Classified Current,,,,,,,,,,,,"2,807"
-us-gaap:ProductWarrantyAccrualPayments,Product Warranty Accrual Payments,,,,,,,,,,,,
-us-gaap:ProductWarrantyAccrualWarrantiesIssued,Product Warranty Accrual Warranties Issued,,,,,,,,,,,,
-us-gaap:PropertyPlantAndEquipmentGross,Property Plant And Equipment Gross,,,,"7,423",,,,"10,684",,,,"16,970"
-us-gaap:PurchaseObligation,Purchase Obligation,"10,527",,"21,540",,,,,,,,,
-us-gaap:PurchaseObligationDueInFourthYear,Purchase Obligation Due In Fourth Year,332,,660,,,,,,,,,
-us-gaap:PurchaseObligationDueInNextTwelveMonths,Purchase Obligation Due In Next Twelve Months,"1,816",,"11,861",,,,,,,,,
-us-gaap:PurchaseObligationDueInSecondYear,Purchase Obligation Due In Second Year,753,,"1,128",,,,,,,,,
-us-gaap:PurchaseObligationDueInThirdYear,Purchase Obligation Due In Third Year,704,,"1,038",,,,,,,,,
-us-gaap:PurchaseObligationFutureMinimumPaymentsRemainderOfFiscalYear,Purchase Obligation Future Minimum Payments Remainder Of Fiscal Year,"6,667",,"6,499",,,,,,,,,
-us-gaap:RestrictedCashCurrent,Restricted Cash Current,,99,,,,,,,,,,
-us-gaap:RevenueRemainingPerformanceObligation,Revenue Remaining Performance Obligation,639,,896,,,,,,,,,
-us-gaap:RightOfUseAssetObtainedInExchangeForOperatingLeaseLiability,Right Of Use Asset Obtained In Exchange For Operating Lease Liability,,,,,,,,,,,,
-us-gaap:StockIssuedDuringPeriodValueEmployeeStockOwnershipPlan,Stock Issued During Period Value Employee Stock Ownership Plan,,,,,,,,,,,,
-us-gaap:StockRepurchaseProgramAuthorizedAmount1,Stock Repurchase Program Authorized Amount1,,,"25,240",,,,,,,,,
-us-gaap:StockRepurchaseProgramRemainingAuthorizedRepurchaseAmount1,Stock Repurchase Program Remaining Authorized Repurchase Amount1,"7,230",,,,,,,,,,,
-us-gaap:StockRepurchasedAndRetiredDuringPeriodShares,Stock Repurchased And Retired During Period Shares,,,,,,,,,,,,
-us-gaap:StockRepurchasedAndRetiredDuringPeriodValue,Stock Repurchased And Retired During Period Value,,,,,,,,,,,,
-us-gaap:TaxesPayableCurrent,Taxes Payable Current,"1,544","2,803",420,296,"3,881","1,173","1,356",881,"5,672","1,910","2,915","2,669"
-us-gaap:UnrecognizedTaxBenefits,Unrecognized Tax Benefits,,,145,,,,,,,,,
-us-gaap:UnrecognizedTaxBenefitsDecreasesResultingFromSettlementsWithTaxingAuthorities,Unrecognized Tax Benefits Decreases Resulting From Settlements With Taxing Authorities,,,,,,,,,,,,
-,,,,,,,,,,,,,
-  NORMALIZED DETAIL BUCKETS,,,,,,,,,,,,,
-xbrl_concept / bucket,label,FY24Q1,FY24Q2,FY24Q3,FY24Q4,FY25Q1,FY25Q2,FY25Q3,FY25Q4,FY26Q1,FY26Q2,FY26Q3,FY26Q4
-cash,← us-gaap:CashAndCashEquivalentsAtCarryingValue,"5,079","5,783","5,519","7,280","7,587","8,563","9,107","8,589","15,234","11,639","11,486","10,605"
-sti,"← us-gaap:MarketableSecuritiesCurrent, nvda:MarketableSecuritiesAndEquitySecuritiesFVNI","10,241","10,240","12,762","18,704","23,851","26,237","29,380","34,621","38,457","45,152","49,122","51,951"
-trading_securities,← (not assigned),,,,,,,,,,,,
-accounts_receivable,← us-gaap:AccountsReceivableNetCurrent,"4,080","7,066","8,309","9,999","12,365","14,132","17,693","23,065","22,132","27,808","33,391","38,466"
-other_receivables,← (not assigned),,,,,,,,,,,,
-inventory,← us-gaap:InventoryNet,"4,611","4,319","4,779","5,282","5,864","6,675","7,654","10,080","11,333","14,962","19,784","21,403"
-restricted_cash,← (not assigned),,,,,,,,,,,,
-prepaid_expenses,← us-gaap:PrepaidExpenseAndOtherAssetsCurrent,872,"1,389","1,289","3,080","4,062","4,026","3,806","3,771","2,779","2,658","2,709","3,180"
-other_current_assets,← (not assigned),,,,,,,,,,,,
-net_ppe,← us-gaap:PropertyPlantAndEquipmentNet,"3,740","3,799","3,844","3,914","4,006","4,885","5,343","6,283","7,136","9,141","9,780","10,383"
-long_term_investments,← (not assigned),,,,,,,,,,,,
-goodwill,← us-gaap:Goodwill,"4,430","4,430","4,430","4,430","4,453","4,622","4,724","5,188","5,498","5,755","6,261","20,832"
-other_intangibles,← us-gaap:IntangibleAssetsNetExcludingGoodwill,"1,541","1,395","1,251","1,112",986,952,838,807,769,755,936,"3,306"
-loans_receivable_lt,← (not assigned),,,,,,,,,,,,
-deferred_tax_assets_lt,← us-gaap:DeferredIncomeTaxAssetsNet,"4,568","5,398","5,982","6,081","7,798","9,578","10,276","10,979","13,318","13,570","13,674","13,258"
-deferred_charges_lt,← (not assigned),,,,,,,,,,,,
-other_lt_assets,"← us-gaap:OperatingLeaseRightOfUseAsset, us-gaap:OtherAssetsNoncurrent","5,298","5,736","5,983","5,846","6,100","5,557","7,192","8,218","8,598","9,300","14,005","11,168"
-accounts_payable,← us-gaap:AccountsPayableCurrent,"1,141","1,929","2,380","2,699","2,715","3,680","5,353","6,310","7,331","9,064","8,624","9,812"
-accrued_expenses,← us-gaap:AccruedLiabilitiesCurrent,"4,869","7,156","5,472","6,682","11,258","10,289","11,126","11,737","19,211","15,193","16,452","21,352"
-current_portion_lt_debt,← us-gaap:DebtCurrent,"1,250","1,249","1,249","1,250","1,250",0.0000,0.0000,0.0000,,,999,999
-current_portion_leases,← us-gaap:OperatingLeaseLiabilityCurrent,187,208,230,228,246,250,273,288,300,301,341,372
-current_income_taxes_payable,← (not assigned),,,,,,,,,,,,
-unearned_revenue_current,← us-gaap:ContractWithCustomerLiabilityCurrent,367,421,513,764,845,948,752,837,"1,074",980,"1,248","1,379"
-other_current_liabilities,← (not assigned),,,,,,,,,,,,
-long_term_debt,← us-gaap:LongTermDebtNoncurrent,"9,704","8,456","8,457","8,459","8,460","8,461","8,462","8,463","8,464","8,466","7,468","7,469"
-long_term_leases,← us-gaap:OperatingLeaseLiabilityNoncurrent,939,"1,041","1,091","1,119","1,281","1,304","1,490","1,519","1,521","1,831","2,014","2,572"
-unearned_revenue_nc,← us-gaap:ContractWithCustomerLiabilityNoncurrent,230,308,425,573,704,773,833,976,"1,004","1,055","1,165","1,193"
-deferred_tax_liability_nc,← us-gaap:DeferredIncomeTaxLiabilitiesNet,290,373,424,462,583,697,790,886,"1,082","1,351","1,621","1,774"
-other_nc_liabilities,← us-gaap:OtherLiabilitiesNoncurrent,"2,037","2,223","2,234","2,541","2,966","3,336","3,683","4,245","4,884","6,055","6,694","7,306"
-common_stock,"← us-gaap:CommonStockValue, us-gaap:PreferredStockValueOutstanding",2,2,2,2,2,25,25,24,24,24,24,24
-apic,← us-gaap:AdditionalPaidInCapital,"12,453","12,629","12,991","13,132","12,651","12,115","11,821","11,237","11,475","11,200","10,626","10,118"
-retained_earnings,← us-gaap:RetainedEarningsAccumulatedDeficit,"12,115","14,921","20,360","29,817","36,598","45,961","53,950","68,038","72,158","88,737","107,908","146,973"
-treasury_stock,← (not assigned),,,,,,,,,,,,
-comprehensive_income_other,← us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax,-50,-51,-88,27,-109,56,103,28,186,170,339,178
-noncontrolling_interest,← (not assigned),,,,,,,,,,,,
-,,,,,,,,,,,,,
-  NORMALIZED SUBTOTALS (face-authoritative; recon_delta = components − face),,,,,,,,,,,,,
-xbrl_concept / bucket,label,FY24Q1,FY24Q2,FY24Q3,FY24Q4,FY25Q1,FY25Q2,FY25Q3,FY25Q4,FY26Q1,FY26Q2,FY26Q3,FY26Q4
-total_cash_sti,(value),"15,320","16,023","18,281","25,984","31,438","34,800","38,487","43,210","53,691","56,791","60,608","62,556"
-,(source),components,components,components,components,components,components,components,components,components,components,components,components
-total_receivables,(value),"4,080","7,066","8,309","9,999","12,365","14,132","17,693","23,065","22,132","27,808","33,391","38,466"
-,(source),components,components,components,components,components,components,components,components,components,components,components,components
-total_current_assets,(value),"24,883","28,797","32,658","44,345","53,729","59,633","67,640","80,126","89,935","102,219","116,492","125,605"
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000
-total_assets,(value),"44,460","49,555","54,148","65,728","77,072","85,227","96,013","111,601","125,254","140,740","161,148","206,803"
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,"-22,251"
-total_current_liabilities,(value),"7,260","10,334","9,101","10,631","15,223","13,969","16,479","18,047","26,542","24,257","26,075","32,163"
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000
-total_liabilities,(value),"19,940","22,054","20,883","22,750","27,930","27,070","30,114","32,274","41,411","40,609","42,251","49,510"
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000
-common_equity,(value),"24,520","27,501","33,265","42,978","49,142","58,157","65,899","79,327","83,843","100,131","118,897","157,293"
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000
-total_equity,(value),"24,520","27,501","33,265","42,978","49,142","58,157","65,899","79,327","83,843","100,131","118,897","157,293"
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000
-total_liabilities_and_equity,(value),"44,460","49,555","54,148","65,728","77,072","85,227","96,013","111,601","125,254","140,740","161,148","206,803"
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000
-,,,,,,,,,,,,,
-"  AS-REPORTED FORMULA TIES (Stage 1 declared formulas, scoped per filing)",,,,,,,,,,,,,
-xbrl_concept / bucket,label,FY24Q1,FY24Q2,FY24Q3,FY24Q4,FY25Q1,FY25Q2,FY25Q3,FY25Q4,FY26Q1,FY26Q2,FY26Q3,FY26Q4
-  formula,us-gaap:AssetsCurrent = +us-gaap:CashAndCashEquivalentsAtCarryingValue +us-gaap:MarketableSecuritiesCurrent +us-gaap:AccountsReceivableNetCurrent +us-gaap:InventoryNet +us-gaap:PrepaidExpenseAndOtherAssetsCurrent,,,,,,,,,,,,
-,  tie check,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK,
-  formula,us-gaap:Assets = +us-gaap:AssetsCurrent +us-gaap:PropertyPlantAndEquipmentNet +us-gaap:OperatingLeaseRightOfUseAsset +us-gaap:Goodwill +us-gaap:IntangibleAssetsNetExcludingGoodwill +us-gaap:OtherAssetsNoncurrent +us-gaap:DeferredIncomeTaxAssetsNet,,,,,,,,,,,,
-,  tie check,OK,,,,,,,,,,,
-  formula,us-gaap:LiabilitiesCurrent = +us-gaap:AccountsPayableCurrent +us-gaap:AccruedLiabilitiesCurrent,,,,,,,,,,,,
-,  tie check,"Δ=-1,250","Δ=-1,249","Δ=-1,249","Δ=-1,250","Δ=-1,250",OK,OK,OK,OK,OK,Δ=-999,Δ=-999
-  formula,us-gaap:Liabilities = +us-gaap:LiabilitiesCurrent,,,,,,,,,,,,
-,  tie check,"Δ=-12,680","Δ=-11,720","Δ=-11,782","Δ=-12,119","Δ=-12,707","Δ=-13,101","Δ=-13,635","Δ=-14,227","Δ=-14,869","Δ=-16,352","Δ=-16,176","Δ=-17,347"
-  formula,us-gaap:StockholdersEquity = +us-gaap:PreferredStockValueOutstanding +us-gaap:CommonStockValue +us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax +us-gaap:RetainedEarningsAccumulatedDeficit,,,,,,,,,,,,
-,  tie check,"Δ=-12,453","Δ=-12,629","Δ=-12,991","Δ=-13,132","Δ=-12,651","Δ=-12,115","Δ=-11,821","Δ=-11,237","Δ=-11,475","Δ=-11,200","Δ=-10,626","Δ=-10,118"
-  formula,us-gaap:LiabilitiesAndStockholdersEquity = +us-gaap:Liabilities +us-gaap:StockholdersEquity,,,,,,,,,,,,
-,  tie check,OK,OK,OK,OK,OK,OK,OK,,OK,,OK,
-  formula,us-gaap:Assets = +us-gaap:AssetsCurrent +us-gaap:PropertyPlantAndEquipmentNet +us-gaap:OperatingLeaseRightOfUseAsset +us-gaap:Goodwill +us-gaap:IntangibleAssetsNetExcludingGoodwill +us-gaap:DeferredIncomeTaxAssetsNet +us-gaap:OtherAssetsNoncurrent,,,,,,,,,,,,
-,  tie check,,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK,"Δ=-22,251"
-  formula,us-gaap:LiabilitiesAndStockholdersEquity = +us-gaap:Liabilities +us-gaap:CommitmentsAndContingencies +us-gaap:StockholdersEquity,,,,,,,,,,,,
-,  tie check,,,,,,,,OK,,OK,,OK
-  formula,us-gaap:AssetsCurrent = +us-gaap:CashAndCashEquivalentsAtCarryingValue +nvda:MarketableSecuritiesAndEquitySecuritiesFVNI +us-gaap:AccountsReceivableNetCurrent +us-gaap:InventoryNet +us-gaap:PrepaidExpenseAndOtherAssetsCurrent,,,,,,,,,,,,
-,  tie check,,,,,,,,,,,,OK
-,,,,,,,,,,,,,
-── CASH FLOW (USD millions) ──,,,,,,,,,,,,,
-,,,,,,,,,,,,,
-"  AS-REPORTED ROWS (from Stage 1, merged by xbrl_concept)",,,,,,,,,,,,,
-xbrl_concept / bucket,label,FY24Q1,FY24Q2,FY24Q3,FY24Q4,FY25Q1,FY25Q2,FY25Q3,FY25Q4,FY26Q1,FY26Q2,FY26Q3,FY26Q4
-us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents,"Cash and cash equivalents at beginning of period | Cash and cash equivalents at end of period | Cash, cash equivalents, and restricted cash at beginning of period | Cash, cash equivalents, and restricted cash at end of period | Total cash, cash equivalents, and restricted cash | Total cash, cash equivalents, and restricted cash (reconciliation)","3,389","3,389",,"7,280",,,,"7,280","8,589",,,"10,605"
-us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect,"Change in cash and cash equivalents | Change in cash, cash equivalents, and restricted cash","1,690","2,493","2,130","3,891",307,"1,291","1,827","1,309","6,645","3,050","2,897","2,016"
-us-gaap:NetCashProvidedByUsedInFinancingActivities,Net cash provided by (used in) financing activities | Net cash used in financing activities,-380,"-5,479","-10,004","-13,633","-9,345","-19,665","-32,410","-42,359","-15,553","-27,386","-42,266","-48,474"
-us-gaap:NetCashProvidedByUsedInInvestingActivities,Net cash provided by (used in) investing activities | Net cash used in investing activities,-841,"-1,287","-4,457","-10,566","-5,693","-8,877","-13,223","-20,421","-5,216","-12,343","-21,367","-52,228"
-us-gaap:NetCashProvidedByUsedInOperatingActivities,Net cash provided by operating activities,"2,911","9,259","16,591","28,090","15,345","29,833","47,460","64,089","27,414","42,779","66,530","102,718"
-nvda:NetProceedsPaymentsRelatedToEmployeeStockPlans,Proceeds related to employee stock plans,246,247,403,,,,,,,,,
-nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities,Principal payments on property and equipment and intangible assets,-20,-31,-44,-74,-40,-69,-97,129,-52,73,97,101
-nvda:PurchasesOfPropertyAndEquipmentAndIntangibleAssets,Purchases related to property and equipment and intangible assets,-248,-537,,,,,,,,,,
-us-gaap:AllocatedShareBasedCompensationExpense,Stock-based compensation expense,735,,,,,,,,,,,
-us-gaap:CashAndCashEquivalentsAtCarryingValue,Cash and cash equivalents (reconciliation),,,,,,,,,,,,
-us-gaap:IncomeTaxesPaidNet,"Cash paid for income taxes, net | Income Taxes Paid Net",,328,"4,676","6,549",,"7,449","10,989","15,118",,"8,451","13,309","20,288"
-us-gaap:InterestPaidNet,Cash paid for interest | Interest Paid Net,,,,252,,,,246,,,,
-us-gaap:NetIncomeLoss,Net income,"2,043","8,232","17,475","29,760","14,881","31,480","50,789","72,880","18,775","45,197","77,107","120,067"
-us-gaap:PaymentsForProceedsFromOtherInvestingActivities,"Investments and other, net | Investments in non-affiliated entities | Investments in non-affiliated entities and other, net | Investments in non-affiliates and other, net | Other (investing) | Other investing activities",-221,-435,-872,-985,-135,0.0000,0.0000,-22,,,,0.0000
-us-gaap:PaymentsForRepurchaseOfCommonStock,Payments related to repurchases of common stock,0.0000,"-3,067","-6,874","-9,533","-7,740","-14,898","-25,895","33,706","-14,095","23,815","36,271","40,086"
-us-gaap:PaymentsOfDividends,Dividends paid,-99,-199,-296,-395,-98,-344,-589,834,-244,488,732,974
-us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation,Payments related to employee stock plan taxes | Payments related to tax on restricted stock units,-507,"-1,179","-1,942","-2,783","-1,752","-3,389","-5,068","6,930","-1,532","3,380","5,809","7,948"
-us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt,Purchases of marketable securities,"-2,801","-5,343","-10,688","-18,211","-9,303","-15,047","-19,565","26,575","-6,546","14,358","20,076","40,616"
-us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired,"Acquisitions, net of cash acquired",-83,-83,-83,-83,-39,-317,-465,"1,007",-383,677,"1,370","1,535"
-us-gaap:ProceedsFromDebtNetOfIssuanceCosts,"Issuance of debt, net of issuance costs",,,,0.0000,,,,,,,,
-us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities,Proceeds from maturities of marketable securities,"2,512","5,111","8,001","9,732","4,004","8,098","9,485","11,195","3,122","6,252","8,980","11,226"
-us-gaap:ProceedsFromPaymentsForOtherFinancingActivities,Other | Other (financing) | Other financing activities,,0.0000,-1,-1,,,0.0000,0.0000,,,,-9
-us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt,Proceeds from sales of marketable securities,0.0000,0.0000,0.0000,50,149,164,318,495,467,487,487,"15,157"
-us-gaap:ProceedsFromStockPlans,Proceeds related to employee stock plans,,,,403,285,285,489,490,370,370,643,644
-us-gaap:RepaymentsOfDebt,Repayment of debt,,"-1,250","-1,250","-1,250",,"-1,250","-1,250","1,250",,0.0000,0.0000,0.0000
-us-gaap:RestrictedCashCurrent,"Restricted cash, included in prepaid expenses and other current assets",,,,,,,,,,,,
-nvda:BusinessCombinationAdvancedConsiderationWrittenOff,Acquisition termination cost,0.0000,0.0000,0.0000,0.0000,,,,0.0000,,,,
-us-gaap:DeferredIncomeTaxExpenseBenefit,Deferred income taxes,"-1,135","-1,881","-2,411","-2,489","-1,577","-3,276","-3,879","-4,477","-2,177","-2,160","-2,035","-1,424"
-us-gaap:DepreciationDepletionAndAmortization,Depreciation and amortization,384,749,"1,121","1,508",410,843,"1,321","1,864",611,"1,280","2,031","2,843"
-us-gaap:GainLossOnInvestments,"(Gains) losses on investments in non-affiliated entities and publicly-held equity securities, net | (Gains) losses on investments in non-affiliated entities, net | (Gains) losses on investments in non-affiliates, net | (Gains) losses on non-marketable equity securities and publicly-held equity securities, net | Gains on investments in non-affiliated entities and publicly-held equity securities, net | Gains on non-marketable equity securities and publicly-held equity securities, net | Losses on investments in non-affiliates | Realized and unrealized (gains) losses on investments in non-affiliated entities, net",14,-45,24,-238,-69,-264,-302,"1,030",175,"2,073","3,426","8,918"
-us-gaap:IncreaseDecreaseInAccountsPayable,Accounts payable,11,789,"1,250","1,531",-22,801,"2,490","3,357",941,"2,255","2,032","3,096"
-us-gaap:IncreaseDecreaseInAccountsReceivable,Accounts receivable,-252,"-3,239","-4,482","-6,172","-2,366","-4,133","-7,694","13,063",933,"4,743","10,325","15,399"
-us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities,Accrued and other current liabilities,689,"2,675",953,"2,025","4,202","3,314","3,918","4,278","7,128","3,075","4,204","5,257"
-us-gaap:IncreaseDecreaseInInventories,Inventories,566,861,405,-98,-577,"-1,380","-2,357","4,781","-1,258","4,880","9,703","11,324"
-us-gaap:IncreaseDecreaseInOtherNoncurrentLiabilities,Other long-term liabilities,105,236,208,514,323,584,849,"1,221",350,979,"1,311","1,844"
-us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets,Prepaid expenses and other assets,-215,-592,-337,"-1,522",-726,-12,-726,395,560,-946,-857,-577
-us-gaap:OtherNoncashIncomeExpense,Other,-34,0.0000,-1,-1,-145,0.0000,-365,502,-98,196,276,287
-us-gaap:PaymentsToAcquireBusinessTwoNetOfCashAcquired,"Groq, Inc.",,,,,,,,,,,,"13,000"
-us-gaap:PaymentsToAcquireEquitySecuritiesFvNi,Purchases of investments in non-affiliated entities | Purchases of non-marketable equity securities,,,,,,-534,"-1,008","1,486",-649,995,"4,702","17,502"
-us-gaap:PaymentsToAcquireProductiveAssets,Purchases related to property and equipment and intangible assets,,,-815,"-1,069",-369,"-1,346","-2,159","3,236","-1,227","3,122","4,758","6,042"
-us-gaap:ProceedsFromSaleOfEquitySecuritiesFvNi,Proceeds from sales of investments in non-affiliated entities | Proceeds from sales of non-marketable equity securities,,,,,,105,171,171,0.0000,70,72,84
-us-gaap:ShareBasedCompensation,Share Based Compensation | Stock-based compensation expense,,"1,576","2,555","3,549","1,011","2,164","3,416","4,737","1,474","3,099","4,753","6,386"
-,,,,,,,,,,,,,
-,  — Note detail (xbrl_not_on_statement) —,,,,,,,,,,,,
-us-gaap:CapitalExpendituresIncurredButNotYetPaid,Capital Expenditures Incurred But Not Yet Paid,,,,,,,,,,"1,100",790,
-us-gaap:IncomeTaxPaidFederalAfterRefundReceived,Income Tax Paid Federal After Refund Received,,,,,,,,,,,,"16,755"
-us-gaap:OperatingLeasePayments,Operating Lease Payments,,135,200,,69,,227,,,200,301,
-us-gaap:RightOfUseAssetObtainedInExchangeForOperatingLeaseLiability,Right Of Use Asset Obtained In Exchange For Operating Lease Liability,,299,439,,250,,679,,,458,752,
-,,,,,,,,,,,,,
-  NORMALIZED DETAIL BUCKETS,,,,,,,,,,,,,
-xbrl_concept / bucket,label,FY24Q1,FY24Q2,FY24Q3,FY24Q4,FY25Q1,FY25Q2,FY25Q3,FY25Q4,FY26Q1,FY26Q2,FY26Q3,FY26Q4
-net_income_start,← us-gaap:NetIncomeLoss,"2,043","6,189","9,243","12,285","14,881","16,599","19,309","22,091","18,775","26,422","31,910","42,960"
-dna,← us-gaap:DepreciationDepletionAndAmortization,384,365,372,387,410,433,478,543,611,669,751,812
-gain_sale_asset,← (not assigned),,,,,,,,,,,,
-gain_sale_investments,← us-gaap:GainLossOnInvestments,14,-59,69,-262,-69,-195,-38,"1,332",175,"1,898","1,353","5,492"
-amort_deferred_charges,← (not assigned),,,,,,,,,,,,
-asset_writedown_restructuring,← (not assigned),,,,,,,,,,,,
-sbc,"← us-gaap:ShareBasedCompensation, us-gaap:AllocatedShareBasedCompensationExpense",735,841,979,994,"1,011","1,153","1,252","1,321","1,474","1,625","1,654","1,633"
-other_operating,"← us-gaap:DeferredIncomeTaxExpenseBenefit, us-gaap:OtherNoncashIncomeExpense, nvda:BusinessCombinationAdvancedConsiderationWrittenOff","-1,169",-712,-531,-78,"-1,722","-1,554",-968,269,"-2,275",311,205,622
-change_ar,← us-gaap:IncreaseDecreaseInAccountsReceivable,-252,"-2,987","-1,243","-1,690","-2,366","-1,767","-3,561","20,757",933,"3,810","5,582","5,074"
-change_inventory,← us-gaap:IncreaseDecreaseInInventories,566,295,-456,-503,-577,-803,-977,"7,138","-1,258","6,138","4,823","1,621"
-change_ap,← us-gaap:IncreaseDecreaseInAccountsPayable,11,778,461,281,-22,823,"1,689",867,941,"1,314",-223,"1,064"
-change_unearned_revenue,← (not assigned),,,,,,,,,,,,
-change_income_taxes,← (not assigned),,,,,,,,,,,,
-change_other_operating_assets,← us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets,-215,-377,255,"-1,185",-726,714,-714,"1,121",560,"-1,506",89,280
-change_other_operating_liabs,"← us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities, us-gaap:IncreaseDecreaseInOtherNoncurrentLiabilities",794,"2,117","-1,750","1,378","4,525",-627,869,732,"7,478","-3,424","1,461","1,586"
-capex,"← nvda:PurchasesOfPropertyAndEquipmentAndIntangibleAssets, us-gaap:PaymentsToAcquireProductiveAssets",-248,-289,-278,-254,-369,-977,-813,"5,395","-1,227","4,349","1,636","1,284"
-sale_ppe,← (not assigned),,,,,,,,,,,,
-acquisitions,"← us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired, us-gaap:PaymentsToAcquireBusinessTwoNetOfCashAcquired",-83,0.0000,0.0000,0.0000,-39,-278,-148,"1,472",-383,"1,060",693,"13,165"
-divestitures,← (not assigned),,,,,,,,,,,,
-investment_securities,"← us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt, us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities, us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt, us-gaap:PaymentsToAcquireEquitySecuritiesFvNi, us-gaap:ProceedsFromSaleOfEquitySecuritiesFvNi",-289,57,"-2,455","-5,742","-5,150","-2,064","-3,385","50,521","-3,606","25,768","12,155","50,268"
-loans_orig_sold,← (not assigned),,,,,,,,,,,,
-other_investing,← us-gaap:PaymentsForProceedsFromOtherInvestingActivities,-221,-214,-437,-113,-135,135,0.0000,-22,,,,0.0000
-short_term_debt_issued,← (not assigned),,,,,,,,,,,,
-long_term_debt_issued,← us-gaap:ProceedsFromDebtNetOfIssuanceCosts,,,,0.0000,,,,,,,,
-short_term_debt_repaid,← (not assigned),,,,,,,,,,,,
-long_term_debt_repaid,← us-gaap:RepaymentsOfDebt,,"-1,250",0.0000,0.0000,,"-1,250",0.0000,"2,500",,0.0000,0.0000,0.0000
-stock_issuance,"← nvda:NetProceedsPaymentsRelatedToEmployeeStockPlans, us-gaap:ProceedsFromStockPlans",246,1,156,0.0000,285,0.0000,204,1,370,0.0000,273,1
-stock_repurchase,← us-gaap:PaymentsForRepurchaseOfCommonStock,0.0000,"-3,067","-3,807","-2,659","-7,740","-7,158","-10,997","59,601","-14,095","37,910","12,456","3,815"
-common_dividends,← us-gaap:PaymentsOfDividends,-99,-100,-97,-99,-98,-246,-245,"1,423",-244,732,244,242
-preferred_dividends,← (not assigned),,,,,,,,,,,,
-special_dividends,← (not assigned),,,,,,,,,,,,
-other_financing,"← us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation, nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities, us-gaap:ProceedsFromPaymentsForOtherFinancingActivities",-527,-683,-777,-871,"-1,792","-1,666","-1,707","12,224","-1,584","5,037","2,453","2,134"
-fx_adjustments,← (not assigned),,,,,,,,,,,,
-misc_cf_adjustments,← (not assigned),,,,,,,,,,,,
-,,,,,,,,,,,,,
-  NORMALIZED SUBTOTALS (face-authoritative; recon_delta = components − face),,,,,,,,,,,,,
-xbrl_concept / bucket,label,FY24Q1,FY24Q2,FY24Q3,FY24Q4,FY25Q1,FY25Q2,FY25Q3,FY25Q4,FY26Q1,FY26Q2,FY26Q3,FY26Q4
-cfo,(value),"2,911","6,348","7,332","11,499","15,345","14,488","17,627","16,629","27,414","15,365","23,751","36,188"
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),0.0000,102,67,108,0.0000,288,-288,"39,542",0.0000,"21,892","23,854","24,956"
-cfi,(value),-841,-446,"-3,170","-6,109","-5,693","-3,184","-4,346","-7,198","-5,216","-7,127","-9,024","-30,861"
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,"64,564",0.0000,"38,304","23,508","95,578"
-total_debt_issued,(value),,,,0.0000,,,,,,,,
-,(source),,,,components,,,,,,,,
-total_debt_repaid,(value),,"-1,250",0.0000,0.0000,,"-1,250",0.0000,"2,500",,0.0000,0.0000,0.0000
-,(source),,components,components,components,,components,components,components,,components,components,components
-total_common_pref_dividends,(value),-99,-100,-97,-99,-98,-246,-245,"1,423",-244,732,244,242
-,(source),components,components,components,components,components,components,components,components,components,components,components,components
-cff,(value),-380,"-5,099","-4,525","-3,629","-9,345","-10,320","-12,745","-9,949","-15,553","-11,833","-14,880","-6,208"
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,"85,698",0.0000,"55,512","30,306","12,400"
-net_change_in_cash,(value),"1,690",803,-363,"1,761",307,984,536,-518,"6,645","-3,595",-153,-881
-,(source),face,face,face,face,face,face,face,face,face,face,face,face
-,(recon_delta: components − face),0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000
-,,,,,,,,,,,,,
-"  AS-REPORTED FORMULA TIES (Stage 1 declared formulas, scoped per filing)",,,,,,,,,,,,,
-xbrl_concept / bucket,label,FY24Q1,FY24Q2,FY24Q3,FY24Q4,FY25Q1,FY25Q2,FY25Q3,FY25Q4,FY26Q1,FY26Q2,FY26Q3,FY26Q4
-  formula,us-gaap:NetCashProvidedByUsedInOperatingActivities = +us-gaap:NetIncomeLoss +us-gaap:DepreciationDepletionAndAmortization +us-gaap:DeferredIncomeTaxExpenseBenefit +nvda:BusinessCombinationAdvancedConsiderationWrittenOff -us-gaap:OtherNoncashIncomeExpense -us-gaap:IncreaseDecreaseInAccountsReceivable -us-gaap:IncreaseDecreaseInInventories -us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets +us-gaap:IncreaseDecreaseInAccountsPayable +us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities,,,,,,,,,,,,
-,  tie check,Δ=-984,,,,,,,"Δ=-4,928",,,,
-  formula,us-gaap:NetCashProvidedByUsedInInvestingActivities = +us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities +us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt +us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt -nvda:PurchasesOfPropertyAndEquipmentAndIntangibleAssets -us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired +us-gaap:PaymentsForProceedsFromOtherInvestingActivities,,,,,,,,,,,,
-,  tie check,Δ=662,,,,,,,,,,,
-  formula,us-gaap:NetCashProvidedByUsedInFinancingActivities = +nvda:NetProceedsPaymentsRelatedToEmployeeStockPlans +us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation +us-gaap:PaymentsOfDividends +us-gaap:PaymentsForRepurchaseOfCommonStock +nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities,,,,,,,,,,,,
-,  tie check,OK,,,,,,,,,,,
-  formula,us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect = +us-gaap:NetCashProvidedByUsedInOperatingActivities +us-gaap:NetCashProvidedByUsedInInvestingActivities +us-gaap:NetCashProvidedByUsedInFinancingActivities,,,,,,,,,,,,
-,  tie check,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK,OK
-  formula,us-gaap:NetCashProvidedByUsedInOperatingActivities = +us-gaap:NetIncomeLoss +us-gaap:DepreciationDepletionAndAmortization +us-gaap:DeferredIncomeTaxExpenseBenefit +nvda:BusinessCombinationAdvancedConsiderationWrittenOff -us-gaap:ProceedsFromPaymentsForOtherFinancingActivities -us-gaap:IncreaseDecreaseInAccountsReceivable -us-gaap:IncreaseDecreaseInInventories -us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets +us-gaap:IncreaseDecreaseInAccountsPayable +us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities,,,,,,,,,,,,
-,  tie check,,"Δ=4,275","Δ=6,212",,,,,,,,,
-  formula,us-gaap:NetCashProvidedByUsedInInvestingActivities = +us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities +us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt -us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt -nvda:PurchasesOfPropertyAndEquipmentAndIntangibleAssets -us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired -us-gaap:PaymentsForProceedsFromOtherInvestingActivities,,,,,,,,,,,,
-,  tie check,,"Δ=12,796",,,,,,,,,,
-  formula,us-gaap:NetCashProvidedByUsedInFinancingActivities = +nvda:NetProceedsPaymentsRelatedToEmployeeStockPlans -us-gaap:PaymentsForRepurchaseOfCommonStock -us-gaap:RepaymentsOfDebt -us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation -us-gaap:PaymentsOfDividends -nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities +us-gaap:ProceedsFromPaymentsForOtherFinancingActivities,,,,,,,,,,,,
-,  tie check,,"Δ=11,452",,,,,,,,,,
-  formula,us-gaap:NetCashProvidedByUsedInInvestingActivities = +us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities +us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt +us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt -us-gaap:PaymentsToAcquireProductiveAssets -us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired,,,,,,,,,,,,
-,  tie check,,,"Δ=2,668",,,,,,,,,
-  formula,us-gaap:NetCashProvidedByUsedInFinancingActivities = +nvda:NetProceedsPaymentsRelatedToEmployeeStockPlans +us-gaap:PaymentsForRepurchaseOfCommonStock -us-gaap:RepaymentsOfDebt -us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation -us-gaap:PaymentsOfDividends -nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities +us-gaap:ProceedsFromPaymentsForOtherFinancingActivities,,,,,,,,,,,,
-,  tie check,,,"Δ=7,064",,,,,,,,,
-  formula,us-gaap:NetCashProvidedByUsedInOperatingActivities = +us-gaap:NetIncomeLoss +us-gaap:DepreciationDepletionAndAmortization +us-gaap:DeferredIncomeTaxExpenseBenefit -us-gaap:ProceedsFromPaymentsForOtherFinancingActivities +nvda:BusinessCombinationAdvancedConsiderationWrittenOff -us-gaap:IncreaseDecreaseInAccountsReceivable -us-gaap:IncreaseDecreaseInInventories -us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets +us-gaap:IncreaseDecreaseInAccountsPayable +us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities,,,,,,,,,,,,
-,  tie check,,,,"Δ=12,038",,,,,,,,
-  formula,us-gaap:NetCashProvidedByUsedInInvestingActivities = +us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities +us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt -us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt -us-gaap:PaymentsToAcquireProductiveAssets -us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired,,,,,,,,,,,,
-,  tie check,,,,"Δ=39,711","Δ=19,557",,,,"Δ=16,961",Δ=925,"Δ=4,630",
-  formula,us-gaap:NetCashProvidedByUsedInFinancingActivities = +us-gaap:ProceedsFromStockPlans -us-gaap:PaymentsForRepurchaseOfCommonStock -us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation -us-gaap:RepaymentsOfDebt -us-gaap:PaymentsOfDividends -nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities +us-gaap:ProceedsFromDebtNetOfIssuanceCosts +us-gaap:ProceedsFromPaymentsForOtherFinancingActivities,,,,,,,,,,,,
-,  tie check,,,,"Δ=28,070",,,,,,,,
-  formula,us-gaap:NetCashProvidedByUsedInOperatingActivities = +us-gaap:NetIncomeLoss +us-gaap:DepreciationDepletionAndAmortization +us-gaap:DeferredIncomeTaxExpenseBenefit -us-gaap:OtherNoncashIncomeExpense -us-gaap:IncreaseDecreaseInAccountsReceivable -us-gaap:IncreaseDecreaseInInventories -us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets +us-gaap:IncreaseDecreaseInAccountsPayable +us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities,,,,,,,,,,,,
-,  tie check,,,,,"Δ=6,363","Δ=8,854","Δ=18,321",,"Δ=-2,273","Δ=-2,005","Δ=-2,638",Δ=688
-  formula,us-gaap:NetCashProvidedByUsedInFinancingActivities = +us-gaap:ProceedsFromStockPlans -us-gaap:PaymentsForRepurchaseOfCommonStock -us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation -us-gaap:PaymentsOfDividends -nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities,,,,,,,,,,,,
-,  tie check,,,,,"Δ=19,260",,,,"Δ=31,846",,,
-  formula,us-gaap:NetCashProvidedByUsedInInvestingActivities = +us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities +us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt +us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt -us-gaap:PaymentsToAcquireProductiveAssets -us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired -us-gaap:PaymentsForProceedsFromOtherInvestingActivities,,,,,,,,,,,,
-,  tie check,,,,,,"Δ=3,755","Δ=6,085",,,,,
-  formula,us-gaap:NetCashProvidedByUsedInFinancingActivities = +us-gaap:ProceedsFromStockPlans +us-gaap:PaymentsForRepurchaseOfCommonStock -us-gaap:RepaymentsOfDebt -us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation -us-gaap:PaymentsOfDividends -nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities,,,,,,,,,,,,
-,  tie check,,,,,,"Δ=10,104",,,,,,
-  formula,us-gaap:NetCashProvidedByUsedInFinancingActivities = +us-gaap:ProceedsFromStockPlans +us-gaap:PaymentsForRepurchaseOfCommonStock +us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation +us-gaap:RepaymentsOfDebt +us-gaap:PaymentsOfDividends +nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities +us-gaap:ProceedsFromPaymentsForOtherFinancingActivities,,,,,,,,,,,,
-,  tie check,,,,,,,OK,,,,,
-  formula,us-gaap:NetCashProvidedByUsedInInvestingActivities = +us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities +us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt -us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt -us-gaap:PaymentsToAcquireProductiveAssets -us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired -us-gaap:PaymentsForProceedsFromOtherInvestingActivities,,,,,,,,,,,,
-,  tie check,,,,,,,,"Δ=1,315",,,,
-  formula,us-gaap:NetCashProvidedByUsedInFinancingActivities = +us-gaap:ProceedsFromStockPlans -us-gaap:PaymentsForRepurchaseOfCommonStock -us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation -us-gaap:RepaymentsOfDebt -us-gaap:PaymentsOfDividends -nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities +us-gaap:ProceedsFromPaymentsForOtherFinancingActivities,,,,,,,,,,,,
-,  tie check,,,,,,,,OK,,,,
-  formula,us-gaap:NetCashProvidedByUsedInFinancingActivities = +us-gaap:ProceedsFromStockPlans -us-gaap:PaymentsForRepurchaseOfCommonStock -us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation -us-gaap:PaymentsOfDividends -nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities -us-gaap:RepaymentsOfDebt,,,,,,,,,,,,
-,  tie check,,,,,,,,,,OK,OK,
-  formula,us-gaap:NetCashProvidedByUsedInInvestingActivities = +us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt +us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities -us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt -us-gaap:PaymentsToAcquireBusinessTwoNetOfCashAcquired -us-gaap:PaymentsToAcquireProductiveAssets -us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired -us-gaap:PaymentsForProceedsFromOtherInvestingActivities,,,,,,,,,,,,
-,  tie check,,,,,,,,,,,,"Δ=17,418"
-  formula,us-gaap:NetCashProvidedByUsedInFinancingActivities = +us-gaap:ProceedsFromStockPlans -us-gaap:PaymentsForRepurchaseOfCommonStock -us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation -us-gaap:PaymentsOfDividends -nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities -us-gaap:RepaymentsOfDebt +us-gaap:ProceedsFromPaymentsForOtherFinancingActivities,,,,,,,,,,,,
-,  tie check,,,,,,,,,,,,OK
-,,,,,,,,,,,,,
-── SEGMENTS ──,,,,,,,,,,,,,
-,,,,,,,,,,,,,
-  axis: StatementBusinessSegmentsAxis  [type: breakdown],,,,,,,,,,,,,
-member,type,FY24Q1|OperatingIncomeLoss,FY24Q1|Revenue,FY24Q2|OperatingIncomeLoss,FY24Q2|Revenue,FY24Q3|OperatingIncomeLoss,FY24Q3|Revenue,FY25Q2|OperatingIncome,FY25Q2|Revenue
-ComputeAndNetworkingMember,leaf,"2,160","4,460","6,728","10,402","10,262","14,645","18,848","26,446"
-GraphicsMember,leaf,"1,046","2,732","1,211","3,105","1,493","3,475","1,369","3,594"
-CorporateNonSegmentMember (All Other),rollup,"-1,066",0.0000,"-1,139",0.0000,"-1,338",0.0000,"-1,575",0.0000
-(consolidated),,,"{'Revenue_2023-01-30_2023-04-30': 7192, 'Revenue_2022-01-31_2022-05-01': 8288, 'OperatingIncomeLoss_2023-01-30_2023-04-30': 2140, 'OperatingIncomeLoss_2022-01-31_2022-05-01': 1868}",,"{'Revenue_2023-05-01_2023-07-30': 13507, 'Revenue_2022-05-02_2022-07-31': 6704, 'Revenue_2023-01-30_2023-07-30': 20699, 'Revenue_2022-01-31_2022-07-31': 14992, 'OperatingIncomeLoss_2023-05-01_2023-07-30': 6800, 'OperatingIncomeLoss_2022-05-02_2022-07-31': 499, 'OperatingIncomeLoss_2023-01-30_2023-07-30': 8941, 'OperatingIncomeLoss_2022-01-31_2022-07-31': 2367}",,"{'Revenue_2023-07-31_2023-10-29': 18120, 'Revenue_2022-08-01_2022-10-30': 5931, 'Revenue_2023-01-30_2023-10-29': 38819, 'Revenue_2022-01-31_2022-10-30': 20923, 'OperatingIncomeLoss_2023-07-31_2023-10-29': 10417, 'OperatingIncomeLoss_2022-08-01_2022-10-30': 601, 'OperatingIncomeLoss_2023-01-30_2023-10-29': 19358, 'OperatingIncomeLoss_2022-01-31_2022-10-30': 2968}",,"{'Revenue_2024-04-29_2024-07-28': 30040, 'Revenue_2024-01-29_2024-07-28': 56084, 'OperatingIncome_2024-04-29_2024-07-28': 18642, 'OperatingIncome_2024-01-29_2024-07-28': 35551}"
-,,,,,,,,,,,,,
-  axis: StatementGeographicalAxis  [type: breakdown],,,,,,,,,,,,,
-member,type,FY24Q1|Revenue,FY24Q2|Revenue,FY24Q3|Revenue,FY25Q2|Revenue
-United States,leaf,"2,385","6,043","6,302","13,022"
-Taiwan,leaf,"1,796","2,839","4,333","5,740"
-China (including Hong Kong),leaf,"1,590","2,740","4,030","3,667"
-Singapore,leaf,762,,"2,702","5,622"
-Other countries,leaf,659,"1,885",753,"1,989"
-(consolidated),,"{'Revenue_2023-01-30_2023-04-30': 7192, 'Revenue_2022-01-31_2022-05-01': 8288}","{'Revenue_2023-05-01_2023-07-30': 13507, 'Revenue_2022-05-02_2022-07-31': 6704, 'Revenue_2023-01-30_2023-07-30': 20699, 'Revenue_2022-01-31_2022-07-31': 14992}","{'Revenue_2023-07-31_2023-10-29': 18120, 'Revenue_2022-08-01_2022-10-30': 5931, 'Revenue_2023-01-30_2023-10-29': 38819, 'Revenue_2022-01-31_2022-10-30': 20923}","{'Revenue_2024-04-29_2024-07-28': 30040, 'Revenue_2024-01-29_2024-07-28': 56084, 'Revenue_2023-05-01_2023-07-30': 13507, 'Revenue_2023-01-30_2023-07-30': 20699}"
-,,,,,,,,,,,,,
-  axis: ProductOrServiceAxis  [type: breakdown],,,,,,,,,,,,,
-member,type,FY24Q1|Revenue,FY24Q3|Revenue
-Data Center,leaf,"4,284","14,514"
-Gaming,leaf,"2,240","2,856"
-Professional Visualization,leaf,295,416
-Automotive,leaf,296,261
-OEM and Other,leaf,77,73
-(consolidated),,"{'Revenue_2023-01-30_2023-04-30': 7192, 'Revenue_2022-01-31_2022-05-01': 8288}","{'Revenue_2023-07-31_2023-10-29': 18120, 'Revenue_2022-08-01_2022-10-30': 5931, 'Revenue_2023-01-30_2023-10-29': 38819, 'Revenue_2022-01-31_2022-10-30': 20923}"
-,,,,,,,,,,,,,
-  axis: CorporateNonSegmentMember - Reconciling items  [type: reconciliation],,,,,,,,,,,,,
-member,type,FY24Q1|ReconcilingItems
-Stock-based compensation expense,leaf,-735
-Acquisition-related and other costs,leaf,-173
-Unallocated cost of revenue and operating expenses,leaf,-154
-IP-related and legal settlement costs,leaf,-8
-Acquisition termination cost,leaf,0.0000
-Other (operating income),leaf,4
-(consolidated),,"{'OperatingIncomeLoss_2023-01-30_2023-04-30': -1066, 'OperatingIncomeLoss_2022-01-31_2022-05-01': -2214}"
-,,,,,,,,,,,,,
-  axis: ProductOrServiceAxis (Market)  [type: breakdown],,,,,,,,,,,,,
-member,type,FY24Q2|Revenue,FY25Q2|Revenue
-Data Center,rollup,"10,323","26,272"
-Gaming,leaf,"2,486","2,880"
-Professional Visualization,leaf,379,454
-Automotive,leaf,253,346
-OEM and Other,leaf,66,88
-Data Center - Compute,leaf,,"22,604"
-Data Center - Networking,leaf,,"3,668"
-(consolidated),,"{'Revenue_2023-05-01_2023-07-30': 13507, 'Revenue_2022-05-02_2022-07-31': 6704, 'Revenue_2023-01-30_2023-07-30': 20699, 'Revenue_2022-01-31_2022-07-31': 14992}","{'Revenue_2024-04-29_2024-07-28': 30040, 'Revenue_2024-01-29_2024-07-28': 56084, 'Revenue_2023-05-01_2023-07-30': 13507, 'Revenue_2023-01-30_2023-07-30': 20699}"
-,,,,,,,,,,,,,
-  axis: SegmentInformationReconcilingItemsDetails - All Other reconciliation  [type: reconciliation],,,,,,,,,,,,,
-member,type,FY24Q2|AllOtherReconciliation
-Stock-based compensation expense,leaf,-842
-Unallocated cost of revenue and operating expenses,leaf,-163
-Acquisition-related and other costs,leaf,-137
-IP-related and legal settlement costs,leaf,-2
-Acquisition termination cost,leaf,0.0000
-Contributions,leaf,0.0000
-Other,leaf,5
-(consolidated),,"{'OperatingIncomeLoss_2023-05-01_2023-07-30': -1139, 'OperatingIncomeLoss_2022-05-02_2022-07-31': -974, 'OperatingIncomeLoss_2023-01-30_2023-07-30': -2204, 'OperatingIncomeLoss_2022-01-31_2022-07-31': -3188}"
-,,,,,,,,,,,,,
-  axis: SegmentInformationReconcilingItemsDetails - All Other category reconciliation  [type: reconciliation],,,,,,,,,,,,,
-member,type,FY24Q3|AllOtherCategoryReconciliation
-Stock-based compensation expense,leaf,-979
-Unallocated cost of revenue and operating expenses,leaf,-198
-Acquisition-related and other costs,leaf,-135
-IP-related costs,leaf,-26
-Acquisition termination cost,leaf,0.0000
-Other,leaf,0.0000
-(consolidated),,"{'OperatingIncomeLoss_2023-07-31_2023-10-29': -1338, 'OperatingIncomeLoss_2022-08-01_2022-10-30': -1091, 'OperatingIncomeLoss_2023-01-30_2023-10-29': -3542, 'OperatingIncomeLoss_2022-01-31_2022-10-30': -4280}"
-,,,,,,,,,,,,,
-  axis: StatementBusinessSegmentsAxis - Revenue by reportable segment  [type: breakdown],,,,,,,,,,,,,
-member,type,FY24Q4|Revenue
-Compute and Networking,leaf,"47,405"
-Graphics,leaf,"13,517"
-All Other,rollup,0.0000
-(consolidated),,"60,922"
-,,,,,,,,,,,,,
-  axis: StatementBusinessSegmentsAxis - Operating income (loss) by reportable segment  [type: reconciliation],,,,,,,,,,,,,
-member,type,FY24Q4|OperatingIncome(loss)
-Compute and Networking,leaf,"32,016"
-Graphics,leaf,"5,846"
-All Other,leaf,"-4,890"
-(consolidated),,"32,972"
-,,,,,,,,,,,,,
-  axis: StatementGeographicalAxis - Revenue by geography  [type: breakdown],,,,,,,,,,,,,
-member,type,FY24Q4|Revenue
-United States,leaf,"26,966"
-Taiwan,leaf,"13,405"
-China (including Hong Kong),leaf,"10,306"
-Other countries,leaf,"10,245"
-(consolidated),,"60,922"
-,,,,,,,,,,,,,
-  axis: ProductOrServiceAxis - Revenue by market  [type: breakdown],,,,,,,,,,,,,
-member,type,FY24Q4|Revenue
-Data Center,leaf,"47,525"
-Gaming,leaf,"10,447"
-Professional Visualization,leaf,"1,553"
-Automotive,leaf,"1,091"
-OEM and Other,leaf,306
-(consolidated),,"60,922"
-,,,,,,,,,,,,,
-  axis: StatementGeographicalAxis - Long-lived assets by geography  [type: breakdown],,,,,,,,,,,,,
-member,type,FY24Q4|Long-livedAssets
-United States,leaf,"2,595"
-Taiwan,leaf,773
-Israel,leaf,325
-Other countries,leaf,221
-(consolidated),,"3,914"
-,,,,,,,,,,,,,
-  axis: CorporateNonSegmentMember - Reconciling items in All Other  [type: reconciliation],,,,,,,,,,,,,
-member,type,FY24Q4|ReconcilingItemsInAllOther
-Stock-based compensation expense,leaf,"-3,549"
-Unallocated cost of revenue and operating expenses,leaf,-728
-Acquisition-related and other costs,leaf,-583
-IP-related and legal settlement costs,leaf,-40
-Restructuring costs and other,leaf,0.0000
-Acquisition termination cost,leaf,0.0000
-Other,leaf,10
-(consolidated),,"-4,890"
-,,,,,,,,,,,,,
-  axis: StatementBusinessSegmentsAxis (Reportable Segments)  [type: breakdown],,,,,,,,,,,,,
-member,type,FY25Q1|OperatingIncome,FY25Q1|OperatingIncomeLoss,FY25Q1|Revenue,FY25Q3|OperatingIncomeLoss,FY25Q3|Revenue
-Compute and Networking,leaf,"17,047",,"22,675","22,081","31,036"
-Graphics,leaf,"1,241",,"3,369","1,502","4,046"
-All Other (Corporate Non-Segment),rollup,,"-1,379",0.0000,"-1,714",0.0000
-(consolidated),,,,"{'Revenue_2024-01-29_2024-04-28': 26044, 'Revenue_2023-01-30_2023-04-30': 7192, 'OperatingIncome_2024-01-29_2024-04-28': 16909, 'OperatingIncome_2023-01-30_2023-04-30': 2140}",,"{'Revenue_2024-07-29_2024-10-27': 35082, 'Revenue_2023-07-31_2023-10-29': 18120, 'Revenue_2024-01-29_2024-10-27': 91166, 'Revenue_2023-01-30_2023-10-29': 38819, 'OperatingIncomeLoss_2024-07-29_2024-10-27': 21869, 'OperatingIncomeLoss_2023-07-31_2023-10-29': 10417, 'OperatingIncomeLoss_2024-01-29_2024-10-27': 57419, 'OperatingIncomeLoss_2023-01-30_2023-10-29': 19358}"
-,,,,,,,,,,,,,
-  axis: SegmentInformationScheduleofReconcilingItemsDetails (All Other Reconciliation)  [type: reconciliation],,,,,,,,,,,,,
-member,type,FY25Q1|SegmentInformationScheduleofReconcilingItemsDetails(AllOtherReconciliation)
-Stock-based compensation expense,leaf,"-1,011"
-Unallocated cost of revenue and operating expenses,leaf,-229
-Acquisition-related and other costs,leaf,-140
-Other,leaf,1
-(consolidated),,"{'AllOther_2024-01-29_2024-04-28': -1379, 'AllOther_2023-01-30_2023-04-30': -1066}"
-,,,,,,,,,,,,,
-  axis: StatementGeographicalAxis (Revenue by Geography)  [type: breakdown],,,,,,,,,,,,,
-member,type,FY25Q1|Revenue,FY25Q3|StatementGeographicalAxis(Revenue
-United States,leaf,"13,496","14,800"
-Taiwan,leaf,"4,373","5,153"
-Singapore,leaf,"4,037","7,697"
-China (including Hong Kong),leaf,"2,491","5,416"
-Other countries,leaf,"1,647","2,016"
-(consolidated),,"{'Revenue_2024-01-29_2024-04-28': 26044, 'Revenue_2023-01-30_2023-04-30': 7192}","{'2024-07-29_2024-10-27': 35082, '2023-07-31_2023-10-29': 18120, '2024-01-29_2024-10-27': 91166, '2023-01-30_2023-10-29': 38819}"
-,,,,,,,,,,,,,
-  axis: ProductOrServiceAxis (Revenue by Market)  [type: breakdown],,,,,,,,,,,,,
-member,type,FY25Q1|Revenue,FY25Q3|ProductOrServiceAxis(Revenue
-Data Center,rollup,"22,563","30,771"
-Gaming,leaf,"2,647","3,279"
-Professional Visualization,leaf,427,486
-Automotive,leaf,329,449
-OEM and Other,leaf,78,97
-Data Center - Compute,leaf,,"27,644"
-Data Center - Networking,leaf,,"3,127"
-(consolidated),,"{'Revenue_2024-01-29_2024-04-28': 26044, 'Revenue_2023-01-30_2023-04-30': 7192}","{'2024-07-29_2024-10-27': 35082, '2023-07-31_2023-10-29': 18120, '2024-01-29_2024-10-27': 91166, '2023-01-30_2023-10-29': 38819}"
-,,,,,,,,,,,,,
-  axis: MajorCustomersAxis (Revenue Customer Concentration)  [type: other],,,,,,,,,,,,,
-member,type,FY25Q1|ConcentrationRiskPercentage
-Customer A,leaf,0.1300
-Customer B,leaf,0.1100
-(consolidated),,
-,,,,,,,,,,,,,
-  axis: SegmentInformationScheduleofReconcilingItemsDetails - CorporateNonSegmentMember  [type: reconciliation],,,,,,,,,,,,,
-member,type,FY25Q2|CorporateNonSegmentMember
-Stock-based compensation expense,leaf,"-1,154"
-Unallocated cost of revenue and operating expenses,leaf,-280
-Acquisition-related and other costs,leaf,-144
-Other operating income,leaf,3
-Total All Other,rollup,"-1,575"
-(consolidated),,"{'OperatingIncome_AllOther_2024-04-29_2024-07-28': -1575, 'OperatingIncome_AllOther_2024-01-29_2024-07-28': -2954}"
-,,,,,,,,,,,,,
-  axis: SegmentInformationScheduleofReconcilingItemsDetails - All Other category reconciliation  [type: reconciliation],,,,,,,,,,,,,
-member,type,FY25Q3|AllOtherCategoryReconciliation
-Stock-based compensation expense,leaf,"-1,252"
-Unallocated cost of revenue and operating expenses,leaf,-307
-Acquisition-related and other costs,leaf,-155
-Other,leaf,0.0000
-(consolidated),,"{'2024-07-29_2024-10-27': -1714, '2023-07-31_2023-10-29': -1338, '2024-01-29_2024-10-27': -4669, '2023-01-30_2023-10-29': -3542}"
-,,,,,,,,,,,,,
-  axis: MajorCustomersAxis (Customer Concentration - Revenue)  [type: other],,,,,,,,,,,,,
-member,type,FY25Q3|ConcentrationRiskPercentage1
-"Customer A (Q3 FY2025 only, Compute and Networking segment)",leaf,12%
-Customer B (Compute and Networking segment),leaf,12%
-Customer C (Compute and Networking segment),leaf,12%
-"Customer D (nine months FY2025 only, Compute and Networking segment)",leaf,12%
-"Customer One (Q3 FY2024 only, Compute and Networking segment)",leaf,
-"Customer Two (nine months FY2024 only, Compute and Networking segment)",leaf,
-(consolidated),,
-,,,,,,,,,,,,,
-  axis: StatementBusinessSegmentsAxis - Revenue by Reportable Segment  [type: breakdown],,,,,,,,,,,,,
-member,type,FY25Q4|Revenue,FY26Q2|Revenue,FY26Q4|Revenue
-ComputeAndNetworkingSegmentMember,leaf,"116,193",,
-GraphicsSegmentMember,leaf,"14,304",,
-CorporateNonSegmentMember,rollup,0.0000,,
-Compute and Networking,leaf,,"41,331","193,479"
-Graphics,leaf,,"5,412","22,459"
-(consolidated),,"130,497","{'2025-04-28_2025-07-27': 46743, '2024-04-29_2024-07-28': 30040, '2025-01-27_2025-07-27': 90805, '2024-01-29_2024-07-28': 56084}","215,938"
-,,,,,,,,,,,,,
-  axis: StatementBusinessSegmentsAxis - Operating Income by Reportable Segment  [type: reconciliation],,,,,,,,,,,,,
-member,type,FY25Q4|OperatingIncome,FY26Q2|OperatingIncome,FY26Q4|OperatingIncome
-ComputeAndNetworkingSegmentMember,leaf,"82,875",,
-GraphicsSegmentMember,leaf,"5,085",,
-CorporateNonSegmentMember,rollup,"-6,507",,
-Compute and Networking,leaf,,"28,363","130,141"
-Graphics,leaf,,"2,242","9,156"
-(consolidated),,"81,453","{'2025-04-28_2025-07-27': 28440, '2024-04-29_2024-07-28': 18642, '2025-01-27_2025-07-27': 50078, '2024-01-29_2024-07-28': 35551}","130,387"
-,,,,,,,,,,,,,
-  axis: StatementGeographicalAxis - Revenue by Geography  [type: breakdown],,,,,,,,,,,,,
-member,type,FY25Q4|Revenue
-United States,leaf,"61,257"
-Singapore,leaf,"23,684"
-Taiwan,leaf,"20,573"
-China including Hong Kong,leaf,"17,108"
-Other Countries,leaf,"7,875"
-(consolidated),,"130,497"
-,,,,,,,,,,,,,
-  axis: ProductOrServiceAxis - Revenue by End Market  [type: breakdown],,,,,,,,,,,,,
-member,type,FY25Q4|Revenue,FY26Q2|Revenue,FY26Q3|Revenue,FY26Q4|Revenue
-DataCenterMember,rollup,"115,186",,"51,215",
-GamingMember,leaf,"11,350",,"4,265",
-ProfessionalVisualizationMember,leaf,"1,878",,760,
-AutomotiveMember,leaf,"1,694",,592,
-OEMAndOtherMember,leaf,389,,174,
-Data Center,rollup,,"41,096",,"193,737"
-Data Center - Compute,leaf,,"33,844",,"162,361"
-Data Center - Networking,leaf,,"7,252",,"31,376"
-Gaming,leaf,,"4,287",,"16,042"
-Professional Visualization,leaf,,601,,"3,191"
-Automotive,leaf,,586,,"2,349"
-OEM and Other,leaf,,173,,619
-(consolidated),,"130,497","{'2025-04-28_2025-07-27': 46743, '2024-04-29_2024-07-28': 30040, '2025-01-27_2025-07-27': 90805, '2024-01-29_2024-07-28': 56084}","57,006","215,938"
-,,,,,,,,,,,,,
-  axis: ProductOrServiceAxis - Data Center Sub-breakdown  [type: sub_hierarchy],,,,,,,,,,,,,
-member,type,FY25Q4|DataCenterSub-breakdown
-ComputeMember,leaf,"102,196"
-NetworkingMember,leaf,"12,990"
-(consolidated),,"115,186"
-,,,,,,,,,,,,,
-  axis: StatementGeographicalAxis - Long-lived Assets by Geography  [type: breakdown],,,,,,,,,,,,,
-member,type,FY25Q4|Long-livedAssets
-United States,leaf,"3,626"
-Taiwan,leaf,"1,481"
-Israel,leaf,840
-Other Countries,leaf,336
-(consolidated),,"6,283"
-,,,,,,,,,,,,,
-  axis: CorporateNonSegmentMember - Reconciling items in All Other category FY2025  [type: reconciliation],,,,,,,,,,,,,
-member,type,FY25Q4|ReconcilingItemsInAllOtherCategoryFY2025
-Stock-based compensation expense,leaf,"-4,737"
-Unallocated corporate operating expenditures and other expenses,leaf,"-1,171"
-Acquisition-related and other costs,leaf,-602
-Acquisition termination cost,leaf,0.0000
-Other,leaf,3
-(consolidated),,"-6,507"
-,,,,,,,,,,,,,
-  axis: StatementBusinessSegmentsAxis (reportable segments)  [type: breakdown],,,,,,,,,,,,,
-member,type,FY26Q1|OperatingIncome,FY26Q1|Revenue
-ComputeAndNetworkingSegmentMember,leaf,"22,054","39,589"
-GraphicsSegmentMember,leaf,"1,640","4,473"
-CorporateNonSegmentMember (All Other),rollup,"-2,056",0.0000
-(consolidated),,,"44,062"
-,,,,,,,,,,,,,
-  axis: StatementGeographicalAxis (geographic revenue)  [type: breakdown],,,,,,,,,,,,,
-member,type,FY26Q1|Revenue
-United States (country:US),leaf,"20,739"
-Singapore (country:SG),leaf,"9,017"
-Taiwan (country:TW),leaf,"7,158"
-China including Hong Kong (ChinaIncludingHongKongMember),leaf,"5,522"
-Other (AllOtherCountriesNotSeparatelyDisclosedMember),leaf,"1,626"
-(consolidated),,"44,062"
-,,,,,,,,,,,,,
-  axis: ProductOrServiceAxis (end market revenue)  [type: breakdown],,,,,,,,,,,,,
-member,type,FY26Q1|Revenue
-DataCenterMember,rollup,"39,112"
-ComputeMember (subset of DataCenter),leaf,"34,155"
-NetworkingMember (subset of DataCenter),leaf,"4,957"
-GamingMember,leaf,"3,763"
-ProfessionalVisualizationMember,leaf,509
-AutomotiveMember,leaf,567
-OEMAndOtherMember,leaf,111
-(consolidated),,"44,062"
-,,,,,,,,,,,,,
-  axis: ConsolidationItemsAxis - All Other reconciling items (operating income)  [type: reconciliation],,,,,,,,,,,,,
-member,type,FY26Q1|AllOtherReconcilingItems(operatingIncome)
-AllocatedShareBasedCompensationExpense,leaf,"-1,474"
-UnallocatedCorporateOperatingExpendituresAndOtherExpenses,leaf,-419
-AcquisitionRelatedAndOtherCosts,leaf,-160
-OtherOperatingIncome,leaf,-3
-(consolidated),,"-2,056"
-,,,,,,,,,,,,,
-  axis: MajorCustomersAxis (customer concentration - revenue)  [type: other],,,,,,,,,,,,,
-member,type,FY26Q1|ConcentrationRiskPercentage
-CustomerAMember (Compute and Networking segment),leaf,16%
-CustomerBMember (Compute and Networking segment),leaf,14%
-CustomerCMember (Compute and Networking segment),leaf,
-(consolidated),,"44,062"
-,,,,,,,,,,,,,
-  axis: StatementGeographicalAxis - Revenue by Geography (Billing Location)  [type: breakdown],,,,,,,,,,,,,
-member,type,FY26Q2|Revenue
-United States,leaf,"23,470"
-Singapore,leaf,"10,156"
-Taiwan,leaf,"8,529"
-China (including Hong Kong),leaf,"2,769"
-Other,leaf,"1,819"
-(consolidated),,"{'2025-04-28_2025-07-27': 46743, '2024-04-29_2024-07-28': 30040, '2025-01-27_2025-07-27': 90805, '2024-01-29_2024-07-28': 56084}"
-,,,,,,,,,,,,,
-  axis: SegmentReconcilingItems - Segment Operating Income to Consolidated Income Before Tax  [type: reconciliation],,,,,,,,,,,,,
-member,type,FY26Q2|SegmentOperatingIncomeToConsolidatedIncomeBeforeTax
-Segment operating income (total of segments),leaf,"30,605"
-Stock-based compensation expense (unallocated),leaf,"-1,624"
-Unallocated cost of revenue and operating expenses,leaf,-440
-Acquisition-related and other costs,leaf,-101
-Interest income,leaf,592
-Interest expense,leaf,-62
-"Other income (expense), net",leaf,"2,236"
-Consolidated income before income tax,leaf,"31,206"
-(consolidated),,"{'2025-04-28_2025-07-27': 31206, '2024-04-29_2024-07-28': 19214, '2025-01-27_2025-07-27': 53117, '2024-01-29_2024-07-28': 36493}"
-,,,,,,,,,,,,,
-  axis: StatementBusinessSegmentsAxis - Revenue  [type: breakdown],,,,,,,,,,,,,
-member,type,FY26Q3|Revenue
-ComputeAndNetworkingSegmentMember,leaf,"50,908"
-GraphicsSegmentMember,leaf,"6,098"
-(consolidated),,"57,006"
-,,,,,,,,,,,,,
-  axis: StatementBusinessSegmentsAxis - Operating Income  [type: reconciliation],,,,,,,,,,,,,
-member,type,FY26Q3|OperatingIncome
-ComputeAndNetworkingSegmentMember,leaf,"35,721"
-GraphicsSegmentMember,leaf,"2,546"
-(consolidated),,"36,010"
-,,,,,,,,,,,,,
-  axis: StatementGeographicalAxis - Revenue  [type: breakdown],,,,,,,,,,,,,
-member,type,FY26Q3|Revenue
-United States,leaf,"39,177"
-Taiwan,leaf,"13,751"
-China including Hong Kong,leaf,"2,973"
-Other,leaf,"1,105"
-(consolidated),,"57,006"
-,,,,,,,,,,,,,
-  axis: ProductOrServiceAxis - Data Center Sub-components  [type: sub_hierarchy],,,,,,,,,,,,,
-member,type,FY26Q3|DataCenterSub-components
-ComputeMember,leaf,"43,028"
-NetworkingMember,leaf,"8,187"
-(consolidated),,"51,215"
-,,,,,,,,,,,,,
-  axis: Segment Reconciliation - Operating Income to Income Before Tax (Q3 FY2026)  [type: reconciliation],,,,,,,,,,,,,
-member,type,FY26Q3|OperatingIncomeToIncomeBeforeTax(Q3FY2026)
-SegmentOperatingIncome,leaf,"38,267"
-StockBasedCompensationExpense,leaf,"-1,655"
-UnallocatedOperatingExpenses,leaf,-515
-AcquisitionRelatedAndOtherCosts,leaf,-87
-InterestIncome,leaf,624
-InterestExpense,leaf,-61
-OtherIncomeNet,leaf,"1,363"
-ConsolidatedIncomeBeforeIncomeTax,leaf,"37,936"
-(consolidated),,"37,936"
-,,,,,,,,,,,,,
-  axis: StatementGeographicalAxis - Revenue by Geography (Customer Headquarters Location)  [type: breakdown],,,,,,,,,,,,,
-member,type,FY26Q4|Revenue
-United States,leaf,"149,617"
-Taiwan,leaf,"42,345"
-China (including Hong Kong),leaf,"19,677"
-Other,leaf,"4,299"
-(consolidated),,"215,938"
-,,,,,,,,,,,,,
-  axis: StatementGeographicalAxis - Long-lived Assets (Property and Equipment Net) by Geography  [type: breakdown],,,,,,,,,,,,,
-member,type,FY26Q4|Long-livedAssets(PropertyAndEquipmentNet)
-United States,leaf,"5,125"
-Taiwan,leaf,"3,219"
-Israel,leaf,"1,471"
-Other,leaf,568
-(consolidated),,"10,383"
-,,,,,,,,,,,,,
-── AI BUCKET ASSIGNMENTS (audit trail) ──,,,,,,,,,,,,,
-statement,bucket / exclusion,concept(s) / reason,,,,,,,,,,,
-income_statement,cogs,us-gaap:CostOfRevenue,,,,,,,,,,,
-income_statement,interest_expense,"us-gaap:InterestExpense, us-gaap:InterestExpenseNonoperating",,,,,,,,,,,
-income_statement,interest_income,us-gaap:InvestmentIncomeInterest,,,,,,,,,,,
-income_statement,other_nonop,us-gaap:OtherNonoperatingIncomeExpense,,,,,,,,,,,
-income_statement,other_unusual,nvda:BusinessCombinationAdvancedConsiderationWrittenOff,,,,,,,,,,,
-income_statement,rd,us-gaap:ResearchAndDevelopmentExpense,,,,,,,,,,,
-income_statement,revenue,us-gaap:Revenues,,,,,,,,,,,
-income_statement,sga,us-gaap:SellingGeneralAndAdministrativeExpense,,,,,,,,,,,
-income_statement,tax,us-gaap:IncomeTaxExpenseBenefit,,,,,,,,,,,
-balance_sheet,accounts_payable,us-gaap:AccountsPayableCurrent,,,,,,,,,,,
-balance_sheet,accounts_receivable,us-gaap:AccountsReceivableNetCurrent,,,,,,,,,,,
-balance_sheet,accrued_expenses,us-gaap:AccruedLiabilitiesCurrent,,,,,,,,,,,
-balance_sheet,apic,us-gaap:AdditionalPaidInCapital,,,,,,,,,,,
-balance_sheet,cash,us-gaap:CashAndCashEquivalentsAtCarryingValue,,,,,,,,,,,
-balance_sheet,common_stock,"us-gaap:CommonStockValue, us-gaap:PreferredStockValueOutstanding",,,,,,,,,,,
-balance_sheet,comprehensive_income_other,us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax,,,,,,,,,,,
-balance_sheet,current_portion_leases,us-gaap:OperatingLeaseLiabilityCurrent,,,,,,,,,,,
-balance_sheet,current_portion_lt_debt,us-gaap:DebtCurrent,,,,,,,,,,,
-balance_sheet,deferred_tax_assets_lt,us-gaap:DeferredIncomeTaxAssetsNet,,,,,,,,,,,
-balance_sheet,deferred_tax_liability_nc,us-gaap:DeferredIncomeTaxLiabilitiesNet,,,,,,,,,,,
-balance_sheet,goodwill,us-gaap:Goodwill,,,,,,,,,,,
-balance_sheet,inventory,us-gaap:InventoryNet,,,,,,,,,,,
-balance_sheet,long_term_debt,us-gaap:LongTermDebtNoncurrent,,,,,,,,,,,
-balance_sheet,long_term_leases,us-gaap:OperatingLeaseLiabilityNoncurrent,,,,,,,,,,,
-balance_sheet,net_ppe,us-gaap:PropertyPlantAndEquipmentNet,,,,,,,,,,,
-balance_sheet,other_intangibles,us-gaap:IntangibleAssetsNetExcludingGoodwill,,,,,,,,,,,
-balance_sheet,other_lt_assets,"us-gaap:OperatingLeaseRightOfUseAsset, us-gaap:OtherAssetsNoncurrent",,,,,,,,,,,
-balance_sheet,other_nc_liabilities,us-gaap:OtherLiabilitiesNoncurrent,,,,,,,,,,,
-balance_sheet,prepaid_expenses,us-gaap:PrepaidExpenseAndOtherAssetsCurrent,,,,,,,,,,,
-balance_sheet,retained_earnings,us-gaap:RetainedEarningsAccumulatedDeficit,,,,,,,,,,,
-balance_sheet,sti,"us-gaap:MarketableSecuritiesCurrent, nvda:MarketableSecuritiesAndEquitySecuritiesFVNI",,,,,,,,,,,
-balance_sheet,unearned_revenue_current,us-gaap:ContractWithCustomerLiabilityCurrent,,,,,,,,,,,
-balance_sheet,unearned_revenue_nc,us-gaap:ContractWithCustomerLiabilityNoncurrent,,,,,,,,,,,
-cash_flow,acquisitions,"us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired, us-gaap:PaymentsToAcquireBusinessTwoNetOfCashAcquired",,,,,,,,,,,
-cash_flow,capex,"nvda:PurchasesOfPropertyAndEquipmentAndIntangibleAssets, us-gaap:PaymentsToAcquireProductiveAssets",,,,,,,,,,,
-cash_flow,change_ap,us-gaap:IncreaseDecreaseInAccountsPayable,,,,,,,,,,,
-cash_flow,change_ar,us-gaap:IncreaseDecreaseInAccountsReceivable,,,,,,,,,,,
-cash_flow,change_inventory,us-gaap:IncreaseDecreaseInInventories,,,,,,,,,,,
-cash_flow,change_other_operating_assets,us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets,,,,,,,,,,,
-cash_flow,change_other_operating_liabs,"us-gaap:IncreaseDecreaseInAccruedLiabilitiesAndOtherOperatingLiabilities, us-gaap:IncreaseDecreaseInOtherNoncurrentLiabilities",,,,,,,,,,,
-cash_flow,common_dividends,us-gaap:PaymentsOfDividends,,,,,,,,,,,
-cash_flow,dna,us-gaap:DepreciationDepletionAndAmortization,,,,,,,,,,,
-cash_flow,gain_sale_investments,us-gaap:GainLossOnInvestments,,,,,,,,,,,
-cash_flow,investment_securities,"us-gaap:PaymentsToAcquireAvailableForSaleSecuritiesDebt, us-gaap:ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities, us-gaap:ProceedsFromSaleOfAvailableForSaleSecuritiesDebt, us-gaap:PaymentsToAcquireEquitySecuritiesFvNi, us-gaap:ProceedsFromSaleOfEquitySecuritiesFvNi",,,,,,,,,,,
-cash_flow,long_term_debt_issued,us-gaap:ProceedsFromDebtNetOfIssuanceCosts,,,,,,,,,,,
-cash_flow,long_term_debt_repaid,us-gaap:RepaymentsOfDebt,,,,,,,,,,,
-cash_flow,net_income_start,us-gaap:NetIncomeLoss,,,,,,,,,,,
-cash_flow,other_financing,"us-gaap:PaymentsRelatedToTaxWithholdingForShareBasedCompensation, nvda:PaymentsForFinancedPropertyPlantAndEquipmentAndIntangibleAssetsFinancingActivities, us-gaap:ProceedsFromPaymentsForOtherFinancingActivities",,,,,,,,,,,
-cash_flow,other_investing,us-gaap:PaymentsForProceedsFromOtherInvestingActivities,,,,,,,,,,,
-cash_flow,other_operating,"us-gaap:DeferredIncomeTaxExpenseBenefit, us-gaap:OtherNoncashIncomeExpense, nvda:BusinessCombinationAdvancedConsiderationWrittenOff",,,,,,,,,,,
-cash_flow,sbc,"us-gaap:ShareBasedCompensation, us-gaap:AllocatedShareBasedCompensationExpense",,,,,,,,,,,
-cash_flow,stock_issuance,"nvda:NetProceedsPaymentsRelatedToEmployeeStockPlans, us-gaap:ProceedsFromStockPlans",,,,,,,,,,,
-cash_flow,stock_repurchase,us-gaap:PaymentsForRepurchaseOfCommonStock,,,,,,,,,,,
-,,,,,,,,,,,,,
-— excluded concepts —,,,,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:GrossProfit,Computed subtotal (total_revenue minus cogs); not a detail bucket,,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest,Computed subtotal (ebt_incl_unusual); not a detail bucket,,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:NetIncomeLoss,Computed subtotal (net_income); not a detail bucket on IS,,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:NonoperatingIncomeExpense,"Computed subtotal of interest income, interest expense, and other nonop items; not a detail bucket",,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:OperatingExpenses,Computed subtotal (total_opex); not a detail bucket,,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:OperatingIncomeLoss,Computed subtotal (operating_income); not a detail bucket,,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:EarningsPerShareBasic,"Per-share metric, not a monetary income statement line; excluded from bucket assignments",,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:EarningsPerShareDiluted,"Per-share metric, not a monetary income statement line; excluded from bucket assignments",,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding,"Share count metric, not a monetary line; excluded",,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:WeightedAverageNumberOfSharesOutstandingBasic,"Share count metric, not a monetary line; excluded",,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:AllocatedShareBasedCompensationExpense,Note detail SBC disclosure; already captured in cash flow SBC bucket; IS note detail excluded to avoid double-count,,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:AntidilutiveSecuritiesExcludedFromComputationOfEarningsPerShareAmount,"Share count disclosure, not a monetary line; excluded",,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:ComprehensiveIncomeNetOfTax,Comprehensive income total; not an IS detail bucket,,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:EffectiveIncomeTaxRateContinuingOperations,"Rate percentage, not a monetary line; excluded",,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:OtherComprehensiveIncomeAvailableforsaleSecuritiesAdjustmentNetOfTaxPortionAttributableToParent,"OCI item, not an IS detail bucket; belongs to equity roll",,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossAfterReclassificationAndTax,"OCI item, not an IS detail bucket",,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossBeforeReclassificationAfterTax,"OCI item, not an IS detail bucket",,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossReclassificationAfterTax,"OCI item, not an IS detail bucket",,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:OtherComprehensiveIncomeLossNetOfTax,"OCI subtotal, not an IS detail bucket",,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:OtherComprehensiveIncomeLossReclassificationAdjustmentFromAOCIForSaleOfSecuritiesNetOfTax,"OCI item, not an IS detail bucket",,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:OtherComprehensiveIncomeUnrealizedHoldingGainLossOnSecuritiesArisingDuringPeriodNetOfTax,"OCI item, not an IS detail bucket",,,,,,,,,,,
-income_statement,EXCLUDED: us-gaap:WeightedAverageNumberDilutedSharesOutstandingAdjustment,"Share count dilution adjustment, not a monetary line; excluded",,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:Assets,Computed subtotal (total_assets); not a detail bucket,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:AssetsCurrent,Computed subtotal (total_current_assets); not a detail bucket,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:CommitmentsAndContingencies,Placeholder line with zero values; purely presentational,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:Liabilities,Computed subtotal (total_liabilities); not a detail bucket,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:LiabilitiesAndStockholdersEquity,Computed subtotal (total_liabilities_and_equity); not a detail bucket,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:LiabilitiesCurrent,Computed subtotal (total_current_liabilities); not a detail bucket,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:StockholdersEquity,Computed subtotal (total_equity / common_equity); not a detail bucket,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:AccruedCustomerProgramsCurrent,Note detail sub-component of accrued liabilities; already captured in AccruedLiabilitiesCurrent face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:AccruedLicensesAndRoyalties,Note detail sub-component of accrued liabilities; already captured in AccruedLiabilitiesCurrent face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:AccruedShareRepurchaseLiabilityCurrent,Note detail sub-component of accrued liabilities; already captured in AccruedLiabilitiesCurrent face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:AggregateNumberOfSharesRepurchasedUnderStockRepurchasePlan,"Share count disclosure, not a monetary balance sheet line",,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:AggregatedCostOfSharesRepurchased,"Cumulative share repurchase cost disclosure, not a balance sheet line item",,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:BusinessCombinationConsiderationPayable,Note detail; acquisition consideration payable embedded in accrued or other liabilities,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:ContractWithCustomerLiabilityAdditions,Roll-forward item with no values; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:ContractWithCustomerLiabilityRevenueRecognizedIncludingOpeningBalance,Roll-forward item with no values; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:ExcessInventoryPurchaseObligationsCurrent,Note detail sub-component of accrued liabilities; already captured in AccruedLiabilitiesCurrent,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:FiniteLivedIntangibleAssetsAmortizationExpenseAfterYearFour,"Future amortization schedule disclosure, not a balance sheet line",,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:InventoryPurchaseObligationExceedingDemandProjectionsCancellationsAndPenaltiesExpense,No values; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:LesseeOperatingLeaseLeaseNotYetCommencedUndiscountedAmount,"Future lease commitment disclosure, not a balance sheet line",,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:LesseeOperatingLeaseLiabilityPaymentsDueAfterYearFour,"Future lease payment schedule, not a balance sheet line",,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:LicensesPayableNoncurrent,Note detail sub-component of other long-term liabilities; already captured in OtherLiabilitiesNoncurrent,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:NotionalAmountOfFXForwardContractNonDesignatedAsHedge,"Notional derivative disclosure, not a balance sheet asset or liability line",,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:NotionalAmountOfForeignExchangeForwardContractDesignatedAsHedge,"Notional derivative disclosure, not a balance sheet asset or liability line",,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:PrepaidCloudServices,Note detail sub-component of other assets; already captured in OtherAssetsNoncurrent,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:PrepaidRoyaltiesNoncurrent,Note detail sub-component of other assets; already captured in OtherAssetsNoncurrent,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:PrepaidSupplyAgreementsNoncurrent,Note detail sub-component of other assets; already captured in OtherAssetsNoncurrent,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:PrepaidSupplyAndCapacityAgreementsNoncurrent,Note detail sub-component of other assets; already captured in OtherAssetsNoncurrent,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:PrepaidTaxesNoncurrent,Note detail sub-component of other assets; already captured in OtherAssetsNoncurrent,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:ProductWarrantyAccrualsAndReturnProvisionsCurrent,Note detail sub-component of accrued liabilities; already captured in AccruedLiabilitiesCurrent,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:ProductWarrantyAccrualsCurrent,Note detail sub-component of accrued liabilities; already captured in AccruedLiabilitiesCurrent,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:ProductWarrantyAndReturnProvisions,Note detail sub-component of accrued liabilities; already captured in AccruedLiabilitiesCurrent,,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:PurchaseObligationAndOtherCommitments,"Off-balance-sheet commitment disclosure, not a balance sheet line",,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:PurchaseObligationInventoryPurchaseAndSupplyAgreements,"Off-balance-sheet commitment disclosure, not a balance sheet line",,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:PurchaseObligationInventoryPurchaseAndSupplyAndCapacityCommitmentRemainingMinimumAmountsCommitted,"Off-balance-sheet commitment disclosure, not a balance sheet line",,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:PurchaseObligationToBePaidAfterYearFour,"Off-balance-sheet commitment disclosure, not a balance sheet line",,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:StockRepurchaseProgramAdditionalNumberOfSharesAuthorizedToBeRepurchased,"Share count authorization disclosure, not a balance sheet line",,,,,,,,,,,
-balance_sheet,EXCLUDED: nvda:UnrecognizedTaxBenefitsInterestOnIncomeTaxesReversed,No values; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:AccruedIncomeTaxesNoncurrent,Note detail sub-component of other long-term liabilities; already captured in OtherLiabilitiesNoncurrent,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment,Contra-asset note detail; gross PPE less accumulated depreciation already reflected in PropertyPlantAndEquipmentNet face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:AdjustmentsRelatedToTaxWithholdingForShareBasedCompensation,No values; equity roll-forward item; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:AdjustmentsToAdditionalPaidInCapitalSharebasedCompensationRequisiteServicePeriodRecognitionValue,No values; equity roll-forward item; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:AmortizationOfIntangibleAssets,No values; activity metric not a balance sheet stock; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:AvailableForSaleDebtSecuritiesAccumulatedGrossUnrealizedGainBeforeTax,Note detail unrealized gain disclosure on investment securities; not a separate balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:AvailableForSaleDebtSecuritiesAccumulatedGrossUnrealizedLossBeforeTax,Note detail unrealized loss disclosure on investment securities; not a separate balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:AvailableForSaleDebtSecuritiesAmortizedCostBasis,Note detail cost basis disclosure; not a separate balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:AvailableForSaleSecuritiesDebtMaturitiesAfterOneThroughFiveYearsAmortizedCost,Maturity schedule disclosure; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:AvailableForSaleSecuritiesDebtMaturitiesAfterOneThroughFiveYearsFairValue,Maturity schedule disclosure; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:AvailableForSaleSecuritiesDebtMaturitiesWithinOneYearAmortizedCost,Maturity schedule disclosure; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:AvailableForSaleSecuritiesDebtMaturitiesWithinOneYearFairValue,Maturity schedule disclosure; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:AvailableForSaleSecuritiesDebtSecurities,Note detail fair value of AFS debt securities; already embedded in MarketableSecuritiesCurrent face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:CashEquivalentsAtCarryingValue,Note detail sub-component of cash; already captured in CashAndCashEquivalentsAtCarryingValue face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:CommercialPaper,Zero value disclosure; not a separate balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:CommonStockDividendsPerShareDeclared,"Per-share disclosure, not a monetary balance sheet line",,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:CommonStockParOrStatedValuePerShare,"Per-share par value disclosure, not a monetary line",,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:CommonStockSharesAuthorized,"Share count disclosure, not a monetary line",,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:CommonStockSharesIssued,"Share count disclosure, not a monetary line",,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:CommonStockSharesOutstanding,"Share count disclosure, not a monetary line",,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:ComprehensiveIncomeNetOfTax,No values in BS context; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:ContractWithCustomerLiability,Note detail total deferred revenue (current plus noncurrent); sub-components already assigned; excluded to avoid double-count,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:DebtInstrumentUnamortizedDiscountPremiumAndDebtIssuanceCostsNet,Note detail debt discount/issuance costs; already netted in LongTermDebtNoncurrent face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:DebtSecuritiesAvailableForSaleContinuousUnrealizedLossPosition12MonthsOrLonger,Note detail unrealized loss position disclosure; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:DebtSecuritiesAvailableForSaleContinuousUnrealizedLossPosition12MonthsOrLongerAccumulatedLoss,Note detail unrealized loss disclosure; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:DebtSecuritiesAvailableForSaleContinuousUnrealizedLossPositionLessThan12Months,Note detail unrealized loss position disclosure; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:DebtSecuritiesAvailableForSaleContinuousUnrealizedLossPositionLessThan12MonthsAccumulatedLoss,Note detail unrealized loss disclosure; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:DebtSecuritiesAvailableForSaleUnrealizedLossPosition,Note detail unrealized loss position disclosure; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:DebtSecuritiesAvailableForSaleUnrealizedLossPositionAccumulatedLoss,Note detail unrealized loss disclosure; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:DeferredIncomeTaxLiabilities,Note detail gross deferred tax liability before netting; net figure already in DeferredIncomeTaxLiabilitiesNet,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:DeferredTaxAssetsGross,Note detail gross deferred tax asset before valuation allowance; net figure already in DeferredIncomeTaxAssetsNet face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:DeferredTaxAssetsLiabilitiesNet,Note detail net deferred tax position; already captured in face line items,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:DeferredTaxAssetsNet,Note detail net deferred tax asset after valuation allowance; already captured in DeferredIncomeTaxAssetsNet face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:DeferredTaxAssetsValuationAllowance,Note detail valuation allowance; contra-asset already netted in DeferredIncomeTaxAssetsNet,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:DividendsCommonStockCash,No values; equity roll-forward item; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:EffectiveIncomeTaxRateContinuingOperations,No values in BS context; rate percentage not a monetary line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:EmployeeRelatedLiabilitiesCurrent,Note detail sub-component of accrued liabilities; already captured in AccruedLiabilitiesCurrent face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:EmployeeServiceShareBasedCompensationNonvestedAwardsTotalCompensationCostNotYetRecognized,"Unrecognized SBC cost disclosure, not a balance sheet line",,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:EquitySecuritiesFVNINoncurrent,Note detail non-marketable equity securities; already embedded in OtherAssetsNoncurrent face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:EquitySecuritiesFvNiUnrealizedLoss,No values; unrealized loss disclosure; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:EquitySecuritiesWithoutReadilyDeterminableFairValueAmount,Note detail sub-component of non-marketable equity securities; already in OtherAssetsNoncurrent,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:FiniteLivedIntangibleAssetsAccumulatedAmortization,Note detail accumulated amortization; gross intangibles less accumulated amortization already reflected in IntangibleAssetsNetExcludingGoodwill face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseNextTwelveMonths,Future amortization schedule; not a balance sheet stock,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseRemainderOfFiscalYear,Future amortization schedule; not a balance sheet stock,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseYearFour,Future amortization schedule; not a balance sheet stock,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseYearThree,Future amortization schedule; not a balance sheet stock,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:FiniteLivedIntangibleAssetsAmortizationExpenseYearTwo,Future amortization schedule; not a balance sheet stock,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:FiniteLivedIntangibleAssetsGross,Note detail gross intangibles before accumulated amortization; net figure already in IntangibleAssetsNetExcludingGoodwill face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:FiniteLivedIntangibleAssetsNet,Note detail same as IntangibleAssetsNetExcludingGoodwill face line; would double-count if assigned,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:GoodwillPeriodIncreaseDecrease,No values; goodwill roll-forward activity item; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:IncomeTaxExaminationIncreaseDecreaseInLiabilityFromPriorYear,Income tax examination disclosure; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:IncomeTaxesReceivableNoncurrent,Note detail noncurrent income taxes receivable; already embedded in OtherAssetsNoncurrent face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:InventoryFinishedGoodsNetOfReserves,Note detail sub-component of inventory; already captured in InventoryNet face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:InventoryRawMaterialsNetOfReserves,Note detail sub-component of inventory; already captured in InventoryNet face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:InventoryWorkInProcessNetOfReserves,Note detail sub-component of inventory; already captured in InventoryNet face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:InventoryWriteDown,No values; inventory write-down charge disclosure; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:LesseeOperatingLeaseLiabilityPaymentsDue,Future lease payment total; not a balance sheet stock,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:LesseeOperatingLeaseLiabilityPaymentsDueNextTwelveMonths,Future lease payment schedule; not a balance sheet stock,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:LesseeOperatingLeaseLiabilityPaymentsDueYearFour,Future lease payment schedule; not a balance sheet stock,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:LesseeOperatingLeaseLiabilityPaymentsDueYearThree,Future lease payment schedule; not a balance sheet stock,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:LesseeOperatingLeaseLiabilityPaymentsDueYearTwo,Future lease payment schedule; not a balance sheet stock,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:LesseeOperatingLeaseLiabilityPaymentsRemainderOfFiscalYear,Future lease payment schedule; not a balance sheet stock,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:LesseeOperatingLeaseLiabilityUndiscountedExcessAmount,Lease discount amount; not a balance sheet stock,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:LongTermDebt,Note detail total long-term debt including current portion; face lines LongTermDebtNoncurrent and DebtCurrent already assigned; would double-count,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:LongTermDebtCurrent,Note detail same as DebtCurrent face line; would double-count if assigned,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:MarketableSecurities,Note detail same as MarketableSecuritiesCurrent face line; would double-count if assigned,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:NoncurrentAssets,Note detail long-lived assets geographic segment disclosure; not a distinct balance sheet line separate from PropertyPlantAndEquipmentNet,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:NumberOfReportableSegments,Segment count disclosure; not a monetary balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:OperatingLeaseCost,No values; lease cost expense disclosure; not a balance sheet stock,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:OperatingLeaseLiability,Note detail total operating lease liability (current plus noncurrent); sub-components already assigned; excluded to avoid double-count,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:OperatingLeasePayments,No values; cash paid for leases disclosure; not a balance sheet stock,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:OperatingLeaseWeightedAverageDiscountRatePercent,Rate percentage disclosure; not a monetary balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:OtherAccruedLiabilitiesCurrent,Note detail sub-component of accrued liabilities; already captured in AccruedLiabilitiesCurrent face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:OtherAssetsMiscellaneousNoncurrent,Note detail sub-component of other assets; already captured in OtherAssetsNoncurrent face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:OtherCommitment,Off-balance-sheet commitment disclosure; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossAfterReclassificationAndTax,No values in BS context; OCI roll-forward item; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossBeforeReclassificationAfterTax,No values in BS context; OCI roll-forward item; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossReclassificationAfterTax,No values in BS context; OCI roll-forward item; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:OtherComprehensiveIncomeLossNetOfTax,No values in BS context; OCI subtotal; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:OtherComprehensiveIncomeUnrealizedHoldingGainLossOnSecuritiesArisingDuringPeriodNetOfTax,No values in BS context; OCI item; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:OtherLongTermInvestments,Note detail non-marketable equity investments sub-component; already embedded in OtherAssetsNoncurrent face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:OtherSundryLiabilitiesNoncurrent,Note detail sub-component of other long-term liabilities; already captured in OtherLiabilitiesNoncurrent face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:PreferredStockParOrStatedValuePerShare,Per-share disclosure; not a monetary balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:PreferredStockSharesAuthorized,Share count disclosure; not a monetary balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:PreferredStockSharesIssued,Share count disclosure; not a monetary balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:ProductWarrantyAccrual,Note detail warranty accrual; already captured in AccruedLiabilitiesCurrent face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:ProductWarrantyAccrualClassifiedCurrent,Note detail warranty accrual sub-component; already captured in AccruedLiabilitiesCurrent face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:ProductWarrantyAccrualPayments,No values; warranty roll-forward item; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:ProductWarrantyAccrualWarrantiesIssued,No values; warranty roll-forward item; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:PropertyPlantAndEquipmentGross,Note detail gross PPE before accumulated depreciation; net figure already in PropertyPlantAndEquipmentNet face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:PurchaseObligation,Off-balance-sheet commitment disclosure; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:PurchaseObligationDueInFourthYear,Off-balance-sheet commitment schedule; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:PurchaseObligationDueInNextTwelveMonths,Off-balance-sheet commitment schedule; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:PurchaseObligationDueInSecondYear,Off-balance-sheet commitment schedule; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:PurchaseObligationDueInThirdYear,Off-balance-sheet commitment schedule; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:PurchaseObligationFutureMinimumPaymentsRemainderOfFiscalYear,Off-balance-sheet commitment schedule; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:RestrictedCashCurrent,Note detail restricted cash; small amount only in FY24Q2; embedded in PrepaidExpenseAndOtherAssetsCurrent or separate; given immateriality excluded to avoid over-counting current assets,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:RevenueRemainingPerformanceObligation,Remaining performance obligation disclosure; not a balance sheet stock,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:RightOfUseAssetObtainedInExchangeForOperatingLeaseLiability,No values in BS context; non-cash activity disclosure; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:StockIssuedDuringPeriodValueEmployeeStockOwnershipPlan,No values; equity roll-forward item; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:StockRepurchaseProgramAuthorizedAmount1,Authorization amount disclosure; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:StockRepurchaseProgramRemainingAuthorizedRepurchaseAmount1,Remaining authorization disclosure; not a balance sheet line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:StockRepurchasedAndRetiredDuringPeriodShares,No values; share count activity; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:StockRepurchasedAndRetiredDuringPeriodValue,No values; equity roll-forward item; excluded,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:TaxesPayableCurrent,Note detail income taxes payable sub-component; already captured in AccruedLiabilitiesCurrent face line,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:UnrecognizedTaxBenefits,Unrecognized tax benefit disclosure; not a distinct balance sheet line separate from other liabilities,,,,,,,,,,,
-balance_sheet,EXCLUDED: us-gaap:UnrecognizedTaxBenefitsDecreasesResultingFromSettlementsWithTaxingAuthorities,No values; UTB roll-forward item; excluded,,,,,,,,,,,
-cash_flow,EXCLUDED: us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents,Beginning and ending cash balance reconciliation line; not a cash flow activity bucket; Python computes net change from detail buckets,,,,,,,,,,,
-cash_flow,EXCLUDED: us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect,Computed net change in cash subtotal; Python computes this from cfo plus cfi plus cff plus fx_adjustments,,,,,,,,,,,
-cash_flow,EXCLUDED: us-gaap:NetCashProvidedByUsedInFinancingActivities,Computed subtotal (cff); not a detail bucket,,,,,,,,,,,
-cash_flow,EXCLUDED: us-gaap:NetCashProvidedByUsedInInvestingActivities,Computed subtotal (cfi); not a detail bucket,,,,,,,,,,,
-cash_flow,EXCLUDED: us-gaap:NetCashProvidedByUsedInOperatingActivities,Computed subtotal (cfo); not a detail bucket,,,,,,,,,,,
-cash_flow,EXCLUDED: us-gaap:CashAndCashEquivalentsAtCarryingValue,Reconciliation line with no values in CF context; excluded,,,,,,,,,,,
-cash_flow,EXCLUDED: us-gaap:IncomeTaxesPaidNet,Supplemental cash paid disclosure; not an operating activity detail bucket line,,,,,,,,,,,
-cash_flow,EXCLUDED: us-gaap:InterestPaidNet,Supplemental cash paid disclosure; not an operating activity detail bucket line,,,,,,,,,,,
-cash_flow,EXCLUDED: us-gaap:RestrictedCashCurrent,No values in CF context; reconciliation item; excluded,,,,,,,,,,,
-cash_flow,EXCLUDED: us-gaap:CapitalExpendituresIncurredButNotYetPaid,Non-cash supplemental disclosure; not a cash flow activity bucket,,,,,,,,,,,
-cash_flow,EXCLUDED: us-gaap:IncomeTaxPaidFederalAfterRefundReceived,Supplemental tax paid disclosure; not an operating activity detail bucket line,,,,,,,,,,,
-cash_flow,EXCLUDED: us-gaap:OperatingLeasePayments,Supplemental operating lease cash paid disclosure; not a separate CF activity line,,,,,,,,,,,
-cash_flow,EXCLUDED: us-gaap:RightOfUseAssetObtainedInExchangeForOperatingLeaseLiability,Non-cash supplemental disclosure of ROU assets obtained; not a cash flow activity bucket,,,,,,,,,,,
-,,,,,,,,,,,,,
-── VERIFICATION ──,,,,,,,,,,,,,
-passed,TRUE,,,,,,,,,,,,
-failure_count,0,,,,,,,,,,,,
-retries,0,,,,,,,,,,,,
-,,,,,,,,,,,,,
-,,,,,,,,,,,,,
+NVDA — Stage 2 Statement View,,,,,,,,,,,,,,,,,
+generated: 2026-04-17T16:50:33,,,,,,,,,,,,,,,,,
+verification: PASSED (0 failures),,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+── INCOME STATEMENT (USD millions) ──,,,,,,,,,,,,,,,,,
+,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+REVENUES,,,,,,,,,,,,,,,,,
+  Revenue,"7,192","13,507","18,120","22,103","60,922",,"26,044","30,040","35,082","39,331","130,497",,"44,062","46,743","57,006","68,127","215,938"
+  Finance Div. Revenues,,,,,,,,,,,,,,,,,
+  Insurance Division Revenues,,,,,,,,,,,,,,,,,
+  Other Revenues,,,,,,,,,,,,,,,,,
+TOTAL REVENUES,"7,192","13,507","18,120","22,103","60,922",,"26,044","30,040","35,082","39,331","130,497",,"44,062","46,743","57,006","68,127","215,938"
+,,,,,,,,,,,,,,,,,
+GROSS PROFIT,,,,,,,,,,,,,,,,,
+  Cost of Revenues,"2,544","4,045","4,720","5,312","16,621",,"5,638","7,466","8,926","10,609","32,639",,"17,394","12,890","15,157","17,034","62,475"
+GROSS PROFIT (LOSS),"4,648","9,462","13,400","16,791","44,301",,"20,406","22,574","26,156","28,722","97,858",,"26,668","33,853","41,849","51,093","153,463"
+,,,,,,,,,,,,,,,,,
+OPERATING INCOME & EXPENSES,,,,,,,,,,,,,,,,,
+  Selling General & Admin Expenses,633,622,689,710,"2,654",,777,842,897,975,"3,491",,"1,041","1,122","1,134","1,282","4,579"
+  R&D Expenses,"1,875","2,040","2,294","2,466","8,675",,"2,720","3,090","3,390","3,714","12,914",,"3,989","4,291","4,705","5,512","18,497"
+  Depreciation & Amortization,,,,,,,,,,,,,,,,,
+  Other Operating Expenses,,,,,,,,,,,,,,,,,
+TOTAL OPERATING EXPENSES,"2,508","2,662","2,983","3,176","11,329",,"3,497","3,932","4,287","4,689","16,405",,"5,030","5,413","5,839","6,794","23,076"
+OPERATING INCOME,"2,140","6,800","10,417","13,615","32,972",,"16,909","18,642","21,869","24,033","81,453",,"21,638","28,440","36,010","44,299","130,387"
+,,,,,,,,,,,,,,,,,
+NET INTEREST EXPENSE,,,,,,,,,,,,,,,,,
+  Interest Expense,66,65,63,63,257,,64,61,61,61,247,,63,62,61,73,259
+  Interest And Investment Income,150,187,234,295,866,,359,444,472,511,"1,786",,515,592,624,569,"2,300"
+NET INTEREST EXPENSES,-84,-122,-171,-232,-609,,-295,-383,-411,-450,"-1,539",,-452,-530,-563,-496,"-2,041"
+,,,,,,,,,,,,,,,,,
+EBT,,,,,,,,,,,,,,,,,
+  Income (Loss) On Equity Affiliates,,,,,,,,,,,,,,,,,
+  Other Non Operating Income (Expenses),-15,59,-66,259,237,,75,189,36,734,"1,034",,-180,"2,236","1,363","5,603","9,022"
+"EBT, EXCL. UNUSUAL ITEMS","2,209","6,981","10,522","14,106","33,818",,"17,279","19,214","22,316","25,217","84,026",,"21,910","31,206","37,936","50,398","141,450"
+  Restructuring Charges,,,,,,,,,,,,,,,,,
+  Impairment of Goodwill,,,,,,,,,,,,,,,,,
+  Gain (Loss) On Sale Of Assets,,,,,,,,,,,,,,,,,
+  Gain (Loss) On Sale Of Investments,,,,,,,,,,,,,,,,,
+"  Other Unusual Items, Total",0.0000,0.0000,0.0000,0.0000,0.0000,,,,,0.0000,0.0000,,,,,,
+"EBT, INCL. UNUSUAL ITEMS","2,209","6,981","10,522","14,106","33,818",,"17,279","19,214","22,316","25,217","84,026",,"21,910","31,206","37,936","50,398","141,450"
+,,,,,,,,,,,,,,,,,
+NET INCOME,,,,,,,,,,,,,,,,,
+  Income Tax Expense,166,793,"1,279","1,820","4,058",,"2,398","2,615","3,007","3,126","11,146",,"3,135","4,784","6,026","7,438","21,383"
+EARNINGS FROM CONTINUING OPERATIONS,"2,043","6,188","9,243","12,286","29,760",,"14,881","16,599","19,309","22,091","72,880",,"18,775","26,422","31,910","42,960","120,067"
+  Minority Interest,,,,,,,,,,,,,,,,,
+NET INCOME,"2,043","6,188","9,243","12,286","29,760",,"14,881","16,599","19,309","22,091","72,880",,"18,775","26,422","31,910","42,960","120,067"
+  Preferred Dividend and Other Adjustments,,,,,,,,,,,,,,,,,
+NET INCOME TO COMMON INCL EXTRA ITEMS,"2,043","6,188","9,243","12,286","29,760",,"14,881","16,599","19,309","22,091","72,880",,"18,775","26,422","31,910","42,960","120,067"
+NET INCOME TO COMMON EXCL. EXTRA ITEMS,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+── BALANCE SHEET (USD millions) ──,,,,,,,,,,,,,,
+,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4
+ASSETS,,,,,,,,,,,,,,
+  Cash And Equivalents,"5,079","5,783","5,519","7,280",,"7,587","8,563","9,107","8,589",,"15,234","11,639","11,486","10,605"
+  Short Term Investments,"10,241","10,240","12,762","18,704",,"23,851","26,237","29,380","34,621",,"38,457","45,152","49,122","51,951"
+  Trading Asset Securities,,,,,,,,,,,,,,
+TOTAL CASH AND SHORT TERM INVESTMENTS,"15,320","16,023","18,281","25,984",,"31,438","34,800","38,487","43,210",,"53,691","56,791","60,608","62,556"
+  Accounts Receivable,"4,080","7,066","8,309","9,999",,"12,365","14,132","17,693","23,065",,"22,132","27,808","33,391","38,466"
+  Other Receivables,,,,,,,,,,,,,,
+TOTAL RECEIVABLES,"4,080","7,066","8,309","9,999",,"12,365","14,132","17,693","23,065",,"22,132","27,808","33,391","38,466"
+  Inventory,"4,611","4,319","4,779","5,282",,"5,864","6,675","7,654","10,080",,"11,333","14,962","19,784","21,403"
+  Restricted Cash,,,,,,,,,,,,,,
+  Prepaid Expenses,872,"1,389","1,289","3,080",,"4,062","4,026","3,806","3,771",,"2,779","2,658","2,709","3,180"
+  Other Current Assets,,,,,,,,,,,,,,
+TOTAL CURRENT ASSETS,"24,883","28,797","32,658","44,345",,"53,729","59,633","67,640","80,126",,"89,935","102,219","116,492","125,605"
+,,,,,,,,,,,,,,
+  Net Property Plant And Equipment,"3,740","3,799","3,844","3,914",,"4,006","4,885","5,343","6,283",,"7,136","9,141","9,780","10,383"
+  Long-term Investments,,,,,,,,,,,,,,
+  Goodwill,"4,430","4,430","4,430","4,430",,"4,453","4,622","4,724","5,188",,"5,498","5,755","6,261","20,832"
+  Other Intangibles,"1,541","1,395","1,251","1,112",,986,952,838,807,,769,755,936,"3,306"
+  Loans Receivable Long-Term,,,,,,,,,,,,,,
+  Deferred Tax Assets Long-Term,"4,568","5,398","5,982","6,081",,"7,798","9,578","10,276","10,979",,"13,318","13,570","13,674","13,258"
+  Deferred Charges Long-Term,,,,,,,,,,,,,,
+  Other Long-Term Assets,"5,298","5,736","5,983","5,846",,"6,100","5,557","7,192","8,218",,"8,598","9,300","14,005","11,168"
+TOTAL ASSETS,"44,460","49,555","54,148","65,728",,"77,072","85,227","96,013","111,601",,"125,254","140,740","161,148","206,803"
+,,,,,,,,,,,,,,
+LIABILITIES,,,,,,,,,,,,,,
+  Accounts Payable,"1,141","1,929","2,380","2,699",,"2,715","3,680","5,353","6,310",,"7,331","9,064","8,624","9,812"
+  Accrued Expenses,"4,869","7,156","5,472","6,682",,"11,258","10,289","11,126","11,737",,"19,211","15,193","16,452","21,352"
+  Current Portion of Long-Term Debt,"1,250","1,249","1,249","1,250",,"1,250",0.0000,0.0000,0.0000,,,,999,999
+  Current Portion of Leases,187,208,230,228,,246,250,273,288,,300,301,341,372
+  Current Income Taxes Payable,,,,,,,,,,,,,,
+"  Unearned Revenue Current, Total",367,421,513,764,,845,948,752,837,,"1,074",980,"1,248","1,379"
+  Other Current Liabilities,,,,,,,,,,,,,,
+TOTAL CURRENT LIABILITIES,"7,260","10,334","9,101","10,631",,"15,223","13,969","16,479","18,047",,"26,542","24,257","26,075","32,163"
+  Long-Term Debt,"9,704","8,456","8,457","8,459",,"8,460","8,461","8,462","8,463",,"8,464","8,466","7,468","7,469"
+  Long-Term Leases,939,"1,041","1,091","1,119",,"1,281","1,304","1,490","1,519",,"1,521","1,831","2,014","2,572"
+  Unearned Revenue Non Current,230,308,425,573,,704,773,833,976,,"1,004","1,055","1,165","1,193"
+  Deferred Tax Liability Non Current,290,373,424,462,,583,697,790,886,,"1,082","1,351","1,621","1,774"
+  Other Non Current Liabilities,"2,037","2,223","2,234","2,541",,"2,966","3,336","3,683","4,245",,"4,884","6,055","6,694","7,306"
+TOTAL LIABILITIES,"19,940","22,054","20,883","22,750",,"27,930","27,070","30,114","32,274",,"41,411","40,609","42,251","49,510"
+,,,,,,,,,,,,,,
+EQUITY,,,,,,,,,,,,,,
+  Common Stock,2,2,2,2,,2,25,25,24,,24,24,24,24
+  Additional Paid In Capital,"12,453","12,629","12,991","13,132",,"12,651","12,115","11,821","11,237",,"11,475","11,200","10,626","10,118"
+  Retained Earnings,"12,115","14,921","20,360","29,817",,"36,598","45,961","53,950","68,038",,"72,158","88,737","107,908","146,973"
+  Treasury Stock,,,,,,,,,,,,,,
+  Comprehensive Income and Other,-50,-51,-88,27,,-109,56,103,28,,186,170,339,178
+COMMON EQUITY,"24,520","27,501","33,265","42,978",,"49,142","58,157","65,899","79,327",,"83,843","100,131","118,897","157,293"
+  Minority Interest,,,,,,,,,,,,,,
+TOTAL EQUITY,"24,520","27,501","33,265","42,978",,"49,142","58,157","65,899","79,327",,"83,843","100,131","118,897","157,293"
+TOTAL LIABILITIES AND EQUITY,"44,460","49,555","54,148","65,728",,"77,072","85,227","96,013","111,601",,"125,254","140,740","161,148","206,803"
+,,,,,,,,,,,,,,
+── CASH FLOW (USD millions) ──,,,,,,,,,,,,,,,,,
+,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+CASH FROM OPERATIONS,,,,,,,,,,,,,,,,,
+  Net Income,"2,043","6,189","9,243","12,285","29,760",,"14,881","16,599","19,309","22,091","72,880",,"18,775","26,422","31,910","42,960","120,067"
+"  Depreciation & Amortization, Total",384,365,372,387,"1,508",,410,433,478,543,"1,864",,611,669,751,812,"2,843"
+  (Gain) Loss From Sale Of Asset,,,,,,,,,,,,,,,,,
+  (Gain) Loss on Sale of Investments,14,-59,69,-262,-238,,-69,-195,-38,"1,332","1,030",,175,"1,898","1,353","5,492","8,918"
+"  Amortization of Deferred Charges, Total",,,,,,,,,,,,,,,,,
+  Asset Writedown & Restructuring Costs,,,,,,,,,,,,,,,,,
+  Stock-Based Compensation,735,841,979,994,"3,549",,"1,011","1,153","1,252","1,321","4,737",,"1,474","1,625","1,654","1,633","6,386"
+"  Other Operating Activities, Total","-1,169",-712,-531,-78,"-2,490",,"-1,722","-1,554",-968,269,"-3,975",,"-2,275",311,205,622,"-1,137"
+  Change In Accounts Receivable,-252,"-2,987","-1,243","-1,690","-6,172",,"-2,366","-1,767","-3,561","20,757","13,063",,933,"3,810","5,582","5,074","15,399"
+  Change In Inventories,566,295,-456,-503,-98,,-577,-803,-977,"7,138","4,781",,"-1,258","6,138","4,823","1,621","11,324"
+  Change In Accounts Payable,11,778,461,281,"1,531",,-22,823,"1,689",867,"3,357",,941,"1,314",-223,"1,064","3,096"
+  Change in Unearned Revenues,,,,,,,,,,,,,,,,,
+  Change In Income Taxes,,,,,,,,,,,,,,,,,
+  Change in Other Operating Assets (prepaid-type),-215,-377,255,"-1,185","-1,522",,-726,714,-714,"1,121",395,,560,"-1,506",89,280,-577
+  Change in Other Operating Liabs (accrued-type),794,"2,117","-1,750","1,378","2,539",,"4,525",-627,869,732,"5,499",,"7,478","-3,424","1,461","1,586","7,101"
+CASH FROM OPERATIONS,"2,911","6,348","7,332","11,499","28,090",,"15,345","14,488","17,627","16,629","64,089",,"27,414","15,365","23,751","36,188","102,718"
+,,,,,,,,,,,,,,,,,
+CASH FROM INVESTING,,,,,,,,,,,,,,,,,
+  Capital Expenditure,-248,-289,-278,-254,"-1,069",,-369,-977,-813,"5,395","3,236",,"-1,227","4,349","1,636","1,284","6,042"
+"  Sale of Property, Plant, and Equipment",,,,,,,,,,,,,,,,,
+  Cash Acquisitions,-83,0.0000,0.0000,0.0000,-83,,-39,-278,-148,"1,472","1,007",,-383,"1,060",693,"13,165","14,535"
+  Divestitures,,,,,,,,,,,,,,,,,
+"  Investment in Mkt and Equity Securities, Total",-289,57,"-2,455","-5,742","-8,429",,"-5,150","-2,064","-3,385","50,521","39,922",,"-3,606","25,768","12,155","50,268","84,585"
+  Net (Increase) Decrease in Loans Orig / Sold,,,,,,,,,,,,,,,,,
+"  Other Investing Activities, Total",-221,-214,-437,-113,-985,,-135,135,0.0000,-22,-22,,,,,0.0000,0.0000
+CASH FROM INVESTING,-841,-446,"-3,170","-6,109","-10,566",,"-5,693","-3,184","-4,346","-7,198","-20,421",,"-5,216","-7,127","-9,024","-30,861","-52,228"
+,,,,,,,,,,,,,,,,,
+CASH FROM FINANCING,,,,,,,,,,,,,,,,,
+"  Short Term Debt Issued, Total",,,,,,,,,,,,,,,,,
+"  Long-Term Debt Issued, Total",,,,0.0000,0.0000,,,,,,,,,,,,
+TOTAL DEBT ISSUED,,,,0.0000,0.0000,,,,,,,,,,,,
+"  Short Term Debt Repaid, Total",,,,,,,,,,,,,,,,,
+"  Long-Term Debt Repaid, Total",,"-1,250",0.0000,0.0000,"-1,250",,,"-1,250",0.0000,"2,500","1,250",,,0.0000,0.0000,0.0000,0.0000
+TOTAL DEBT REPAID,,"-1,250",0.0000,0.0000,"-1,250",,,"-1,250",0.0000,"2,500","1,250",,,0.0000,0.0000,0.0000,0.0000
+  Issuance of Common Stock,246,1,156,0.0000,403,,285,0.0000,204,1,490,,370,0.0000,273,1,644
+  Repurchase of Common Stock,0.0000,"-3,067","-3,807","-2,659","-9,533",,"-7,740","-7,158","-10,997","59,601","33,706",,"-14,095","37,910","12,456","3,815","40,086"
+  Common Dividends Paid,-99,-100,-97,-99,-395,,-98,-246,-245,"1,423",834,,-244,732,244,242,974
+  Preferred Dividends Paid,,,,,,,,,,,,,,,,,
+COMMON & PREFERRED STOCK DIVIDENDS PAID,-99,-100,-97,-99,-395,,-98,-246,-245,"1,423",834,,-244,732,244,242,974
+  Special Dividends Paid,,,,,,,,,,,,,,,,,
+  Other Financing Activities,-527,-683,-777,-871,"-2,858",,"-1,792","-1,666","-1,707","12,224","7,059",,"-1,584","5,037","2,453","2,134","8,040"
+CASH FROM FINANCING,-380,"-5,099","-4,525","-3,629","-13,633",,"-9,345","-10,320","-12,745","-9,949","-42,359",,"-15,553","-11,833","-14,880","-6,208","-48,474"
+,,,,,,,,,,,,,,,,,
+NET CHANGE IN CASH,,,,,,,,,,,,,,,,,
+  Foreign Exchange Rate Adjustments,,,,,,,,,,,,,,,,,
+  Miscellaneous Cash Flow Adjustments,,,,,,,,,,,,,,,,,
+NET CHANGE IN CASH,"1,690",803,-363,"1,761","3,891",,307,984,536,-518,"1,309",,"6,645","-3,595",-153,-881,"2,016"
+,,,,,,,,,,,,,,,,,
+── SEGMENTS (USD millions) ──,,,,,,,,,,,,,,,,,
+  Axis: StatementBusinessSegmentsAxis  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: OperatingIncome,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      ComputeAndNetworkingMember,,,,,,,,"18,848",,,"18,848",,,,,,
+      GraphicsMember,,,,,,,,"1,369",,,"1,369",,,,,,
+      CorporateNonSegmentMember (All Other) [rollup],,,,,,,,"-1,575",,,"-1,575",,,,,,
+      (Consolidated),,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+    Metric: OperatingIncomeLoss,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      ComputeAndNetworkingMember,"2,160","6,728","10,262",,"19,150",,,,,,,,,,,,
+      GraphicsMember,"1,046","1,211","1,493",,"3,750",,,,,,,,,,,,
+      CorporateNonSegmentMember (All Other) [rollup],"-1,066","-1,139","-1,338",,"-3,543",,,,,,,,,,,,
+      (Consolidated),,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      ComputeAndNetworkingMember,"4,460","10,402","14,645",,"29,507",,,"26,446",,,"26,446",,,,,,
+      GraphicsMember,"2,732","3,105","3,475",,"9,312",,,"3,594",,,"3,594",,,,,,
+      CorporateNonSegmentMember (All Other) [rollup],0.0000,0.0000,0.0000,,0.0000,,,0.0000,,,0.0000,,,,,,
+      (Consolidated),"{'Revenue_2023-01-30_2023-04-30': 7192, 'Revenue_2022-01-31_2022-05-01': 8288, 'OperatingIncomeLoss_2023-01-30_2023-04-30': 2140, 'OperatingIncomeLoss_2022-01-31_2022-05-01': 1868}","{'Revenue_2023-05-01_2023-07-30': 13507, 'Revenue_2022-05-02_2022-07-31': 6704, 'Revenue_2023-01-30_2023-07-30': 20699, 'Revenue_2022-01-31_2022-07-31': 14992, 'OperatingIncomeLoss_2023-05-01_2023-07-30': 6800, 'OperatingIncomeLoss_2022-05-02_2022-07-31': 499, 'OperatingIncomeLoss_2023-01-30_2023-07-30': 8941, 'OperatingIncomeLoss_2022-01-31_2022-07-31': 2367}","{'Revenue_2023-07-31_2023-10-29': 18120, 'Revenue_2022-08-01_2022-10-30': 5931, 'Revenue_2023-01-30_2023-10-29': 38819, 'Revenue_2022-01-31_2022-10-30': 20923, 'OperatingIncomeLoss_2023-07-31_2023-10-29': 10417, 'OperatingIncomeLoss_2022-08-01_2022-10-30': 601, 'OperatingIncomeLoss_2023-01-30_2023-10-29': 19358, 'OperatingIncomeLoss_2022-01-31_2022-10-30': 2968}",,,,,"{'Revenue_2024-04-29_2024-07-28': 30040, 'Revenue_2024-01-29_2024-07-28': 56084, 'OperatingIncome_2024-04-29_2024-07-28': 18642, 'OperatingIncome_2024-01-29_2024-07-28': 35551}",,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: StatementGeographicalAxis  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      United States,"2,385","6,043","6,302",,"14,730",,,"13,022",,,"13,022",,,,,,
+      Taiwan,"1,796","2,839","4,333",,"8,968",,,"5,740",,,"5,740",,,,,,
+      China (including Hong Kong),"1,590","2,740","4,030",,"8,360",,,"3,667",,,"3,667",,,,,,
+      Singapore,762,,"2,702",,"3,464",,,"5,622",,,"5,622",,,,,,
+      Other countries,659,"1,885",753,,"3,297",,,"1,989",,,"1,989",,,,,,
+      (Consolidated),"{'Revenue_2023-01-30_2023-04-30': 7192, 'Revenue_2022-01-31_2022-05-01': 8288}","{'Revenue_2023-05-01_2023-07-30': 13507, 'Revenue_2022-05-02_2022-07-31': 6704, 'Revenue_2023-01-30_2023-07-30': 20699, 'Revenue_2022-01-31_2022-07-31': 14992}","{'Revenue_2023-07-31_2023-10-29': 18120, 'Revenue_2022-08-01_2022-10-30': 5931, 'Revenue_2023-01-30_2023-10-29': 38819, 'Revenue_2022-01-31_2022-10-30': 20923}",,,,,"{'Revenue_2024-04-29_2024-07-28': 30040, 'Revenue_2024-01-29_2024-07-28': 56084, 'Revenue_2023-05-01_2023-07-30': 13507, 'Revenue_2023-01-30_2023-07-30': 20699}",,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: ProductOrServiceAxis  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Data Center,"4,284",,"14,514",,"18,798",,,,,,,,,,,,
+      Gaming,"2,240",,"2,856",,"5,096",,,,,,,,,,,,
+      Professional Visualization,295,,416,,711,,,,,,,,,,,,
+      Automotive,296,,261,,557,,,,,,,,,,,,
+      OEM and Other,77,,73,,150,,,,,,,,,,,,
+      (Consolidated),"{'Revenue_2023-01-30_2023-04-30': 7192, 'Revenue_2022-01-31_2022-05-01': 8288}",,"{'Revenue_2023-07-31_2023-10-29': 18120, 'Revenue_2022-08-01_2022-10-30': 5931, 'Revenue_2023-01-30_2023-10-29': 38819, 'Revenue_2022-01-31_2022-10-30': 20923}",,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: CorporateNonSegmentMember - Reconciling items  [type: reconciliation],,,,,,,,,,,,,,,,,
+    Metric: ReconcilingItems,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Stock-based compensation expense,-735,,,,-735,,,,,,,,,,,,
+      Acquisition-related and other costs,-173,,,,-173,,,,,,,,,,,,
+      Unallocated cost of revenue and operating expenses,-154,,,,-154,,,,,,,,,,,,
+      IP-related and legal settlement costs,-8,,,,-8,,,,,,,,,,,,
+      Acquisition termination cost,0.0000,,,,0.0000,,,,,,,,,,,,
+      Other (operating income),4,,,,4,,,,,,,,,,,,
+      (Consolidated),"{'OperatingIncomeLoss_2023-01-30_2023-04-30': -1066, 'OperatingIncomeLoss_2022-01-31_2022-05-01': -2214}",,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: ProductOrServiceAxis (Market)  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Data Center [rollup],,"10,323",,,"10,323",,,"26,272",,,"26,272",,,,,,
+      Gaming,,"2,486",,,"2,486",,,"2,880",,,"2,880",,,,,,
+      Professional Visualization,,379,,,379,,,454,,,454,,,,,,
+      Automotive,,253,,,253,,,346,,,346,,,,,,
+      OEM and Other,,66,,,66,,,88,,,88,,,,,,
+      Data Center - Compute,,,,,,,,"22,604",,,"22,604",,,,,,
+      Data Center - Networking,,,,,,,,"3,668",,,"3,668",,,,,,
+      (Consolidated),,"{'Revenue_2023-05-01_2023-07-30': 13507, 'Revenue_2022-05-02_2022-07-31': 6704, 'Revenue_2023-01-30_2023-07-30': 20699, 'Revenue_2022-01-31_2022-07-31': 14992}",,,,,,"{'Revenue_2024-04-29_2024-07-28': 30040, 'Revenue_2024-01-29_2024-07-28': 56084, 'Revenue_2023-05-01_2023-07-30': 13507, 'Revenue_2023-01-30_2023-07-30': 20699}",,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: SegmentInformationReconcilingItemsDetails - All Other reconciliation  [type: reconciliation],,,,,,,,,,,,,,,,,
+    Metric: AllOtherReconciliation,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Stock-based compensation expense,,-842,,,-842,,,,,,,,,,,,
+      Unallocated cost of revenue and operating expenses,,-163,,,-163,,,,,,,,,,,,
+      Acquisition-related and other costs,,-137,,,-137,,,,,,,,,,,,
+      IP-related and legal settlement costs,,-2,,,-2,,,,,,,,,,,,
+      Acquisition termination cost,,0.0000,,,0.0000,,,,,,,,,,,,
+      Contributions,,0.0000,,,0.0000,,,,,,,,,,,,
+      Other,,5,,,5,,,,,,,,,,,,
+      (Consolidated),,"{'OperatingIncomeLoss_2023-05-01_2023-07-30': -1139, 'OperatingIncomeLoss_2022-05-02_2022-07-31': -974, 'OperatingIncomeLoss_2023-01-30_2023-07-30': -2204, 'OperatingIncomeLoss_2022-01-31_2022-07-31': -3188}",,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: SegmentInformationReconcilingItemsDetails - All Other category reconciliation  [type: reconciliation],,,,,,,,,,,,,,,,,
+    Metric: AllOtherCategoryReconciliation,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Stock-based compensation expense,,,-979,,-979,,,,,,,,,,,,
+      Unallocated cost of revenue and operating expenses,,,-198,,-198,,,,,,,,,,,,
+      Acquisition-related and other costs,,,-135,,-135,,,,,,,,,,,,
+      IP-related costs,,,-26,,-26,,,,,,,,,,,,
+      Acquisition termination cost,,,0.0000,,0.0000,,,,,,,,,,,,
+      Other,,,0.0000,,0.0000,,,,,,,,,,,,
+      (Consolidated),,,"{'OperatingIncomeLoss_2023-07-31_2023-10-29': -1338, 'OperatingIncomeLoss_2022-08-01_2022-10-30': -1091, 'OperatingIncomeLoss_2023-01-30_2023-10-29': -3542, 'OperatingIncomeLoss_2022-01-31_2022-10-30': -4280}",,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: StatementBusinessSegmentsAxis - Revenue by reportable segment  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Compute and Networking,,,,"47,405","47,405",,,,,,,,,,,,
+      Graphics,,,,"13,517","13,517",,,,,,,,,,,,
+      All Other [rollup],,,,0.0000,0.0000,,,,,,,,,,,,
+      (Consolidated),,,,"60,922","60,922",,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: StatementBusinessSegmentsAxis - Operating income (loss) by reportable segment  [type: reconciliation],,,,,,,,,,,,,,,,,
+    Metric: OperatingIncome(loss),FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Compute and Networking,,,,"32,016","32,016",,,,,,,,,,,,
+      Graphics,,,,"5,846","5,846",,,,,,,,,,,,
+      All Other,,,,"-4,890","-4,890",,,,,,,,,,,,
+      (Consolidated),,,,"32,972","32,972",,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: StatementGeographicalAxis - Revenue by geography  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      United States,,,,"26,966","26,966",,,,,,,,,,,,
+      Taiwan,,,,"13,405","13,405",,,,,,,,,,,,
+      China (including Hong Kong),,,,"10,306","10,306",,,,,,,,,,,,
+      Other countries,,,,"10,245","10,245",,,,,,,,,,,,
+      (Consolidated),,,,"60,922","60,922",,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: ProductOrServiceAxis - Revenue by market  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Data Center,,,,"47,525","47,525",,,,,,,,,,,,
+      Gaming,,,,"10,447","10,447",,,,,,,,,,,,
+      Professional Visualization,,,,"1,553","1,553",,,,,,,,,,,,
+      Automotive,,,,"1,091","1,091",,,,,,,,,,,,
+      OEM and Other,,,,306,306,,,,,,,,,,,,
+      (Consolidated),,,,"60,922","60,922",,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: StatementGeographicalAxis - Long-lived assets by geography  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Long-livedAssets,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      United States,,,,"2,595","2,595",,,,,,,,,,,,
+      Taiwan,,,,773,773,,,,,,,,,,,,
+      Israel,,,,325,325,,,,,,,,,,,,
+      Other countries,,,,221,221,,,,,,,,,,,,
+      (Consolidated),,,,"3,914","3,914",,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: CorporateNonSegmentMember - Reconciling items in All Other  [type: reconciliation],,,,,,,,,,,,,,,,,
+    Metric: ReconcilingItemsInAllOther,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Stock-based compensation expense,,,,"-3,549","-3,549",,,,,,,,,,,,
+      Unallocated cost of revenue and operating expenses,,,,-728,-728,,,,,,,,,,,,
+      Acquisition-related and other costs,,,,-583,-583,,,,,,,,,,,,
+      IP-related and legal settlement costs,,,,-40,-40,,,,,,,,,,,,
+      Restructuring costs and other,,,,0.0000,0.0000,,,,,,,,,,,,
+      Acquisition termination cost,,,,0.0000,0.0000,,,,,,,,,,,,
+      Other,,,,10,10,,,,,,,,,,,,
+      (Consolidated),,,,"-4,890","-4,890",,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: StatementBusinessSegmentsAxis (Reportable Segments)  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: OperatingIncome,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Compute and Networking,,,,,,,"17,047",,,,"17,047",,,,,,
+      Graphics,,,,,,,"1,241",,,,"1,241",,,,,,
+      All Other (Corporate Non-Segment) [rollup],,,,,,,,,,,,,,,,,
+      (Consolidated),,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+    Metric: OperatingIncomeLoss,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Compute and Networking,,,,,,,,,"22,081",,"22,081",,,,,,
+      Graphics,,,,,,,,,"1,502",,"1,502",,,,,,
+      All Other (Corporate Non-Segment) [rollup],,,,,,,"-1,379",,"-1,714",,"-3,093",,,,,,
+      (Consolidated),,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Compute and Networking,,,,,,,"22,675",,"31,036",,"53,711",,,,,,
+      Graphics,,,,,,,"3,369",,"4,046",,"7,415",,,,,,
+      All Other (Corporate Non-Segment) [rollup],,,,,,,0.0000,,0.0000,,0.0000,,,,,,
+      (Consolidated),,,,,,,"{'Revenue_2024-01-29_2024-04-28': 26044, 'Revenue_2023-01-30_2023-04-30': 7192, 'OperatingIncome_2024-01-29_2024-04-28': 16909, 'OperatingIncome_2023-01-30_2023-04-30': 2140}",,"{'Revenue_2024-07-29_2024-10-27': 35082, 'Revenue_2023-07-31_2023-10-29': 18120, 'Revenue_2024-01-29_2024-10-27': 91166, 'Revenue_2023-01-30_2023-10-29': 38819, 'OperatingIncomeLoss_2024-07-29_2024-10-27': 21869, 'OperatingIncomeLoss_2023-07-31_2023-10-29': 10417, 'OperatingIncomeLoss_2024-01-29_2024-10-27': 57419, 'OperatingIncomeLoss_2023-01-30_2023-10-29': 19358}",,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: SegmentInformationScheduleofReconcilingItemsDetails (All Other Reconciliation)  [type: reconciliation],,,,,,,,,,,,,,,,,
+    Metric: SegmentInformationScheduleofReconcilingItemsDetails(AllOtherReconciliation),FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Stock-based compensation expense,,,,,,,"-1,011",,,,"-1,011",,,,,,
+      Unallocated cost of revenue and operating expenses,,,,,,,-229,,,,-229,,,,,,
+      Acquisition-related and other costs,,,,,,,-140,,,,-140,,,,,,
+      Other,,,,,,,1,,,,1,,,,,,
+      (Consolidated),,,,,,,"{'AllOther_2024-01-29_2024-04-28': -1379, 'AllOther_2023-01-30_2023-04-30': -1066}",,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: StatementGeographicalAxis (Revenue by Geography)  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      United States,,,,,,,"13,496",,,,"13,496",,,,,,
+      Taiwan,,,,,,,"4,373",,,,"4,373",,,,,,
+      Singapore,,,,,,,"4,037",,,,"4,037",,,,,,
+      China (including Hong Kong),,,,,,,"2,491",,,,"2,491",,,,,,
+      Other countries,,,,,,,"1,647",,,,"1,647",,,,,,
+      (Consolidated),,,,,,,"{'Revenue_2024-01-29_2024-04-28': 26044, 'Revenue_2023-01-30_2023-04-30': 7192}",,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+    Metric: StatementGeographicalAxis(Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      United States,,,,,,,,,"14,800",,"14,800",,,,,,
+      Taiwan,,,,,,,,,"5,153",,"5,153",,,,,,
+      Singapore,,,,,,,,,"7,697",,"7,697",,,,,,
+      China (including Hong Kong),,,,,,,,,"5,416",,"5,416",,,,,,
+      Other countries,,,,,,,,,"2,016",,"2,016",,,,,,
+      (Consolidated),,,,,,,,,"{'2024-07-29_2024-10-27': 35082, '2023-07-31_2023-10-29': 18120, '2024-01-29_2024-10-27': 91166, '2023-01-30_2023-10-29': 38819}",,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: ProductOrServiceAxis (Revenue by Market)  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: ProductOrServiceAxis(Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Data Center [rollup],,,,,,,,,"30,771",,"30,771",,,,,,
+      Gaming,,,,,,,,,"3,279",,"3,279",,,,,,
+      Professional Visualization,,,,,,,,,486,,486,,,,,,
+      Automotive,,,,,,,,,449,,449,,,,,,
+      OEM and Other,,,,,,,,,97,,97,,,,,,
+      Data Center - Compute,,,,,,,,,"27,644",,"27,644",,,,,,
+      Data Center - Networking,,,,,,,,,"3,127",,"3,127",,,,,,
+      (Consolidated),,,,,,,,,"{'2024-07-29_2024-10-27': 35082, '2023-07-31_2023-10-29': 18120, '2024-01-29_2024-10-27': 91166, '2023-01-30_2023-10-29': 38819}",,,,,,,,
+,,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Data Center [rollup],,,,,,,"22,563",,,,"22,563",,,,,,
+      Gaming,,,,,,,"2,647",,,,"2,647",,,,,,
+      Professional Visualization,,,,,,,427,,,,427,,,,,,
+      Automotive,,,,,,,329,,,,329,,,,,,
+      OEM and Other,,,,,,,78,,,,78,,,,,,
+      Data Center - Compute,,,,,,,,,,,,,,,,,
+      Data Center - Networking,,,,,,,,,,,,,,,,,
+      (Consolidated),,,,,,,"{'Revenue_2024-01-29_2024-04-28': 26044, 'Revenue_2023-01-30_2023-04-30': 7192}",,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: MajorCustomersAxis (Revenue Customer Concentration)  [type: other],,,,,,,,,,,,,,,,,
+    Metric: ConcentrationRiskPercentage,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Customer A,,,,,,,0.1300,,,,0.1300,,,,,,
+      Customer B,,,,,,,0.1100,,,,0.1100,,,,,,
+      (Consolidated),,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: SegmentInformationScheduleofReconcilingItemsDetails - CorporateNonSegmentMember  [type: reconciliation],,,,,,,,,,,,,,,,,
+    Metric: CorporateNonSegmentMember,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Stock-based compensation expense,,,,,,,,"-1,154",,,"-1,154",,,,,,
+      Unallocated cost of revenue and operating expenses,,,,,,,,-280,,,-280,,,,,,
+      Acquisition-related and other costs,,,,,,,,-144,,,-144,,,,,,
+      Other operating income,,,,,,,,3,,,3,,,,,,
+      Total All Other [rollup],,,,,,,,"-1,575",,,"-1,575",,,,,,
+      (Consolidated),,,,,,,,"{'OperatingIncome_AllOther_2024-04-29_2024-07-28': -1575, 'OperatingIncome_AllOther_2024-01-29_2024-07-28': -2954}",,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: SegmentInformationScheduleofReconcilingItemsDetails - All Other category reconciliation  [type: reconciliation],,,,,,,,,,,,,,,,,
+    Metric: AllOtherCategoryReconciliation,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Stock-based compensation expense,,,,,,,,,"-1,252",,"-1,252",,,,,,
+      Unallocated cost of revenue and operating expenses,,,,,,,,,-307,,-307,,,,,,
+      Acquisition-related and other costs,,,,,,,,,-155,,-155,,,,,,
+      Other,,,,,,,,,0.0000,,0.0000,,,,,,
+      (Consolidated),,,,,,,,,"{'2024-07-29_2024-10-27': -1714, '2023-07-31_2023-10-29': -1338, '2024-01-29_2024-10-27': -4669, '2023-01-30_2023-10-29': -3542}",,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: MajorCustomersAxis (Customer Concentration - Revenue)  [type: other],,,,,,,,,,,,,,,,,
+    Metric: ConcentrationRiskPercentage1,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+"      Customer A (Q3 FY2025 only, Compute and Networking segment)",,,,,,,,,12%,,,,,,,,
+      Customer B (Compute and Networking segment),,,,,,,,,12%,,,,,,,,
+      Customer C (Compute and Networking segment),,,,,,,,,12%,,,,,,,,
+"      Customer D (nine months FY2025 only, Compute and Networking segment)",,,,,,,,,12%,,,,,,,,
+"      Customer One (Q3 FY2024 only, Compute and Networking segment)",,,,,,,,,,,,,,,,,
+"      Customer Two (nine months FY2024 only, Compute and Networking segment)",,,,,,,,,,,,,,,,,
+      (Consolidated),,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: StatementBusinessSegmentsAxis - Revenue by Reportable Segment  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      ComputeAndNetworkingSegmentMember,,,,,,,,,,"116,193","116,193",,,,,,
+      GraphicsSegmentMember,,,,,,,,,,"14,304","14,304",,,,,,
+      CorporateNonSegmentMember [rollup],,,,,,,,,,0.0000,0.0000,,,,,,
+      Compute and Networking,,,,,,,,,,,,,,"41,331",,"193,479","234,810"
+      Graphics,,,,,,,,,,,,,,"5,412",,"22,459","27,871"
+      (Consolidated),,,,,,,,,,"130,497","130,497",,,"{'2025-04-28_2025-07-27': 46743, '2024-04-29_2024-07-28': 30040, '2025-01-27_2025-07-27': 90805, '2024-01-29_2024-07-28': 56084}",,"215,938","215,938"
+,,,,,,,,,,,,,,,,,
+  Axis: StatementBusinessSegmentsAxis - Operating Income by Reportable Segment  [type: reconciliation],,,,,,,,,,,,,,,,,
+    Metric: OperatingIncome,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      ComputeAndNetworkingSegmentMember,,,,,,,,,,"82,875","82,875",,,,,,
+      GraphicsSegmentMember,,,,,,,,,,"5,085","5,085",,,,,,
+      CorporateNonSegmentMember [rollup],,,,,,,,,,"-6,507","-6,507",,,,,,
+      Compute and Networking,,,,,,,,,,,,,,"28,363",,"130,141","158,504"
+      Graphics,,,,,,,,,,,,,,"2,242",,"9,156","11,398"
+      (Consolidated),,,,,,,,,,"81,453","81,453",,,"{'2025-04-28_2025-07-27': 28440, '2024-04-29_2024-07-28': 18642, '2025-01-27_2025-07-27': 50078, '2024-01-29_2024-07-28': 35551}",,"130,387","130,387"
+,,,,,,,,,,,,,,,,,
+  Axis: StatementGeographicalAxis - Revenue by Geography  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      United States,,,,,,,,,,"61,257","61,257",,,,,,
+      Singapore,,,,,,,,,,"23,684","23,684",,,,,,
+      Taiwan,,,,,,,,,,"20,573","20,573",,,,,,
+      China including Hong Kong,,,,,,,,,,"17,108","17,108",,,,,,
+      Other Countries,,,,,,,,,,"7,875","7,875",,,,,,
+      (Consolidated),,,,,,,,,,"130,497","130,497",,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: ProductOrServiceAxis - Revenue by End Market  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      DataCenterMember [rollup],,,,,,,,,,"115,186","115,186",,,,"51,215",,"51,215"
+      GamingMember,,,,,,,,,,"11,350","11,350",,,,"4,265",,"4,265"
+      ProfessionalVisualizationMember,,,,,,,,,,"1,878","1,878",,,,760,,760
+      AutomotiveMember,,,,,,,,,,"1,694","1,694",,,,592,,592
+      OEMAndOtherMember,,,,,,,,,,389,389,,,,174,,174
+      Data Center [rollup],,,,,,,,,,,,,,"41,096",,"193,737","234,833"
+      Data Center - Compute,,,,,,,,,,,,,,"33,844",,"162,361","196,205"
+      Data Center - Networking,,,,,,,,,,,,,,"7,252",,"31,376","38,628"
+      Gaming,,,,,,,,,,,,,,"4,287",,"16,042","20,329"
+      Professional Visualization,,,,,,,,,,,,,,601,,"3,191","3,792"
+      Automotive,,,,,,,,,,,,,,586,,"2,349","2,935"
+      OEM and Other,,,,,,,,,,,,,,173,,619,792
+      (Consolidated),,,,,,,,,,"130,497","130,497",,,"{'2025-04-28_2025-07-27': 46743, '2024-04-29_2024-07-28': 30040, '2025-01-27_2025-07-27': 90805, '2024-01-29_2024-07-28': 56084}","57,006","215,938","272,944"
+,,,,,,,,,,,,,,,,,
+  Axis: ProductOrServiceAxis - Data Center Sub-breakdown  [type: sub_hierarchy],,,,,,,,,,,,,,,,,
+    Metric: DataCenterSub-breakdown,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      ComputeMember,,,,,,,,,,"102,196","102,196",,,,,,
+      NetworkingMember,,,,,,,,,,"12,990","12,990",,,,,,
+      (Consolidated),,,,,,,,,,"115,186","115,186",,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: StatementGeographicalAxis - Long-lived Assets by Geography  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Long-livedAssets,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      United States,,,,,,,,,,"3,626","3,626",,,,,,
+      Taiwan,,,,,,,,,,"1,481","1,481",,,,,,
+      Israel,,,,,,,,,,840,840,,,,,,
+      Other Countries,,,,,,,,,,336,336,,,,,,
+      (Consolidated),,,,,,,,,,"6,283","6,283",,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: CorporateNonSegmentMember - Reconciling items in All Other category FY2025  [type: reconciliation],,,,,,,,,,,,,,,,,
+    Metric: ReconcilingItemsInAllOtherCategoryFY2025,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Stock-based compensation expense,,,,,,,,,,"-4,737","-4,737",,,,,,
+      Unallocated corporate operating expenditures and other expenses,,,,,,,,,,"-1,171","-1,171",,,,,,
+      Acquisition-related and other costs,,,,,,,,,,-602,-602,,,,,,
+      Acquisition termination cost,,,,,,,,,,0.0000,0.0000,,,,,,
+      Other,,,,,,,,,,3,3,,,,,,
+      (Consolidated),,,,,,,,,,"-6,507","-6,507",,,,,,
+,,,,,,,,,,,,,,,,,
+  Axis: StatementBusinessSegmentsAxis (reportable segments)  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: OperatingIncome,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      ComputeAndNetworkingSegmentMember,,,,,,,,,,,,,"22,054",,,,"22,054"
+      GraphicsSegmentMember,,,,,,,,,,,,,"1,640",,,,"1,640"
+      CorporateNonSegmentMember (All Other) [rollup],,,,,,,,,,,,,"-2,056",,,,"-2,056"
+      (Consolidated),,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      ComputeAndNetworkingSegmentMember,,,,,,,,,,,,,"39,589",,,,"39,589"
+      GraphicsSegmentMember,,,,,,,,,,,,,"4,473",,,,"4,473"
+      CorporateNonSegmentMember (All Other) [rollup],,,,,,,,,,,,,0.0000,,,,0.0000
+      (Consolidated),,,,,,,,,,,,,"44,062",,,,"44,062"
+,,,,,,,,,,,,,,,,,
+  Axis: StatementGeographicalAxis (geographic revenue)  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      United States (country:US),,,,,,,,,,,,,"20,739",,,,"20,739"
+      Singapore (country:SG),,,,,,,,,,,,,"9,017",,,,"9,017"
+      Taiwan (country:TW),,,,,,,,,,,,,"7,158",,,,"7,158"
+      China including Hong Kong (ChinaIncludingHongKongMember),,,,,,,,,,,,,"5,522",,,,"5,522"
+      Other (AllOtherCountriesNotSeparatelyDisclosedMember),,,,,,,,,,,,,"1,626",,,,"1,626"
+      (Consolidated),,,,,,,,,,,,,"44,062",,,,"44,062"
+,,,,,,,,,,,,,,,,,
+  Axis: ProductOrServiceAxis (end market revenue)  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      DataCenterMember [rollup],,,,,,,,,,,,,"39,112",,,,"39,112"
+      ComputeMember (subset of DataCenter),,,,,,,,,,,,,"34,155",,,,"34,155"
+      NetworkingMember (subset of DataCenter),,,,,,,,,,,,,"4,957",,,,"4,957"
+      GamingMember,,,,,,,,,,,,,"3,763",,,,"3,763"
+      ProfessionalVisualizationMember,,,,,,,,,,,,,509,,,,509
+      AutomotiveMember,,,,,,,,,,,,,567,,,,567
+      OEMAndOtherMember,,,,,,,,,,,,,111,,,,111
+      (Consolidated),,,,,,,,,,,,,"44,062",,,,"44,062"
+,,,,,,,,,,,,,,,,,
+  Axis: ConsolidationItemsAxis - All Other reconciling items (operating income)  [type: reconciliation],,,,,,,,,,,,,,,,,
+    Metric: AllOtherReconcilingItems(operatingIncome),FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      AllocatedShareBasedCompensationExpense,,,,,,,,,,,,,"-1,474",,,,"-1,474"
+      UnallocatedCorporateOperatingExpendituresAndOtherExpenses,,,,,,,,,,,,,-419,,,,-419
+      AcquisitionRelatedAndOtherCosts,,,,,,,,,,,,,-160,,,,-160
+      OtherOperatingIncome,,,,,,,,,,,,,-3,,,,-3
+      (Consolidated),,,,,,,,,,,,,"-2,056",,,,"-2,056"
+,,,,,,,,,,,,,,,,,
+  Axis: MajorCustomersAxis (customer concentration - revenue)  [type: other],,,,,,,,,,,,,,,,,
+    Metric: ConcentrationRiskPercentage,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      CustomerAMember (Compute and Networking segment),,,,,,,,,,,,,16%,,,,
+      CustomerBMember (Compute and Networking segment),,,,,,,,,,,,,14%,,,,
+      CustomerCMember (Compute and Networking segment),,,,,,,,,,,,,,,,,
+      (Consolidated),,,,,,,,,,,,,"44,062",,,,"44,062"
+,,,,,,,,,,,,,,,,,
+  Axis: StatementGeographicalAxis - Revenue by Geography (Billing Location)  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      United States,,,,,,,,,,,,,,"23,470",,,"23,470"
+      Singapore,,,,,,,,,,,,,,"10,156",,,"10,156"
+      Taiwan,,,,,,,,,,,,,,"8,529",,,"8,529"
+      China (including Hong Kong),,,,,,,,,,,,,,"2,769",,,"2,769"
+      Other,,,,,,,,,,,,,,"1,819",,,"1,819"
+      (Consolidated),,,,,,,,,,,,,,"{'2025-04-28_2025-07-27': 46743, '2024-04-29_2024-07-28': 30040, '2025-01-27_2025-07-27': 90805, '2024-01-29_2024-07-28': 56084}",,,
+,,,,,,,,,,,,,,,,,
+  Axis: SegmentReconcilingItems - Segment Operating Income to Consolidated Income Before Tax  [type: reconciliation],,,,,,,,,,,,,,,,,
+    Metric: SegmentOperatingIncomeToConsolidatedIncomeBeforeTax,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      Segment operating income (total of segments),,,,,,,,,,,,,,"30,605",,,"30,605"
+      Stock-based compensation expense (unallocated),,,,,,,,,,,,,,"-1,624",,,"-1,624"
+      Unallocated cost of revenue and operating expenses,,,,,,,,,,,,,,-440,,,-440
+      Acquisition-related and other costs,,,,,,,,,,,,,,-101,,,-101
+      Interest income,,,,,,,,,,,,,,592,,,592
+      Interest expense,,,,,,,,,,,,,,-62,,,-62
+"      Other income (expense), net",,,,,,,,,,,,,,"2,236",,,"2,236"
+      Consolidated income before income tax,,,,,,,,,,,,,,"31,206",,,"31,206"
+      (Consolidated),,,,,,,,,,,,,,"{'2025-04-28_2025-07-27': 31206, '2024-04-29_2024-07-28': 19214, '2025-01-27_2025-07-27': 53117, '2024-01-29_2024-07-28': 36493}",,,
+,,,,,,,,,,,,,,,,,
+  Axis: StatementBusinessSegmentsAxis - Revenue  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      ComputeAndNetworkingSegmentMember,,,,,,,,,,,,,,,"50,908",,"50,908"
+      GraphicsSegmentMember,,,,,,,,,,,,,,,"6,098",,"6,098"
+      (Consolidated),,,,,,,,,,,,,,,"57,006",,"57,006"
+,,,,,,,,,,,,,,,,,
+  Axis: StatementBusinessSegmentsAxis - Operating Income  [type: reconciliation],,,,,,,,,,,,,,,,,
+    Metric: OperatingIncome,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      ComputeAndNetworkingSegmentMember,,,,,,,,,,,,,,,"35,721",,"35,721"
+      GraphicsSegmentMember,,,,,,,,,,,,,,,"2,546",,"2,546"
+      (Consolidated),,,,,,,,,,,,,,,"36,010",,"36,010"
+,,,,,,,,,,,,,,,,,
+  Axis: StatementGeographicalAxis - Revenue  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      United States,,,,,,,,,,,,,,,"39,177",,"39,177"
+      Taiwan,,,,,,,,,,,,,,,"13,751",,"13,751"
+      China including Hong Kong,,,,,,,,,,,,,,,"2,973",,"2,973"
+      Other,,,,,,,,,,,,,,,"1,105",,"1,105"
+      (Consolidated),,,,,,,,,,,,,,,"57,006",,"57,006"
+,,,,,,,,,,,,,,,,,
+  Axis: ProductOrServiceAxis - Data Center Sub-components  [type: sub_hierarchy],,,,,,,,,,,,,,,,,
+    Metric: DataCenterSub-components,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      ComputeMember,,,,,,,,,,,,,,,"43,028",,"43,028"
+      NetworkingMember,,,,,,,,,,,,,,,"8,187",,"8,187"
+      (Consolidated),,,,,,,,,,,,,,,"51,215",,"51,215"
+,,,,,,,,,,,,,,,,,
+  Axis: Segment Reconciliation - Operating Income to Income Before Tax (Q3 FY2026)  [type: reconciliation],,,,,,,,,,,,,,,,,
+    Metric: OperatingIncomeToIncomeBeforeTax(Q3FY2026),FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      SegmentOperatingIncome,,,,,,,,,,,,,,,"38,267",,"38,267"
+      StockBasedCompensationExpense,,,,,,,,,,,,,,,"-1,655",,"-1,655"
+      UnallocatedOperatingExpenses,,,,,,,,,,,,,,,-515,,-515
+      AcquisitionRelatedAndOtherCosts,,,,,,,,,,,,,,,-87,,-87
+      InterestIncome,,,,,,,,,,,,,,,624,,624
+      InterestExpense,,,,,,,,,,,,,,,-61,,-61
+      OtherIncomeNet,,,,,,,,,,,,,,,"1,363",,"1,363"
+      ConsolidatedIncomeBeforeIncomeTax,,,,,,,,,,,,,,,"37,936",,"37,936"
+      (Consolidated),,,,,,,,,,,,,,,"37,936",,"37,936"
+,,,,,,,,,,,,,,,,,
+  Axis: StatementGeographicalAxis - Revenue by Geography (Customer Headquarters Location)  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Revenue,FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      United States,,,,,,,,,,,,,,,,"149,617","149,617"
+      Taiwan,,,,,,,,,,,,,,,,"42,345","42,345"
+      China (including Hong Kong),,,,,,,,,,,,,,,,"19,677","19,677"
+      Other,,,,,,,,,,,,,,,,"4,299","4,299"
+      (Consolidated),,,,,,,,,,,,,,,,"215,938","215,938"
+,,,,,,,,,,,,,,,,,
+  Axis: StatementGeographicalAxis - Long-lived Assets (Property and Equipment Net) by Geography  [type: breakdown],,,,,,,,,,,,,,,,,
+    Metric: Long-livedAssets(PropertyAndEquipmentNet),FY24 Q1,FY24 Q2,FY24 Q3,FY24 Q4,FY24 Total,,FY25 Q1,FY25 Q2,FY25 Q3,FY25 Q4,FY25 Total,,FY26 Q1,FY26 Q2,FY26 Q3,FY26 Q4,FY26 Total
+      United States,,,,,,,,,,,,,,,,"5,125","5,125"
+      Taiwan,,,,,,,,,,,,,,,,"3,219","3,219"
+      Israel,,,,,,,,,,,,,,,,"1,471","1,471"
+      Other,,,,,,,,,,,,,,,,568,568
+      (Consolidated),,,,,,,,,,,,,,,,"10,383","10,383"
+,,,,,,,,,,,,,,,,,

@@ -1362,7 +1362,7 @@
             }
           ],
           "statement": "income_statement",
-          "applicable_quarters": "{'FY24Q1', 'FY25Q3', 'FY24Q4', 'FY25Q4', 'FY25Q2', 'FY25Q1', 'FY26Q1', 'FY26Q4', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2'}",
+          "applicable_quarters": "{'FY26Q4', 'FY26Q1', 'FY25Q1', 'FY25Q2', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2', 'FY24Q1', 'FY24Q4', 'FY25Q4', 'FY25Q3'}",
           "ties_by_quarter": {
             "FY24Q1": {
               "computed": 4648,
@@ -1456,7 +1456,7 @@
             }
           ],
           "statement": "income_statement",
-          "applicable_quarters": "{'FY24Q1', 'FY25Q4', 'FY24Q3', 'FY24Q4', 'FY24Q2'}",
+          "applicable_quarters": "{'FY24Q2', 'FY24Q1', 'FY24Q4', 'FY25Q4', 'FY24Q3'}",
           "ties_by_quarter": {
             "FY24Q1": {
               "computed": 2508,
@@ -1504,7 +1504,7 @@
             }
           ],
           "statement": "income_statement",
-          "applicable_quarters": "{'FY24Q1', 'FY25Q3', 'FY24Q4', 'FY25Q4', 'FY25Q2', 'FY25Q1', 'FY26Q1', 'FY26Q4', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2'}",
+          "applicable_quarters": "{'FY26Q4', 'FY26Q1', 'FY25Q1', 'FY25Q2', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2', 'FY24Q1', 'FY24Q4', 'FY25Q4', 'FY25Q3'}",
           "ties_by_quarter": {
             "FY24Q1": {
               "computed": 2140,
@@ -1598,7 +1598,7 @@
             }
           ],
           "statement": "income_statement",
-          "applicable_quarters": "{'FY24Q1', 'FY24Q3', 'FY25Q1', 'FY24Q4', 'FY24Q2'}",
+          "applicable_quarters": "{'FY24Q2', 'FY25Q1', 'FY24Q1', 'FY24Q4', 'FY24Q3'}",
           "ties_by_quarter": {
             "FY24Q1": {
               "computed": 69,
@@ -1646,7 +1646,7 @@
             }
           ],
           "statement": "income_statement",
-          "applicable_quarters": "{'FY24Q1', 'FY25Q3', 'FY24Q4', 'FY25Q4', 'FY25Q2', 'FY25Q1', 'FY26Q1', 'FY26Q4', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2'}",
+          "applicable_quarters": "{'FY26Q4', 'FY26Q1', 'FY25Q1', 'FY25Q2', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2', 'FY24Q1', 'FY24Q4', 'FY25Q4', 'FY25Q3'}",
           "ties_by_quarter": {
             "FY24Q1": {
               "computed": 2209,
@@ -1736,7 +1736,7 @@
             }
           ],
           "statement": "income_statement",
-          "applicable_quarters": "{'FY24Q1', 'FY25Q3', 'FY24Q4', 'FY25Q4', 'FY25Q2', 'FY25Q1', 'FY26Q1', 'FY26Q4', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2'}",
+          "applicable_quarters": "{'FY26Q4', 'FY26Q1', 'FY25Q1', 'FY25Q2', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2', 'FY24Q1', 'FY24Q4', 'FY25Q4', 'FY25Q3'}",
           "ties_by_quarter": {
             "FY24Q1": {
               "computed": 2043,
@@ -1822,7 +1822,7 @@
             }
           ],
           "statement": "income_statement",
-          "applicable_quarters": "{'FY25Q3', 'FY25Q4', 'FY25Q2', 'FY25Q1', 'FY26Q1', 'FY26Q4', 'FY26Q3', 'FY24Q4', 'FY24Q2', 'FY26Q2'}",
+          "applicable_quarters": "{'FY26Q4', 'FY26Q1', 'FY25Q1', 'FY25Q2', 'FY26Q3', 'FY24Q2', 'FY26Q2', 'FY24Q4', 'FY25Q4', 'FY25Q3'}",
           "ties_by_quarter": {
             "FY24Q2": {
               "computed": 2473,
@@ -1900,7 +1900,7 @@
             }
           ],
           "statement": "income_statement",
-          "applicable_quarters": "{'FY26Q1', 'FY25Q3', 'FY26Q4', 'FY26Q3', 'FY25Q2', 'FY25Q1', 'FY26Q2'}",
+          "applicable_quarters": "{'FY26Q2', 'FY26Q4', 'FY26Q1', 'FY26Q3', 'FY25Q1', 'FY25Q2', 'FY25Q3'}",
           "ties_by_quarter": {
             "FY25Q1": {
               "computed": 3497,
@@ -1964,7 +1964,7 @@
             }
           ],
           "statement": "income_statement",
-          "applicable_quarters": "{'FY26Q1', 'FY25Q3', 'FY25Q4', 'FY26Q3', 'FY26Q4', 'FY25Q2', 'FY26Q2'}",
+          "applicable_quarters": "{'FY26Q2', 'FY26Q4', 'FY26Q1', 'FY26Q3', 'FY25Q2', 'FY25Q4', 'FY25Q3'}",
           "ties_by_quarter": {
             "FY25Q2": {
               "computed": 572,
@@ -2686,17 +2686,17 @@
           {
             "bucket": "total_revenue",
             "values_by_quarter": {
-              "FY25Q3": 35082,
-              "FY25Q2": 30040,
-              "FY26Q1": 44062,
               "FY26Q4": 68127,
+              "FY25Q1": 26044,
+              "FY25Q2": 30040,
+              "FY24Q3": 18120,
               "FY24Q2": 13507,
-              "FY26Q2": 46743,
               "FY24Q1": 7192,
               "FY25Q4": 39331,
-              "FY24Q3": 18120,
-              "FY25Q1": 26044,
+              "FY25Q3": 35082,
+              "FY26Q1": 44062,
               "FY26Q3": 57006,
+              "FY26Q2": 46743,
               "FY24Q4": 22103
             },
             "components": [
@@ -2718,23 +2718,28 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY24Q3": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
+              "FY26Q2": "face",
               "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": 35082,
-                "component_sum": 35082,
+              "FY26Q4": {
+                "face_subtotal": 68127,
+                "component_sum": 68127,
+                "delta": 0
+              },
+              "FY25Q1": {
+                "face_subtotal": 26044,
+                "component_sum": 26044,
                 "delta": 0
               },
               "FY25Q2": {
@@ -2742,24 +2747,14 @@
                 "component_sum": 30040,
                 "delta": 0
               },
-              "FY26Q1": {
-                "face_subtotal": 44062,
-                "component_sum": 44062,
-                "delta": 0
-              },
-              "FY26Q4": {
-                "face_subtotal": 68127,
-                "component_sum": 68127,
+              "FY24Q3": {
+                "face_subtotal": 18120,
+                "component_sum": 18120,
                 "delta": 0
               },
               "FY24Q2": {
                 "face_subtotal": 13507,
                 "component_sum": 13507,
-                "delta": 0
-              },
-              "FY26Q2": {
-                "face_subtotal": 46743,
-                "component_sum": 46743,
                 "delta": 0
               },
               "FY24Q1": {
@@ -2772,19 +2767,24 @@
                 "component_sum": 39331,
                 "delta": 0
               },
-              "FY24Q3": {
-                "face_subtotal": 18120,
-                "component_sum": 18120,
+              "FY25Q3": {
+                "face_subtotal": 35082,
+                "component_sum": 35082,
                 "delta": 0
               },
-              "FY25Q1": {
-                "face_subtotal": 26044,
-                "component_sum": 26044,
+              "FY26Q1": {
+                "face_subtotal": 44062,
+                "component_sum": 44062,
                 "delta": 0
               },
               "FY26Q3": {
                 "face_subtotal": 57006,
                 "component_sum": 57006,
+                "delta": 0
+              },
+              "FY26Q2": {
+                "face_subtotal": 46743,
+                "component_sum": 46743,
                 "delta": 0
               },
               "FY24Q4": {
@@ -2797,18 +2797,18 @@
           {
             "bucket": "gross_profit",
             "values_by_quarter": {
-              "FY25Q3": 26156,
-              "FY24Q4": 16791,
-              "FY25Q2": 22574,
-              "FY26Q1": 26668,
               "FY26Q4": 51093,
+              "FY25Q1": 20406,
+              "FY25Q2": 22574,
+              "FY24Q3": 13400,
               "FY24Q2": 9462,
-              "FY26Q2": 33853,
               "FY24Q1": 4648,
               "FY25Q4": 28722,
-              "FY25Q1": 20406,
+              "FY25Q3": 26156,
+              "FY26Q1": 26668,
               "FY26Q3": 41849,
-              "FY24Q3": 13400
+              "FY26Q2": 33853,
+              "FY24Q4": 16791
             },
             "components": [
               [
@@ -2821,96 +2821,96 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY24Q4": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
-              "FY24Q3": "face"
+              "FY26Q2": "face",
+              "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": 26156,
-                "component_sum": 44008,
-                "delta": 17852
-              },
-              "FY24Q4": {
-                "face_subtotal": 16791,
-                "component_sum": 27415,
-                "delta": 10624
-              },
-              "FY25Q2": {
-                "face_subtotal": 22574,
-                "component_sum": 37506,
-                "delta": 14932
-              },
-              "FY26Q1": {
-                "face_subtotal": 26668,
-                "component_sum": 61456,
-                "delta": 34788
-              },
               "FY26Q4": {
                 "face_subtotal": 51093,
-                "component_sum": 85161,
-                "delta": 34068
-              },
-              "FY24Q2": {
-                "face_subtotal": 9462,
-                "component_sum": 17552,
-                "delta": 8090
-              },
-              "FY26Q2": {
-                "face_subtotal": 33853,
-                "component_sum": 59633,
-                "delta": 25780
-              },
-              "FY24Q1": {
-                "face_subtotal": 4648,
-                "component_sum": 9736,
-                "delta": 5088
-              },
-              "FY25Q4": {
-                "face_subtotal": 28722,
-                "component_sum": 49940,
-                "delta": 21218
+                "component_sum": 51093,
+                "delta": 0
               },
               "FY25Q1": {
                 "face_subtotal": 20406,
-                "component_sum": 31682,
-                "delta": 11276
+                "component_sum": 20406,
+                "delta": 0
               },
-              "FY26Q3": {
-                "face_subtotal": 41849,
-                "component_sum": 72163,
-                "delta": 30314
+              "FY25Q2": {
+                "face_subtotal": 22574,
+                "component_sum": 22574,
+                "delta": 0
               },
               "FY24Q3": {
                 "face_subtotal": 13400,
-                "component_sum": 22840,
-                "delta": 9440
+                "component_sum": 13400,
+                "delta": 0
+              },
+              "FY24Q2": {
+                "face_subtotal": 9462,
+                "component_sum": 9462,
+                "delta": 0
+              },
+              "FY24Q1": {
+                "face_subtotal": 4648,
+                "component_sum": 4648,
+                "delta": 0
+              },
+              "FY25Q4": {
+                "face_subtotal": 28722,
+                "component_sum": 28722,
+                "delta": 0
+              },
+              "FY25Q3": {
+                "face_subtotal": 26156,
+                "component_sum": 26156,
+                "delta": 0
+              },
+              "FY26Q1": {
+                "face_subtotal": 26668,
+                "component_sum": 26668,
+                "delta": 0
+              },
+              "FY26Q3": {
+                "face_subtotal": 41849,
+                "component_sum": 41849,
+                "delta": 0
+              },
+              "FY26Q2": {
+                "face_subtotal": 33853,
+                "component_sum": 33853,
+                "delta": 0
+              },
+              "FY24Q4": {
+                "face_subtotal": 16791,
+                "component_sum": 16791,
+                "delta": 0
               }
             }
           },
           {
             "bucket": "total_opex",
             "values_by_quarter": {
-              "FY25Q3": 4287,
-              "FY25Q2": 3932,
-              "FY26Q1": 5030,
               "FY26Q4": 6794,
+              "FY25Q1": 3497,
+              "FY25Q2": 3932,
+              "FY24Q3": 2983,
               "FY24Q2": 2662,
-              "FY26Q2": 5413,
               "FY24Q1": 2508,
               "FY25Q4": 4689,
-              "FY24Q3": 2983,
-              "FY25Q1": 3497,
+              "FY25Q3": 4287,
+              "FY26Q1": 5030,
               "FY26Q3": 5839,
+              "FY26Q2": 5413,
               "FY24Q4": 3176
             },
             "components": [
@@ -2932,23 +2932,28 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY24Q3": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
+              "FY26Q2": "face",
               "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": 4287,
-                "component_sum": 4287,
+              "FY26Q4": {
+                "face_subtotal": 6794,
+                "component_sum": 6794,
+                "delta": 0
+              },
+              "FY25Q1": {
+                "face_subtotal": 3497,
+                "component_sum": 3497,
                 "delta": 0
               },
               "FY25Q2": {
@@ -2956,24 +2961,14 @@
                 "component_sum": 3932,
                 "delta": 0
               },
-              "FY26Q1": {
-                "face_subtotal": 5030,
-                "component_sum": 5030,
-                "delta": 0
-              },
-              "FY26Q4": {
-                "face_subtotal": 6794,
-                "component_sum": 6794,
+              "FY24Q3": {
+                "face_subtotal": 2983,
+                "component_sum": 2983,
                 "delta": 0
               },
               "FY24Q2": {
                 "face_subtotal": 2662,
                 "component_sum": 2662,
-                "delta": 0
-              },
-              "FY26Q2": {
-                "face_subtotal": 5413,
-                "component_sum": 5413,
                 "delta": 0
               },
               "FY24Q1": {
@@ -2986,19 +2981,24 @@
                 "component_sum": 4689,
                 "delta": 0
               },
-              "FY24Q3": {
-                "face_subtotal": 2983,
-                "component_sum": 2983,
+              "FY25Q3": {
+                "face_subtotal": 4287,
+                "component_sum": 4287,
                 "delta": 0
               },
-              "FY25Q1": {
-                "face_subtotal": 3497,
-                "component_sum": 3497,
+              "FY26Q1": {
+                "face_subtotal": 5030,
+                "component_sum": 5030,
                 "delta": 0
               },
               "FY26Q3": {
                 "face_subtotal": 5839,
                 "component_sum": 5839,
+                "delta": 0
+              },
+              "FY26Q2": {
+                "face_subtotal": 5413,
+                "component_sum": 5413,
                 "delta": 0
               },
               "FY24Q4": {
@@ -3011,17 +3011,17 @@
           {
             "bucket": "operating_income",
             "values_by_quarter": {
-              "FY25Q3": 21869,
-              "FY25Q2": 18642,
-              "FY26Q1": 21638,
               "FY26Q4": 44299,
+              "FY25Q1": 16909,
+              "FY25Q2": 18642,
+              "FY24Q3": 10417,
               "FY24Q2": 6800,
-              "FY26Q2": 28440,
               "FY24Q1": 2140,
               "FY25Q4": 24033,
-              "FY24Q3": 10417,
-              "FY25Q1": 16909,
+              "FY25Q3": 21869,
+              "FY26Q1": 21638,
               "FY26Q3": 36010,
+              "FY26Q2": 28440,
               "FY24Q4": 13615
             },
             "components": [
@@ -3035,97 +3035,97 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY24Q3": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
+              "FY26Q2": "face",
               "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": 21869,
-                "component_sum": 30443,
-                "delta": 8574
-              },
-              "FY25Q2": {
-                "face_subtotal": 18642,
-                "component_sum": 26506,
-                "delta": 7864
-              },
-              "FY26Q1": {
-                "face_subtotal": 21638,
-                "component_sum": 31698,
-                "delta": 10060
-              },
               "FY26Q4": {
                 "face_subtotal": 44299,
-                "component_sum": 57887,
-                "delta": 13588
-              },
-              "FY24Q2": {
-                "face_subtotal": 6800,
-                "component_sum": 12124,
-                "delta": 5324
-              },
-              "FY26Q2": {
-                "face_subtotal": 28440,
-                "component_sum": 39266,
-                "delta": 10826
-              },
-              "FY24Q1": {
-                "face_subtotal": 2140,
-                "component_sum": 7156,
-                "delta": 5016
-              },
-              "FY25Q4": {
-                "face_subtotal": 24033,
-                "component_sum": 33411,
-                "delta": 9378
-              },
-              "FY24Q3": {
-                "face_subtotal": 10417,
-                "component_sum": 16383,
-                "delta": 5966
+                "component_sum": 44299,
+                "delta": 0
               },
               "FY25Q1": {
                 "face_subtotal": 16909,
-                "component_sum": 23903,
-                "delta": 6994
+                "component_sum": 16909,
+                "delta": 0
+              },
+              "FY25Q2": {
+                "face_subtotal": 18642,
+                "component_sum": 18642,
+                "delta": 0
+              },
+              "FY24Q3": {
+                "face_subtotal": 10417,
+                "component_sum": 10417,
+                "delta": 0
+              },
+              "FY24Q2": {
+                "face_subtotal": 6800,
+                "component_sum": 6800,
+                "delta": 0
+              },
+              "FY24Q1": {
+                "face_subtotal": 2140,
+                "component_sum": 2140,
+                "delta": 0
+              },
+              "FY25Q4": {
+                "face_subtotal": 24033,
+                "component_sum": 24033,
+                "delta": 0
+              },
+              "FY25Q3": {
+                "face_subtotal": 21869,
+                "component_sum": 21869,
+                "delta": 0
+              },
+              "FY26Q1": {
+                "face_subtotal": 21638,
+                "component_sum": 21638,
+                "delta": 0
               },
               "FY26Q3": {
                 "face_subtotal": 36010,
-                "component_sum": 47688,
-                "delta": 11678
+                "component_sum": 36010,
+                "delta": 0
+              },
+              "FY26Q2": {
+                "face_subtotal": 28440,
+                "component_sum": 28440,
+                "delta": 0
               },
               "FY24Q4": {
                 "face_subtotal": 13615,
-                "component_sum": 19967,
-                "delta": 6352
+                "component_sum": 13615,
+                "delta": 0
               }
             }
           },
           {
             "bucket": "net_interest_expense",
             "values_by_quarter": {
-              "FY24Q1": 216,
-              "FY25Q3": 533,
-              "FY24Q4": 358,
-              "FY25Q4": 572,
-              "FY25Q2": 505,
-              "FY25Q1": 423,
-              "FY26Q1": 578,
-              "FY26Q4": 642,
-              "FY26Q3": 685,
-              "FY24Q3": 297,
-              "FY24Q2": 252,
-              "FY26Q2": 654
+              "FY26Q4": -496,
+              "FY26Q1": -452,
+              "FY25Q1": -295,
+              "FY25Q2": -383,
+              "FY26Q3": -563,
+              "FY24Q3": -171,
+              "FY24Q2": -122,
+              "FY26Q2": -530,
+              "FY24Q1": -84,
+              "FY24Q4": -232,
+              "FY25Q4": -450,
+              "FY25Q3": -411
             },
             "components": [
               [
@@ -3138,36 +3138,36 @@
               ]
             ],
             "source": {
-              "FY24Q1": "components",
-              "FY25Q3": "components",
-              "FY24Q4": "components",
-              "FY25Q4": "components",
-              "FY25Q2": "components",
-              "FY25Q1": "components",
-              "FY26Q1": "components",
               "FY26Q4": "components",
+              "FY26Q1": "components",
+              "FY25Q1": "components",
+              "FY25Q2": "components",
               "FY26Q3": "components",
               "FY24Q3": "components",
               "FY24Q2": "components",
-              "FY26Q2": "components"
+              "FY26Q2": "components",
+              "FY24Q1": "components",
+              "FY24Q4": "components",
+              "FY25Q4": "components",
+              "FY25Q3": "components"
             },
             "recon_delta": {}
           },
           {
             "bucket": "ebt_excl_unusual",
             "values_by_quarter": {
-              "FY25Q3": 22316,
-              "FY24Q4": 14106,
-              "FY25Q2": 19214,
-              "FY26Q1": 21910,
               "FY26Q4": 50398,
+              "FY25Q1": 17279,
+              "FY25Q2": 19214,
+              "FY24Q3": 10522,
               "FY24Q2": 6981,
-              "FY26Q2": 31206,
               "FY24Q1": 2209,
               "FY25Q4": 25217,
-              "FY25Q1": 17279,
+              "FY25Q3": 22316,
+              "FY26Q1": 21910,
               "FY26Q3": 37936,
-              "FY24Q3": 10522
+              "FY26Q2": 31206,
+              "FY24Q4": 14106
             },
             "components": [
               [
@@ -3188,96 +3188,96 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY24Q4": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
-              "FY24Q3": "face"
+              "FY26Q2": "face",
+              "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": 22316,
-                "component_sum": 22438,
-                "delta": 122
-              },
-              "FY24Q4": {
-                "face_subtotal": 14106,
-                "component_sum": 14232,
-                "delta": 126
-              },
-              "FY25Q2": {
-                "face_subtotal": 19214,
-                "component_sum": 19336,
-                "delta": 122
-              },
-              "FY26Q1": {
-                "face_subtotal": 21910,
-                "component_sum": 22036,
-                "delta": 126
-              },
               "FY26Q4": {
                 "face_subtotal": 50398,
-                "component_sum": 50544,
-                "delta": 146
-              },
-              "FY24Q2": {
-                "face_subtotal": 6981,
-                "component_sum": 7111,
-                "delta": 130
-              },
-              "FY26Q2": {
-                "face_subtotal": 31206,
-                "component_sum": 31330,
-                "delta": 124
-              },
-              "FY24Q1": {
-                "face_subtotal": 2209,
-                "component_sum": 2341,
-                "delta": 132
-              },
-              "FY25Q4": {
-                "face_subtotal": 25217,
-                "component_sum": 25339,
-                "delta": 122
+                "component_sum": 50398,
+                "delta": 0
               },
               "FY25Q1": {
                 "face_subtotal": 17279,
-                "component_sum": 17407,
-                "delta": 128
+                "component_sum": 17279,
+                "delta": 0
               },
-              "FY26Q3": {
-                "face_subtotal": 37936,
-                "component_sum": 38058,
-                "delta": 122
+              "FY25Q2": {
+                "face_subtotal": 19214,
+                "component_sum": 19214,
+                "delta": 0
               },
               "FY24Q3": {
                 "face_subtotal": 10522,
-                "component_sum": 10648,
-                "delta": 126
+                "component_sum": 10522,
+                "delta": 0
+              },
+              "FY24Q2": {
+                "face_subtotal": 6981,
+                "component_sum": 6981,
+                "delta": 0
+              },
+              "FY24Q1": {
+                "face_subtotal": 2209,
+                "component_sum": 2209,
+                "delta": 0
+              },
+              "FY25Q4": {
+                "face_subtotal": 25217,
+                "component_sum": 25217,
+                "delta": 0
+              },
+              "FY25Q3": {
+                "face_subtotal": 22316,
+                "component_sum": 22316,
+                "delta": 0
+              },
+              "FY26Q1": {
+                "face_subtotal": 21910,
+                "component_sum": 21910,
+                "delta": 0
+              },
+              "FY26Q3": {
+                "face_subtotal": 37936,
+                "component_sum": 37936,
+                "delta": 0
+              },
+              "FY26Q2": {
+                "face_subtotal": 31206,
+                "component_sum": 31206,
+                "delta": 0
+              },
+              "FY24Q4": {
+                "face_subtotal": 14106,
+                "component_sum": 14106,
+                "delta": 0
               }
             }
           },
           {
             "bucket": "ebt_incl_unusual",
             "values_by_quarter": {
-              "FY25Q3": 22316,
-              "FY25Q2": 19214,
-              "FY26Q1": 21910,
               "FY26Q4": 50398,
+              "FY25Q1": 17279,
+              "FY25Q2": 19214,
+              "FY24Q3": 10522,
               "FY24Q2": 6981,
-              "FY26Q2": 31206,
               "FY24Q1": 2209,
               "FY25Q4": 25217,
-              "FY24Q3": 10522,
-              "FY25Q1": 17279,
+              "FY25Q3": 22316,
+              "FY26Q1": 21910,
               "FY26Q3": 37936,
+              "FY26Q2": 31206,
               "FY24Q4": 14106
             },
             "components": [
@@ -3307,23 +3307,28 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY24Q3": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
+              "FY26Q2": "face",
               "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": 22316,
-                "component_sum": 22316,
+              "FY26Q4": {
+                "face_subtotal": 50398,
+                "component_sum": 50398,
+                "delta": 0
+              },
+              "FY25Q1": {
+                "face_subtotal": 17279,
+                "component_sum": 17279,
                 "delta": 0
               },
               "FY25Q2": {
@@ -3331,24 +3336,14 @@
                 "component_sum": 19214,
                 "delta": 0
               },
-              "FY26Q1": {
-                "face_subtotal": 21910,
-                "component_sum": 21910,
-                "delta": 0
-              },
-              "FY26Q4": {
-                "face_subtotal": 50398,
-                "component_sum": 50398,
+              "FY24Q3": {
+                "face_subtotal": 10522,
+                "component_sum": 10522,
                 "delta": 0
               },
               "FY24Q2": {
                 "face_subtotal": 6981,
                 "component_sum": 6981,
-                "delta": 0
-              },
-              "FY26Q2": {
-                "face_subtotal": 31206,
-                "component_sum": 31206,
                 "delta": 0
               },
               "FY24Q1": {
@@ -3361,19 +3356,24 @@
                 "component_sum": 25217,
                 "delta": 0
               },
-              "FY24Q3": {
-                "face_subtotal": 10522,
-                "component_sum": 10522,
+              "FY25Q3": {
+                "face_subtotal": 22316,
+                "component_sum": 22316,
                 "delta": 0
               },
-              "FY25Q1": {
-                "face_subtotal": 17279,
-                "component_sum": 17279,
+              "FY26Q1": {
+                "face_subtotal": 21910,
+                "component_sum": 21910,
                 "delta": 0
               },
               "FY26Q3": {
                 "face_subtotal": 37936,
                 "component_sum": 37936,
+                "delta": 0
+              },
+              "FY26Q2": {
+                "face_subtotal": 31206,
+                "component_sum": 31206,
                 "delta": 0
               },
               "FY24Q4": {
@@ -3386,18 +3386,18 @@
           {
             "bucket": "continuing_ops",
             "values_by_quarter": {
-              "FY24Q1": 2375,
-              "FY25Q3": 25323,
-              "FY25Q4": 28343,
-              "FY25Q2": 21829,
-              "FY24Q3": 11801,
-              "FY25Q1": 19677,
-              "FY26Q1": 25045,
-              "FY26Q4": 57836,
-              "FY26Q3": 43962,
-              "FY24Q4": 15926,
-              "FY24Q2": 7774,
-              "FY26Q2": 35990
+              "FY26Q4": 42960,
+              "FY26Q1": 18775,
+              "FY25Q1": 14881,
+              "FY25Q2": 16599,
+              "FY26Q3": 31910,
+              "FY24Q3": 9243,
+              "FY24Q2": 6188,
+              "FY26Q2": 26422,
+              "FY24Q1": 2043,
+              "FY24Q4": 12286,
+              "FY25Q4": 22091,
+              "FY25Q3": 19309
             },
             "components": [
               [
@@ -3410,36 +3410,36 @@
               ]
             ],
             "source": {
-              "FY24Q1": "components",
-              "FY25Q3": "components",
-              "FY25Q4": "components",
-              "FY25Q2": "components",
-              "FY24Q3": "components",
-              "FY25Q1": "components",
-              "FY26Q1": "components",
               "FY26Q4": "components",
+              "FY26Q1": "components",
+              "FY25Q1": "components",
+              "FY25Q2": "components",
               "FY26Q3": "components",
-              "FY24Q4": "components",
+              "FY24Q3": "components",
               "FY24Q2": "components",
-              "FY26Q2": "components"
+              "FY26Q2": "components",
+              "FY24Q1": "components",
+              "FY24Q4": "components",
+              "FY25Q4": "components",
+              "FY25Q3": "components"
             },
             "recon_delta": {}
           },
           {
             "bucket": "net_income",
             "values_by_quarter": {
-              "FY25Q3": 19309,
-              "FY24Q4": 12286,
-              "FY25Q2": 16599,
-              "FY26Q1": 18775,
               "FY26Q4": 42960,
+              "FY25Q1": 14881,
+              "FY25Q2": 16599,
+              "FY24Q3": 9243,
               "FY24Q2": 6188,
-              "FY26Q2": 26422,
               "FY24Q1": 2043,
               "FY25Q4": 22091,
-              "FY25Q1": 14881,
+              "FY25Q3": 19309,
+              "FY26Q1": 18775,
               "FY26Q3": 31910,
-              "FY24Q3": 9243
+              "FY26Q2": 26422,
+              "FY24Q4": 12286
             },
             "components": [
               [
@@ -3452,97 +3452,97 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY24Q4": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
-              "FY24Q3": "face"
+              "FY26Q2": "face",
+              "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": 19309,
-                "component_sum": 25323,
-                "delta": 6014
-              },
-              "FY24Q4": {
-                "face_subtotal": 12286,
-                "component_sum": 15926,
-                "delta": 3640
-              },
-              "FY25Q2": {
-                "face_subtotal": 16599,
-                "component_sum": 21829,
-                "delta": 5230
-              },
-              "FY26Q1": {
-                "face_subtotal": 18775,
-                "component_sum": 25045,
-                "delta": 6270
-              },
               "FY26Q4": {
                 "face_subtotal": 42960,
-                "component_sum": 57836,
-                "delta": 14876
-              },
-              "FY24Q2": {
-                "face_subtotal": 6188,
-                "component_sum": 7774,
-                "delta": 1586
-              },
-              "FY26Q2": {
-                "face_subtotal": 26422,
-                "component_sum": 35990,
-                "delta": 9568
-              },
-              "FY24Q1": {
-                "face_subtotal": 2043,
-                "component_sum": 2375,
-                "delta": 332
-              },
-              "FY25Q4": {
-                "face_subtotal": 22091,
-                "component_sum": 28343,
-                "delta": 6252
+                "component_sum": 42960,
+                "delta": 0
               },
               "FY25Q1": {
                 "face_subtotal": 14881,
-                "component_sum": 19677,
-                "delta": 4796
+                "component_sum": 14881,
+                "delta": 0
               },
-              "FY26Q3": {
-                "face_subtotal": 31910,
-                "component_sum": 43962,
-                "delta": 12052
+              "FY25Q2": {
+                "face_subtotal": 16599,
+                "component_sum": 16599,
+                "delta": 0
               },
               "FY24Q3": {
                 "face_subtotal": 9243,
-                "component_sum": 11801,
-                "delta": 2558
+                "component_sum": 9243,
+                "delta": 0
+              },
+              "FY24Q2": {
+                "face_subtotal": 6188,
+                "component_sum": 6188,
+                "delta": 0
+              },
+              "FY24Q1": {
+                "face_subtotal": 2043,
+                "component_sum": 2043,
+                "delta": 0
+              },
+              "FY25Q4": {
+                "face_subtotal": 22091,
+                "component_sum": 22091,
+                "delta": 0
+              },
+              "FY25Q3": {
+                "face_subtotal": 19309,
+                "component_sum": 19309,
+                "delta": 0
+              },
+              "FY26Q1": {
+                "face_subtotal": 18775,
+                "component_sum": 18775,
+                "delta": 0
+              },
+              "FY26Q3": {
+                "face_subtotal": 31910,
+                "component_sum": 31910,
+                "delta": 0
+              },
+              "FY26Q2": {
+                "face_subtotal": 26422,
+                "component_sum": 26422,
+                "delta": 0
+              },
+              "FY24Q4": {
+                "face_subtotal": 12286,
+                "component_sum": 12286,
+                "delta": 0
               }
             }
           },
           {
             "bucket": "ni_common_incl_extra",
             "values_by_quarter": {
-              "FY24Q1": 2043,
-              "FY25Q3": 19309,
-              "FY24Q4": 12286,
-              "FY25Q4": 22091,
-              "FY25Q2": 16599,
-              "FY25Q1": 14881,
-              "FY26Q1": 18775,
               "FY26Q4": 42960,
+              "FY26Q1": 18775,
+              "FY25Q1": 14881,
+              "FY25Q2": 16599,
               "FY26Q3": 31910,
               "FY24Q3": 9243,
               "FY24Q2": 6188,
-              "FY26Q2": 26422
+              "FY26Q2": 26422,
+              "FY24Q1": 2043,
+              "FY24Q4": 12286,
+              "FY25Q4": 22091,
+              "FY25Q3": 19309
             },
             "components": [
               [
@@ -3555,18 +3555,18 @@
               ]
             ],
             "source": {
-              "FY24Q1": "components",
-              "FY25Q3": "components",
-              "FY24Q4": "components",
-              "FY25Q4": "components",
-              "FY25Q2": "components",
-              "FY25Q1": "components",
-              "FY26Q1": "components",
               "FY26Q4": "components",
+              "FY26Q1": "components",
+              "FY25Q1": "components",
+              "FY25Q2": "components",
               "FY26Q3": "components",
               "FY24Q3": "components",
               "FY24Q2": "components",
-              "FY26Q2": "components"
+              "FY26Q2": "components",
+              "FY24Q1": "components",
+              "FY24Q4": "components",
+              "FY25Q4": "components",
+              "FY25Q3": "components"
             },
             "recon_delta": {}
           }
@@ -8618,7 +8618,7 @@
             }
           ],
           "statement": "balance_sheet",
-          "applicable_quarters": "{'FY24Q1', 'FY25Q3', 'FY24Q4', 'FY25Q4', 'FY25Q2', 'FY25Q1', 'FY26Q1', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2'}",
+          "applicable_quarters": "{'FY26Q1', 'FY25Q1', 'FY25Q2', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2', 'FY24Q1', 'FY24Q4', 'FY25Q4', 'FY25Q3'}",
           "ties_by_quarter": {
             "FY24Q1": {
               "computed": 24883,
@@ -8746,7 +8746,7 @@
             }
           ],
           "statement": "balance_sheet",
-          "applicable_quarters": "{'FY24Q1', 'FY25Q3', 'FY24Q4', 'FY25Q4', 'FY25Q2', 'FY25Q1', 'FY26Q1', 'FY26Q4', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2'}",
+          "applicable_quarters": "{'FY26Q4', 'FY26Q1', 'FY25Q1', 'FY25Q2', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2', 'FY24Q1', 'FY24Q4', 'FY25Q4', 'FY25Q3'}",
           "ties_by_quarter": {
             "FY24Q1": {
               "computed": 6010,
@@ -8832,7 +8832,7 @@
             }
           ],
           "statement": "balance_sheet",
-          "applicable_quarters": "{'FY24Q1', 'FY25Q3', 'FY24Q4', 'FY25Q4', 'FY25Q2', 'FY25Q1', 'FY26Q1', 'FY26Q4', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2'}",
+          "applicable_quarters": "{'FY26Q4', 'FY26Q1', 'FY25Q1', 'FY25Q2', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2', 'FY24Q1', 'FY24Q4', 'FY25Q4', 'FY25Q3'}",
           "ties_by_quarter": {
             "FY24Q1": {
               "computed": 7260,
@@ -8930,7 +8930,7 @@
             }
           ],
           "statement": "balance_sheet",
-          "applicable_quarters": "{'FY24Q1', 'FY25Q3', 'FY24Q4', 'FY25Q4', 'FY25Q2', 'FY25Q1', 'FY26Q1', 'FY26Q4', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2'}",
+          "applicable_quarters": "{'FY26Q4', 'FY26Q1', 'FY25Q1', 'FY25Q2', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2', 'FY24Q1', 'FY24Q4', 'FY25Q4', 'FY25Q3'}",
           "ties_by_quarter": {
             "FY24Q1": {
               "computed": 12067,
@@ -9020,7 +9020,7 @@
             }
           ],
           "statement": "balance_sheet",
-          "applicable_quarters": "{'FY24Q1', 'FY25Q3', 'FY24Q4', 'FY25Q2', 'FY25Q1', 'FY26Q1', 'FY26Q3', 'FY24Q3', 'FY24Q2'}",
+          "applicable_quarters": "{'FY26Q1', 'FY25Q1', 'FY25Q2', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY24Q1', 'FY24Q4', 'FY25Q3'}",
           "ties_by_quarter": {
             "FY24Q1": {
               "computed": 44460,
@@ -9112,7 +9112,7 @@
             }
           ],
           "statement": "balance_sheet",
-          "applicable_quarters": "{'FY25Q3', 'FY24Q4', 'FY25Q4', 'FY25Q2', 'FY25Q1', 'FY26Q1', 'FY26Q4', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2'}",
+          "applicable_quarters": "{'FY26Q4', 'FY26Q1', 'FY25Q1', 'FY25Q2', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2', 'FY24Q4', 'FY25Q4', 'FY25Q3'}",
           "ties_by_quarter": {
             "FY24Q2": {
               "computed": 49555,
@@ -9200,7 +9200,7 @@
             }
           ],
           "statement": "balance_sheet",
-          "applicable_quarters": "{'FY26Q4', 'FY25Q4', 'FY26Q2'}",
+          "applicable_quarters": "{'FY26Q4', 'FY26Q2', 'FY25Q4'}",
           "ties_by_quarter": {
             "FY25Q4": {
               "computed": 111601,
@@ -11027,18 +11027,18 @@
           {
             "bucket": "total_cash_sti",
             "values_by_quarter": {
-              "FY24Q1": 15320,
-              "FY25Q3": 38487,
-              "FY24Q4": 25984,
-              "FY25Q4": 43210,
-              "FY25Q2": 34800,
-              "FY25Q1": 31438,
-              "FY26Q1": 53691,
               "FY26Q4": 62556,
+              "FY26Q1": 53691,
+              "FY25Q1": 31438,
+              "FY25Q2": 34800,
               "FY26Q3": 60608,
               "FY24Q3": 18281,
               "FY24Q2": 16023,
-              "FY26Q2": 56791
+              "FY26Q2": 56791,
+              "FY24Q1": 15320,
+              "FY24Q4": 25984,
+              "FY25Q4": 43210,
+              "FY25Q3": 38487
             },
             "components": [
               [
@@ -11055,36 +11055,36 @@
               ]
             ],
             "source": {
-              "FY24Q1": "components",
-              "FY25Q3": "components",
-              "FY24Q4": "components",
-              "FY25Q4": "components",
-              "FY25Q2": "components",
-              "FY25Q1": "components",
-              "FY26Q1": "components",
               "FY26Q4": "components",
+              "FY26Q1": "components",
+              "FY25Q1": "components",
+              "FY25Q2": "components",
               "FY26Q3": "components",
               "FY24Q3": "components",
               "FY24Q2": "components",
-              "FY26Q2": "components"
+              "FY26Q2": "components",
+              "FY24Q1": "components",
+              "FY24Q4": "components",
+              "FY25Q4": "components",
+              "FY25Q3": "components"
             },
             "recon_delta": {}
           },
           {
             "bucket": "total_receivables",
             "values_by_quarter": {
-              "FY24Q1": 4080,
-              "FY25Q3": 17693,
-              "FY24Q4": 9999,
-              "FY25Q4": 23065,
-              "FY25Q2": 14132,
-              "FY25Q1": 12365,
-              "FY26Q1": 22132,
               "FY26Q4": 38466,
+              "FY26Q1": 22132,
+              "FY25Q1": 12365,
+              "FY25Q2": 14132,
               "FY26Q3": 33391,
               "FY24Q3": 8309,
               "FY24Q2": 7066,
-              "FY26Q2": 27808
+              "FY26Q2": 27808,
+              "FY24Q1": 4080,
+              "FY24Q4": 9999,
+              "FY25Q4": 23065,
+              "FY25Q3": 17693
             },
             "components": [
               [
@@ -11097,35 +11097,35 @@
               ]
             ],
             "source": {
-              "FY24Q1": "components",
-              "FY25Q3": "components",
-              "FY24Q4": "components",
-              "FY25Q4": "components",
-              "FY25Q2": "components",
-              "FY25Q1": "components",
-              "FY26Q1": "components",
               "FY26Q4": "components",
+              "FY26Q1": "components",
+              "FY25Q1": "components",
+              "FY25Q2": "components",
               "FY26Q3": "components",
               "FY24Q3": "components",
               "FY24Q2": "components",
-              "FY26Q2": "components"
+              "FY26Q2": "components",
+              "FY24Q1": "components",
+              "FY24Q4": "components",
+              "FY25Q4": "components",
+              "FY25Q3": "components"
             },
             "recon_delta": {}
           },
           {
             "bucket": "total_current_assets",
             "values_by_quarter": {
-              "FY25Q3": 67640,
-              "FY25Q2": 59633,
-              "FY26Q1": 89935,
               "FY26Q4": 125605,
+              "FY25Q1": 53729,
+              "FY25Q2": 59633,
+              "FY24Q3": 32658,
               "FY24Q2": 28797,
-              "FY26Q2": 102219,
               "FY24Q1": 24883,
               "FY25Q4": 80126,
-              "FY24Q3": 32658,
-              "FY25Q1": 53729,
+              "FY25Q3": 67640,
+              "FY26Q1": 89935,
               "FY26Q3": 116492,
+              "FY26Q2": 102219,
               "FY24Q4": 44345
             },
             "components": [
@@ -11155,23 +11155,28 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY24Q3": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
+              "FY26Q2": "face",
               "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": 67640,
-                "component_sum": 67640,
+              "FY26Q4": {
+                "face_subtotal": 125605,
+                "component_sum": 125605,
+                "delta": 0
+              },
+              "FY25Q1": {
+                "face_subtotal": 53729,
+                "component_sum": 53729,
                 "delta": 0
               },
               "FY25Q2": {
@@ -11179,24 +11184,14 @@
                 "component_sum": 59633,
                 "delta": 0
               },
-              "FY26Q1": {
-                "face_subtotal": 89935,
-                "component_sum": 89935,
-                "delta": 0
-              },
-              "FY26Q4": {
-                "face_subtotal": 125605,
-                "component_sum": 125605,
+              "FY24Q3": {
+                "face_subtotal": 32658,
+                "component_sum": 32658,
                 "delta": 0
               },
               "FY24Q2": {
                 "face_subtotal": 28797,
                 "component_sum": 28797,
-                "delta": 0
-              },
-              "FY26Q2": {
-                "face_subtotal": 102219,
-                "component_sum": 102219,
                 "delta": 0
               },
               "FY24Q1": {
@@ -11209,19 +11204,24 @@
                 "component_sum": 80126,
                 "delta": 0
               },
-              "FY24Q3": {
-                "face_subtotal": 32658,
-                "component_sum": 32658,
+              "FY25Q3": {
+                "face_subtotal": 67640,
+                "component_sum": 67640,
                 "delta": 0
               },
-              "FY25Q1": {
-                "face_subtotal": 53729,
-                "component_sum": 53729,
+              "FY26Q1": {
+                "face_subtotal": 89935,
+                "component_sum": 89935,
                 "delta": 0
               },
               "FY26Q3": {
                 "face_subtotal": 116492,
                 "component_sum": 116492,
+                "delta": 0
+              },
+              "FY26Q2": {
+                "face_subtotal": 102219,
+                "component_sum": 102219,
                 "delta": 0
               },
               "FY24Q4": {
@@ -11234,18 +11234,18 @@
           {
             "bucket": "total_assets",
             "values_by_quarter": {
-              "FY25Q3": 96013,
-              "FY24Q4": 65728,
-              "FY25Q2": 85227,
-              "FY26Q1": 125254,
               "FY26Q4": 206803,
+              "FY25Q1": 77072,
+              "FY25Q2": 85227,
+              "FY24Q3": 54148,
               "FY24Q2": 49555,
-              "FY26Q2": 140740,
               "FY24Q1": 44460,
               "FY25Q4": 111601,
-              "FY25Q1": 77072,
+              "FY25Q3": 96013,
+              "FY26Q1": 125254,
               "FY26Q3": 161148,
-              "FY24Q3": 54148
+              "FY26Q2": 140740,
+              "FY24Q4": 65728
             },
             "components": [
               [
@@ -11286,28 +11286,28 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY24Q4": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
-              "FY24Q3": "face"
+              "FY26Q2": "face",
+              "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": 96013,
-                "component_sum": 96013,
-                "delta": 0
+              "FY26Q4": {
+                "face_subtotal": 206803,
+                "component_sum": 184552,
+                "delta": -22251
               },
-              "FY24Q4": {
-                "face_subtotal": 65728,
-                "component_sum": 65728,
+              "FY25Q1": {
+                "face_subtotal": 77072,
+                "component_sum": 77072,
                 "delta": 0
               },
               "FY25Q2": {
@@ -11315,24 +11315,14 @@
                 "component_sum": 85227,
                 "delta": 0
               },
-              "FY26Q1": {
-                "face_subtotal": 125254,
-                "component_sum": 125254,
+              "FY24Q3": {
+                "face_subtotal": 54148,
+                "component_sum": 54148,
                 "delta": 0
-              },
-              "FY26Q4": {
-                "face_subtotal": 206803,
-                "component_sum": 184552,
-                "delta": -22251
               },
               "FY24Q2": {
                 "face_subtotal": 49555,
                 "component_sum": 49555,
-                "delta": 0
-              },
-              "FY26Q2": {
-                "face_subtotal": 140740,
-                "component_sum": 140740,
                 "delta": 0
               },
               "FY24Q1": {
@@ -11345,9 +11335,14 @@
                 "component_sum": 111601,
                 "delta": 0
               },
-              "FY25Q1": {
-                "face_subtotal": 77072,
-                "component_sum": 77072,
+              "FY25Q3": {
+                "face_subtotal": 96013,
+                "component_sum": 96013,
+                "delta": 0
+              },
+              "FY26Q1": {
+                "face_subtotal": 125254,
+                "component_sum": 125254,
                 "delta": 0
               },
               "FY26Q3": {
@@ -11355,9 +11350,14 @@
                 "component_sum": 161148,
                 "delta": 0
               },
-              "FY24Q3": {
-                "face_subtotal": 54148,
-                "component_sum": 54148,
+              "FY26Q2": {
+                "face_subtotal": 140740,
+                "component_sum": 140740,
+                "delta": 0
+              },
+              "FY24Q4": {
+                "face_subtotal": 65728,
+                "component_sum": 65728,
                 "delta": 0
               }
             }
@@ -11365,17 +11365,17 @@
           {
             "bucket": "total_current_liabilities",
             "values_by_quarter": {
-              "FY25Q3": 16479,
-              "FY25Q2": 13969,
-              "FY26Q1": 26542,
               "FY26Q4": 32163,
+              "FY25Q1": 15223,
+              "FY25Q2": 13969,
+              "FY24Q3": 9101,
               "FY24Q2": 10334,
-              "FY26Q2": 24257,
               "FY24Q1": 7260,
               "FY25Q4": 18047,
-              "FY24Q3": 9101,
-              "FY25Q1": 15223,
+              "FY25Q3": 16479,
+              "FY26Q1": 26542,
               "FY26Q3": 26075,
+              "FY26Q2": 24257,
               "FY24Q4": 10631
             },
             "components": [
@@ -11409,23 +11409,28 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY24Q3": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
+              "FY26Q2": "face",
               "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": 16479,
-                "component_sum": 16479,
+              "FY26Q4": {
+                "face_subtotal": 32163,
+                "component_sum": 32163,
+                "delta": 0
+              },
+              "FY25Q1": {
+                "face_subtotal": 15223,
+                "component_sum": 15223,
                 "delta": 0
               },
               "FY25Q2": {
@@ -11433,24 +11438,14 @@
                 "component_sum": 13969,
                 "delta": 0
               },
-              "FY26Q1": {
-                "face_subtotal": 26542,
-                "component_sum": 26542,
-                "delta": 0
-              },
-              "FY26Q4": {
-                "face_subtotal": 32163,
-                "component_sum": 32163,
+              "FY24Q3": {
+                "face_subtotal": 9101,
+                "component_sum": 9101,
                 "delta": 0
               },
               "FY24Q2": {
                 "face_subtotal": 10334,
                 "component_sum": 10334,
-                "delta": 0
-              },
-              "FY26Q2": {
-                "face_subtotal": 24257,
-                "component_sum": 24257,
                 "delta": 0
               },
               "FY24Q1": {
@@ -11463,19 +11458,24 @@
                 "component_sum": 18047,
                 "delta": 0
               },
-              "FY24Q3": {
-                "face_subtotal": 9101,
-                "component_sum": 9101,
+              "FY25Q3": {
+                "face_subtotal": 16479,
+                "component_sum": 16479,
                 "delta": 0
               },
-              "FY25Q1": {
-                "face_subtotal": 15223,
-                "component_sum": 15223,
+              "FY26Q1": {
+                "face_subtotal": 26542,
+                "component_sum": 26542,
                 "delta": 0
               },
               "FY26Q3": {
                 "face_subtotal": 26075,
                 "component_sum": 26075,
+                "delta": 0
+              },
+              "FY26Q2": {
+                "face_subtotal": 24257,
+                "component_sum": 24257,
                 "delta": 0
               },
               "FY24Q4": {
@@ -11488,18 +11488,18 @@
           {
             "bucket": "total_liabilities",
             "values_by_quarter": {
-              "FY25Q3": 30114,
-              "FY24Q4": 22750,
-              "FY25Q2": 27070,
-              "FY26Q1": 41411,
               "FY26Q4": 49510,
+              "FY25Q1": 27930,
+              "FY25Q2": 27070,
+              "FY24Q3": 20883,
               "FY24Q2": 22054,
-              "FY26Q2": 40609,
               "FY24Q1": 19940,
               "FY25Q4": 32274,
-              "FY25Q1": 27930,
+              "FY25Q3": 30114,
+              "FY26Q1": 41411,
               "FY26Q3": 42251,
-              "FY24Q3": 20883
+              "FY26Q2": 40609,
+              "FY24Q4": 22750
             },
             "components": [
               [
@@ -11528,28 +11528,28 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY24Q4": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
-              "FY24Q3": "face"
+              "FY26Q2": "face",
+              "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": 30114,
-                "component_sum": 30114,
+              "FY26Q4": {
+                "face_subtotal": 49510,
+                "component_sum": 49510,
                 "delta": 0
               },
-              "FY24Q4": {
-                "face_subtotal": 22750,
-                "component_sum": 22750,
+              "FY25Q1": {
+                "face_subtotal": 27930,
+                "component_sum": 27930,
                 "delta": 0
               },
               "FY25Q2": {
@@ -11557,24 +11557,14 @@
                 "component_sum": 27070,
                 "delta": 0
               },
-              "FY26Q1": {
-                "face_subtotal": 41411,
-                "component_sum": 41411,
-                "delta": 0
-              },
-              "FY26Q4": {
-                "face_subtotal": 49510,
-                "component_sum": 49510,
+              "FY24Q3": {
+                "face_subtotal": 20883,
+                "component_sum": 20883,
                 "delta": 0
               },
               "FY24Q2": {
                 "face_subtotal": 22054,
                 "component_sum": 22054,
-                "delta": 0
-              },
-              "FY26Q2": {
-                "face_subtotal": 40609,
-                "component_sum": 40609,
                 "delta": 0
               },
               "FY24Q1": {
@@ -11587,9 +11577,14 @@
                 "component_sum": 32274,
                 "delta": 0
               },
-              "FY25Q1": {
-                "face_subtotal": 27930,
-                "component_sum": 27930,
+              "FY25Q3": {
+                "face_subtotal": 30114,
+                "component_sum": 30114,
+                "delta": 0
+              },
+              "FY26Q1": {
+                "face_subtotal": 41411,
+                "component_sum": 41411,
                 "delta": 0
               },
               "FY26Q3": {
@@ -11597,9 +11592,14 @@
                 "component_sum": 42251,
                 "delta": 0
               },
-              "FY24Q3": {
-                "face_subtotal": 20883,
-                "component_sum": 20883,
+              "FY26Q2": {
+                "face_subtotal": 40609,
+                "component_sum": 40609,
+                "delta": 0
+              },
+              "FY24Q4": {
+                "face_subtotal": 22750,
+                "component_sum": 22750,
                 "delta": 0
               }
             }
@@ -11607,17 +11607,17 @@
           {
             "bucket": "common_equity",
             "values_by_quarter": {
-              "FY25Q3": 65899,
-              "FY25Q2": 58157,
-              "FY26Q1": 83843,
               "FY26Q4": 157293,
+              "FY25Q1": 49142,
+              "FY25Q2": 58157,
+              "FY24Q3": 33265,
               "FY24Q2": 27501,
-              "FY26Q2": 100131,
               "FY24Q1": 24520,
               "FY25Q4": 79327,
-              "FY24Q3": 33265,
-              "FY25Q1": 49142,
+              "FY25Q3": 65899,
+              "FY26Q1": 83843,
               "FY26Q3": 118897,
+              "FY26Q2": 100131,
               "FY24Q4": 42978
             },
             "components": [
@@ -11643,23 +11643,28 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY24Q3": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
+              "FY26Q2": "face",
               "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": 65899,
-                "component_sum": 65899,
+              "FY26Q4": {
+                "face_subtotal": 157293,
+                "component_sum": 157293,
+                "delta": 0
+              },
+              "FY25Q1": {
+                "face_subtotal": 49142,
+                "component_sum": 49142,
                 "delta": 0
               },
               "FY25Q2": {
@@ -11667,24 +11672,14 @@
                 "component_sum": 58157,
                 "delta": 0
               },
-              "FY26Q1": {
-                "face_subtotal": 83843,
-                "component_sum": 83843,
-                "delta": 0
-              },
-              "FY26Q4": {
-                "face_subtotal": 157293,
-                "component_sum": 157293,
+              "FY24Q3": {
+                "face_subtotal": 33265,
+                "component_sum": 33265,
                 "delta": 0
               },
               "FY24Q2": {
                 "face_subtotal": 27501,
                 "component_sum": 27501,
-                "delta": 0
-              },
-              "FY26Q2": {
-                "face_subtotal": 100131,
-                "component_sum": 100131,
                 "delta": 0
               },
               "FY24Q1": {
@@ -11697,19 +11692,24 @@
                 "component_sum": 79327,
                 "delta": 0
               },
-              "FY24Q3": {
-                "face_subtotal": 33265,
-                "component_sum": 33265,
+              "FY25Q3": {
+                "face_subtotal": 65899,
+                "component_sum": 65899,
                 "delta": 0
               },
-              "FY25Q1": {
-                "face_subtotal": 49142,
-                "component_sum": 49142,
+              "FY26Q1": {
+                "face_subtotal": 83843,
+                "component_sum": 83843,
                 "delta": 0
               },
               "FY26Q3": {
                 "face_subtotal": 118897,
                 "component_sum": 118897,
+                "delta": 0
+              },
+              "FY26Q2": {
+                "face_subtotal": 100131,
+                "component_sum": 100131,
                 "delta": 0
               },
               "FY24Q4": {
@@ -11722,18 +11722,18 @@
           {
             "bucket": "total_equity",
             "values_by_quarter": {
-              "FY25Q3": 65899,
-              "FY24Q4": 42978,
-              "FY25Q2": 58157,
-              "FY26Q1": 83843,
               "FY26Q4": 157293,
+              "FY25Q1": 49142,
+              "FY25Q2": 58157,
+              "FY24Q3": 33265,
               "FY24Q2": 27501,
-              "FY26Q2": 100131,
               "FY24Q1": 24520,
               "FY25Q4": 79327,
-              "FY25Q1": 49142,
+              "FY25Q3": 65899,
+              "FY26Q1": 83843,
               "FY26Q3": 118897,
-              "FY24Q3": 33265
+              "FY26Q2": 100131,
+              "FY24Q4": 42978
             },
             "components": [
               [
@@ -11746,28 +11746,28 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY24Q4": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
-              "FY24Q3": "face"
+              "FY26Q2": "face",
+              "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": 65899,
-                "component_sum": 65899,
+              "FY26Q4": {
+                "face_subtotal": 157293,
+                "component_sum": 157293,
                 "delta": 0
               },
-              "FY24Q4": {
-                "face_subtotal": 42978,
-                "component_sum": 42978,
+              "FY25Q1": {
+                "face_subtotal": 49142,
+                "component_sum": 49142,
                 "delta": 0
               },
               "FY25Q2": {
@@ -11775,24 +11775,14 @@
                 "component_sum": 58157,
                 "delta": 0
               },
-              "FY26Q1": {
-                "face_subtotal": 83843,
-                "component_sum": 83843,
-                "delta": 0
-              },
-              "FY26Q4": {
-                "face_subtotal": 157293,
-                "component_sum": 157293,
+              "FY24Q3": {
+                "face_subtotal": 33265,
+                "component_sum": 33265,
                 "delta": 0
               },
               "FY24Q2": {
                 "face_subtotal": 27501,
                 "component_sum": 27501,
-                "delta": 0
-              },
-              "FY26Q2": {
-                "face_subtotal": 100131,
-                "component_sum": 100131,
                 "delta": 0
               },
               "FY24Q1": {
@@ -11805,9 +11795,14 @@
                 "component_sum": 79327,
                 "delta": 0
               },
-              "FY25Q1": {
-                "face_subtotal": 49142,
-                "component_sum": 49142,
+              "FY25Q3": {
+                "face_subtotal": 65899,
+                "component_sum": 65899,
+                "delta": 0
+              },
+              "FY26Q1": {
+                "face_subtotal": 83843,
+                "component_sum": 83843,
                 "delta": 0
               },
               "FY26Q3": {
@@ -11815,9 +11810,14 @@
                 "component_sum": 118897,
                 "delta": 0
               },
-              "FY24Q3": {
-                "face_subtotal": 33265,
-                "component_sum": 33265,
+              "FY26Q2": {
+                "face_subtotal": 100131,
+                "component_sum": 100131,
+                "delta": 0
+              },
+              "FY24Q4": {
+                "face_subtotal": 42978,
+                "component_sum": 42978,
                 "delta": 0
               }
             }
@@ -11825,17 +11825,17 @@
           {
             "bucket": "total_liabilities_and_equity",
             "values_by_quarter": {
-              "FY25Q3": 96013,
-              "FY25Q2": 85227,
-              "FY26Q1": 125254,
               "FY26Q4": 206803,
+              "FY25Q1": 77072,
+              "FY25Q2": 85227,
+              "FY24Q3": 54148,
               "FY24Q2": 49555,
-              "FY26Q2": 140740,
               "FY24Q1": 44460,
               "FY25Q4": 111601,
-              "FY24Q3": 54148,
-              "FY25Q1": 77072,
+              "FY25Q3": 96013,
+              "FY26Q1": 125254,
               "FY26Q3": 161148,
+              "FY26Q2": 140740,
               "FY24Q4": 65728
             },
             "components": [
@@ -11849,23 +11849,28 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY24Q3": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
+              "FY26Q2": "face",
               "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": 96013,
-                "component_sum": 96013,
+              "FY26Q4": {
+                "face_subtotal": 206803,
+                "component_sum": 206803,
+                "delta": 0
+              },
+              "FY25Q1": {
+                "face_subtotal": 77072,
+                "component_sum": 77072,
                 "delta": 0
               },
               "FY25Q2": {
@@ -11873,24 +11878,14 @@
                 "component_sum": 85227,
                 "delta": 0
               },
-              "FY26Q1": {
-                "face_subtotal": 125254,
-                "component_sum": 125254,
-                "delta": 0
-              },
-              "FY26Q4": {
-                "face_subtotal": 206803,
-                "component_sum": 206803,
+              "FY24Q3": {
+                "face_subtotal": 54148,
+                "component_sum": 54148,
                 "delta": 0
               },
               "FY24Q2": {
                 "face_subtotal": 49555,
                 "component_sum": 49555,
-                "delta": 0
-              },
-              "FY26Q2": {
-                "face_subtotal": 140740,
-                "component_sum": 140740,
                 "delta": 0
               },
               "FY24Q1": {
@@ -11903,19 +11898,24 @@
                 "component_sum": 111601,
                 "delta": 0
               },
-              "FY24Q3": {
-                "face_subtotal": 54148,
-                "component_sum": 54148,
+              "FY25Q3": {
+                "face_subtotal": 96013,
+                "component_sum": 96013,
                 "delta": 0
               },
-              "FY25Q1": {
-                "face_subtotal": 77072,
-                "component_sum": 77072,
+              "FY26Q1": {
+                "face_subtotal": 125254,
+                "component_sum": 125254,
                 "delta": 0
               },
               "FY26Q3": {
                 "face_subtotal": 161148,
                 "component_sum": 161148,
+                "delta": 0
+              },
+              "FY26Q2": {
+                "face_subtotal": 140740,
+                "component_sum": 140740,
                 "delta": 0
               },
               "FY24Q4": {
@@ -15193,7 +15193,7 @@
             }
           ],
           "statement": "cash_flow",
-          "applicable_quarters": "{'FY24Q1', 'FY25Q3', 'FY24Q4', 'FY25Q4', 'FY25Q2', 'FY25Q1', 'FY26Q1', 'FY26Q4', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2'}",
+          "applicable_quarters": "{'FY26Q4', 'FY26Q1', 'FY25Q1', 'FY25Q2', 'FY26Q3', 'FY24Q3', 'FY24Q2', 'FY26Q2', 'FY24Q1', 'FY24Q4', 'FY25Q4', 'FY25Q3'}",
           "ties_by_quarter": {
             "FY24Q1": {
               "computed": 1690,
@@ -15315,7 +15315,7 @@
             }
           ],
           "statement": "cash_flow",
-          "applicable_quarters": "{'FY24Q3', 'FY24Q2'}",
+          "applicable_quarters": "{'FY24Q2', 'FY24Q3'}",
           "ties_by_quarter": {
             "FY24Q2": {
               "computed": 13534,
@@ -15429,7 +15429,7 @@
             }
           ],
           "statement": "cash_flow",
-          "applicable_quarters": "{'FY24Q2', 'FY25Q2'}",
+          "applicable_quarters": "{'FY25Q2', 'FY24Q2'}",
           "ties_by_quarter": {}
         },
         {
@@ -15594,7 +15594,7 @@
             }
           ],
           "statement": "cash_flow",
-          "applicable_quarters": "{'FY26Q1', 'FY26Q3', 'FY25Q1', 'FY24Q4', 'FY26Q2'}",
+          "applicable_quarters": "{'FY26Q2', 'FY26Q1', 'FY25Q1', 'FY24Q4', 'FY26Q3'}",
           "ties_by_quarter": {
             "FY24Q4": {
               "computed": 29145,
@@ -15718,7 +15718,7 @@
             }
           ],
           "statement": "cash_flow",
-          "applicable_quarters": "{'FY26Q1', 'FY25Q3', 'FY26Q4', 'FY26Q3', 'FY25Q2', 'FY25Q1', 'FY26Q2'}",
+          "applicable_quarters": "{'FY26Q2', 'FY26Q4', 'FY26Q1', 'FY26Q3', 'FY25Q1', 'FY25Q2', 'FY25Q3'}",
           "ties_by_quarter": {
             "FY25Q1": {
               "computed": 21708,
@@ -15836,7 +15836,7 @@
             }
           ],
           "statement": "cash_flow",
-          "applicable_quarters": "{'FY25Q3', 'FY25Q2'}",
+          "applicable_quarters": "{'FY25Q2', 'FY25Q3'}",
           "ties_by_quarter": {
             "FY25Q2": {
               "computed": -5122,
@@ -16050,7 +16050,7 @@
             }
           ],
           "statement": "cash_flow",
-          "applicable_quarters": "{'FY26Q3', 'FY26Q2'}",
+          "applicable_quarters": "{'FY26Q2', 'FY26Q3'}",
           "ties_by_quarter": {
             "FY26Q2": {
               "computed": -27386,
@@ -17619,17 +17619,17 @@
           {
             "bucket": "cfo",
             "values_by_quarter": {
-              "FY25Q3": 17627,
-              "FY25Q2": 14488,
-              "FY26Q1": 27414,
               "FY26Q4": 36188,
+              "FY25Q1": 15345,
+              "FY25Q2": 14488,
+              "FY24Q3": 7332,
               "FY24Q2": 6348,
-              "FY26Q2": 15365,
               "FY24Q1": 2911,
               "FY25Q4": 16629,
-              "FY24Q3": 7332,
-              "FY25Q1": 15345,
+              "FY25Q3": 17627,
+              "FY26Q1": 27414,
               "FY26Q3": 23751,
+              "FY26Q2": 15365,
               "FY24Q4": 11499
             },
             "components": [
@@ -17695,49 +17695,44 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY24Q3": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
+              "FY26Q2": "face",
               "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": 17627,
-                "component_sum": 17339,
-                "delta": -288
+              "FY26Q4": {
+                "face_subtotal": 36188,
+                "component_sum": 61144,
+                "delta": 24956
+              },
+              "FY25Q1": {
+                "face_subtotal": 15345,
+                "component_sum": 15345,
+                "delta": 0
               },
               "FY25Q2": {
                 "face_subtotal": 14488,
                 "component_sum": 14776,
                 "delta": 288
               },
-              "FY26Q1": {
-                "face_subtotal": 27414,
-                "component_sum": 27414,
-                "delta": 0
-              },
-              "FY26Q4": {
-                "face_subtotal": 36188,
-                "component_sum": 61144,
-                "delta": 24956
+              "FY24Q3": {
+                "face_subtotal": 7332,
+                "component_sum": 7399,
+                "delta": 67
               },
               "FY24Q2": {
                 "face_subtotal": 6348,
                 "component_sum": 6450,
                 "delta": 102
-              },
-              "FY26Q2": {
-                "face_subtotal": 15365,
-                "component_sum": 37257,
-                "delta": 21892
               },
               "FY24Q1": {
                 "face_subtotal": 2911,
@@ -17749,20 +17744,25 @@
                 "component_sum": 56171,
                 "delta": 39542
               },
-              "FY24Q3": {
-                "face_subtotal": 7332,
-                "component_sum": 7399,
-                "delta": 67
+              "FY25Q3": {
+                "face_subtotal": 17627,
+                "component_sum": 17339,
+                "delta": -288
               },
-              "FY25Q1": {
-                "face_subtotal": 15345,
-                "component_sum": 15345,
+              "FY26Q1": {
+                "face_subtotal": 27414,
+                "component_sum": 27414,
                 "delta": 0
               },
               "FY26Q3": {
                 "face_subtotal": 23751,
                 "component_sum": 47605,
                 "delta": 23854
+              },
+              "FY26Q2": {
+                "face_subtotal": 15365,
+                "component_sum": 37257,
+                "delta": 21892
               },
               "FY24Q4": {
                 "face_subtotal": 11499,
@@ -17774,17 +17774,17 @@
           {
             "bucket": "cfi",
             "values_by_quarter": {
-              "FY25Q3": -4346,
-              "FY25Q2": -3184,
-              "FY26Q1": -5216,
               "FY26Q4": -30861,
+              "FY25Q1": -5693,
+              "FY25Q2": -3184,
+              "FY24Q3": -3170,
               "FY24Q2": -446,
-              "FY26Q2": -7127,
               "FY24Q1": -841,
               "FY25Q4": -7198,
-              "FY24Q3": -3170,
-              "FY25Q1": -5693,
+              "FY25Q3": -4346,
+              "FY26Q1": -5216,
               "FY26Q3": -9024,
+              "FY26Q2": -7127,
               "FY24Q4": -6109
             },
             "components": [
@@ -17818,23 +17818,28 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY24Q3": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
+              "FY26Q2": "face",
               "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": -4346,
-                "component_sum": -4346,
+              "FY26Q4": {
+                "face_subtotal": -30861,
+                "component_sum": 64717,
+                "delta": 95578
+              },
+              "FY25Q1": {
+                "face_subtotal": -5693,
+                "component_sum": -5693,
                 "delta": 0
               },
               "FY25Q2": {
@@ -17842,25 +17847,15 @@
                 "component_sum": -3184,
                 "delta": 0
               },
-              "FY26Q1": {
-                "face_subtotal": -5216,
-                "component_sum": -5216,
+              "FY24Q3": {
+                "face_subtotal": -3170,
+                "component_sum": -3170,
                 "delta": 0
-              },
-              "FY26Q4": {
-                "face_subtotal": -30861,
-                "component_sum": 64717,
-                "delta": 95578
               },
               "FY24Q2": {
                 "face_subtotal": -446,
                 "component_sum": -446,
                 "delta": 0
-              },
-              "FY26Q2": {
-                "face_subtotal": -7127,
-                "component_sum": 31177,
-                "delta": 38304
               },
               "FY24Q1": {
                 "face_subtotal": -841,
@@ -17872,20 +17867,25 @@
                 "component_sum": 57366,
                 "delta": 64564
               },
-              "FY24Q3": {
-                "face_subtotal": -3170,
-                "component_sum": -3170,
+              "FY25Q3": {
+                "face_subtotal": -4346,
+                "component_sum": -4346,
                 "delta": 0
               },
-              "FY25Q1": {
-                "face_subtotal": -5693,
-                "component_sum": -5693,
+              "FY26Q1": {
+                "face_subtotal": -5216,
+                "component_sum": -5216,
                 "delta": 0
               },
               "FY26Q3": {
                 "face_subtotal": -9024,
                 "component_sum": 14484,
                 "delta": 23508
+              },
+              "FY26Q2": {
+                "face_subtotal": -7127,
+                "component_sum": 31177,
+                "delta": 38304
               },
               "FY24Q4": {
                 "face_subtotal": -6109,
@@ -17917,15 +17917,15 @@
           {
             "bucket": "total_debt_repaid",
             "values_by_quarter": {
-              "FY25Q3": 0,
-              "FY24Q4": 0,
-              "FY25Q4": 2500,
-              "FY25Q2": -1250,
               "FY26Q4": 0,
+              "FY25Q2": -1250,
               "FY26Q3": 0,
               "FY24Q3": 0,
               "FY24Q2": -1250,
-              "FY26Q2": 0
+              "FY26Q2": 0,
+              "FY24Q4": 0,
+              "FY25Q4": 2500,
+              "FY25Q3": 0
             },
             "components": [
               [
@@ -17938,33 +17938,33 @@
               ]
             ],
             "source": {
-              "FY25Q3": "components",
-              "FY24Q4": "components",
-              "FY25Q4": "components",
-              "FY25Q2": "components",
               "FY26Q4": "components",
+              "FY25Q2": "components",
               "FY26Q3": "components",
               "FY24Q3": "components",
               "FY24Q2": "components",
-              "FY26Q2": "components"
+              "FY26Q2": "components",
+              "FY24Q4": "components",
+              "FY25Q4": "components",
+              "FY25Q3": "components"
             },
             "recon_delta": {}
           },
           {
             "bucket": "total_common_pref_dividends",
             "values_by_quarter": {
-              "FY24Q1": -99,
-              "FY25Q3": -245,
-              "FY24Q4": -99,
-              "FY25Q4": 1423,
-              "FY25Q2": -246,
-              "FY25Q1": -98,
-              "FY26Q1": -244,
               "FY26Q4": 242,
+              "FY26Q1": -244,
+              "FY25Q1": -98,
+              "FY25Q2": -246,
               "FY26Q3": 244,
               "FY24Q3": -97,
               "FY24Q2": -100,
-              "FY26Q2": 732
+              "FY26Q2": 732,
+              "FY24Q1": -99,
+              "FY24Q4": -99,
+              "FY25Q4": 1423,
+              "FY25Q3": -245
             },
             "components": [
               [
@@ -17977,35 +17977,35 @@
               ]
             ],
             "source": {
-              "FY24Q1": "components",
-              "FY25Q3": "components",
-              "FY24Q4": "components",
-              "FY25Q4": "components",
-              "FY25Q2": "components",
-              "FY25Q1": "components",
-              "FY26Q1": "components",
               "FY26Q4": "components",
+              "FY26Q1": "components",
+              "FY25Q1": "components",
+              "FY25Q2": "components",
               "FY26Q3": "components",
               "FY24Q3": "components",
               "FY24Q2": "components",
-              "FY26Q2": "components"
+              "FY26Q2": "components",
+              "FY24Q1": "components",
+              "FY24Q4": "components",
+              "FY25Q4": "components",
+              "FY25Q3": "components"
             },
             "recon_delta": {}
           },
           {
             "bucket": "cff",
             "values_by_quarter": {
-              "FY25Q3": -12745,
-              "FY25Q2": -10320,
-              "FY26Q1": -15553,
               "FY26Q4": -6208,
+              "FY25Q1": -9345,
+              "FY25Q2": -10320,
+              "FY24Q3": -4525,
               "FY24Q2": -5099,
-              "FY26Q2": -11833,
               "FY24Q1": -380,
               "FY25Q4": -9949,
-              "FY24Q3": -4525,
-              "FY25Q1": -9345,
+              "FY25Q3": -12745,
+              "FY26Q1": -15553,
               "FY26Q3": -14880,
+              "FY26Q2": -11833,
               "FY24Q4": -3629
             },
             "components": [
@@ -18039,23 +18039,28 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY24Q3": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
+              "FY26Q2": "face",
               "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": -12745,
-                "component_sum": -12745,
+              "FY26Q4": {
+                "face_subtotal": -6208,
+                "component_sum": 6192,
+                "delta": 12400
+              },
+              "FY25Q1": {
+                "face_subtotal": -9345,
+                "component_sum": -9345,
                 "delta": 0
               },
               "FY25Q2": {
@@ -18063,25 +18068,15 @@
                 "component_sum": -10320,
                 "delta": 0
               },
-              "FY26Q1": {
-                "face_subtotal": -15553,
-                "component_sum": -15553,
+              "FY24Q3": {
+                "face_subtotal": -4525,
+                "component_sum": -4525,
                 "delta": 0
-              },
-              "FY26Q4": {
-                "face_subtotal": -6208,
-                "component_sum": 6192,
-                "delta": 12400
               },
               "FY24Q2": {
                 "face_subtotal": -5099,
                 "component_sum": -5099,
                 "delta": 0
-              },
-              "FY26Q2": {
-                "face_subtotal": -11833,
-                "component_sum": 43679,
-                "delta": 55512
               },
               "FY24Q1": {
                 "face_subtotal": -380,
@@ -18093,20 +18088,25 @@
                 "component_sum": 75749,
                 "delta": 85698
               },
-              "FY24Q3": {
-                "face_subtotal": -4525,
-                "component_sum": -4525,
+              "FY25Q3": {
+                "face_subtotal": -12745,
+                "component_sum": -12745,
                 "delta": 0
               },
-              "FY25Q1": {
-                "face_subtotal": -9345,
-                "component_sum": -9345,
+              "FY26Q1": {
+                "face_subtotal": -15553,
+                "component_sum": -15553,
                 "delta": 0
               },
               "FY26Q3": {
                 "face_subtotal": -14880,
                 "component_sum": 15426,
                 "delta": 30306
+              },
+              "FY26Q2": {
+                "face_subtotal": -11833,
+                "component_sum": 43679,
+                "delta": 55512
               },
               "FY24Q4": {
                 "face_subtotal": -3629,
@@ -18118,18 +18118,18 @@
           {
             "bucket": "net_change_in_cash",
             "values_by_quarter": {
-              "FY25Q3": 536,
-              "FY24Q4": 1761,
-              "FY25Q2": 984,
-              "FY26Q1": 6645,
               "FY26Q4": -881,
+              "FY25Q1": 307,
+              "FY25Q2": 984,
+              "FY24Q3": -363,
               "FY24Q2": 803,
-              "FY26Q2": -3595,
               "FY24Q1": 1690,
               "FY25Q4": -518,
-              "FY25Q1": 307,
+              "FY25Q3": 536,
+              "FY26Q1": 6645,
               "FY26Q3": -153,
-              "FY24Q3": -363
+              "FY26Q2": -3595,
+              "FY24Q4": 1761
             },
             "components": [
               [
@@ -18154,28 +18154,28 @@
               ]
             ],
             "source": {
-              "FY25Q3": "face",
-              "FY24Q4": "face",
-              "FY25Q2": "face",
-              "FY26Q1": "face",
               "FY26Q4": "face",
+              "FY25Q1": "face",
+              "FY25Q2": "face",
+              "FY24Q3": "face",
               "FY24Q2": "face",
-              "FY26Q2": "face",
               "FY24Q1": "face",
               "FY25Q4": "face",
-              "FY25Q1": "face",
+              "FY25Q3": "face",
+              "FY26Q1": "face",
               "FY26Q3": "face",
-              "FY24Q3": "face"
+              "FY26Q2": "face",
+              "FY24Q4": "face"
             },
             "recon_delta": {
-              "FY25Q3": {
-                "face_subtotal": 536,
-                "component_sum": 536,
+              "FY26Q4": {
+                "face_subtotal": -881,
+                "component_sum": -881,
                 "delta": 0
               },
-              "FY24Q4": {
-                "face_subtotal": 1761,
-                "component_sum": 1761,
+              "FY25Q1": {
+                "face_subtotal": 307,
+                "component_sum": 307,
                 "delta": 0
               },
               "FY25Q2": {
@@ -18183,24 +18183,14 @@
                 "component_sum": 984,
                 "delta": 0
               },
-              "FY26Q1": {
-                "face_subtotal": 6645,
-                "component_sum": 6645,
-                "delta": 0
-              },
-              "FY26Q4": {
-                "face_subtotal": -881,
-                "component_sum": -881,
+              "FY24Q3": {
+                "face_subtotal": -363,
+                "component_sum": -363,
                 "delta": 0
               },
               "FY24Q2": {
                 "face_subtotal": 803,
                 "component_sum": 803,
-                "delta": 0
-              },
-              "FY26Q2": {
-                "face_subtotal": -3595,
-                "component_sum": -3595,
                 "delta": 0
               },
               "FY24Q1": {
@@ -18213,9 +18203,14 @@
                 "component_sum": -518,
                 "delta": 0
               },
-              "FY25Q1": {
-                "face_subtotal": 307,
-                "component_sum": 307,
+              "FY25Q3": {
+                "face_subtotal": 536,
+                "component_sum": 536,
+                "delta": 0
+              },
+              "FY26Q1": {
+                "face_subtotal": 6645,
+                "component_sum": 6645,
                 "delta": 0
               },
               "FY26Q3": {
@@ -18223,9 +18218,14 @@
                 "component_sum": -153,
                 "delta": 0
               },
-              "FY24Q3": {
-                "face_subtotal": -363,
-                "component_sum": -363,
+              "FY26Q2": {
+                "face_subtotal": -3595,
+                "component_sum": -3595,
+                "delta": 0
+              },
+              "FY24Q4": {
+                "face_subtotal": 1761,
+                "component_sum": 1761,
                 "delta": 0
               }
             }

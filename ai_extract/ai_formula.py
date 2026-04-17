@@ -1251,7 +1251,17 @@ def compute_subtotals(bucket_values, face_subtotals=None):
         stmt_vals = bucket_values.setdefault(stmt_name, {})
         stmt_face = face_subtotals.get(stmt_name, {})
         for subtotal, components in schema['subtotals']:
-            # Compute component sum (informational / fallback)
+            # Component sum applies formula signs. Rationale per statement:
+            # - cash_flow: Stage 1 pre-signs CF values (the filing's own CF
+            #   reconciliation shows each item with its cash-impact sign, and
+            #   Stage 1 captures those). CANONICAL_BUCKETS.cash_flow formulas
+            #   are all `+` — raw sum works.
+            # - income_statement: Stage 1 stores positive amounts (Revenue,
+            #   COGS, R&D etc. are displayed positive on the filing face).
+            #   Formulas encode the IS conventions (-COGS, -OpEx, -InterestExp,
+            #   +InterestIncome, etc.). Formula signs are required.
+            # - balance_sheet: stocks. Formulas are mostly `+` sums;
+            #   concepts stored with their sign (treasury_stock negative).
             component_sums = {}
             all_qs = set()
             for _, comp in components:
@@ -1259,12 +1269,12 @@ def compute_subtotals(bucket_values, face_subtotals=None):
             for q in all_qs:
                 total = 0
                 any_present = False
-                for _, comp in components:
+                for sign, comp in components:
                     face_v = bucket_face_value(bucket_values, stmt_name, comp, q)
                     if face_v is None:
                         continue
                     any_present = True
-                    total += face_v  # no sign manipulation; Stage 1 values are pre-signed
+                    total += face_v if sign == '+' else -face_v
                 if any_present:
                     component_sums[q] = total
 
