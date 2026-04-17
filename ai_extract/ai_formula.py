@@ -163,35 +163,50 @@ CANONICAL_BUCKETS = {
             'fx_adjustments', 'misc_cf_adjustments',
         ],
         'subtotals': [
+            # CFO formula encodes the CASH-FLOW convention explicitly. AI is
+            # instructed to assign concepts with sign=+ (values as reported by
+            # XBRL). Signs below translate to cash impact:
+            #   + non-cash expense addbacks (D&A, SBC, amortization of costs)
+            #   - non-cash gains (reverse out of NI)
+            #   - working-capital asset increases (AR, Inventory) — cash out
+            #   + working-capital liability increases (AP, deferred revenue) — cash in
             ('cfo',
              [('+', 'net_income_start'),
               ('+', 'dna'),
-              # Gains are subtracted in the CFO reconciliation (non-cash gain
-              # reverses out of net income). XBRL stores gains as positive,
-              # losses as negative, so `-` works for both cases.
               ('-', 'gain_sale_asset'),
               ('-', 'gain_sale_investments'),
               ('+', 'amort_deferred_charges'),
               ('+', 'asset_writedown_restructuring'),
               ('+', 'sbc'), ('+', 'other_operating'),
-              ('+', 'change_ar'), ('+', 'change_inventory'),
+              ('-', 'change_ar'), ('-', 'change_inventory'),
               ('+', 'change_ap'), ('+', 'change_unearned_revenue'),
               ('+', 'change_income_taxes'), ('+', 'change_other_operating')]),
+            # CFI components are assigned as raw XBRL positive values
+            # (payments are stored positive; proceeds are stored positive).
+            # Formula applies cash direction.
             ('cfi',
-             [('+', 'capex'), ('+', 'sale_ppe'), ('+', 'acquisitions'),
-              ('+', 'divestitures'), ('+', 'investment_securities'),
-              ('+', 'loans_orig_sold'), ('+', 'other_investing')]),
+             [('-', 'capex'),              # cash outflow
+              ('+', 'sale_ppe'),            # proceeds
+              ('-', 'acquisitions'),        # cash outflow
+              ('+', 'divestitures'),        # proceeds
+              ('+', 'investment_securities'),  # net (AI assigns net effect with +)
+              ('+', 'loans_orig_sold'),        # net
+              ('+', 'other_investing')]),      # net
             ('total_debt_issued',
              [('+', 'short_term_debt_issued'), ('+', 'long_term_debt_issued')]),
             ('total_debt_repaid',
              [('+', 'short_term_debt_repaid'), ('+', 'long_term_debt_repaid')]),
             ('total_common_pref_dividends',
              [('+', 'common_dividends'), ('+', 'preferred_dividends')]),
+            # CFF: issuances are inflows, repayments/repurchases/dividends are outflows.
             ('cff',
-             [('+', 'total_debt_issued'), ('+', 'total_debt_repaid'),
-              ('+', 'stock_issuance'), ('+', 'stock_repurchase'),
-              ('+', 'total_common_pref_dividends'),
-              ('+', 'special_dividends'), ('+', 'other_financing')]),
+             [('+', 'total_debt_issued'),
+              ('-', 'total_debt_repaid'),
+              ('+', 'stock_issuance'),
+              ('-', 'stock_repurchase'),
+              ('-', 'total_common_pref_dividends'),
+              ('-', 'special_dividends'),
+              ('+', 'other_financing')]),
             ('net_change_in_cash',
              [('+', 'cfo'), ('+', 'cfi'), ('+', 'cff'),
               ('+', 'fx_adjustments'), ('+', 'misc_cf_adjustments')]),
@@ -976,112 +991,36 @@ def check_bs_consistency(filings, statements):
     return failures
 
 
-def _collect_rollup_concepts(ticker):
-    """Walk parsed_xbrl.json def linkbases across all filings on disk. A concept
-    is a rollup if it appears as a parent of another domain-member anywhere. The
-    set is the union across all filings — more recent dimension restructurings
-    are captured automatically. Returns a set of local concept names
-    (without xbrl prefix), because Stage 1 tagged segment members by local name.
-    """
-    rollups = set()
-    filings_root = os.path.join(os.path.dirname(__file__), '..', 'data', 'filings', ticker)
-    if not os.path.isdir(filings_root):
-        return rollups
-    for acc in os.listdir(filings_root):
-        parsed_path = os.path.join(filings_root, acc, 'parsed_xbrl.json')
-        if not os.path.isfile(parsed_path):
-            continue
-        try:
-            with open(parsed_path) as f:
-                parsed = json.load(f)
-        except (json.JSONDecodeError, OSError):
-            continue
-        for role_entry in parsed.get('definitions', []) or []:
-            for h in role_entry.get('hierarchies', []) or []:
-                parent = h.get('parent') or ''
-                children = h.get('children', []) or []
-                if not parent or not children:
-                    continue
-                has_member_child = any(
-                    c.get('arcrole') == 'domain-member' and 'Member' in (c.get('concept') or '')
-                    for c in children
-                )
-                if has_member_child:
-                    local = parent.split(':', 1)[-1]
-                    rollups.add(local)
-    return rollups
+def check_segments_tie(segments, segment_classifications):
+    """Verify sum(leaf members) == consolidated on axes that the AI classified
+    as `breakdown`. Reconciliation / sub-hierarchy axes are skipped entirely.
 
-
-def _member_local_name(member_str):
-    """Strip Stage 1 descriptive suffixes like ' (subset of ...)' or parentheticals
-    and xbrl prefix. Returns the bare concept local name for hierarchy lookup.
-    """
-    if not member_str:
-        return ''
-    # Drop anything after first '(' — Stage 1 often appends '(subset of X)'
-    s = member_str.split('(', 1)[0].strip()
-    # Drop xbrl prefix if present
-    s = s.split(':', 1)[-1]
-    return s
-
-
-def _detect_display_rollups(members_with_values):
-    """Second-pass rollup detection by VALUE.
-
-    Stage 1 uses different member name conventions across filings — some 10-Ks
-    emit display labels ("Data Center", "Data Center - Compute") instead of
-    technical names ("DataCenterMember", "ComputeMember"). The def linkbase
-    doesn't help in that case.
-
-    Rule: member M is a rollup if there exist ≥2 other members whose names
-    start with `M + " - "` or `M + " "` AND whose values sum to M's value.
-    Universal across companies that use the "Parent" / "Parent - Child"
-    display convention.
-    """
-    rollups = set()
-    for m, v in members_with_values:
-        if v is None or not isinstance(v, (int, float)):
-            continue
-        children = [(cm, cv) for cm, cv in members_with_values
-                    if cm != m
-                    and (cm.startswith(m + ' - ') or cm.startswith(m + ' '))
-                    and isinstance(cv, (int, float))]
-        if len(children) >= 2:
-            child_sum = sum(cv for _, cv in children)
-            if abs(child_sum - v) <= max(2, abs(v) * 0.005):
-                rollups.add(m)
-    return rollups
-
-
-def check_segments_tie(segments, statements, ticker):
-    """Sum LEAF members and compare to consolidated. Two rollup-detection passes:
-      1. Definition-linkbase rollups (technical concept names like DataCenterMember).
-      2. Display-name rollups (where Stage 1 emitted labels like "Data Center" /
-         "Data Center - Compute"). Detected by value-sum match.
+    Leaf vs rollup is read directly from the AI's classification — no Python
+    heuristics, no def-linkbase walking, no label patterns.
     """
     failures = []
-    concept_rollups = _collect_rollup_concepts(ticker)
+    class_by_dim = {c.get('dimension'): c for c in (segment_classifications or [])}
 
     for axis in segments.get('axes', []):
         dim = axis['dimension']
+        cls = class_by_dim.get(dim) or {}
+        axis_type = cls.get('axis_type', 'breakdown')
+        if axis_type != 'breakdown':
+            continue  # only breakdown axes have a sum-to-consolidated tie
+        leaf_members = set(cls.get('leaf_members') or [])
+
         for key, consolidated in axis.get('consolidated_by_quarter_and_metric', {}).items():
-            if '|' not in key:
-                continue
-            if not isinstance(consolidated, (int, float)):
+            if '|' not in key or not isinstance(consolidated, (int, float)):
                 continue
             q, metric = key.split('|', 1)
-
-            members_at_key = [(r.get('member', ''), r['values_by_quarter_and_metric'].get(key))
-                              for r in axis['rows']]
-            display_rollups = _detect_display_rollups(members_at_key)
-
             summed = 0
             found = False
-            for member, v in members_at_key:
-                if _member_local_name(member) in concept_rollups:
+            for r in axis['rows']:
+                member = r.get('member', '')
+                # Skip if AI listed leaf_members and this one isn't in it.
+                if leaf_members and member not in leaf_members:
                     continue
-                if member in display_rollups:
-                    continue
+                v = r['values_by_quarter_and_metric'].get(key)
                 if isinstance(v, (int, float)):
                     summed += v
                     found = True
@@ -1125,7 +1064,10 @@ def compute_bucket_values(statements, assignments):
             qvals = {}
             for src in sources or []:
                 concept = src.get('concept') if isinstance(src, dict) else src
-                sign = (src.get('sign') if isinstance(src, dict) else '+') or '+'
+                # Signs come from CANONICAL_BUCKETS formulas, not from AI.
+                # AI-provided signs are ignored to keep behavior deterministic
+                # across runs. Any sign inversion of raw XBRL values is the
+                # formula's responsibility (see CFO components in schema).
                 row = by_concept.get(concept)
                 if not row:
                     continue
@@ -1133,10 +1075,9 @@ def compute_bucket_values(statements, assignments):
                 for q, v in row['values_by_quarter'].items():
                     if v is None:
                         continue
-                    signed = v if sign == '+' else -v
                     slot = 'note' if note_per_q.get(q, row.get('is_note_detail', False)) else 'face'
                     bucket_q = qvals.setdefault(q, {'face': None, 'note': None})
-                    bucket_q[slot] = (bucket_q[slot] or 0) + signed
+                    bucket_q[slot] = (bucket_q[slot] or 0) + v
             stmt_out[bucket] = qvals
         out[stmt_name] = stmt_out
     return out
@@ -1154,6 +1095,73 @@ def bucket_total_value(bucket_values, stmt, bucket, q):
     if f is None and n is None:
         return None
     return (f or 0) + (n or 0)
+
+
+def derive_bucket_quarters(bucket_values, filings):
+    """Transform bucket values from filing-as-reported periods into quarterly
+    standalone values. Operates at bucket level — handles concept drift within
+    a bucket automatically (if AI assigned aliased concepts to the same bucket,
+    their histories aggregate before derivation).
+
+    Rules per statement:
+      balance_sheet: instants, no change.
+      income_statement: 10-Q values are 3-month standalone (pass-through);
+                        Q4 = annual − (Q1 + Q2 + Q3).
+      cash_flow:        10-Q values are YTD; derive as
+                        Q1 std = Q1 YTD (pass-through; Q1 YTD = Q1 std),
+                        Q2 std = Q2 YTD − Q1 YTD,
+                        Q3 std = Q3 YTD − Q2 YTD,
+                        Q4 std = annual − Q3 YTD.
+
+    Applies face and note contributions separately.
+    """
+    groups = fiscal_year_groups(filings)
+
+    for stmt_name, stmt_buckets in bucket_values.items():
+        if stmt_name == 'balance_sheet':
+            continue
+        is_cf = (stmt_name == 'cash_flow')
+        for bucket, qvals in list(stmt_buckets.items()):
+            new_qvals = {}
+            # Carry non-FY-tracked quarter entries through unchanged (defensive)
+            for q, v in qvals.items():
+                if not any(q in [f'{fy}Q{n}' for n in range(1, 5)] for fy in groups):
+                    new_qvals[q] = v
+            for fy_label in groups:
+                q_labels = [f'{fy_label}Q{n}' for n in range(1, 5)]
+                for side in ('face', 'note'):
+                    raw = [(qvals.get(ql) or {}).get(side) for ql in q_labels]
+                    if is_cf:
+                        derived = [None] * 4
+                        # Q1: pass-through (Q1 YTD == Q1 standalone)
+                        if raw[0] is not None:
+                            derived[0] = raw[0]
+                        # Q2 std = Q2 YTD − Q1 YTD
+                        if raw[1] is not None and raw[0] is not None:
+                            derived[1] = raw[1] - raw[0]
+                        elif raw[1] is not None:
+                            derived[1] = raw[1]  # no Q1 to subtract; pass Q2 YTD through (flag via CSV)
+                        # Q3 std = Q3 YTD − Q2 YTD
+                        if raw[2] is not None and raw[1] is not None:
+                            derived[2] = raw[2] - raw[1]
+                        elif raw[2] is not None:
+                            derived[2] = raw[2]
+                        # Q4 std = annual − Q3 YTD
+                        if raw[3] is not None and raw[2] is not None:
+                            derived[3] = raw[3] - raw[2]
+                        elif raw[3] is not None:
+                            derived[3] = raw[3]
+                    else:
+                        # IS: Q1-Q3 already standalone; Q4 = annual − sum(Q1,Q2,Q3)
+                        derived = list(raw)
+                        if all(v is not None for v in raw[:3]) and raw[3] is not None:
+                            derived[3] = raw[3] - (raw[0] + raw[1] + raw[2])
+                    for i, ql in enumerate(q_labels):
+                        if derived[i] is None:
+                            continue
+                        slot = new_qvals.setdefault(ql, {'face': None, 'note': None})
+                        slot[side] = derived[i]
+            stmt_buckets[bucket] = new_qvals
 
 
 def compute_subtotals(bucket_values):
@@ -1258,14 +1266,6 @@ def check_concepts_fully_assigned(statements, assignments, exclusions):
         if stmt and concept:
             excluded_by_stmt[stmt].add(concept)
 
-    # Concepts we never expect to be assigned — they are note-level
-    # decompositions of a face concept that is already in a bucket. Tracking
-    # them separately would either duplicate or confuse the subtotal math.
-    AUTO_EXCLUDED_CONCEPTS = {
-        'us-gaap:PropertyPlantAndEquipmentGross',
-        'us-gaap:AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment',
-    }
-
     for stmt_name, data in statements.items():
         for row in data.get('rows', []):
             if not row.get('values_by_quarter'):
@@ -1274,8 +1274,6 @@ def check_concepts_fully_assigned(statements, assignments, exclusions):
             if c in assigned_by_stmt[stmt_name]:
                 continue
             if c in excluded_by_stmt[stmt_name]:
-                continue
-            if c in AUTO_EXCLUDED_CONCEPTS:
                 continue
             failures.append({
                 'type': 'UNASSIGNED_CONCEPT',
@@ -1466,6 +1464,7 @@ def verify_all(result, filings, ticker):
     bucket_values = result.get('bucket_values', {})
     assignments = result.get('bucket_assignments', {})
     exclusions = result.get('exclusions', [])
+    segment_classifications = result.get('segment_classifications', [])
     forward_fills = result.get('forward_fills', [])
 
     failures = []
@@ -1475,7 +1474,7 @@ def verify_all(result, filings, ticker):
     # Note: BS cross-filing consistency is NOT checked here. Restatement
     # reconciliation is Stage 1's job (mapped.json "later filing wins"). Stage 2
     # uses each filing's current-period values only; no cross-filing overlap.
-    failures.extend(check_segments_tie(segments, statements, ticker))
+    failures.extend(check_segments_tie(segments, segment_classifications))
     failures.extend(check_forward_fills(forward_fills, ticker, filings))
     failures.extend(check_sign_sanity(bucket_values))
     return failures
@@ -1514,8 +1513,50 @@ def _slim_segments_for_prompt(segments):
     for ax in segments.get('axes', []):
         rows = [{'member': r['member'], 'values_by_quarter_and_metric': r['values_by_quarter_and_metric']}
                 for r in ax['rows']]
-        axes.append({'dimension': ax['dimension'], 'metrics': ax['metrics'], 'rows': rows})
+        axes.append({'dimension': ax['dimension'], 'metrics': ax['metrics'], 'rows': rows,
+                     'consolidated_by_quarter_and_metric': ax.get('consolidated_by_quarter_and_metric', {})})
     return {'axes': axes}
+
+
+def _collect_segment_hierarchies(ticker):
+    """Gather dimension hierarchies from parsed_xbrl.json across all filings.
+    Returns a list of {role, parent_concept, children} entries, deduplicated.
+    Feeds the AI prompt so it can authoritatively classify leaves vs rollups
+    from the XBRL definition linkbase instead of guessing from labels.
+    """
+    seen = set()
+    out = []
+    filings_root = os.path.join(os.path.dirname(__file__), '..', 'data', 'filings', ticker)
+    if not os.path.isdir(filings_root):
+        return out
+    for acc in os.listdir(filings_root):
+        parsed_path = os.path.join(filings_root, acc, 'parsed_xbrl.json')
+        if not os.path.isfile(parsed_path):
+            continue
+        try:
+            with open(parsed_path) as f:
+                parsed = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            continue
+        for role_entry in parsed.get('definitions', []) or []:
+            role = role_entry.get('role', '')
+            # Keep only segment/disaggregation roles (filter out balance-sheet
+            # component tables etc. to keep the prompt compact).
+            if not any(tok in role for tok in ('Segment', 'Geograph', 'Market', 'ProductOrService')):
+                continue
+            for h in role_entry.get('hierarchies', []) or []:
+                parent = h.get('parent') or ''
+                children = [c.get('concept') for c in (h.get('children') or [])
+                            if c.get('arcrole') == 'domain-member'
+                            and 'Member' in (c.get('concept') or '')]
+                if not parent or not children:
+                    continue
+                key = (role, parent, tuple(sorted(children)))
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append({'role': role, 'parent': parent, 'children': children})
+    return out
 
 
 def _format_canonical_buckets_for_prompt():
@@ -1531,10 +1572,12 @@ def _format_canonical_buckets_for_prompt():
     return '\n'.join(lines)
 
 
-def build_bucket_prompt(ticker, statements, segments, prior_failures=None):
+def build_bucket_prompt(ticker, statements, segments, prior_failures=None,
+                         segment_hierarchies=None):
     slim_stmts = _slim_statements_for_prompt(statements)
     slim_segs = _slim_segments_for_prompt(segments)
     canonical_block = _format_canonical_buckets_for_prompt()
+    def_hierarchy_json = json.dumps(segment_hierarchies or [], indent=2)
 
     failure_block = ''
     if prior_failures:
@@ -1558,10 +1601,12 @@ PRINCIPLES:
 - A bucket can receive multiple concepts (common when the filing splits a
   single analytical concept into multiple lines, or when a company changes
   naming between filings).
-- Sign convention: default `+`. Use `-` only if the as-reported value's
-  sign needs to be inverted to fit the bucket's semantics. Most items are
-  reported with the sign they should carry (capex is already negative,
-  treasury_stock is already negative, income tax expense is positive, etc.).
+- **Sign convention: ALWAYS use `sign: "+"`.** Do not infer signs. The
+  canonical subtotal formulas in Python already encode the correct cash-
+  flow / income-statement conventions (e.g., `capex` is subtracted from
+  CFI, `change_ar` is subtracted from CFO, gains are subtracted from CFO,
+  etc.). Your job is just to say "this concept's raw value belongs in this
+  bucket"; Python applies the right sign when computing subtotals.
 - When a company doesn't report a bucket, leave it empty — no plugs, no
   zero-fills. Python will produce a null value for that bucket.
 
@@ -1617,10 +1662,51 @@ When you forward-fill, declare:
   "candidate_concepts": ["us-gaap:..."]
 }}
 
+SEGMENT CLASSIFICATION (required):
+For EVERY axis in the SEGMENTS block below, classify it so Python knows how
+to tie the member values. Do not skip any axis. For each axis emit:
+
+{{
+  "dimension": "<exact dimension string>",
+  "axis_type": "breakdown" | "reconciliation" | "sub_hierarchy" | "other",
+  "leaf_members": ["<member name as written in the SEGMENTS data>", ...],
+  "rollup_members": ["<member>", ...],
+  "parent_child": {{"<rollup>": ["<child>", ...]}}
+}}
+
+Axis types:
+- "breakdown" — members sum to the consolidated total for a single metric
+  (e.g., revenue by reportable segment, revenue by geography). Python will
+  verify sum(leaf_members) == consolidated.
+- "reconciliation" — a reconciliation table bridging two measures
+  (e.g., "Operating Income to Income Before Tax"). Members do NOT sum to
+  consolidated. Python will skip the tie check.
+- "sub_hierarchy" — an informational sub-breakdown whose members sum to a
+  PARENT member of another axis, not to consolidated
+  (e.g., DataCenter → Compute + Networking). Skip the tie check.
+- "other" — anything else; skip the tie check.
+
+For breakdown axes, split members into leaves vs rollups:
+- A member is a ROLLUP if its value equals the sum of other members listed
+  in `parent_child[<this_member>]`. The rollup's value duplicates its
+  children's sum — don't count it twice.
+- A member is a LEAF if it has no children in parent_child.
+
+Use the DEFINITION LINKBASE HIERARCHY below as the authoritative source for
+parent/child relationships. When Stage 1 uses display labels
+("Data Center", "Data Center - Compute") instead of technical names
+("DataCenterMember", "ComputeMember"), match them to the linkbase by
+position in the hierarchy, not by string. If you must add a rollup from a
+pure display-label axis, confirm by summing: parent value should equal the
+sum of its children within rounding.
+
+DEFINITION LINKBASE HIERARCHY (authoritative parent→child relationships):
+{def_hierarchy_json}
+
 STATEMENTS:
 {json.dumps(slim_stmts, indent=2)}
 
-SEGMENTS (for context only — do NOT map segments into these buckets):
+SEGMENTS:
 {json.dumps(slim_segs, indent=2)}
 {failure_block}
 
@@ -1637,6 +1723,12 @@ OUTPUT ONLY valid JSON:
     "balance_sheet": {{...}},
     "cash_flow": {{...}}
   }},
+  "segment_classifications": [
+    {{"dimension": "...", "axis_type": "breakdown",
+      "leaf_members": [...], "rollup_members": [...],
+      "parent_child": {{...}}}},
+    ...
+  ],
   "exclusions": [
     {{"statement": "...", "concept": "...", "reason": "..."}}
   ],
@@ -1647,11 +1739,14 @@ No monetary values in the output — Python computes those from the
 assignments and the as-reported row values. No apostrophes in strings."""
 
 
-def run_ai_buckets(ticker, statements, segments, model, prior_failures=None):
-    """Call the AI to produce bucket assignments + forward_fills."""
+def run_ai_buckets(ticker, statements, segments, model, prior_failures=None,
+                   segment_hierarchies=None):
+    """Call the AI to produce bucket assignments + segment classifications +
+    forward_fills."""
     client = anthropic.Anthropic()
 
-    prompt = build_bucket_prompt(ticker, statements, segments, prior_failures)
+    prompt = build_bucket_prompt(ticker, statements, segments, prior_failures,
+                                  segment_hierarchies=segment_hierarchies)
 
     print(f"  Calling AI (bucket-assignment pass, ~{len(prompt)//4:,} tokens in)...")
     output_text = ''
@@ -1703,26 +1798,31 @@ def run_stage2(ticker, model='claude-sonnet-4-6', max_retries=3, test_mode=True)
     for f in filings:
         print(f"    {f['quarter_label']:8s}  {f['form']:5s}  period_end={f['period_end']}  {f['file']}")
 
-    # ── Output 1: statements ──
+    # ── Build rows (merge across filings; keep as-reported + YTD on each row) ──
     print("\n  Building statements (deterministic)...")
     statements = {}
     for stmt in STATEMENTS:
         rows = merge_statement_rows(filings, stmt)
-        derive_q2_q3_from_ytd(rows, stmt, filings)
-        derive_q4_for_flows(rows, stmt, filings)
+        # Note: we DO NOT do row-level Q2/Q3 or Q4 derivation here. Those
+        # happen at bucket level (derive_bucket_quarters) after the AI has
+        # merged aliased concepts into the same bucket. Deriving at row
+        # level would fragment histories by xbrl_concept.
         formulas = gather_formulas(filings, stmt)
         evaluate_formulas(rows, formulas)
         statements[stmt] = {'rows': rows, 'formulas': formulas}
         print(f"    {stmt}: {len(rows)} rows, {len(formulas)} formulas")
 
-    # ── Segments ──
+    # ── Segments (with def-linkbase hierarchies passed to AI for classification) ──
     segments = build_segments(filings)
-    print(f"    segments: {len(segments['axes'])} axes")
+    segment_hierarchies = _collect_segment_hierarchies(ticker)
+    print(f"    segments: {len(segments['axes'])} axes, "
+          f"{len(segment_hierarchies)} def-linkbase hierarchies")
 
     # ── AI bucket-assignment pass with retry loop ──
     total_in, total_out = 0, 0
     assignments = {}
     exclusions = []
+    segment_classifications = []
     forward_fills = []
     reporting_unit = 'USD_millions'
     stock_splits = []
@@ -1736,7 +1836,9 @@ def run_stage2(ticker, model='claude-sonnet-4-6', max_retries=3, test_mode=True)
         print(f"\n  AI bucket pass (attempt {attempt + 1}/{max_retries + 1})...")
         try:
             parsed, in_tok, out_tok = run_ai_buckets(
-                ticker, statements, segments, model, prior_failures=prior_failures
+                ticker, statements, segments, model,
+                prior_failures=prior_failures,
+                segment_hierarchies=segment_hierarchies,
             )
         except Exception as e:
             print(f"    AI call failed: {e}")
@@ -1748,21 +1850,27 @@ def run_stage2(ticker, model='claude-sonnet-4-6', max_retries=3, test_mode=True)
 
         assignments = parsed.get('bucket_assignments', {}) or {}
         exclusions = parsed.get('exclusions', []) or []
+        segment_classifications = parsed.get('segment_classifications', []) or []
         forward_fills = parsed.get('forward_fills', []) or []
         reporting_unit = parsed.get('reporting_unit', reporting_unit)
         stock_splits = parsed.get('stock_splits', []) or []
 
-        # Compute bucket values + subtotals
+        # Compute bucket values (face/note split; source = rows' as-reported values)
         bucket_values = compute_bucket_values(statements, assignments)
+        # Derive per-quarter standalone values at the BUCKET level (handles
+        # concept drift within a bucket because aliased concepts have been
+        # unified into the same bucket by the AI).
+        derive_bucket_quarters(bucket_values, filings)
+        # Compute canonical subtotals from the derived standalone values.
         subtotal_receipts = compute_subtotals(bucket_values)
 
-        # Run verification
         result_for_verify = {
             'statements': statements,
             'segments': segments,
             'bucket_assignments': assignments,
             'bucket_values': bucket_values,
             'exclusions': exclusions,
+            'segment_classifications': segment_classifications,
             'forward_fills': forward_fills,
         }
         failures = verify_all(result_for_verify, filings, ticker)
@@ -1823,6 +1931,7 @@ def run_stage2(ticker, model='claude-sonnet-4-6', max_retries=3, test_mode=True)
         'stock_splits': stock_splits,
         'statements': statements,
         'segments': segments,
+        'segment_classifications': segment_classifications,
         'bucket_assignments': assignments,
         'exclusions': exclusions,
         'forward_fills': forward_fills,
