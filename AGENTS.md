@@ -62,8 +62,11 @@ Important:
 
 ## Data Rules
 
-- Keep raw SEC filings under `data/raw/sec/filings/`
-- Keep vendor/source caches under `data/raw/<source>/`
+- Keep raw SEC filings under `data/raw/sec/filings/{CIK}/{ACCESSION}/`
+- Keep vendor/source caches under `data/raw/{vendor}/`
+- Raw filesystem cache layout mirrors the vendor's endpoint path (endpoint-mirrored, not category-mirrored)
+- FMP pattern: `data/raw/fmp/{endpoint-path}/{TICKER}/{key}.json` where `{key}` deterministically encodes request params (`annual`, `quarter`, year slice, `YYYY-Qn`, etc.)
+- See `docs/architecture/system.md` § Raw Cache Layout for the full rule and examples
 - Do not treat generated JSON/CSV artifacts as policy truth
 - Use benchmark/reference docs in `docs/reference/` and `docs/benchmarks/`
 

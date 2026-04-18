@@ -149,15 +149,18 @@ Embeddings only after a real failing query proves need.
 Use FMP for historical backfill and normal operation:
 - filings / filing text
 - earnings transcripts
-- historical prices
-- financial statement endpoints
+- daily price + volume history (OHLCV)
+- financial statement endpoints (normalized + as-reported)
+- metrics, ratios, segmentation
 - some event/calendar coverage
 
 Flow:
-`FMP REST -> raw_responses -> artifacts / artifact_chunks / financial_facts / prices / events`
+`FMP REST -> raw_responses -> artifacts / artifact_chunks / financial_facts / prices_daily / events`
 
 FMP = ingest source.
 Not data model.
+
+Raw filesystem cache lives under `data/raw/fmp/` with endpoint-mirrored layout (see Raw Cache Layout below).
 
 ### SEC direct for fresh filings only
 
@@ -942,10 +945,76 @@ Every important row should answer:
 
 No provenance, no trust.
 
+## Raw Cache Layout
+
+Every ingested vendor response is cached to the filesystem under `data/raw/{vendor}/` in addition to being written to the `raw_responses` table. Filesystem cache is belt-and-suspenders for offline replay, local grepping, and disaster recovery; the `raw_responses` table is the canonical replay index once Postgres is live.
+
+### Rule: endpoint-mirrored, deterministic
+
+For vendors with a stable REST path structure (FMP, SEC, FRED, Massive), the sub-path after `data/raw/{vendor}/` mirrors the vendor's endpoint path. The final segments encode request params deterministically so that given an HTTP request, the cache path is a pure function of (endpoint, params).
+
+### FMP layout
+
+```
+data/raw/fmp/{endpoint-path}/{TICKER}/{key}.json
+```
+
+Where:
+- `{endpoint-path}` is the FMP stable endpoint path with `/` preserved (e.g., `historical-price-eod/full`).
+- `{TICKER}` is the symbol the request is scoped to, if any. Unscoped endpoints (e.g., market-wide latest) omit this segment.
+- `{key}` encodes the request params deterministically:
+  - period-sliced: `annual.json`, `quarter.json`
+  - year-sliced: `2024.json`, `2025.json`
+  - fiscal-period: `2025-Q2.json`
+  - date-range: `{from}_{to}.json`
+  - single-shot: ticker filename at the leaf (e.g., `profile/NVDA.json`)
+
+### Examples
+
+```
+data/raw/fmp/income-statement/NVDA/annual.json
+data/raw/fmp/income-statement/NVDA/quarter.json
+data/raw/fmp/balance-sheet-statement/NVDA/quarter.json
+data/raw/fmp/cash-flow-statement/NVDA/quarter.json
+data/raw/fmp/income-statement-as-reported/NVDA/quarter.json
+data/raw/fmp/key-metrics/NVDA/quarter.json
+data/raw/fmp/ratios/NVDA/quarter.json
+data/raw/fmp/revenue-product-segmentation/NVDA/annual.json
+data/raw/fmp/revenue-geographic-segmentation/NVDA/annual.json
+data/raw/fmp/historical-price-eod/full/NVDA/2024.json
+data/raw/fmp/historical-price-eod/full/NVDA/2025.json
+data/raw/fmp/earning-call-transcript/NVDA/2025-Q2.json
+data/raw/fmp/earning-call-transcript-dates/NVDA.json
+data/raw/fmp/profile/NVDA.json
+```
+
+### Why endpoint-mirrored, not category-mirrored
+
+- Deterministic from the HTTP request — no hand-maintained endpoint→category map.
+- New FMP endpoints integrate without a taxonomy decision.
+- Backfill by endpoint is a simple subtree copy; backfill by ticker is a find/glob.
+- Matches `raw_responses` row granularity, so the filesystem and DB share one natural key.
+
+### SEC layout (same principle)
+
+```
+data/raw/sec/filings/{CIK}/{ACCESSION}/{filename}
+```
+
+Already partially in place (`data/raw/sec/filings/`). Keep accession-rooted directories; one filing = one accession directory, contents are the fetched HTML/XBRL files.
+
+### Notes
+
+- Filesystem cache is a convenience; `raw_responses` is authoritative for replay and provenance.
+- Params that cannot be deterministically encoded in a filename (long query strings, complex filters) fall back to a hash of the canonical param set as the `{key}` segment.
+- Tickers are UPPERCASE in paths.
+- No symlinks, no mutation — write-once, replace by writing a new file and letting the old one age out of the working set.
+
 ## Operational Rules
 
 - REST ingest only
-- cache raw API responses always
+- cache raw API responses always (DB `raw_responses` + filesystem under `data/raw/{vendor}/`)
+- raw filesystem cache layout mirrors vendor endpoint path (see Raw Cache Layout)
 - artifacts immutable; corrections via supersedes
 - artifacts content-hashed twice (raw + canonical)
 - chunks derived and regeneratable from artifacts
