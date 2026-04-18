@@ -52,6 +52,8 @@ Do:
 
 ## Foundational Schema Rule: Two Clocks Always
 
+Full spec: `docs/reference/periods.md` — canonical field names, derivation algorithms, 52/53-week handling, Q4 rule, YTD→discrete, label formats, invariants. This section states the principle; `periods.md` is authoritative.
+
 Every relevant object must preserve both:
 
 ### 1. Fiscal truth
@@ -1051,6 +1053,8 @@ Later cloud target:
 - object storage
 - scheduled workers / queues
 - durable alert delivery
+
+**Intended target: Hetzner Cloud.** VM with self-managed Postgres 16 plus Hetzner Storage Box (or Cloudflare R2) for raw cache. Chosen for cost (~$10–35/mo vs $80–150/mo on hyperscaler equivalents) and tooling parity — local Homebrew pg 16 is the same Postgres binary, so migration is `pg_dump | restore` + a `DATABASE_URL` swap. Managed alternatives (Render, Neon) remain viable fallbacks; migration between them is not a trap.
 
 Local first for iteration. Cloud later for durability and reliability.
 

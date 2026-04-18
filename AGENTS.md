@@ -8,6 +8,9 @@ Start here. Read only the next doc you need.
 ## Current Source Of Truth
 
 - Current architecture: `docs/architecture/system.md`
+- Repository flow / folder map: `docs/architecture/repository_flow.md`
+- Period spec (fiscal ↔ calendar rules): `docs/reference/periods.md`
+- Setup runbook: `docs/setup.md`
 - Older strategy snapshot: `docs/strategy/plan.md`
 - Metric definitions: `docs/reference/formulas.md`
 - R&D capitalization reference: `docs/reference/rd_capitalization_reference.md`
