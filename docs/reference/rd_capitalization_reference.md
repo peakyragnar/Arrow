@@ -72,16 +72,16 @@ annuals, no division of annual figures by 4, no approximation.
 
 Quarterly R&D comes from two sources, in priority order:
 
-1. **`ai_extract/{TICKER}/quarterly.json`** — the authoritative Stage 2
+1. **`archive/ai_extract/{TICKER}/quarterly.json`** — the authoritative legacy Stage 2
    output for periods that have been run through the AI pipeline.
-2. **`ai_extract/{TICKER}/rd_history.json`** — deterministic supplement for
+2. **`archive/ai_extract/{TICKER}/rd_history.json`** — deterministic supplement for
    historical periods not run through Stage 2. Built by a standalone script
-   (`ai_extract/extract_rd_history.py`) that reads the XBRL instance doc of
+   (`archive/ai_extract/extract_rd_history.py`) that reads the XBRL instance doc of
    each on-disk filing, extracts `us-gaap:ResearchAndDevelopmentExpense` with
    period-type filtering (3-month for 10-Qs, 12-month for 10-Ks, Q4 derived
    from annual − Q1 − Q2 − Q3), and writes one record per quarter. No AI.
 
-`calculate.py` reads `quarterly.json` first. If fewer than 20 quarters are
+`archive/legacy-root/calculate.py` reads `quarterly.json` first. If fewer than 20 quarters are
 present, it fills the gap from `rd_history.json` for the older periods
 below the earliest Stage 2 quarter. No overlap — each period sourced from
 exactly one file.
@@ -102,4 +102,4 @@ on the balance sheet (invested capital increases by the R&D Asset).
 ## Benchmark
 
 Every computed value for NVDA (amortization, asset, OI adjustment per
-quarter) must match `golden_eval.xlsx`. Zero drift tolerated.
+quarter) must match `docs/benchmarks/golden_eval.xlsx`. Zero drift tolerated.

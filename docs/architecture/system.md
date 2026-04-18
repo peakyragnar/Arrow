@@ -5,13 +5,13 @@
 This document is the current architecture direction for Arrow.
 
 It marks the largest architecture change in the repo so far:
-- old direction: SEC/XBRL-first extraction pipeline centered on `ai_extract/`
+- old direction: SEC/XBRL-first extraction pipeline centered on `archive/ai_extract/`
 - new direction: FMP-first historical ingest, SEC fast-path for fresh filings, PostgreSQL as system of record, search-first analyst workflow, and point-in-time-aware data model
 
-`ai_extract/` should be treated as the last full design iteration before the FMP pivot.
+`archive/ai_extract/` should be treated as the last full design iteration before the FMP pivot.
 It remains valuable as archived reference and benchmark context, but it is no longer the active system design.
 
-`deterministic-flow/` is archived as well and should not guide new implementation.
+`archive/deterministic-flow/` is archived as well and should not guide new implementation.
 
 ## Goal
 

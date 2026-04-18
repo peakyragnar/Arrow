@@ -1,3 +1,5 @@
+> Archived postmortem. Read as context for the pre-FMP SEC/XBRL pipeline, not as the active design.
+
 # AI Extraction Postmortem
 
 A candid review of what we tried, what worked, what didn't, and what the
@@ -13,24 +15,24 @@ across any company, without per-company handlers. Replace the analyst's
 
 A multi-stage pipeline against NVDA (12 filings, FY24Q1 through FY26Q4):
 
-- **fetch.py** — download 10-Q/10-K HTML + four XBRL files from EDGAR.
-- **ai_extract/parse_xbrl.py** — deterministic parse of XBRL instance +
+- **archive/legacy-root/fetch.py** — download 10-Q/10-K HTML + four XBRL files from EDGAR.
+- **archive/ai_extract/parse_xbrl.py** — deterministic parse of XBRL instance +
   calculation/presentation/definition linkbases. No AI.
-- **ai_extract/analyze_statement.py** (Stage 1) — AI extracts IS/BS/CF +
+- **archive/ai_extract/analyze_statement.py** (Stage 1) — AI extracts IS/BS/CF +
   segments per filing. Produces `q*_fy*_10*.json` + `mapped.json`.
-- **ai_extract/ai_formula.py** (Stage 2) — AI assigns concepts to canonical
+- **archive/ai_extract/ai_formula.py** (Stage 2) — AI assigns concepts to canonical
   buckets; Python quarterizes + runs verification. Produces
   `formula_mapped_v3.json` + `quarterly.json`.
-- **ai_extract/export_full_check_csv.py** — renders Stage 2 output as an
+- **archive/ai_extract/export_full_check_csv.py** — renders Stage 2 output as an
   analyst-format audit CSV.
-- **ai_extract/verify_stage1.py** — independent Python verifier that
+- **archive/ai_extract/verify_stage1.py** — independent Python verifier that
   re-computes formula ties from the saved per-filing JSONs. Built after
   the AI-self-verification trust failure.
-- **ai_extract/canonical_buckets.md** — universal bucket schema aligned to
+- **archive/ai_extract/canonical_buckets.md** — universal bucket schema aligned to
   the Capital IQ statement presentation.
 
-Plus `ai_extract/ai_extraction_flow_full.md`, `formulas.md`,
-`rd_capitalization_reference.md`, `CLAUDE.md` / `AGENTS.md` as supporting
+Plus `archive/ai_extract/ai_extraction_flow_full.md`, `docs/reference/formulas.md`,
+`docs/reference/rd_capitalization_reference.md`, `CLAUDE.md` / `AGENTS.md` as supporting
 documentation.
 
 ## What worked

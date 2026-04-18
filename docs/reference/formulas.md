@@ -5,10 +5,10 @@ This document is the canonical metric dictionary for v1. It combines the full fo
 ## Canonical Analytical Fields
 
 Metric formulas reference values by canonical short names. Those names are
-the **bucket names** defined in `ai_extract/canonical_buckets.md` — one
+the **bucket names** defined in `archive/ai_extract/canonical_buckets.md` — one
 universal set per statement (IS, BS, CF), used for every company.
 
-- `ai_extract/canonical_buckets.md` is the single source of truth for field
+- `archive/ai_extract/canonical_buckets.md` is the preserved source of truth for legacy field
   names. Metric formulas below reference those names directly (e.g., `cfo`,
   `capex`, `operating_income`, `total_assets`). Period is a qualifier:
   `cfo_q` = quarterly, `cfo_ttm` = trailing twelve months, `cfo_fy` = full
@@ -16,10 +16,10 @@ universal set per statement (IS, BS, CF), used for every company.
 - When a name could be ambiguous across statements (`dna` exists on IS and
   CF), the formula explicitly qualifies it: `cf.dna` vs `is.dna`.
 - Do not invent parallel names or aliases. Adding a new metric means using
-  existing bucket names; adding a new bucket means editing `canonical_buckets.md`
-  first, then referencing it here.
-- Stage 2 produces these bucket values directly. `calculate.py` consumes them
-  without translation.
+  existing bucket names; adding a new bucket means editing the bucket-schema
+  source first, then referencing it here.
+- In the legacy SEC/XBRL pipeline, Stage 2 produced these bucket values directly
+  and `archive/legacy-root/calculate.py` consumed them without translation.
 
 ## Global Calculation Rules
 

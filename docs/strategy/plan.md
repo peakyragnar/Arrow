@@ -1,3 +1,6 @@
+> Superseded for architecture. Current source of truth is `docs/architecture/system.md`.
+> Keep this file only as an older strategy snapshot.
+
 The System: 4 Layers
 
   Layer 1: Financial Data Extraction

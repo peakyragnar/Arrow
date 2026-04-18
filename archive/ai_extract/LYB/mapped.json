@@ -1,0 +1,937 @@
+[
+  {
+    "period_end": "2022-06-30",
+    "period_start": "2022-04-01",
+    "revenue_q": 14838000000,
+    "cogs_q": 12267000000,
+    "rd_expense_q": 32000000,
+    "sga_q": 329000000,
+    "total_opex_q": 12697000000,
+    "operating_income_q": 2141000000,
+    "interest_income_q": 4000000,
+    "interest_expense_q": -58000000,
+    "other_nonop_income_q": -86000000,
+    "pretax_income_q": 2023000000,
+    "income_tax_expense_q": 378000000,
+    "equity_method_earnings_q": 22000000,
+    "net_income_q": 1644000000,
+    "eps_basic_q": 5.0,
+    "eps_diluted_q": 4.98,
+    "short_term_investments_q": 0,
+    "short_term_debt_q": 0,
+    "diluted_shares_q": 330120482,
+    "basic_shares_q": 328800000,
+    "ticker": "LYB",
+    "acquisitions_q": 0
+  },
+  {
+    "period_end": "2022-09-30",
+    "period_start": "2022-07-01",
+    "revenue_q": 12250000000,
+    "cogs_q": 11088000000,
+    "rd_expense_q": 31000000,
+    "sga_q": 319000000,
+    "total_opex_q": 11438000000,
+    "operating_income_q": 812000000,
+    "interest_income_q": 7000000,
+    "interest_expense_q": -70000000,
+    "other_nonop_income_q": 4000000,
+    "pretax_income_q": 727000000,
+    "income_tax_expense_q": 154000000,
+    "equity_method_earnings_q": -26000000,
+    "net_income_q": 572000000,
+    "eps_basic_q": 1.75,
+    "eps_diluted_q": 1.75,
+    "short_term_investments_q": 0,
+    "short_term_debt_q": 0,
+    "diluted_shares_q": 326857143,
+    "basic_shares_q": 326857143,
+    "change_ar_q": 695000000,
+    "sbc_q": 17000000,
+    "dna_q": 318000000,
+    "cff_q": -537000000,
+    "net_change_cash_q": 420000000,
+    "share_repurchases_q": 682000000,
+    "capex_q": -439000000,
+    "change_ap_q": -550000000,
+    "cfo_q": 1414000000,
+    "change_inventory_q": 1016000000,
+    "cfi_q": -399000000,
+    "ticker": "LYB",
+    "acquisitions_q": 0
+  },
+  {
+    "period_end": "2023-03-31",
+    "period_start": "2023-01-01",
+    "revenue_q": 10076000000,
+    "cogs_q": 8864000000,
+    "rd_expense_q": 33000000,
+    "sga_q": 385000000,
+    "total_opex_q": 9534000000,
+    "operating_income_q": 713000000,
+    "interest_income_q": 23000000,
+    "interest_expense_q": -116000000,
+    "other_nonop_income_q": 5000000,
+    "pretax_income_q": 642000000,
+    "income_tax_expense_q": 167000000,
+    "equity_method_earnings_q": 17000000,
+    "net_income_q": 474000000,
+    "eps_basic_q": 1.45,
+    "eps_diluted_q": 1.44,
+    "short_term_investments_q": 0,
+    "short_term_debt_q": 0,
+    "diluted_shares_q": 329166667,
+    "basic_shares_q": 326896552,
+    "change_ar_q": -279000000,
+    "sbc_q": 24000000,
+    "dna_q": 396000000,
+    "cff_q": -477000000,
+    "net_change_cash_q": -352000000,
+    "share_repurchases_q": -70000000,
+    "capex_q": -352000000,
+    "change_ap_q": 40000000,
+    "cfo_q": 482000000,
+    "change_inventory_q": -319000000,
+    "cfi_q": -371000000,
+    "ticker": "LYB",
+    "acquisitions_q": 0
+  },
+  {
+    "period_end": "2023-06-30",
+    "period_start": "2023-04-01",
+    "revenue_q": 10149000000,
+    "cogs_q": 8868000000,
+    "rd_expense_q": 32000000,
+    "sga_q": 395000000,
+    "total_opex_q": 9295000000,
+    "operating_income_q": 1011000000,
+    "interest_income_q": 28000000,
+    "interest_expense_q": -115000000,
+    "other_nonop_income_q": -7000000,
+    "pretax_income_q": 905000000,
+    "income_tax_expense_q": 188000000,
+    "equity_method_earnings_q": -12000000,
+    "net_income_q": 715000000,
+    "eps_basic_q": 2.18,
+    "eps_diluted_q": 2.18,
+    "cash_q": 2468000000,
+    "accounts_receivable_q": 3638000000,
+    "inventory_q": 5195000000,
+    "prepaid_q": 1193000000,
+    "total_current_assets_q": 12693000000,
+    "ppe_q": 15408000000,
+    "operating_lease_assets_q": 1564000000,
+    "goodwill_q": 1610000000,
+    "intangibles_q": 633000000,
+    "other_noncurrent_assets_q": 623000000,
+    "total_assets_q": 36683000000,
+    "accrued_liabilities_q": 2164000000,
+    "total_current_liabilities_q": 7017000000,
+    "long_term_lease_liabilities_q": 1437000000,
+    "other_noncurrent_liabilities_q": 1989000000,
+    "common_stock_q": 19000000,
+    "apic_q": 6111000000,
+    "aoci_q": -1333000000,
+    "retained_earnings_q": 9580000000,
+    "equity_q": 12931000000,
+    "equity_incl_nci_q": 12945000000,
+    "noncontrolling_interests_q": 14000000,
+    "total_liabilities_and_equity_q": 36683000000,
+    "short_term_debt_q": 0,
+    "operating_lease_liabilities_q": 1437000000,
+    "accounts_payable_q": 3024000000,
+    "_calculation_components": {
+      "operating_leases": {
+        "current": null,
+        "noncurrent": 1437,
+        "total": null,
+        "current_location": "The non-current operating lease liability of 1437M is shown as a separate line 'Operating lease liabilities' on the balance sheet. The current portion is not shown as a separate line on the balance sheet face. The XBRL tag OperatingLeaseLiabilityCurrentStatementOfFinancialPositionExtensibleList is not available in the provided XBRL facts. The current portion is likely embedded within 'Accrued liabilities' of 2164M but cannot be separately identified from the provided data. Flag: current operating lease liability not separately disclosed on balance sheet face."
+      },
+      "depreciation_and_amortization": {
+        "total": 787,
+        "components": [
+          {
+            "label": "Depreciation and amortization",
+            "value": 787
+          },
+          {
+            "label": "Amortization of debt-related costs",
+            "value": 4
+          }
+        ],
+        "is_single_line": false,
+        "note": "Primary D&A line on CF is 787M (us-gaap:DepreciationDepletionAndAmortization for YTD 2023). Debt cost amortization of 4M is a separate CF line. Total for cash flow reconciliation purposes: D&A addback is 787M; debt amortization 4M is separate. Segment reconciliation in Note 12 confirms 787M for six months 2023."
+      },
+      "accounts_payable": {
+        "value": 3024,
+        "is_pure": true,
+        "combined_with": null,
+        "note_breakout": null,
+        "note": "Balance sheet shows separate 'Accounts payable - Trade' of 3024M tagged as us-gaap:AccountsPayableTradeCurrent. This is pure trade AP. Related party payables of 493M are shown separately. Note 6 discloses 57M of supply chain finance obligations included within AP Trade as of June 30 2023."
+      },
+      "accounts_receivable": {
+        "value": 3638,
+        "is_pure": true,
+        "combined_with": null,
+        "note_breakout": null,
+        "note": "Balance sheet shows 'Accounts receivable - Trade, net' of 3638M tagged as us-gaap:AccountsReceivableNetCurrent, net of allowance for credit losses of 6M per Note 4. Related party receivables of 173M are separately shown. This is pure trade AR."
+      },
+      "capex": {
+        "cf_value": 653,
+        "supplemental_not_yet_paid": null,
+        "includes_intangibles": false,
+        "note": "CF statement shows 'Expenditures for property, plant and equipment' of 653M (us-gaap:PaymentsToAcquirePropertyPlantAndEquipment) for six months 2023. No separate intangibles capex line. No supplemental disclosure of capital expenditures incurred but not yet paid found in the provided XBRL data."
+      },
+      "acquisitions": {
+        "total": null,
+        "items": [],
+        "note": "No acquisition-related cash flow line items appear in the six months ended June 30 2023 investing activities section. Note 12 mentions acquisition of remaining 50% of Quality Circular Polymers in April 2023; however no separate cash payment for acquisition appears as a tagged XBRL fact in the investing section. The acquisition may be captured within 'Other, net' investing of -89M or may have been non-cash. Cannot confirm cash paid for acquisitions from available data."
+      },
+      "short_term_debt": {
+        "value": 130,
+        "components": [
+          {
+            "concept": "Precious metal financings",
+            "value": 130
+          },
+          {
+            "concept": "U.S. Receivables Facility",
+            "value": 0
+          },
+          {
+            "concept": "Commercial paper",
+            "value": 0
+          },
+          {
+            "concept": "Other",
+            "value": 0
+          }
+        ],
+        "confirmed_zero": false,
+        "note": "Short-term debt balance per BS is 130M (us-gaap:ShortTermBorrowings). Per Note 6, this consists entirely of precious metal financings of 130M. No commercial paper outstanding, no US Receivables Facility borrowings."
+      },
+      "sbc": {
+        "cf_value": 48,
+        "note_by_function": null,
+        "note": "Share-based compensation addback on CF statement is 48M (us-gaap:ShareBasedCompensation) for six months ended June 30 2023. No breakout by function found in the provided XBRL facts."
+      },
+      "interest_expense": {
+        "gross": 231,
+        "income": 51,
+        "net": 180,
+        "source": "IS shows Interest expense of 231M and Interest income of 51M separately for six months 2023. No note disclosure separating gross interest expense further. The 231M is the gross interest expense figure as presented on the income statement."
+      },
+      "tax_rate": {
+        "tax_expense": 355,
+        "pretax_income": 1547,
+        "effective_rate": 0.229,
+        "flags": [
+          "Goodwill impairment of 252M in H1 2023 with no tax benefit increases effective rate by 2.8%; audit settlement increases rate by 2.4%; effective rate of 22.9% for H1 2023 per Note 8"
+        ]
+      },
+      "inventory": {
+        "total": 5195,
+        "raw_materials": 1534,
+        "wip": 217,
+        "finished_goods": 3444,
+        "note": "Per Note 5 inventory breakdown at June 30 2023: Finished goods 3444M, Work-in-process 217M, Raw materials and supplies 1534M, Total 5195M"
+      }
+    },
+    "short_term_investments_q": 0,
+    "diluted_shares_q": 327981651,
+    "basic_shares_q": 327981651,
+    "restatements": [
+      {
+        "field": "revenue_q",
+        "old_value": 10306000000,
+        "new_value": 10149000000,
+        "source_filing": "ai_extract/LYB/q2_cy24_10q.json"
+      },
+      {
+        "field": "revenue_q_ytd",
+        "old_value": 20553000000,
+        "new_value": 20225000000,
+        "source_filing": "ai_extract/LYB/q2_cy24_10q.json"
+      },
+      {
+        "field": "change_ar_q_ytd",
+        "old_value": -192000000,
+        "new_value": 192000000,
+        "source_filing": "ai_extract/LYB/q2_cy24_10q.json"
+      },
+      {
+        "field": "change_inventory_q_ytd",
+        "old_value": -349000000,
+        "new_value": 349000000,
+        "source_filing": "ai_extract/LYB/q2_cy24_10q.json"
+      },
+      {
+        "field": "share_repurchases_q_ytd",
+        "old_value": -170000000,
+        "new_value": 170000000,
+        "source_filing": "ai_extract/LYB/q2_cy24_10q.json"
+      },
+      {
+        "field": "short_term_debt_q",
+        "old_value": 130000000,
+        "new_value": 0,
+        "source_filing": "ai_extract/LYB/q2_cy24_10q.json"
+      }
+    ],
+    "change_ar_q": 471000000,
+    "sbc_q": 24000000,
+    "dna_q": 391000000,
+    "cff_q": -224000000,
+    "net_change_cash_q": 690000000,
+    "share_repurchases_q": 240000000,
+    "capex_q": -301000000,
+    "change_ap_q": -104000000,
+    "cfo_q": 1290000000,
+    "change_inventory_q": 668000000,
+    "cfi_q": -371000000,
+    "ticker": "LYB",
+    "acquisitions_q": 0
+  },
+  {
+    "period_end": "2023-09-30",
+    "period_start": "2023-07-01",
+    "revenue_q": 10477000000,
+    "cogs_q": 9177000000,
+    "rd_expense_q": 31000000,
+    "sga_q": 378000000,
+    "total_opex_q": 9611000000,
+    "operating_income_q": 1014000000,
+    "interest_income_q": 37000000,
+    "interest_expense_q": -125000000,
+    "other_nonop_income_q": -31000000,
+    "pretax_income_q": 901000000,
+    "income_tax_expense_q": 153000000,
+    "equity_method_earnings_q": 6000000,
+    "net_income_q": 747000000,
+    "eps_basic_q": 2.29,
+    "eps_diluted_q": 2.29,
+    "cash_q": 2833000000,
+    "accounts_receivable_q": 3841000000,
+    "inventory_q": 4911000000,
+    "prepaid_q": 1632000000,
+    "total_current_assets_q": 13228000000,
+    "ppe_q": 15194000000,
+    "operating_lease_assets_q": 1509000000,
+    "goodwill_q": 1604000000,
+    "intangibles_q": 642000000,
+    "other_noncurrent_assets_q": 642000000,
+    "total_assets_q": 36875000000,
+    "accrued_liabilities_q": 2533000000,
+    "total_current_liabilities_q": 7000000000,
+    "long_term_lease_liabilities_q": 1397000000,
+    "other_noncurrent_liabilities_q": 2003000000,
+    "common_stock_q": 19000000,
+    "apic_q": 6130000000,
+    "aoci_q": -1400000000,
+    "retained_earnings_q": 9917000000,
+    "equity_q": 13205000000,
+    "equity_incl_nci_q": 13219000000,
+    "noncontrolling_interests_q": 14000000,
+    "total_liabilities_and_equity_q": 36875000000,
+    "short_term_debt_q": 0,
+    "operating_lease_liabilities_q": 1397000000,
+    "accounts_payable_q": 3574000000,
+    "_calculation_components": {
+      "operating_leases": {
+        "current": null,
+        "noncurrent": 1397,
+        "total": null,
+        "current_location": "Current portion of operating lease liability is not separately disclosed on the face of the balance sheet. It is likely embedded within Accrued and other current liabilities (2,533). The XBRL tag us-gaap:OperatingLeaseLiabilityCurrentStatementOfFinancialPositionExtensibleList was not found in the provided undimensioned XBRL facts. Only the noncurrent portion us-gaap:OperatingLeaseLiabilityNoncurrent of 1,397 is disclosed as a separate balance sheet line. Total operating lease liability cannot be confirmed from available data.",
+        "flag": "Current operating lease liability not separately disclosed; hidden inside Accrued and other current liabilities"
+      },
+      "depreciation_and_amortization": {
+        "total": 1154,
+        "components": [
+          {
+            "label": "Depreciation and amortization",
+            "value": 1154
+          },
+          {
+            "label": "Amortization of debt-related costs (financing costs and discounts)",
+            "value": 7
+          }
+        ],
+        "is_single_line": false,
+        "note": "The CF statement shows D&A of 1,154 and separately amortization of debt-related costs of 7. The 1,154 is the primary D&A used for operations. Segment note confirms 1,154 total D&A for nine months 2023."
+      },
+      "accounts_payable": {
+        "value": 3574,
+        "is_pure": false,
+        "combined_with": "Split between Trade (NonrelatedParty 3,121) and Related parties (453) on balance sheet face",
+        "note_breakout": null,
+        "detail": "Trade AP (nonrelated party) = 3,121; Related party AP = 453; Total = 3,574. Note 6 discloses that as of September 30, 2023 Accounts payable-Trade included 64 million payable to suppliers in the supply chain finance program."
+      },
+      "accounts_receivable": {
+        "value": 3841,
+        "is_pure": false,
+        "combined_with": "Split between Trade net (NonrelatedParty 3,704) and Related parties (137) on balance sheet face",
+        "note_breakout": 3704,
+        "note": "Trade AR net of allowance 3,704; Related party AR 137. Note 4 states allowance for credit losses of 6 million as of September 30, 2023. Pure trade AR gross would be approximately 3,710."
+      },
+      "capex": {
+        "cf_value": 1047,
+        "supplemental_not_yet_paid": null,
+        "includes_intangibles": false,
+        "note": "CF statement line 'Expenditures for property, plant and equipment' = 1,047 for nine months 2023 per us-gaap:PaymentsToAcquirePropertyPlantAndEquipment. No supplemental disclosure of capital expenditures incurred but not yet paid was found in the provided XBRL facts. Segment note also confirms 1,047 total for nine months 2023."
+      },
+      "acquisitions": {
+        "total": null,
+        "items": [],
+        "note": "No acquisition-related cash flow line items appear in the provided CF statement or XBRL facts for the nine months ended September 30, 2023. The filing notes the April 2023 acquisition of the remaining 50% of Quality Circular Polymers in the MD&A text, but no corresponding cash flow XBRL fact for business acquisition payments was found in the undimensioned facts provided. This may be included in the 'Other, net' investing line of (186) million."
+      },
+      "short_term_debt": {
+        "value": 112,
+        "components": [
+          {
+            "label": "U.S. Receivables Facility",
+            "value": 0
+          },
+          {
+            "label": "Commercial paper",
+            "value": 0
+          },
+          {
+            "label": "Precious metal financings",
+            "value": 112
+          },
+          {
+            "label": "Other",
+            "value": 0
+          }
+        ],
+        "confirmed_zero": false,
+        "note": "Short-term debt per balance sheet us-gaap:ShortTermBorrowings = 112, consisting entirely of precious metal financings. Commercial paper and receivables facility had zero balances at September 30, 2023."
+      },
+      "sbc": {
+        "cf_value": 71,
+        "note_by_function": null,
+        "note": "Share-based compensation per CF statement us-gaap:ShareBasedCompensation = 71 for nine months 2023. No breakdown by function (cost of sales, SGA) was found in the provided XBRL facts."
+      },
+      "interest_expense": {
+        "gross": 356,
+        "income": 88,
+        "net": 268,
+        "source": "Gross interest expense us-gaap:InterestExpense = 356 per income statement for nine months 2023. Interest income us-gaap:InvestmentIncomeInterest = 88. Net interest expense = 268 as confirmed by MD&A table showing 'Interest expense, net' of 268 in the nine months 2023 EBITDA reconciliation."
+      },
+      "tax_rate": {
+        "tax_expense": 508,
+        "pretax_income": 2448,
+        "effective_rate": 0.2076,
+        "flags": [],
+        "note": "Tax expense 508 / Pretax income 2,448 = 20.76% effective rate for nine months 2023. XBRL confirms us-gaap:EffectiveIncomeTaxRateContinuingOperations = 0.208 (20.8%) for the nine month period. Pretax income is positive; no fallback needed."
+      },
+      "inventory": {
+        "total": 4911,
+        "raw_materials": 1493,
+        "wip": 264,
+        "finished_goods": 3154,
+        "note": "Inventory breakdown per Note 5: Finished goods 3,154 + Work-in-process 264 + Raw materials and supplies 1,493 = Total 4,911 as of September 30, 2023. All components confirmed by XBRL tags us-gaap:InventoryFinishedGoodsNetOfReserves, us-gaap:InventoryWorkInProcessNetOfReserves, us-gaap:InventoryRawMaterialsAndSuppliesNetOfReserves."
+      }
+    },
+    "short_term_investments_q": 0,
+    "diluted_shares_q": 326200873,
+    "basic_shares_q": 326200873,
+    "restatements": [
+      {
+        "field": "revenue_q",
+        "old_value": 10625000000,
+        "new_value": 10477000000,
+        "source_filing": "ai_extract/LYB/q3_cy24_10q.json"
+      },
+      {
+        "field": "revenue_q_ytd",
+        "old_value": 31178000000,
+        "new_value": 30702000000,
+        "source_filing": "ai_extract/LYB/q3_cy24_10q.json"
+      },
+      {
+        "field": "short_term_debt_q",
+        "old_value": 112000000,
+        "new_value": 0,
+        "source_filing": "ai_extract/LYB/q3_cy24_10q.json"
+      }
+    ],
+    "change_ar_q": 90000000,
+    "sbc_q": 23000000,
+    "dna_q": 367000000,
+    "cff_q": -844000000,
+    "net_change_cash_q": 350000000,
+    "share_repurchases_q": 41000000,
+    "capex_q": -394000000,
+    "change_ap_q": 95000000,
+    "cfo_q": 1666000000,
+    "change_inventory_q": -153000000,
+    "cfi_q": -429000000,
+    "ticker": "LYB",
+    "acquisitions_q": 0
+  },
+  {
+    "period_end": "2024-03-31",
+    "period_start": "2024-01-01",
+    "revenue_q": 9757000000,
+    "cogs_q": 8763000000,
+    "rd_expense_q": 32000000,
+    "sga_q": 426000000,
+    "total_opex_q": 9221000000,
+    "operating_income_q": 704000000,
+    "interest_income_q": 41000000,
+    "interest_expense_q": -127000000,
+    "other_nonop_income_q": 5000000,
+    "pretax_income_q": 596000000,
+    "income_tax_expense_q": 122000000,
+    "equity_method_earnings_q": -27000000,
+    "net_income_q": 473000000,
+    "eps_basic_q": 1.45,
+    "eps_diluted_q": 1.44,
+    "cash_q": 2314000000,
+    "accounts_receivable_q": 4001000000,
+    "inventory_q": 4853000000,
+    "prepaid_q": 1500000000,
+    "total_current_assets_q": 12875000000,
+    "ppe_q": 15532000000,
+    "operating_lease_assets_q": 1481000000,
+    "goodwill_q": 1628000000,
+    "intangibles_q": 631000000,
+    "other_noncurrent_assets_q": 632000000,
+    "total_assets_q": 36624000000,
+    "accrued_liabilities_q": 1944000000,
+    "total_current_liabilities_q": 6087000000,
+    "long_term_lease_liabilities_q": 1380000000,
+    "other_noncurrent_liabilities_q": 2157000000,
+    "common_stock_q": 19000000,
+    "apic_q": 6112000000,
+    "aoci_q": -1532000000,
+    "retained_earnings_q": 9752000000,
+    "equity_q": 12979000000,
+    "equity_incl_nci_q": 12993000000,
+    "noncontrolling_interests_q": 14000000,
+    "total_liabilities_and_equity_q": 36624000000,
+    "short_term_debt_q": 164000000,
+    "operating_lease_liabilities_q": 1380000000,
+    "accounts_payable_q": 3972000000,
+    "_calculation_components": {
+      "operating_leases": {
+        "current": null,
+        "noncurrent": 1380,
+        "total": null,
+        "current_location": "Current portion of operating lease liabilities is not separately disclosed on the balance sheet face. The XBRL fact OperatingLeaseLiabilityCurrentStatementOfFinancialPositionExtensibleList is not provided. Based on the assets held for sale note, $17M of operating lease liabilities for the EO&D disposal group are classified within Accrued and other current liabilities. The current portion of continuing operations operating leases is embedded within Accrued and other current liabilities (us-gaap:AccruedLiabilitiesCurrent = 1944). No total OperatingLeaseLiability XBRL fact provided; only noncurrent = 1380.",
+        "flag": "Current operating lease liability not separately broken out on balance sheet face; likely embedded in Accrued and other current liabilities"
+      },
+      "depreciation_and_amortization": {
+        "total": 365,
+        "components": [
+          {
+            "label": "Depreciation and amortization",
+            "value": 365
+          },
+          {
+            "label": "Amortization of debt-related costs",
+            "value": 2
+          }
+        ],
+        "is_single_line": false,
+        "note": "The primary D&A line on the CF statement is us-gaap:DepreciationDepletionAndAmortization = 365 for Q1 2024. Amortization of debt-related costs (us-gaap:AmortizationOfFinancingCostsAndDiscounts = 2) is separately listed. Total D&A per segment reconciliation = 365."
+      },
+      "accounts_payable": {
+        "value": 3972,
+        "is_pure": false,
+        "combined_with": "Trade AP (3486) + Related party AP (486) both tagged as us-gaap:AccountsPayableTradeCurrent",
+        "note_breakout": null,
+        "detail": "Trade AP (non-related party context c-12) = 3486. Related party AP (context c-14) = 486. Pure trade AP excluding related parties = 3486. The disposal group note shows 23M of AP-Trade held for sale embedded within Prepaid/Accrued on BS."
+      },
+      "accounts_receivable": {
+        "value": 4001,
+        "is_pure": true,
+        "combined_with": null,
+        "note_breakout": 4001,
+        "detail": "Trade AR net (non-related party, c-12) = 4001. Related party AR (c-14) = 190. Pure trade AR = 4001. Note 5 discloses allowance for credit losses of 6M as of March 31 2024. Note that 41M of AR-Trade in disposal group is reported within Prepaid expenses and other current assets on BS."
+      },
+      "capex": {
+        "cf_value": 483,
+        "supplemental_not_yet_paid": null,
+        "includes_intangibles": false,
+        "detail": "us-gaap:PaymentsToAcquirePropertyPlantAndEquipment = 483 for Q1 2024. No supplemental disclosure of capital expenditures incurred but not yet paid found. The segment table also shows total capex = 483 matching CF statement."
+      },
+      "acquisitions": {
+        "total": 0,
+        "items": [],
+        "note": "No cash acquisitions in Q1 2024. The NATPET acquisition (35% interest for approximately 500M) was announced in January 2024 but expected to close in coming months; no cash paid in Q1 2024."
+      },
+      "short_term_debt": {
+        "value": 164,
+        "components": [
+          {
+            "concept": "us-gaap:ShortTermBorrowings",
+            "description": "Precious metal financings",
+            "value": 164
+          }
+        ],
+        "confirmed_zero": false,
+        "detail": "Short-term debt on BS = 164M consisting entirely of precious metal financings. Commercial paper = 0, U.S. Receivables Facility = 0 per note disclosures. Current maturities of LT debt = 7M (separate BS line). The EO&D disposal group also has 43M of short-term debt classified within Accrued and other current liabilities per Note 3."
+      },
+      "sbc": {
+        "cf_value": 34,
+        "note_by_function": null,
+        "detail": "us-gaap:ShareBasedCompensation = 34 for Q1 2024 per CF statement. No breakdown by function disclosed in the 10-Q notes."
+      },
+      "interest_expense": {
+        "gross": 127,
+        "income": 41,
+        "net": 86,
+        "source": "Gross interest expense us-gaap:InterestExpense = 127 from IS and CF reconciliation. Interest income us-gaap:InvestmentIncomeInterest = 41 from IS. Net interest expense = 86 per MD&A EBITDA reconciliation table. The 127 is the gross figure per the IS; the derivative note shows some interest rate hedge impacts recognized in interest expense (fair value hedge: 23M gain; cash flow hedge reclassification: 1M)."
+      },
+      "tax_rate": {
+        "tax_expense": 122,
+        "pretax_income": 596,
+        "effective_rate": 0.2047,
+        "flags": [],
+        "detail": "IncomeTaxExpenseBenefit = 122, IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest = 596. Effective rate = 122/596 = 20.47%. Company disclosed effective rate of 20.4% consistent with XBRL fact us-gaap:EffectiveIncomeTaxRateContinuingOperations = 0.204. Pretax income is positive, no fallback needed."
+      },
+      "inventory": {
+        "total": 4853,
+        "raw_materials": 1539,
+        "wip": 202,
+        "finished_goods": 3112,
+        "detail": "From Note 6 inventory table: Finished goods = 3112, Work-in-process = 202, Raw materials and supplies = 1539, Total = 4853. All values as of March 31 2024. Note: 73M of inventories in disposal group are embedded within Prepaid expenses and other current assets on the BS."
+      }
+    },
+    "short_term_investments_q": 0,
+    "diluted_shares_q": 328472222,
+    "basic_shares_q": 326206897,
+    "change_ar_q": -717000000,
+    "sbc_q": 34000000,
+    "dna_q": 365000000,
+    "cff_q": -412000000,
+    "net_change_cash_q": -1074000000,
+    "share_repurchases_q": 0,
+    "capex_q": -483000000,
+    "change_ap_q": 196000000,
+    "cfo_q": -114000000,
+    "change_inventory_q": -108000000,
+    "cfi_q": -510000000,
+    "ticker": "LYB",
+    "acquisitions_q": 0
+  },
+  {
+    "period_end": "2024-06-30",
+    "period_start": "2024-04-01",
+    "revenue_q": 10398000000,
+    "cogs_q": 9148000000,
+    "rd_expense_q": 33000000,
+    "sga_q": 407000000,
+    "total_opex_q": 9588000000,
+    "operating_income_q": 970000000,
+    "interest_income_q": 37000000,
+    "other_nonop_income_q": 13000000,
+    "pretax_income_q": 1174000000,
+    "income_tax_expense_q": 249000000,
+    "equity_method_earnings_q": -19000000,
+    "net_income_q": 924000000,
+    "eps_basic_q": 2.82,
+    "eps_diluted_q": 2.82,
+    "cash_q": 2839000000,
+    "accounts_receivable_q": 4062000000,
+    "inventory_q": 5073000000,
+    "prepaid_q": 912000000,
+    "total_current_assets_q": 12911000000,
+    "ppe_q": 15574000000,
+    "operating_lease_assets_q": 1460000000,
+    "goodwill_q": 1603000000,
+    "intangibles_q": 615000000,
+    "other_noncurrent_assets_q": 611000000,
+    "total_assets_q": 37064000000,
+    "accrued_liabilities_q": 1900000000,
+    "total_current_liabilities_q": 6147000000,
+    "long_term_lease_liabilities_q": 1363000000,
+    "other_noncurrent_liabilities_q": 2113000000,
+    "common_stock_q": 19000000,
+    "apic_q": 6122000000,
+    "aoci_q": -1523000000,
+    "retained_earnings_q": 10233000000,
+    "equity_q": 13449000000,
+    "equity_incl_nci_q": 13463000000,
+    "noncontrolling_interests_q": 14000000,
+    "total_liabilities_and_equity_q": 37064000000,
+    "short_term_debt_q": 173000000,
+    "operating_lease_liabilities_q": 1363000000,
+    "accounts_payable_q": 4074000000,
+    "_calculation_components": {
+      "operating_leases": {
+        "current": null,
+        "noncurrent": 1363,
+        "total": null,
+        "current_location": "Current operating lease liability is not separately presented on the balance sheet face. The balance sheet shows only noncurrent Operating lease liabilities of 1363M. No OperatingLeaseLiabilityCurrent XBRL fact found in undimensioned facts. The current portion is likely embedded within Accrued and other current liabilities of 1900M but cannot be precisely quantified from the available data.",
+        "flag": "Current operating lease liability not separately disclosed on balance sheet face; likely included in Accrued and other current liabilities"
+      },
+      "depreciation_and_amortization": {
+        "total": 752,
+        "components": [
+          {
+            "label": "Depreciation and amortization",
+            "value": 752
+          },
+          {
+            "label": "Amortization of debt-related costs",
+            "value": 5
+          }
+        ],
+        "is_single_line": false,
+        "note": "Primary DD&A line is 752M for six months ended June 30 2024. Additionally 5M of debt cost amortization appears separately. The 752M figure matches the segment reconciliation table D&A of 752M for H1 2024."
+      },
+      "accounts_payable": {
+        "value": 4074,
+        "is_pure": false,
+        "combined_with": "Split between Trade (nonrelated party 3557) and Related parties (517) on balance sheet face",
+        "note_breakout": null,
+        "detail": "Trade AP (nonrelated party) = 3557, Related party AP = 517, Total = 4074. These are shown as separate line items on the balance sheet but both tagged as AccountsPayableTradeCurrent with different relatedparty dimensions. Pure trade AP to third parties = 3557."
+      },
+      "accounts_receivable": {
+        "value": 4062,
+        "is_pure": false,
+        "combined_with": "Split between Trade net (nonrelated party 3855) and Related parties (207) on balance sheet face",
+        "note_breakout": 3855,
+        "detail": "Trade AR net of allowance (nonrelated party) = 3855, Related party AR = 207, Total = 4062. Note 4 discloses allowance for credit losses of 5M at June 30 2024. Pure trade AR to third parties net = 3855."
+      },
+      "capex": {
+        "cf_value": 967,
+        "supplemental_not_yet_paid": null,
+        "includes_intangibles": false,
+        "note": "CF statement shows Expenditures for property, plant and equipment of 967M for H1 2024, tagged PaymentsToAcquirePropertyPlantAndEquipment. No supplemental disclosure of capital expenditures incurred but not yet paid found in available data. Segment data also confirms 967M total capex."
+      },
+      "acquisitions": {
+        "total": 512,
+        "items": [
+          {
+            "concept": "us-gaap:PaymentsToAcquireInterestInJointVenture",
+            "value": 512,
+            "description": "Acquisition of 35% interest in NATPET joint venture for approximately 500M (cash paid 512M per CF statement)"
+          }
+        ]
+      },
+      "short_term_debt": {
+        "value": 173,
+        "components": [
+          {
+            "label": "Short-term debt (precious metal financings)",
+            "value": 166,
+            "concept": "us-gaap:ShortTermBorrowings",
+            "note": "Primarily precious metal financings of 165M plus 1M rounding; balance sheet shows 166M total"
+          },
+          {
+            "label": "Current maturities of long-term debt",
+            "value": 7,
+            "concept": "us-gaap:LongTermDebtAndCapitalLeaseObligationsCurrent"
+          }
+        ],
+        "confirmed_zero": false,
+        "note": "Total short-term obligations = ShortTermBorrowings 166 + current maturities 7 = 173M. No commercial paper outstanding at June 30 2024. No borrowings under revolving credit or US Receivables facility."
+      },
+      "sbc": {
+        "cf_value": 53,
+        "note_by_function": null,
+        "note": "Share-based compensation addback in CFO is 53M for H1 2024. No breakdown by function (COGS vs SGA) disclosed in the notes within available data."
+      },
+      "interest_expense": {
+        "gross": 247,
+        "income": 78,
+        "net": 169,
+        "source": "Income statement shows Interest expense 247M and Interest income 78M separately for H1 2024. The EBITDA reconciliation in MD&A shows Interest expense net of 169M (247-78). Gross interest expense = 247M tagged as InterestExpenseOperating. No further breakdown of gross interest in notes within available data."
+      },
+      "tax_rate": {
+        "tax_expense": 371,
+        "pretax_income": 1770,
+        "effective_rate": 0.21,
+        "flags": [],
+        "note": "Effective rate 21.0% for H1 2024 per XBRL fact EffectiveIncomeTaxRateContinuingOperations. Pretax income is positive. Tax expense is positive. No flags required."
+      },
+      "inventory": {
+        "total": 5073,
+        "raw_materials": 1576,
+        "wip": 180,
+        "finished_goods": 3317,
+        "note": "Inventory breakdown from Note 5: Finished goods 3317, Work-in-process 180, Raw materials and supplies 1576, Total 5073 at June 30 2024"
+      }
+    },
+    "short_term_investments_q": 0,
+    "diluted_shares_q": 327659574,
+    "basic_shares_q": 327659574,
+    "change_ar_q": 1321000000,
+    "sbc_q": 19000000,
+    "dna_q": 387000000,
+    "cff_q": -481000000,
+    "net_change_cash_q": 533000000,
+    "capex_q": -484000000,
+    "change_ap_q": 177000000,
+    "cfo_q": 1348000000,
+    "change_inventory_q": 443000000,
+    "cfi_q": -313000000,
+    "ticker": "LYB",
+    "acquisitions_q": 0
+  },
+  {
+    "period_end": "2024-09-30",
+    "period_start": "2024-07-01",
+    "revenue_q": 10160000000,
+    "cogs_q": 9080000000,
+    "rd_expense_q": 31000000,
+    "sga_q": 404000000,
+    "total_opex_q": 9520000000,
+    "operating_income_q": 802000000,
+    "interest_income_q": 36000000,
+    "interest_expense_q": -118000000,
+    "other_nonop_income_q": 11000000,
+    "pretax_income_q": 711000000,
+    "income_tax_expense_q": 134000000,
+    "equity_method_earnings_q": -20000000,
+    "net_income_q": 573000000,
+    "eps_basic_q": 1.76,
+    "eps_diluted_q": 1.75,
+    "cash_q": 2621000000,
+    "accounts_receivable_q": 3682000000,
+    "inventory_q": 5261000000,
+    "prepaid_q": 900000000,
+    "total_current_assets_q": 12742000000,
+    "ppe_q": 15865000000,
+    "operating_lease_assets_q": 1442000000,
+    "goodwill_q": 1633000000,
+    "intangibles_q": 599000000,
+    "other_noncurrent_assets_q": 710000000,
+    "total_assets_q": 37263000000,
+    "accrued_liabilities_q": 2239000000,
+    "total_current_liabilities_q": 5993000000,
+    "long_term_lease_liabilities_q": 1360000000,
+    "other_noncurrent_liabilities_q": 2083000000,
+    "common_stock_q": 19000000,
+    "apic_q": 6139000000,
+    "aoci_q": -1374000000,
+    "retained_earnings_q": 10366000000,
+    "equity_q": 13716000000,
+    "equity_incl_nci_q": 13728000000,
+    "noncontrolling_interests_q": 12000000,
+    "total_liabilities_and_equity_q": 37263000000,
+    "short_term_debt_q": 121000000,
+    "operating_lease_liabilities_q": 1360000000,
+    "accounts_payable_q": 3626000000,
+    "_calculation_components": {
+      "operating_leases": {
+        "current": null,
+        "noncurrent": 1360,
+        "total": null,
+        "current_location": "The current portion of operating lease liabilities is embedded within 'Accrued and other current liabilities' (2239 million at Sep 30, 2024). No separate XBRL tag for OperatingLeaseLiabilityCurrent was found in the undimensioned XBRL facts provided. The filing discloses noncurrent operating lease liabilities of 1360 million as a separate balance sheet line item (us-gaap:OperatingLeaseLiabilityNoncurrent). The current portion is included in Accrued and other current liabilities per the balance sheet structure.",
+        "flag": "Current operating lease liability not separately disclosed on balance sheet face; hidden in Accrued and other current liabilities"
+      },
+      "depreciation_and_amortization": {
+        "total": 1133,
+        "components": [
+          {
+            "label": "Depreciation and amortization (from CF statement)",
+            "value": 1133
+          },
+          {
+            "label": "Amortization of debt-related costs (from CF statement)",
+            "value": 9
+          }
+        ],
+        "is_single_line": false,
+        "note": "The CF statement shows DepreciationDepletionAndAmortization of 1133 as one line and AmortizationOfFinancingCostsAndDiscounts of 9 as a separate line. The 1133 is confirmed by the segment reconciliation table in the notes which shows D&A expense of 1133 for nine months 2024. The 9 million of debt cost amortization is separate."
+      },
+      "accounts_payable": {
+        "value": 3626,
+        "is_pure": false,
+        "combined_with": "Separate Trade and Related party lines on balance sheet",
+        "note_breakout": 3626,
+        "detail": "Trade AP is 3063 and Related party AP is 563 per balance sheet; total AP is 3626. Both are pure trade payables split by related vs non-related party. No combination with accrued liabilities."
+      },
+      "accounts_receivable": {
+        "value": 3682,
+        "is_pure": true,
+        "combined_with": null,
+        "note_breakout": 3682,
+        "detail": "Trade AR net is 3682 (NonrelatedPartyMember) plus Related party AR of 264. The filing shows AR net of allowance for credit losses of 4 million. Pure trade AR (non-related party) is 3682. Total AR including related party is 3946."
+      },
+      "capex": {
+        "cf_value": 1335,
+        "supplemental_not_yet_paid": null,
+        "includes_intangibles": false,
+        "note": "PaymentsToAcquirePropertyPlantAndEquipment of 1335 million for nine months 2024. No separate intangibles capex line on CF statement. No supplemental disclosure of capital expenditures incurred but not yet paid was identified in the XBRL facts provided."
+      },
+      "acquisitions": {
+        "total": 539,
+        "items": [
+          {
+            "concept": "us-gaap:PaymentsToAcquireEquityMethodInvestments",
+            "value": 539,
+            "description": "Acquisition of equity method investments - 35% stake in NATPET for approximately 500 million plus other equity method investment acquisitions totaling 539 million"
+          }
+        ]
+      },
+      "short_term_debt": {
+        "value": 121,
+        "components": [
+          {
+            "label": "Precious metal financings",
+            "value": 121
+          },
+          {
+            "label": "Commercial paper",
+            "value": 0
+          },
+          {
+            "label": "U.S. Receivables Facility borrowings",
+            "value": 0
+          }
+        ],
+        "confirmed_zero": false,
+        "note": "Short-term debt per BS is 121 million comprised entirely of precious metal financings. Commercial paper and U.S. Receivables Facility had zero outstanding at Sep 30, 2024. Current maturities of long-term debt is separately shown at 7 million."
+      },
+      "sbc": {
+        "cf_value": 71,
+        "note_by_function": null,
+        "note": "ShareBasedCompensation of 71 million per CF statement for nine months ended Sep 30, 2024. No breakdown by function was provided in the XBRL facts or notes summary."
+      },
+      "interest_expense": {
+        "gross": 365,
+        "income": 114,
+        "net": 251,
+        "source": "Gross interest expense us-gaap:InterestExpenseNonoperating = 365 million for nine months 2024 per IS and segment reconciliation. Interest income us-gaap:InvestmentIncomeInterest = 114 million. Net interest expense = 251 million as shown in the MD&A reconciliation table. The IS presents gross interest expense and gross interest income as separate line items."
+      },
+      "tax_rate": {
+        "tax_expense": 505,
+        "pretax_income": 2481,
+        "effective_rate": 0.204,
+        "flags": [
+          "Effective rate of 20.4% confirmed by XBRL fact us-gaap:EffectiveIncomeTaxRateContinuingOperations = 0.204 for 2024-01-01 to 2024-09-30",
+          "Pretax income is positive so no fallback needed"
+        ]
+      },
+      "inventory": {
+        "total": 5261,
+        "raw_materials": 1668,
+        "wip": 211,
+        "finished_goods": 3382,
+        "note": "Inventory breakdown from Note 5: Finished goods 3382, Work-in-process 211, Raw materials and supplies 1668, Total 5261 as of Sep 30, 2024"
+      }
+    },
+    "short_term_investments_q": 0,
+    "diluted_shares_q": 327428571,
+    "basic_shares_q": 325568182,
+    "change_ar_q": -191000000,
+    "sbc_q": 18000000,
+    "dna_q": 381000000,
+    "cff_q": -484000000,
+    "net_change_cash_q": -229000000,
+    "share_repurchases_q": 42000000,
+    "capex_q": -368000000,
+    "change_ap_q": -590000000,
+    "cfo_q": 670000000,
+    "change_inventory_q": 98000000,
+    "cfi_q": -483000000,
+    "ticker": "LYB",
+    "acquisitions_q": 0
+  }
+]

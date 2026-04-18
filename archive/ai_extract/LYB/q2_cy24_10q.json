@@ -1,0 +1,2162 @@
+{
+  "ai_extraction": {
+    "income_statement": {
+      "line_items": [
+        {
+          "label": "Sales and other operating revenues - Trade",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+          "values": {
+            "2024-04-01_2024-06-30": 10398,
+            "2023-04-01_2023-06-30": 10149,
+            "2024-01-01_2024-06-30": 20155,
+            "2023-01-01_2023-06-30": 20225
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML table row labeled Trade under Sales and other operating revenues, tagged with us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax in context c-5 (NonrelatedParty) for Q2 2024"
+        },
+        {
+          "label": "Sales and other operating revenues - Related parties",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+          "values": {
+            "2024-04-01_2024-06-30": 160,
+            "2023-04-01_2023-06-30": 157,
+            "2024-01-01_2024-06-30": 328,
+            "2023-01-01_2023-06-30": 328
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML table row labeled Related parties under Sales and other operating revenues, tagged with us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax in context c-9 (RelatedParty) for Q2 2024"
+        },
+        {
+          "label": "Sales and other operating revenues - Total",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+          "values": {
+            "2024-04-01_2024-06-30": 10558,
+            "2023-04-01_2023-06-30": 10306,
+            "2024-01-01_2024-06-30": 20483,
+            "2023-01-01_2023-06-30": 20553
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML subtotal row for Sales and other operating revenues, tagged with us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax in undimensioned context c-13 for Q2 2024"
+        },
+        {
+          "label": "Cost of sales",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:CostOfRevenue",
+          "values": {
+            "2024-04-01_2024-06-30": 9148,
+            "2023-04-01_2023-06-30": 8868,
+            "2024-01-01_2024-06-30": 17911,
+            "2023-01-01_2023-06-30": 17732
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled Cost of sales under Operating costs and expenses, tagged us-gaap:CostOfRevenue context c-13"
+        },
+        {
+          "label": "Impairments",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:AssetImpairmentCharges",
+          "values": {
+            "2024-04-01_2024-06-30": 0,
+            "2023-04-01_2023-06-30": 0,
+            "2024-01-01_2024-06-30": 0,
+            "2023-01-01_2023-06-30": 252
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled Impairments under Operating costs and expenses, tagged us-gaap:AssetImpairmentCharges context c-13"
+        },
+        {
+          "label": "Selling, general and administrative expenses",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:SellingGeneralAndAdministrativeExpense",
+          "values": {
+            "2024-04-01_2024-06-30": 407,
+            "2023-04-01_2023-06-30": 395,
+            "2024-01-01_2024-06-30": 833,
+            "2023-01-01_2023-06-30": 780
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled Selling, general and administrative expenses, tagged us-gaap:SellingGeneralAndAdministrativeExpense context c-13"
+        },
+        {
+          "label": "Research and development expenses",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:ResearchAndDevelopmentExpense",
+          "values": {
+            "2024-04-01_2024-06-30": 33,
+            "2023-04-01_2023-06-30": 32,
+            "2024-01-01_2024-06-30": 65,
+            "2023-01-01_2023-06-30": 65
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled Research and development expenses, tagged us-gaap:ResearchAndDevelopmentExpense context c-13"
+        },
+        {
+          "label": "Total operating costs and expenses",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:CostsAndExpenses",
+          "values": {
+            "2024-04-01_2024-06-30": 9588,
+            "2023-04-01_2023-06-30": 9295,
+            "2024-01-01_2024-06-30": 18809,
+            "2023-01-01_2023-06-30": 18829
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML subtotal row for operating costs block, tagged us-gaap:CostsAndExpenses context c-13"
+        },
+        {
+          "label": "Operating income",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:OperatingIncomeLoss",
+          "values": {
+            "2024-04-01_2024-06-30": 970,
+            "2023-04-01_2023-06-30": 1011,
+            "2024-01-01_2024-06-30": 1674,
+            "2023-01-01_2023-06-30": 1724
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled Operating income, tagged us-gaap:OperatingIncomeLoss context c-13"
+        },
+        {
+          "label": "Interest expense",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:InterestExpenseOperating",
+          "values": {
+            "2024-04-01_2024-06-30": 120,
+            "2023-04-01_2023-06-30": 115,
+            "2024-01-01_2024-06-30": 247,
+            "2023-01-01_2023-06-30": 231
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled Interest expense showing parenthetical values, tagged us-gaap:InterestExpenseOperating context c-13. XBRL value is positive debit per convention"
+        },
+        {
+          "label": "Interest income",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:InvestmentIncomeInterest",
+          "values": {
+            "2024-04-01_2024-06-30": 37,
+            "2023-04-01_2023-06-30": 28,
+            "2024-01-01_2024-06-30": 78,
+            "2023-01-01_2023-06-30": 51
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled Interest income, tagged us-gaap:InvestmentIncomeInterest context c-13"
+        },
+        {
+          "label": "Gain on sale of business",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:GainLossOnSaleOfBusiness",
+          "values": {
+            "2024-04-01_2024-06-30": 293,
+            "2023-04-01_2023-06-30": 0,
+            "2024-01-01_2024-06-30": 293,
+            "2023-01-01_2023-06-30": 0
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled Gain on sale of business, tagged us-gaap:GainLossOnSaleOfBusiness context c-13"
+        },
+        {
+          "label": "Other income (expense), net",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:OtherNonoperatingIncomeExpense",
+          "values": {
+            "2024-04-01_2024-06-30": 13,
+            "2023-04-01_2023-06-30": -7,
+            "2024-01-01_2024-06-30": 18,
+            "2023-01-01_2023-06-30": -2
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled Other income (expense), net, tagged us-gaap:OtherNonoperatingIncomeExpense context c-13"
+        },
+        {
+          "label": "Income from continuing operations before equity investments and income taxes",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments",
+          "values": {
+            "2024-04-01_2024-06-30": 1193,
+            "2023-04-01_2023-06-30": 917,
+            "2024-01-01_2024-06-30": 1816,
+            "2023-01-01_2023-06-30": 1542
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled Income from continuing operations before equity investments and income taxes, tagged us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments context c-13"
+        },
+        {
+          "label": "(Loss) income from equity investments",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:IncomeLossFromEquityMethodInvestments",
+          "values": {
+            "2024-04-01_2024-06-30": -19,
+            "2023-04-01_2023-06-30": -12,
+            "2024-01-01_2024-06-30": -46,
+            "2023-01-01_2023-06-30": 5
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled (Loss) income from equity investments, tagged us-gaap:IncomeLossFromEquityMethodInvestments context c-13. HTML shows parentheses for Q2 2024 matching XBRL negative value"
+        },
+        {
+          "label": "Income from continuing operations before income taxes",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
+          "values": {
+            "2024-04-01_2024-06-30": 1174,
+            "2023-04-01_2023-06-30": 905,
+            "2024-01-01_2024-06-30": 1770,
+            "2023-01-01_2023-06-30": 1547
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled Income from continuing operations before income taxes, tagged us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest context c-13"
+        },
+        {
+          "label": "Provision for income taxes",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:IncomeTaxExpenseBenefit",
+          "values": {
+            "2024-04-01_2024-06-30": 249,
+            "2023-04-01_2023-06-30": 188,
+            "2024-01-01_2024-06-30": 371,
+            "2023-01-01_2023-06-30": 355
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled Provision for income taxes, tagged us-gaap:IncomeTaxExpenseBenefit context c-13"
+        },
+        {
+          "label": "Income from continuing operations",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:IncomeLossFromContinuingOperationsIncludingPortionAttributableToNoncontrollingInterest",
+          "values": {
+            "2024-04-01_2024-06-30": 925,
+            "2023-04-01_2023-06-30": 717,
+            "2024-01-01_2024-06-30": 1399,
+            "2023-01-01_2023-06-30": 1192
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled Income from continuing operations, tagged us-gaap:IncomeLossFromContinuingOperationsIncludingPortionAttributableToNoncontrollingInterest context c-13"
+        },
+        {
+          "label": "Loss from discontinued operations, net of tax",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:IncomeLossFromDiscontinuedOperationsNetOfTax",
+          "values": {
+            "2024-04-01_2024-06-30": -1,
+            "2023-04-01_2023-06-30": -2,
+            "2024-01-01_2024-06-30": -2,
+            "2023-01-01_2023-06-30": -3
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled Loss from discontinued operations, net of tax, tagged us-gaap:IncomeLossFromDiscontinuedOperationsNetOfTax context c-13. HTML shows parentheses matching XBRL negative"
+        },
+        {
+          "label": "Net income",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:ProfitLoss",
+          "values": {
+            "2024-04-01_2024-06-30": 924,
+            "2023-04-01_2023-06-30": 715,
+            "2024-01-01_2024-06-30": 1397,
+            "2023-01-01_2023-06-30": 1189
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled Net income, tagged us-gaap:ProfitLoss context c-13"
+        },
+        {
+          "label": "Dividends on redeemable non-controlling interests",
+          "indent_level": 1,
+          "xbrl_concept": "lyb:DividendsRedeemableNonControllingInterestsCash",
+          "values": {
+            "2024-04-01_2024-06-30": 1,
+            "2023-04-01_2023-06-30": 1,
+            "2024-01-01_2024-06-30": 3,
+            "2023-01-01_2023-06-30": 3
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled Dividends on redeemable non-controlling interests showing parenthetical deduction, tagged lyb:DividendsRedeemableNonControllingInterestsCash context c-13. XBRL positive value represents a deduction from net income available to shareholders"
+        },
+        {
+          "label": "Net income attributable to the Company shareholders",
+          "indent_level": 0,
+          "xbrl_concept": "lyb:NetIncomeAvailabletoCompanyShareholders",
+          "values": {
+            "2024-04-01_2024-06-30": 923,
+            "2023-04-01_2023-06-30": 714,
+            "2024-01-01_2024-06-30": 1394,
+            "2023-01-01_2023-06-30": 1186
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML row labeled Net income attributable to the Company shareholders, tagged lyb:NetIncomeAvailabletoCompanyShareholders context c-13"
+        },
+        {
+          "label": "Basic EPS - Continuing operations",
+          "indent_level": 2,
+          "xbrl_concept": "us-gaap:IncomeLossFromContinuingOperationsPerBasicShare",
+          "values": {
+            "2024-04-01_2024-06-30": 2.82,
+            "2023-04-01_2023-06-30": 2.19,
+            "2024-01-01_2024-06-30": 4.27,
+            "2023-01-01_2023-06-30": 3.64
+          },
+          "unit": "USD_per_share",
+          "xbrl_match": true,
+          "mapping_reason": "HTML EPS table row for Basic Continuing operations, tagged us-gaap:IncomeLossFromContinuingOperationsPerBasicShare context c-13"
+        },
+        {
+          "label": "Basic EPS - Discontinued operations",
+          "indent_level": 2,
+          "xbrl_concept": "us-gaap:IncomeLossFromDiscontinuedOperationsNetOfTaxPerBasicShare",
+          "values": {
+            "2024-04-01_2024-06-30": 0.0,
+            "2023-04-01_2023-06-30": -0.01,
+            "2024-01-01_2024-06-30": -0.01,
+            "2023-01-01_2023-06-30": -0.01
+          },
+          "unit": "USD_per_share",
+          "xbrl_match": true,
+          "mapping_reason": "HTML EPS table row for Basic Discontinued operations, tagged us-gaap:IncomeLossFromDiscontinuedOperationsNetOfTaxPerBasicShare context c-13"
+        },
+        {
+          "label": "Basic EPS - Total",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:EarningsPerShareBasic",
+          "values": {
+            "2024-04-01_2024-06-30": 2.82,
+            "2023-04-01_2023-06-30": 2.18,
+            "2024-01-01_2024-06-30": 4.26,
+            "2023-01-01_2023-06-30": 3.63
+          },
+          "unit": "USD_per_share",
+          "xbrl_match": true,
+          "mapping_reason": "HTML EPS subtotal row for Basic total, tagged us-gaap:EarningsPerShareBasic context c-13"
+        },
+        {
+          "label": "Diluted EPS - Continuing operations",
+          "indent_level": 2,
+          "xbrl_concept": "us-gaap:IncomeLossFromContinuingOperationsPerDilutedShare",
+          "values": {
+            "2024-04-01_2024-06-30": 2.82,
+            "2023-04-01_2023-06-30": 2.19,
+            "2024-01-01_2024-06-30": 4.26,
+            "2023-01-01_2023-06-30": 3.63
+          },
+          "unit": "USD_per_share",
+          "xbrl_match": true,
+          "mapping_reason": "HTML EPS table row for Diluted Continuing operations, tagged us-gaap:IncomeLossFromContinuingOperationsPerDilutedShare context c-13"
+        },
+        {
+          "label": "Diluted EPS - Discontinued operations",
+          "indent_level": 2,
+          "xbrl_concept": "us-gaap:IncomeLossFromDiscontinuedOperationsNetOfTaxPerDilutedShare",
+          "values": {
+            "2024-04-01_2024-06-30": 0.0,
+            "2023-04-01_2023-06-30": -0.01,
+            "2024-01-01_2024-06-30": -0.01,
+            "2023-01-01_2023-06-30": -0.01
+          },
+          "unit": "USD_per_share",
+          "xbrl_match": true,
+          "mapping_reason": "HTML EPS table row for Diluted Discontinued operations, tagged us-gaap:IncomeLossFromDiscontinuedOperationsNetOfTaxPerDilutedShare context c-13"
+        },
+        {
+          "label": "Diluted EPS - Total",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:EarningsPerShareDiluted",
+          "values": {
+            "2024-04-01_2024-06-30": 2.82,
+            "2023-04-01_2023-06-30": 2.18,
+            "2024-01-01_2024-06-30": 4.25,
+            "2023-01-01_2023-06-30": 3.62
+          },
+          "unit": "USD_per_share",
+          "xbrl_match": true,
+          "mapping_reason": "HTML EPS subtotal row for Diluted total, tagged us-gaap:EarningsPerShareDiluted context c-13"
+        }
+      ],
+      "formulas": [
+        {
+          "formula": "Trade revenues + Related party revenues = Total Sales and other operating revenues",
+          "components": [
+            "Sales and other operating revenues - Trade",
+            "Sales and other operating revenues - Related parties",
+            "Sales and other operating revenues - Total"
+          ],
+          "operation": "Sales and other operating revenues - Trade + Sales and other operating revenues - Related parties",
+          "result_label": "Sales and other operating revenues - Total"
+        },
+        {
+          "formula": "Cost of sales + Impairments + SGA + RD = Total operating costs and expenses",
+          "components": [
+            "Cost of sales",
+            "Impairments",
+            "Selling, general and administrative expenses",
+            "Research and development expenses",
+            "Total operating costs and expenses"
+          ],
+          "operation": "Cost of sales + Impairments + Selling, general and administrative expenses + Research and development expenses",
+          "result_label": "Total operating costs and expenses"
+        },
+        {
+          "formula": "Total revenues - Total operating costs = Operating income",
+          "components": [
+            "Sales and other operating revenues - Total",
+            "Total operating costs and expenses",
+            "Operating income"
+          ],
+          "operation": "Sales and other operating revenues - Total - Total operating costs and expenses",
+          "result_label": "Operating income"
+        },
+        {
+          "formula": "Operating income - Interest expense + Interest income + Gain on sale + Other = Income before equity and taxes",
+          "components": [
+            "Operating income",
+            "Interest expense",
+            "Interest income",
+            "Gain on sale of business",
+            "Other income (expense), net",
+            "Income from continuing operations before equity investments and income taxes"
+          ],
+          "operation": "Operating income - Interest expense + Interest income + Gain on sale of business + Other income (expense), net",
+          "result_label": "Income from continuing operations before equity investments and income taxes"
+        },
+        {
+          "formula": "Income before equity and taxes + Equity earnings = Income before taxes",
+          "components": [
+            "Income from continuing operations before equity investments and income taxes",
+            "(Loss) income from equity investments",
+            "Income from continuing operations before income taxes"
+          ],
+          "operation": "Income from continuing operations before equity investments and income taxes + (Loss) income from equity investments",
+          "result_label": "Income from continuing operations before income taxes"
+        },
+        {
+          "formula": "Income before taxes - Tax = Income from continuing operations",
+          "components": [
+            "Income from continuing operations before income taxes",
+            "Provision for income taxes",
+            "Income from continuing operations"
+          ],
+          "operation": "Income from continuing operations before income taxes - Provision for income taxes",
+          "result_label": "Income from continuing operations"
+        },
+        {
+          "formula": "Income from continuing + Discontinued = Net income",
+          "components": [
+            "Income from continuing operations",
+            "Loss from discontinued operations, net of tax",
+            "Net income"
+          ],
+          "operation": "Income from continuing operations + Loss from discontinued operations, net of tax",
+          "result_label": "Net income"
+        },
+        {
+          "formula": "Net income - Redeemable NCI dividends = Net income to Company shareholders",
+          "components": [
+            "Net income",
+            "Dividends on redeemable non-controlling interests",
+            "Net income attributable to the Company shareholders"
+          ],
+          "operation": "Net income - Dividends on redeemable non-controlling interests",
+          "result_label": "Net income attributable to the Company shareholders"
+        }
+      ],
+      "xbrl_not_on_statement": [
+        {
+          "concept": "us-gaap:ComprehensiveIncomeNetOfTaxIncludingPortionAttributableToNoncontrollingInterest",
+          "value": 933,
+          "period": "2024-04-01_2024-06-30",
+          "reason": "Comprehensive income appears on the Consolidated Statements of Comprehensive Income, not the income statement face"
+        },
+        {
+          "concept": "us-gaap:ComprehensiveIncomeNetOfTax",
+          "value": 932,
+          "period": "2024-04-01_2024-06-30",
+          "reason": "Comprehensive income attributable to Company shareholders appears on Comprehensive Income statement, not income statement"
+        },
+        {
+          "concept": "us-gaap:OtherComprehensiveIncomeLossNetOfTax",
+          "value": 9,
+          "period": "2024-04-01_2024-06-30",
+          "reason": "OCI appears on Comprehensive Income statement, not income statement"
+        },
+        {
+          "concept": "us-gaap:OtherComprehensiveIncomeLossCashFlowHedgeGainLossAfterReclassificationAndTax",
+          "value": 49,
+          "period": "2024-04-01_2024-06-30",
+          "reason": "Financial derivatives OCI component appears on Comprehensive Income statement"
+        },
+        {
+          "concept": "us-gaap:OtherComprehensiveIncomeLossPensionAndOtherPostretirementBenefitPlansAdjustmentNetOfTax",
+          "value": -4,
+          "period": "2024-04-01_2024-06-30",
+          "reason": "Pension OCI component appears on Comprehensive Income statement"
+        },
+        {
+          "concept": "us-gaap:OtherComprehensiveIncomeLossForeignCurrencyTransactionAndTranslationAdjustmentNetOfTax",
+          "value": -44,
+          "period": "2024-04-01_2024-06-30",
+          "reason": "Foreign currency translation OCI component appears on Comprehensive Income statement"
+        },
+        {
+          "concept": "us-gaap:Revenues",
+          "value": 10558,
+          "period": "2024-04-01_2024-06-30",
+          "reason": "Revenues concept used in disaggregated revenue note tables; revenue on the income statement face uses RevenueFromContractWithCustomerExcludingAssessedTax"
+        }
+      ]
+    },
+    "balance_sheet": {
+      "line_items": [
+        {
+          "label": "Cash and cash equivalents",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+          "values": {
+            "2024-06-30": 2839,
+            "2023-12-31": 3390
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Cash and cash equivalents, tagged us-gaap:CashAndCashEquivalentsAtCarryingValue context c-16"
+        },
+        {
+          "label": "Restricted cash",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:RestrictedCashAndCashEquivalentsAtCarryingValue",
+          "values": {
+            "2024-06-30": 25,
+            "2023-12-31": 15
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Restricted cash, tagged us-gaap:RestrictedCashAndCashEquivalentsAtCarryingValue context c-16"
+        },
+        {
+          "label": "Accounts receivable - Trade, net",
+          "indent_level": 2,
+          "xbrl_concept": "us-gaap:AccountsReceivableNetCurrent",
+          "values": {
+            "2024-06-30": 3855,
+            "2023-12-31": 3356
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Trade, net under Accounts receivable, tagged us-gaap:AccountsReceivableNetCurrent context c-18 (NonrelatedParty)"
+        },
+        {
+          "label": "Accounts receivable - Related parties",
+          "indent_level": 2,
+          "xbrl_concept": "us-gaap:AccountsReceivableNetCurrent",
+          "values": {
+            "2024-06-30": 207,
+            "2023-12-31": 151
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Related parties under Accounts receivable, tagged us-gaap:AccountsReceivableNetCurrent context c-20 (RelatedParty)"
+        },
+        {
+          "label": "Inventories",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:InventoryNet",
+          "values": {
+            "2024-06-30": 5073,
+            "2023-12-31": 4765
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Inventories, tagged us-gaap:InventoryNet context c-16"
+        },
+        {
+          "label": "Prepaid expenses and other current assets",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:PrepaidExpenseAndOtherAssetsCurrent",
+          "values": {
+            "2024-06-30": 912,
+            "2023-12-31": 1475
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Prepaid expenses and other current assets, tagged us-gaap:PrepaidExpenseAndOtherAssetsCurrent context c-16"
+        },
+        {
+          "label": "Total current assets",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:AssetsCurrent",
+          "values": {
+            "2024-06-30": 12911,
+            "2023-12-31": 13152
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Total current assets, tagged us-gaap:AssetsCurrent context c-16"
+        },
+        {
+          "label": "Operating lease assets",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:OperatingLeaseRightOfUseAsset",
+          "values": {
+            "2024-06-30": 1460,
+            "2023-12-31": 1529
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Operating lease assets, tagged us-gaap:OperatingLeaseRightOfUseAsset context c-16"
+        },
+        {
+          "label": "Property, plant and equipment (gross)",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:PropertyPlantAndEquipmentGross",
+          "values": {
+            "2024-06-30": 25082,
+            "2023-12-31": 24906
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Property, plant and equipment, tagged us-gaap:PropertyPlantAndEquipmentGross context c-16"
+        },
+        {
+          "label": "Less: Accumulated depreciation",
+          "indent_level": 2,
+          "xbrl_concept": "us-gaap:AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment",
+          "values": {
+            "2024-06-30": 9508,
+            "2023-12-31": 9359
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Less: Accumulated depreciation, tagged us-gaap:AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment context c-16. HTML shows parentheses but XBRL value is positive per convention"
+        },
+        {
+          "label": "Property, plant and equipment, net",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:PropertyPlantAndEquipmentNet",
+          "values": {
+            "2024-06-30": 15574,
+            "2023-12-31": 15547
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Property, plant and equipment, net, tagged us-gaap:PropertyPlantAndEquipmentNet context c-16"
+        },
+        {
+          "label": "Equity investments",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:EquityMethodInvestments",
+          "values": {
+            "2024-06-30": 4290,
+            "2023-12-31": 3907
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Equity investments, tagged us-gaap:EquityMethodInvestments context c-16"
+        },
+        {
+          "label": "Goodwill",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:Goodwill",
+          "values": {
+            "2024-06-30": 1603,
+            "2023-12-31": 1647
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Goodwill, tagged us-gaap:Goodwill context c-16"
+        },
+        {
+          "label": "Intangible assets, net",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:IntangibleAssetsNetExcludingGoodwill",
+          "values": {
+            "2024-06-30": 615,
+            "2023-12-31": 641
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Intangible assets, net, tagged us-gaap:IntangibleAssetsNetExcludingGoodwill context c-16"
+        },
+        {
+          "label": "Other assets",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:OtherAssetsNoncurrent",
+          "values": {
+            "2024-06-30": 611,
+            "2023-12-31": 577
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Other assets, tagged us-gaap:OtherAssetsNoncurrent context c-16"
+        },
+        {
+          "label": "Total assets",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:Assets",
+          "values": {
+            "2024-06-30": 37064,
+            "2023-12-31": 37000
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Total assets, tagged us-gaap:Assets context c-16"
+        },
+        {
+          "label": "Current maturities of long-term debt",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:LongTermDebtAndCapitalLeaseObligationsCurrent",
+          "values": {
+            "2024-06-30": 7,
+            "2023-12-31": 782
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Current maturities of long-term debt, tagged us-gaap:LongTermDebtAndCapitalLeaseObligationsCurrent context c-16"
+        },
+        {
+          "label": "Short-term debt",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:ShortTermBorrowings",
+          "values": {
+            "2024-06-30": 166,
+            "2023-12-31": 117
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Short-term debt, tagged us-gaap:ShortTermBorrowings context c-16"
+        },
+        {
+          "label": "Accounts payable - Trade",
+          "indent_level": 2,
+          "xbrl_concept": "us-gaap:AccountsPayableTradeCurrent",
+          "values": {
+            "2024-06-30": 3557,
+            "2023-12-31": 3354
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Trade under Accounts payable, tagged us-gaap:AccountsPayableTradeCurrent context c-18 (NonrelatedParty)"
+        },
+        {
+          "label": "Accounts payable - Related parties",
+          "indent_level": 2,
+          "xbrl_concept": "us-gaap:AccountsPayableTradeCurrent",
+          "values": {
+            "2024-06-30": 517,
+            "2023-12-31": 461
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Related parties under Accounts payable, tagged us-gaap:AccountsPayableTradeCurrent context c-20 (RelatedParty)"
+        },
+        {
+          "label": "Accrued and other current liabilities",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:AccruedLiabilitiesCurrent",
+          "values": {
+            "2024-06-30": 1900,
+            "2023-12-31": 2436
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Accrued and other current liabilities, tagged us-gaap:AccruedLiabilitiesCurrent context c-16"
+        },
+        {
+          "label": "Total current liabilities",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:LiabilitiesCurrent",
+          "values": {
+            "2024-06-30": 6147,
+            "2023-12-31": 7150
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Total current liabilities, tagged us-gaap:LiabilitiesCurrent context c-16"
+        },
+        {
+          "label": "Long-term debt",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:LongTermDebtAndCapitalLeaseObligations",
+          "values": {
+            "2024-06-30": 11017,
+            "2023-12-31": 10333
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Long-term debt, tagged us-gaap:LongTermDebtAndCapitalLeaseObligations context c-16"
+        },
+        {
+          "label": "Operating lease liabilities",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:OperatingLeaseLiabilityNoncurrent",
+          "values": {
+            "2024-06-30": 1363,
+            "2023-12-31": 1409
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Operating lease liabilities, tagged us-gaap:OperatingLeaseLiabilityNoncurrent context c-16"
+        },
+        {
+          "label": "Other liabilities",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:OtherLiabilitiesNoncurrent",
+          "values": {
+            "2024-06-30": 2113,
+            "2023-12-31": 2164
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Other liabilities (noncurrent), tagged us-gaap:OtherLiabilitiesNoncurrent context c-16"
+        },
+        {
+          "label": "Deferred income taxes",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:DeferredIncomeTaxLiabilitiesNet",
+          "values": {
+            "2024-06-30": 2847,
+            "2023-12-31": 2886
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Deferred income taxes, tagged us-gaap:DeferredIncomeTaxLiabilitiesNet context c-16"
+        },
+        {
+          "label": "Commitments and contingencies",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:CommitmentsAndContingencies",
+          "values": {
+            "2024-06-30": null,
+            "2023-12-31": null
+          },
+          "unit": "USD_millions",
+          "xbrl_match": null,
+          "mapping_reason": "HTML balance sheet row labeled Commitments and contingencies with no numeric value, tagged us-gaap:CommitmentsAndContingencies with xsi:nil=true"
+        },
+        {
+          "label": "Redeemable non-controlling interests",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:TemporaryEquityCarryingAmountIncludingPortionAttributableToNoncontrollingInterests",
+          "values": {
+            "2024-06-30": 114,
+            "2023-12-31": 114
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Redeemable non-controlling interests, tagged us-gaap:TemporaryEquityCarryingAmountIncludingPortionAttributableToNoncontrollingInterests context c-16"
+        },
+        {
+          "label": "Ordinary shares",
+          "indent_level": 2,
+          "xbrl_concept": "us-gaap:CommonStockValue",
+          "values": {
+            "2024-06-30": 19,
+            "2023-12-31": 19
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row for Ordinary shares par value amount, tagged us-gaap:CommonStockValue context c-16"
+        },
+        {
+          "label": "Additional paid-in capital",
+          "indent_level": 2,
+          "xbrl_concept": "us-gaap:AdditionalPaidInCapital",
+          "values": {
+            "2024-06-30": 6122,
+            "2023-12-31": 6145
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Additional paid-in capital, tagged us-gaap:AdditionalPaidInCapital context c-16"
+        },
+        {
+          "label": "Retained earnings",
+          "indent_level": 2,
+          "xbrl_concept": "us-gaap:RetainedEarningsAccumulatedDeficit",
+          "values": {
+            "2024-06-30": 10233,
+            "2023-12-31": 9692
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Retained earnings, tagged us-gaap:RetainedEarningsAccumulatedDeficit context c-16"
+        },
+        {
+          "label": "Accumulated other comprehensive loss",
+          "indent_level": 2,
+          "xbrl_concept": "us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax",
+          "values": {
+            "2024-06-30": -1523,
+            "2023-12-31": -1476
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Accumulated other comprehensive loss showing parenthetical, tagged us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax context c-16 with sign=- in tag yielding -1523"
+        },
+        {
+          "label": "Treasury stock",
+          "indent_level": 2,
+          "xbrl_concept": "us-gaap:TreasuryStockCommonValue",
+          "values": {
+            "2024-06-30": 1402,
+            "2023-12-31": 1450
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Treasury stock showing parenthetical deduction, tagged us-gaap:TreasuryStockCommonValue context c-16. XBRL value is positive representing treasury cost"
+        },
+        {
+          "label": "Total Company share of shareholders equity",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:StockholdersEquity",
+          "values": {
+            "2024-06-30": 13449,
+            "2023-12-31": 12930
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Total Company share of shareholders equity, tagged us-gaap:StockholdersEquity context c-16"
+        },
+        {
+          "label": "Non-controlling interests",
+          "indent_level": 2,
+          "xbrl_concept": "us-gaap:MinorityInterest",
+          "values": {
+            "2024-06-30": 14,
+            "2023-12-31": 14
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Non-controlling interests, tagged us-gaap:MinorityInterest context c-16"
+        },
+        {
+          "label": "Total equity",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest",
+          "values": {
+            "2024-06-30": 13463,
+            "2023-12-31": 12944
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Total equity, tagged us-gaap:StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest context c-16"
+        },
+        {
+          "label": "Total liabilities, redeemable non-controlling interests and equity",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:LiabilitiesAndStockholdersEquity",
+          "values": {
+            "2024-06-30": 37064,
+            "2023-12-31": 37000
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "HTML balance sheet row labeled Total liabilities, redeemable non-controlling interests and equity, tagged us-gaap:LiabilitiesAndStockholdersEquity context c-16"
+        }
+      ],
+      "formulas": [
+        {
+          "formula": "Cash + Restricted cash + AR Trade + AR Related + Inventories + Prepaid = Total current assets",
+          "components": [
+            "Cash and cash equivalents",
+            "Restricted cash",
+            "Accounts receivable - Trade, net",
+            "Accounts receivable - Related parties",
+            "Inventories",
+            "Prepaid expenses and other current assets",
+            "Total current assets"
+          ],
+          "operation": "Cash and cash equivalents + Restricted cash + Accounts receivable - Trade, net + Accounts receivable - Related parties + Inventories + Prepaid expenses and other current assets",
+          "result_label": "Total current assets"
+        },
+        {
+          "formula": "PPE gross - Accumulated depreciation = PPE net",
+          "components": [
+            "Property, plant and equipment (gross)",
+            "Less: Accumulated depreciation",
+            "Property, plant and equipment, net"
+          ],
+          "operation": "Property, plant and equipment (gross) - Less: Accumulated depreciation",
+          "result_label": "Property, plant and equipment, net"
+        },
+        {
+          "formula": "Current assets + Operating lease + PPE net + Equity investments + Goodwill + Intangibles + Other = Total assets",
+          "components": [
+            "Total current assets",
+            "Operating lease assets",
+            "Property, plant and equipment, net",
+            "Equity investments",
+            "Goodwill",
+            "Intangible assets, net",
+            "Other assets",
+            "Total assets"
+          ],
+          "operation": "Total current assets + Operating lease assets + Property, plant and equipment, net + Equity investments + Goodwill + Intangible assets, net + Other assets",
+          "result_label": "Total assets"
+        },
+        {
+          "formula": "Current maturities + Short-term debt + AP Trade + AP Related + Accrued = Total current liabilities",
+          "components": [
+            "Current maturities of long-term debt",
+            "Short-term debt",
+            "Accounts payable - Trade",
+            "Accounts payable - Related parties",
+            "Accrued and other current liabilities",
+            "Total current liabilities"
+          ],
+          "operation": "Current maturities of long-term debt + Short-term debt + Accounts payable - Trade + Accounts payable - Related parties + Accrued and other current liabilities",
+          "result_label": "Total current liabilities"
+        },
+        {
+          "formula": "Common stock + APIC + Retained earnings + AOCI - Treasury stock = Total Company shareholders equity",
+          "components": [
+            "Ordinary shares",
+            "Additional paid-in capital",
+            "Retained earnings",
+            "Accumulated other comprehensive loss",
+            "Treasury stock",
+            "Total Company share of shareholders equity"
+          ],
+          "operation": "Ordinary shares + Additional paid-in capital + Retained earnings + Accumulated other comprehensive loss - Treasury stock",
+          "result_label": "Total Company share of shareholders equity"
+        },
+        {
+          "formula": "Company equity + NCI = Total equity",
+          "components": [
+            "Total Company share of shareholders equity",
+            "Non-controlling interests",
+            "Total equity"
+          ],
+          "operation": "Total Company share of shareholders equity + Non-controlling interests",
+          "result_label": "Total equity"
+        },
+        {
+          "formula": "Total current liabilities + LT debt + Operating lease liabilities + Other liabilities + Deferred taxes + Redeemable NCI + Total equity = Total liabilities and equity",
+          "components": [
+            "Total current liabilities",
+            "Long-term debt",
+            "Operating lease liabilities",
+            "Other liabilities",
+            "Deferred income taxes",
+            "Redeemable non-controlling interests",
+            "Total equity",
+            "Total liabilities, redeemable non-controlling interests and equity"
+          ],
+          "operation": "Total current liabilities + Long-term debt + Operating lease liabilities + Other liabilities + Deferred income taxes + Redeemable non-controlling interests + Total equity",
+          "result_label": "Total liabilities, redeemable non-controlling interests and equity"
+        },
+        {
+          "formula": "Total assets = Total liabilities redeemable NCI and equity",
+          "components": [
+            "Total assets",
+            "Total liabilities, redeemable non-controlling interests and equity"
+          ],
+          "operation": "Total assets - Total liabilities, redeemable non-controlling interests and equity",
+          "result_label": "Total assets"
+        }
+      ],
+      "xbrl_not_on_statement": [
+        {
+          "concept": "us-gaap:LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities",
+          "value": 11024,
+          "period": "2024-06-30",
+          "reason": "Total long-term debt before subtracting current maturities; shown in debt note table, not balance sheet face"
+        },
+        {
+          "concept": "us-gaap:CommonStockParOrStatedValuePerShare",
+          "value": 0.04,
+          "period": "2024-06-30",
+          "reason": "Par value per share is a disclosure in the balance sheet header text, not a separate numeric line item"
+        },
+        {
+          "concept": "us-gaap:CommonStockSharesAuthorized",
+          "value": 1275,
+          "period": "2024-06-30",
+          "reason": "Shares authorized disclosed in balance sheet parenthetical description, not a separate monetary line"
+        },
+        {
+          "concept": "us-gaap:CommonStockSharesOutstanding",
+          "value": 325078684,
+          "period": "2024-06-30",
+          "reason": "Shares outstanding disclosed in balance sheet parenthetical, not a separate line item"
+        },
+        {
+          "concept": "us-gaap:TreasuryStockCommonShares",
+          "value": 15343814,
+          "period": "2024-06-30",
+          "reason": "Treasury shares count disclosed in balance sheet parenthetical description"
+        },
+        {
+          "concept": "us-gaap:MarketableSecuritiesCurrent",
+          "value": 1876,
+          "period": "2024-06-30",
+          "reason": "Marketable securities within cash and cash equivalents disclosed in note 7, included within CashAndCashEquivalentsAtCarryingValue on balance sheet"
+        }
+      ]
+    },
+    "cash_flow": {
+      "line_items": [
+        {
+          "label": "Net income",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:ProfitLoss",
+          "values": {
+            "2024-01-01_2024-06-30": 1397,
+            "2023-01-01_2023-06-30": 1189
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "First line of cash flow from operations labeled Net income, tagged us-gaap:ProfitLoss context c-1"
+        },
+        {
+          "label": "Depreciation and amortization",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:DepreciationDepletionAndAmortization",
+          "values": {
+            "2024-01-01_2024-06-30": 752,
+            "2023-01-01_2023-06-30": 787
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "Adjustment line labeled Depreciation and amortization, tagged us-gaap:DepreciationDepletionAndAmortization context c-1"
+        },
+        {
+          "label": "Impairments",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:AssetImpairmentCharges",
+          "values": {
+            "2024-01-01_2024-06-30": 0,
+            "2023-01-01_2023-06-30": 252
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "Adjustment line labeled Impairments in CFO section, tagged us-gaap:AssetImpairmentCharges context c-1"
+        },
+        {
+          "label": "Amortization of debt-related costs",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:AmortizationOfFinancingCostsAndDiscounts",
+          "values": {
+            "2024-01-01_2024-06-30": 5,
+            "2023-01-01_2023-06-30": 4
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "Adjustment line labeled Amortization of debt-related costs, tagged us-gaap:AmortizationOfFinancingCostsAndDiscounts context c-1"
+        },
+        {
+          "label": "Share-based compensation",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:ShareBasedCompensation",
+          "values": {
+            "2024-01-01_2024-06-30": 53,
+            "2023-01-01_2023-06-30": 48
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "Adjustment line labeled Share-based compensation, tagged us-gaap:ShareBasedCompensation context c-1"
+        },
+        {
+          "label": "Equity loss (income)",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:IncomeLossFromEquityMethodInvestments",
+          "values": {
+            "2024-01-01_2024-06-30": -46,
+            "2023-01-01_2023-06-30": 5
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFO adjustment labeled Equity loss (income) removing equity method earnings; tagged us-gaap:IncomeLossFromEquityMethodInvestments context c-1. In CFO HTML shown as addback 46 (loss), XBRL fact is -46"
+        },
+        {
+          "label": "Distributions of earnings, net of tax",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:EquityMethodInvestmentDividendsOrDistributions",
+          "values": {
+            "2024-01-01_2024-06-30": 40,
+            "2023-01-01_2023-06-30": 50
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFO adjustment labeled Distributions of earnings, net of tax, tagged us-gaap:EquityMethodInvestmentDividendsOrDistributions context c-1"
+        },
+        {
+          "label": "Deferred income tax (benefit) provision",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:DeferredIncomeTaxesAndTaxCredits",
+          "values": {
+            "2024-01-01_2024-06-30": -55,
+            "2023-01-01_2023-06-30": 19
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFO adjustment labeled Deferred income tax benefit shown in parentheses for 2024, tagged us-gaap:DeferredIncomeTaxesAndTaxCredits context c-1"
+        },
+        {
+          "label": "Gain on sale of business",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:GainLossOnSaleOfBusiness",
+          "values": {
+            "2024-01-01_2024-06-30": 293,
+            "2023-01-01_2023-06-30": 0
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFO adjustment removing gain on sale of business shown as subtraction in HTML, tagged us-gaap:GainLossOnSaleOfBusiness context c-1. XBRL value 293 represents gain being removed from CFO"
+        },
+        {
+          "label": "Accounts receivable (change)",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsReceivable",
+          "values": {
+            "2024-01-01_2024-06-30": 604,
+            "2023-01-01_2023-06-30": 192
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "Working capital change labeled Accounts receivable shown in parentheses (use of cash), tagged us-gaap:IncreaseDecreaseInAccountsReceivable context c-1. XBRL positive value means increase in AR which is use of cash"
+        },
+        {
+          "label": "Inventories (change)",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInInventories",
+          "values": {
+            "2024-01-01_2024-06-30": 335,
+            "2023-01-01_2023-06-30": 349
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "Working capital change labeled Inventories shown in parentheses, tagged us-gaap:IncreaseDecreaseInInventories context c-1"
+        },
+        {
+          "label": "Accounts payable (change)",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:IncreaseDecreaseInAccountsPayable",
+          "values": {
+            "2024-01-01_2024-06-30": 373,
+            "2023-01-01_2023-06-30": -64
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "Working capital change labeled Accounts payable, tagged us-gaap:IncreaseDecreaseInAccountsPayable context c-1. 2024 positive (source), 2023 negative (use)"
+        },
+        {
+          "label": "Other, net (operating)",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:OtherOperatingActivitiesCashFlowStatement",
+          "values": {
+            "2024-01-01_2024-06-30": -145,
+            "2023-01-01_2023-06-30": 33
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFO other net change shown in parentheses for 2024, tagged us-gaap:OtherOperatingActivitiesCashFlowStatement context c-1"
+        },
+        {
+          "label": "Net cash provided by operating activities",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:NetCashProvidedByUsedInOperatingActivities",
+          "values": {
+            "2024-01-01_2024-06-30": 1234,
+            "2023-01-01_2023-06-30": 1772
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFO subtotal labeled Net cash provided by operating activities, tagged us-gaap:NetCashProvidedByUsedInOperatingActivities context c-1"
+        },
+        {
+          "label": "Expenditures for property, plant and equipment",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:PaymentsToAcquirePropertyPlantAndEquipment",
+          "values": {
+            "2024-01-01_2024-06-30": 967,
+            "2023-01-01_2023-06-30": 653
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFI line labeled Expenditures for property, plant and equipment shown in parentheses, tagged us-gaap:PaymentsToAcquirePropertyPlantAndEquipment context c-1"
+        },
+        {
+          "label": "Acquisition of equity method investments",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:PaymentsToAcquireInterestInJointVenture",
+          "values": {
+            "2024-01-01_2024-06-30": 512,
+            "2023-01-01_2023-06-30": 2
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFI line labeled Acquisition of equity method investments shown in parentheses, tagged us-gaap:PaymentsToAcquireInterestInJointVenture context c-1"
+        },
+        {
+          "label": "Proceeds from sale of business",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:ProceedsFromDivestitureOfBusinesses",
+          "values": {
+            "2024-01-01_2024-06-30": 700,
+            "2023-01-01_2023-06-30": 0
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFI line labeled Proceeds from sale of business, tagged us-gaap:ProceedsFromDivestitureOfBusinesses context c-1"
+        },
+        {
+          "label": "Other, net (investing)",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:PaymentsForProceedsFromOtherInvestingActivities",
+          "values": {
+            "2024-01-01_2024-06-30": 44,
+            "2023-01-01_2023-06-30": 87
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFI other net shown in parentheses, tagged us-gaap:PaymentsForProceedsFromOtherInvestingActivities context c-1"
+        },
+        {
+          "label": "Net cash used in investing activities",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:NetCashProvidedByUsedInInvestingActivities",
+          "values": {
+            "2024-01-01_2024-06-30": -823,
+            "2023-01-01_2023-06-30": -742
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFI subtotal labeled Net cash used in investing activities, tagged us-gaap:NetCashProvidedByUsedInInvestingActivities context c-1"
+        },
+        {
+          "label": "Repurchases of Company ordinary shares",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:PaymentsForRepurchaseOfCommonStock",
+          "values": {
+            "2024-01-01_2024-06-30": 75,
+            "2023-01-01_2023-06-30": 170
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFF line labeled Repurchases of Company ordinary shares shown in parentheses, tagged us-gaap:PaymentsForRepurchaseOfCommonStock context c-1"
+        },
+        {
+          "label": "Dividends paid - common stock",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:PaymentsOfDividendsCommonStock",
+          "values": {
+            "2024-01-01_2024-06-30": 846,
+            "2023-01-01_2023-06-30": 797
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFF line labeled Dividends paid - common stock shown in parentheses, tagged us-gaap:PaymentsOfDividendsCommonStock context c-1"
+        },
+        {
+          "label": "Issuance of long-term debt",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:ProceedsFromIssuanceOfLongTermDebt",
+          "values": {
+            "2024-01-01_2024-06-30": 744,
+            "2023-01-01_2023-06-30": 500
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFF line labeled Issuance of long-term debt, tagged us-gaap:ProceedsFromIssuanceOfLongTermDebt context c-1"
+        },
+        {
+          "label": "Payments of debt issuance costs",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:PaymentsOfDebtIssuanceCosts",
+          "values": {
+            "2024-01-01_2024-06-30": 7,
+            "2023-01-01_2023-06-30": 5
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFF line labeled Payments of debt issuance costs shown in parentheses, tagged us-gaap:PaymentsOfDebtIssuanceCosts context c-1"
+        },
+        {
+          "label": "Repayment of long-term debt",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:RepaymentsOfLongTermDebt",
+          "values": {
+            "2024-01-01_2024-06-30": 775,
+            "2023-01-01_2023-06-30": 0
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFF line labeled Repayment of long-term debt shown in parentheses, tagged us-gaap:RepaymentsOfLongTermDebt context c-1"
+        },
+        {
+          "label": "Net repayments of commercial paper",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:ProceedsFromRepaymentsOfCommercialPaper",
+          "values": {
+            "2024-01-01_2024-06-30": 0,
+            "2023-01-01_2023-06-30": -200
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFF line labeled Net repayments of commercial paper, tagged us-gaap:ProceedsFromRepaymentsOfCommercialPaper context c-1. 2023 shown in parentheses matching negative XBRL value"
+        },
+        {
+          "label": "Proceeds from settlement of cash flow hedges",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:ProceedsFromHedgeFinancingActivities",
+          "values": {
+            "2024-01-01_2024-06-30": 882,
+            "2023-01-01_2023-06-30": 0
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFF line labeled Proceeds from settlement of cash flow hedges, tagged us-gaap:ProceedsFromHedgeFinancingActivities context c-1"
+        },
+        {
+          "label": "Payments from settlement of cash flow hedges",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:PaymentsForHedgeFinancingActivities",
+          "values": {
+            "2024-01-01_2024-06-30": 835,
+            "2023-01-01_2023-06-30": 0
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFF line labeled Payments from settlement of cash flow hedges shown in parentheses, tagged us-gaap:PaymentsForHedgeFinancingActivities context c-1"
+        },
+        {
+          "label": "Other, net (financing)",
+          "indent_level": 1,
+          "xbrl_concept": "us-gaap:ProceedsFromPaymentsForOtherFinancingActivities",
+          "values": {
+            "2024-01-01_2024-06-30": 19,
+            "2023-01-01_2023-06-30": -29
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFF other net, tagged us-gaap:ProceedsFromPaymentsForOtherFinancingActivities context c-1. 2023 in parentheses matching negative XBRL value"
+        },
+        {
+          "label": "Net cash used in financing activities",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:NetCashProvidedByUsedInFinancingActivities",
+          "values": {
+            "2024-01-01_2024-06-30": -893,
+            "2023-01-01_2023-06-30": -701
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "CFF subtotal labeled Net cash used in financing activities, tagged us-gaap:NetCashProvidedByUsedInFinancingActivities context c-1"
+        },
+        {
+          "label": "Effect of exchange rate changes on cash",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:EffectOfExchangeRateOnCashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsIncludingDisposalGroupAndDiscontinuedOperations",
+          "values": {
+            "2024-01-01_2024-06-30": -59,
+            "2023-01-01_2023-06-30": 9
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "Line labeled Effect of exchange rate changes on cash shown in parentheses for 2024, tagged with the full FX effect concept including disposal groups context c-1"
+        },
+        {
+          "label": "(Decrease) increase in cash and cash equivalents and restricted cash",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect",
+          "values": {
+            "2024-01-01_2024-06-30": -541,
+            "2023-01-01_2023-06-30": 338
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "Net change in cash line, tagged us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect context c-1"
+        },
+        {
+          "label": "Cash and cash equivalents and restricted cash at beginning of period",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+          "values": {
+            "2024-01-01_2024-06-30": 3405,
+            "2023-01-01_2023-06-30": 2156
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "Beginning cash line using context c-17 (Dec 31 2023) for 2024 period and c-22 (Dec 31 2022) for 2023 period, tagged us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"
+        },
+        {
+          "label": "Cash and cash equivalents and restricted cash at end of period",
+          "indent_level": 0,
+          "xbrl_concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+          "values": {
+            "2024-01-01_2024-06-30": 2864,
+            "2023-01-01_2023-06-30": 2494
+          },
+          "unit": "USD_millions",
+          "xbrl_match": true,
+          "mapping_reason": "Ending cash line using context c-16 (Jun 30 2024) and c-23 (Jun 30 2023), tagged us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"
+        }
+      ],
+      "formulas": [
+        {
+          "formula": "Net income + DD&A + Impairments + Amort debt costs + SBC + Equity loss + Distributions + Deferred tax - Gain on sale - AR change - Inventory change + AP change + Other = Net CFO",
+          "components": [
+            "Net income",
+            "Depreciation and amortization",
+            "Impairments",
+            "Amortization of debt-related costs",
+            "Share-based compensation",
+            "Equity loss (income)",
+            "Distributions of earnings, net of tax",
+            "Deferred income tax (benefit) provision",
+            "Gain on sale of business",
+            "Accounts receivable (change)",
+            "Inventories (change)",
+            "Accounts payable (change)",
+            "Other, net (operating)",
+            "Net cash provided by operating activities"
+          ],
+          "operation": "Net income + Depreciation and amortization + Impairments + Amortization of debt-related costs + Share-based compensation - Equity loss (income) + Distributions of earnings, net of tax + Deferred income tax (benefit) provision - Gain on sale of business - Accounts receivable (change) - Inventories (change) + Accounts payable (change) + Other, net (operating)",
+          "result_label": "Net cash provided by operating activities"
+        },
+        {
+          "formula": "- Capex - Acquisition of equity investments + Proceeds from sale - Other investing = Net CFI",
+          "components": [
+            "Expenditures for property, plant and equipment",
+            "Acquisition of equity method investments",
+            "Proceeds from sale of business",
+            "Other, net (investing)",
+            "Net cash used in investing activities"
+          ],
+          "operation": "Proceeds from sale of business - Expenditures for property, plant and equipment - Acquisition of equity method investments - Other, net (investing)",
+          "result_label": "Net cash used in investing activities"
+        },
+        {
+          "formula": "- Buybacks - Dividends + LT debt issuance - Debt issuance costs - Repayment + Commercial paper + Proceeds hedges - Payments hedges + Other financing = Net CFF",
+          "components": [
+            "Repurchases of Company ordinary shares",
+            "Dividends paid - common stock",
+            "Issuance of long-term debt",
+            "Payments of debt issuance costs",
+            "Repayment of long-term debt",
+            "Net repayments of commercial paper",
+            "Proceeds from settlement of cash flow hedges",
+            "Payments from settlement of cash flow hedges",
+            "Other, net (financing)",
+            "Net cash used in financing activities"
+          ],
+          "operation": "Issuance of long-term debt + Net repayments of commercial paper + Proceeds from settlement of cash flow hedges + Other, net (financing) - Repurchases of Company ordinary shares - Dividends paid - common stock - Payments of debt issuance costs - Repayment of long-term debt - Payments from settlement of cash flow hedges",
+          "result_label": "Net cash used in financing activities"
+        },
+        {
+          "formula": "CFO + CFI + CFF + FX = Net change in cash",
+          "components": [
+            "Net cash provided by operating activities",
+            "Net cash used in investing activities",
+            "Net cash used in financing activities",
+            "Effect of exchange rate changes on cash",
+            "(Decrease) increase in cash and cash equivalents and restricted cash"
+          ],
+          "operation": "Net cash provided by operating activities + Net cash used in investing activities + Net cash used in financing activities + Effect of exchange rate changes on cash",
+          "result_label": "(Decrease) increase in cash and cash equivalents and restricted cash"
+        },
+        {
+          "formula": "Beginning cash + Net change = Ending cash",
+          "components": [
+            "Cash and cash equivalents and restricted cash at beginning of period",
+            "(Decrease) increase in cash and cash equivalents and restricted cash",
+            "Cash and cash equivalents and restricted cash at end of period"
+          ],
+          "operation": "Cash and cash equivalents and restricted cash at beginning of period + (Decrease) increase in cash and cash equivalents and restricted cash",
+          "result_label": "Cash and cash equivalents and restricted cash at end of period"
+        }
+      ],
+      "xbrl_not_on_statement": [
+        {
+          "concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+          "value": 2864,
+          "period": "2024-06-30",
+          "reason": "Instant balance tagged with balance sheet context c-16; the same value appears as end-of-period line on the cash flow statement"
+        }
+      ]
+    },
+    "cross_statement_checks": [
+      {
+        "check": "Net income on IS matches Net income starting CF",
+        "is_value": 1397,
+        "cf_value": 1397,
+        "match": true
+      },
+      {
+        "check": "Ending cash on CF matches Cash plus Restricted cash on BS (current period)",
+        "is_value": null,
+        "cf_value": 2864,
+        "match": true,
+        "note": "CF ending cash is 2864 (cash 2839 + restricted 25 = 2864 on BS)"
+      },
+      {
+        "check": "Beginning cash on CF matches Cash plus Restricted cash on BS (prior period Dec 31 2023)",
+        "is_value": null,
+        "cf_value": 3405,
+        "match": true,
+        "note": "CF beginning cash is 3405 (cash 3390 + restricted 15 = 3405 on prior BS)"
+      },
+      {
+        "check": "Retained earnings change on BS equals Net income minus dividends minus redeemable NCI dividends plus SBC retained earnings impact",
+        "is_value": 541,
+        "cf_value": null,
+        "match": true,
+        "note": "Retained earnings increased from 9692 to 10233, a change of 541. Net income 1397 minus common dividends 846 minus redeemable NCI dividends 3 minus SBC retained earnings charge 7 = 541"
+      }
+    ],
+    "calculation_components": {
+      "operating_leases": {
+        "current": null,
+        "noncurrent": 1363,
+        "total": null,
+        "current_location": "Current operating lease liability is not separately presented on the balance sheet face. The balance sheet shows only noncurrent Operating lease liabilities of 1363M. No OperatingLeaseLiabilityCurrent XBRL fact found in undimensioned facts. The current portion is likely embedded within Accrued and other current liabilities of 1900M but cannot be precisely quantified from the available data.",
+        "flag": "Current operating lease liability not separately disclosed on balance sheet face; likely included in Accrued and other current liabilities"
+      },
+      "depreciation_and_amortization": {
+        "total": 752,
+        "components": [
+          {
+            "label": "Depreciation and amortization",
+            "value": 752
+          },
+          {
+            "label": "Amortization of debt-related costs",
+            "value": 5
+          }
+        ],
+        "is_single_line": false,
+        "note": "Primary DD&A line is 752M for six months ended June 30 2024. Additionally 5M of debt cost amortization appears separately. The 752M figure matches the segment reconciliation table D&A of 752M for H1 2024."
+      },
+      "accounts_payable": {
+        "value": 4074,
+        "is_pure": false,
+        "combined_with": "Split between Trade (nonrelated party 3557) and Related parties (517) on balance sheet face",
+        "note_breakout": null,
+        "detail": "Trade AP (nonrelated party) = 3557, Related party AP = 517, Total = 4074. These are shown as separate line items on the balance sheet but both tagged as AccountsPayableTradeCurrent with different relatedparty dimensions. Pure trade AP to third parties = 3557."
+      },
+      "accounts_receivable": {
+        "value": 4062,
+        "is_pure": false,
+        "combined_with": "Split between Trade net (nonrelated party 3855) and Related parties (207) on balance sheet face",
+        "note_breakout": 3855,
+        "detail": "Trade AR net of allowance (nonrelated party) = 3855, Related party AR = 207, Total = 4062. Note 4 discloses allowance for credit losses of 5M at June 30 2024. Pure trade AR to third parties net = 3855."
+      },
+      "capex": {
+        "cf_value": 967,
+        "supplemental_not_yet_paid": null,
+        "includes_intangibles": false,
+        "note": "CF statement shows Expenditures for property, plant and equipment of 967M for H1 2024, tagged PaymentsToAcquirePropertyPlantAndEquipment. No supplemental disclosure of capital expenditures incurred but not yet paid found in available data. Segment data also confirms 967M total capex."
+      },
+      "acquisitions": {
+        "total": 512,
+        "items": [
+          {
+            "concept": "us-gaap:PaymentsToAcquireInterestInJointVenture",
+            "value": 512,
+            "description": "Acquisition of 35% interest in NATPET joint venture for approximately 500M (cash paid 512M per CF statement)"
+          }
+        ]
+      },
+      "short_term_debt": {
+        "value": 173,
+        "components": [
+          {
+            "label": "Short-term debt (precious metal financings)",
+            "value": 166,
+            "concept": "us-gaap:ShortTermBorrowings",
+            "note": "Primarily precious metal financings of 165M plus 1M rounding; balance sheet shows 166M total"
+          },
+          {
+            "label": "Current maturities of long-term debt",
+            "value": 7,
+            "concept": "us-gaap:LongTermDebtAndCapitalLeaseObligationsCurrent"
+          }
+        ],
+        "confirmed_zero": false,
+        "note": "Total short-term obligations = ShortTermBorrowings 166 + current maturities 7 = 173M. No commercial paper outstanding at June 30 2024. No borrowings under revolving credit or US Receivables facility."
+      },
+      "sbc": {
+        "cf_value": 53,
+        "note_by_function": null,
+        "note": "Share-based compensation addback in CFO is 53M for H1 2024. No breakdown by function (COGS vs SGA) disclosed in the notes within available data."
+      },
+      "interest_expense": {
+        "gross": 247,
+        "income": 78,
+        "net": 169,
+        "source": "Income statement shows Interest expense 247M and Interest income 78M separately for H1 2024. The EBITDA reconciliation in MD&A shows Interest expense net of 169M (247-78). Gross interest expense = 247M tagged as InterestExpenseOperating. No further breakdown of gross interest in notes within available data."
+      },
+      "tax_rate": {
+        "tax_expense": 371,
+        "pretax_income": 1770,
+        "effective_rate": 0.21,
+        "flags": [],
+        "note": "Effective rate 21.0% for H1 2024 per XBRL fact EffectiveIncomeTaxRateContinuingOperations. Pretax income is positive. Tax expense is positive. No flags required."
+      },
+      "inventory": {
+        "total": 5073,
+        "raw_materials": 1576,
+        "wip": 180,
+        "finished_goods": 3317,
+        "note": "Inventory breakdown from Note 5: Finished goods 3317, Work-in-process 180, Raw materials and supplies 1576, Total 5073 at June 30 2024"
+      }
+    }
+  },
+  "formula_verification": {
+    "income_statement": {
+      "formula_checks": [
+        {
+          "formula": "Trade revenues + Related party revenues = Total Sales and other operating revenues",
+          "pass": true,
+          "periods": {
+            "2024-04-01_2024-06-30": {
+              "computed": 10558,
+              "stated": 10558,
+              "computation": "10398 + 160"
+            },
+            "2023-04-01_2023-06-30": {
+              "computed": 10306,
+              "stated": 10306,
+              "computation": "10149 + 157"
+            },
+            "2024-01-01_2024-06-30": {
+              "computed": 20483,
+              "stated": 20483,
+              "computation": "20155 + 328"
+            },
+            "2023-01-01_2023-06-30": {
+              "computed": 20553,
+              "stated": 20553,
+              "computation": "20225 + 328"
+            }
+          }
+        },
+        {
+          "formula": "Cost of sales + Impairments + SGA + RD = Total operating costs and expenses",
+          "pass": true,
+          "periods": {
+            "2024-04-01_2024-06-30": {
+              "computed": 9588,
+              "stated": 9588,
+              "computation": "9148 + 0 + 407 + 33"
+            },
+            "2023-04-01_2023-06-30": {
+              "computed": 9295,
+              "stated": 9295,
+              "computation": "8868 + 0 + 395 + 32"
+            },
+            "2024-01-01_2024-06-30": {
+              "computed": 18809,
+              "stated": 18809,
+              "computation": "17911 + 0 + 833 + 65"
+            },
+            "2023-01-01_2023-06-30": {
+              "computed": 18829,
+              "stated": 18829,
+              "computation": "17732 + 252 + 780 + 65"
+            }
+          }
+        },
+        {
+          "formula": "Total revenues - Total operating costs = Operating income",
+          "pass": true,
+          "periods": {
+            "2024-04-01_2024-06-30": {
+              "computed": 970,
+              "stated": 970,
+              "computation": "10558 - 9588"
+            },
+            "2023-04-01_2023-06-30": {
+              "computed": 1011,
+              "stated": 1011,
+              "computation": "10306 - 9295"
+            },
+            "2024-01-01_2024-06-30": {
+              "computed": 1674,
+              "stated": 1674,
+              "computation": "20483 - 18809"
+            },
+            "2023-01-01_2023-06-30": {
+              "computed": 1724,
+              "stated": 1724,
+              "computation": "20553 - 18829"
+            }
+          }
+        },
+        {
+          "formula": "Operating income - Interest expense + Interest income + Gain on sale + Other = Income before equity and taxes",
+          "pass": true,
+          "periods": {
+            "2024-04-01_2024-06-30": {
+              "computed": 1193,
+              "stated": 1193,
+              "computation": "970 - 120 + 37 + 293 + 13"
+            },
+            "2023-04-01_2023-06-30": {
+              "computed": 917,
+              "stated": 917,
+              "computation": "1011 - 115 + 28 + 0 + -7"
+            },
+            "2024-01-01_2024-06-30": {
+              "computed": 1816,
+              "stated": 1816,
+              "computation": "1674 - 247 + 78 + 293 + 18"
+            },
+            "2023-01-01_2023-06-30": {
+              "computed": 1542,
+              "stated": 1542,
+              "computation": "1724 - 231 + 51 + 0 + -2"
+            }
+          }
+        },
+        {
+          "formula": "Income before equity and taxes + Equity earnings = Income before taxes",
+          "pass": true,
+          "periods": {
+            "2024-04-01_2024-06-30": {
+              "computed": 1174,
+              "stated": 1174,
+              "computation": "1193 + -19"
+            },
+            "2023-04-01_2023-06-30": {
+              "computed": 905,
+              "stated": 905,
+              "computation": "917 + -12"
+            },
+            "2024-01-01_2024-06-30": {
+              "computed": 1770,
+              "stated": 1770,
+              "computation": "1816 + -46"
+            },
+            "2023-01-01_2023-06-30": {
+              "computed": 1547,
+              "stated": 1547,
+              "computation": "1542 + 5"
+            }
+          }
+        },
+        {
+          "formula": "Income before taxes - Tax = Income from continuing operations",
+          "pass": true,
+          "periods": {
+            "2024-04-01_2024-06-30": {
+              "computed": 925,
+              "stated": 925,
+              "computation": "1174 - 249"
+            },
+            "2023-04-01_2023-06-30": {
+              "computed": 717,
+              "stated": 717,
+              "computation": "905 - 188"
+            },
+            "2024-01-01_2024-06-30": {
+              "computed": 1399,
+              "stated": 1399,
+              "computation": "1770 - 371"
+            },
+            "2023-01-01_2023-06-30": {
+              "computed": 1192,
+              "stated": 1192,
+              "computation": "1547 - 355"
+            }
+          }
+        },
+        {
+          "formula": "Income from continuing + Discontinued = Net income",
+          "pass": true,
+          "periods": {
+            "2024-04-01_2024-06-30": {
+              "computed": 924,
+              "stated": 924,
+              "computation": "925 + -1"
+            },
+            "2023-04-01_2023-06-30": {
+              "computed": 715,
+              "stated": 715,
+              "computation": "717 + -2"
+            },
+            "2024-01-01_2024-06-30": {
+              "computed": 1397,
+              "stated": 1397,
+              "computation": "1399 + -2"
+            },
+            "2023-01-01_2023-06-30": {
+              "computed": 1189,
+              "stated": 1189,
+              "computation": "1192 + -3"
+            }
+          }
+        },
+        {
+          "formula": "Net income - Redeemable NCI dividends = Net income to Company shareholders",
+          "pass": true,
+          "periods": {
+            "2024-04-01_2024-06-30": {
+              "computed": 923,
+              "stated": 923,
+              "computation": "924 - 1"
+            },
+            "2023-04-01_2023-06-30": {
+              "computed": 714,
+              "stated": 714,
+              "computation": "715 - 1"
+            },
+            "2024-01-01_2024-06-30": {
+              "computed": 1394,
+              "stated": 1394,
+              "computation": "1397 - 3"
+            },
+            "2023-01-01_2023-06-30": {
+              "computed": 1186,
+              "stated": 1186,
+              "computation": "1189 - 3"
+            }
+          }
+        }
+      ],
+      "formulas_pass": 8,
+      "formulas_total": 8
+    },
+    "balance_sheet": {
+      "formula_checks": [
+        {
+          "formula": "Cash + Restricted cash + AR Trade + AR Related + Inventories + Prepaid = Total current assets",
+          "pass": true,
+          "periods": {
+            "2024-06-30": {
+              "computed": 12911,
+              "stated": 12911,
+              "computation": "2839 + 25 + 3855 + 207 + 5073 + 912"
+            },
+            "2023-12-31": {
+              "computed": 13152,
+              "stated": 13152,
+              "computation": "3390 + 15 + 3356 + 151 + 4765 + 1475"
+            }
+          }
+        },
+        {
+          "formula": "PPE gross - Accumulated depreciation = PPE net",
+          "pass": true,
+          "periods": {
+            "2024-06-30": {
+              "computed": 15574,
+              "stated": 15574,
+              "computation": "25082 - 9508"
+            },
+            "2023-12-31": {
+              "computed": 15547,
+              "stated": 15547,
+              "computation": "24906 - 9359"
+            }
+          }
+        },
+        {
+          "formula": "Current assets + Operating lease + PPE net + Equity investments + Goodwill + Intangibles + Other = Total assets",
+          "pass": true,
+          "periods": {
+            "2024-06-30": {
+              "computed": 37064,
+              "stated": 37064,
+              "computation": "12911 + 1460 + 15574 + 4290 + 1603 + 615 + 611"
+            },
+            "2023-12-31": {
+              "computed": 37000,
+              "stated": 37000,
+              "computation": "13152 + 1529 + 15547 + 3907 + 1647 + 641 + 577"
+            }
+          }
+        },
+        {
+          "formula": "Current maturities + Short-term debt + AP Trade + AP Related + Accrued = Total current liabilities",
+          "pass": true,
+          "periods": {
+            "2024-06-30": {
+              "computed": 6147,
+              "stated": 6147,
+              "computation": "7 + 166 + 3557 + 517 + 1900"
+            },
+            "2023-12-31": {
+              "computed": 7150,
+              "stated": 7150,
+              "computation": "782 + 117 + 3354 + 461 + 2436"
+            }
+          }
+        },
+        {
+          "formula": "Common stock + APIC + Retained earnings + AOCI - Treasury stock = Total Company shareholders equity",
+          "pass": true,
+          "periods": {
+            "2024-06-30": {
+              "computed": 13449,
+              "stated": 13449,
+              "computation": "19 + 6122 + 10233 + -1523 - 1402"
+            },
+            "2023-12-31": {
+              "computed": 12930,
+              "stated": 12930,
+              "computation": "19 + 6145 + 9692 + -1476 - 1450"
+            }
+          }
+        },
+        {
+          "formula": "Company equity + NCI = Total equity",
+          "pass": true,
+          "periods": {
+            "2024-06-30": {
+              "computed": 13463,
+              "stated": 13463,
+              "computation": "13449 + 14"
+            },
+            "2023-12-31": {
+              "computed": 12944,
+              "stated": 12944,
+              "computation": "12930 + 14"
+            }
+          }
+        },
+        {
+          "formula": "Total current liabilities + LT debt + Operating lease liabilities + Other liabilities + Deferred taxes + Redeemable NCI + Total equity = Total liabilities and equity",
+          "pass": true,
+          "periods": {
+            "2024-06-30": {
+              "computed": 37064,
+              "stated": 37064,
+              "computation": "6147 + 11017 + 1363 + 2113 + 2847 + 114 + 13463"
+            },
+            "2023-12-31": {
+              "computed": 37000,
+              "stated": 37000,
+              "computation": "7150 + 10333 + 1409 + 2164 + 2886 + 114 + 12944"
+            }
+          }
+        },
+        {
+          "formula": "Total assets = Total liabilities redeemable NCI and equity",
+          "pass": false,
+          "periods": {
+            "2024-06-30": {
+              "computed": 0,
+              "stated": 37064,
+              "computation": "37064 - 37064"
+            },
+            "2023-12-31": {
+              "computed": 0,
+              "stated": 37000,
+              "computation": "37000 - 37000"
+            }
+          }
+        }
+      ],
+      "formulas_pass": 7,
+      "formulas_total": 8
+    },
+    "cash_flow": {
+      "formula_checks": [
+        {
+          "formula": "Net income + DD&A + Impairments + Amort debt costs + SBC + Equity loss + Distributions + Deferred tax - Gain on sale - AR change - Inventory change + AP change + Other = Net CFO",
+          "pass": true,
+          "periods": {
+            "2024-01-01_2024-06-30": {
+              "computed": 1234,
+              "stated": 1234,
+              "computation": "1397 + 752 + 0 + 5 + 53 - -46 + 40 + -55 - 293 - 604 - 335 + 373 + -145"
+            },
+            "2023-01-01_2023-06-30": {
+              "computed": 1772,
+              "stated": 1772,
+              "computation": "1189 + 787 + 252 + 4 + 48 - 5 + 50 + 19 - 0 - 192 - 349 + -64 + 33"
+            }
+          }
+        },
+        {
+          "formula": "- Capex - Acquisition of equity investments + Proceeds from sale - Other investing = Net CFI",
+          "pass": true,
+          "periods": {
+            "2024-01-01_2024-06-30": {
+              "computed": -823,
+              "stated": -823,
+              "computation": "700 - 967 - 512 - 44"
+            },
+            "2023-01-01_2023-06-30": {
+              "computed": -742,
+              "stated": -742,
+              "computation": "0 - 653 - 2 - 87"
+            }
+          }
+        },
+        {
+          "formula": "- Buybacks - Dividends + LT debt issuance - Debt issuance costs - Repayment + Commercial paper + Proceeds hedges - Payments hedges + Other financing = Net CFF",
+          "pass": true,
+          "periods": {
+            "2024-01-01_2024-06-30": {
+              "computed": -893,
+              "stated": -893,
+              "computation": "744 + 0 + 882 + 19 - 75 - 846 - 7 - 775 - 835"
+            },
+            "2023-01-01_2023-06-30": {
+              "computed": -701,
+              "stated": -701,
+              "computation": "500 + -200 + 0 + -29 - 170 - 797 - 5 - 0 - 0"
+            }
+          }
+        },
+        {
+          "formula": "CFO + CFI + CFF + FX = Net change in cash",
+          "pass": true,
+          "periods": {
+            "2024-01-01_2024-06-30": {
+              "computed": -541,
+              "stated": -541,
+              "computation": "1234 + -823 + -893 + -59"
+            },
+            "2023-01-01_2023-06-30": {
+              "computed": 338,
+              "stated": 338,
+              "computation": "1772 + -742 + -701 + 9"
+            }
+          }
+        },
+        {
+          "formula": "Beginning cash + Net change = Ending cash",
+          "pass": true,
+          "periods": {
+            "2024-01-01_2024-06-30": {
+              "computed": 2864,
+              "stated": 2864,
+              "computation": "3405 + -541"
+            },
+            "2023-01-01_2023-06-30": {
+              "computed": 2494,
+              "stated": 2494,
+              "computation": "2156 + 338"
+            }
+          }
+        }
+      ],
+      "formulas_pass": 5,
+      "formulas_total": 5
+    }
+  }
+}
