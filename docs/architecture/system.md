@@ -367,8 +367,8 @@ Status legend:
 | `prices_intraday` | deferred | reserved for event-reaction workflows |
 | `options_contracts` | deferred | until Massive vendor active |
 | `options_eod_snapshots` | deferred | until Massive vendor active |
-| `macro_series` | deferred | — |
-| `macro_observations` | deferred | vintage-preserving |
+| `series` | deferred | unified time-series substrate. `domain` discriminator covers macro / industry / commodity. One series = one fully-defined scope (FRED model). |
+| `series_observations` | deferred | scalar observations against `series`. Vintage-preserving; same PIT/supersession contract as `financial_facts`. |
 | `company_events` | deferred | — |
 | `signals` | deferred | — |
 | `alerts` | deferred | — |
@@ -1057,7 +1057,7 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 8. ⏳ implement FMP ingest for historical filings and transcripts
 9. ✅ implement `financial_facts` schema with fiscal, calendar, and PIT fields (migration 008). Populating depends on step 8.
 9.5. ⬜ implement FMP ↔ SEC/XBRL reconciliation job + divergence view (validates FMP empirically before trusting)
-10. ⬜ implement `macro_series` + `macro_observations` (vintage-preserving)
+10. ⬜ implement `series` + `series_observations` (unified macro / industry / commodity substrate, vintage-preserving). Build when first real source lands.
 11. ⬜ implement fiscal, calendar-normalized, and PIT derived views
 12. ⬜ implement `prices_daily`
 13. ⬜ implement `company_events`
