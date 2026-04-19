@@ -10,6 +10,7 @@ Start here. Read only the next doc you need.
 - Current architecture: `docs/architecture/system.md`
 - Repository flow / folder map: `docs/architecture/repository_flow.md`
 - Period spec (fiscal ↔ calendar rules): `docs/reference/periods.md`
+- Artifact metadata key conventions: `docs/reference/artifact_metadata.md`
 - Architecture decisions (tool + pattern choices): `docs/decisions/`
 - Setup runbook: `docs/setup.md`
 - Older strategy snapshot: `docs/strategy/plan.md`

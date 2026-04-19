@@ -89,7 +89,13 @@ def test_created_tables_exist() -> None:
             )
             tables = {row[0] for row in cur.fetchall()}
 
-    assert {"ingest_runs", "raw_responses", "schema_migrations"}.issubset(tables)
+    assert {
+        "ingest_runs",
+        "raw_responses",
+        "artifacts",
+        "artifact_chunks",
+        "schema_migrations",
+    }.issubset(tables)
 
 
 def test_raw_responses_body_xor_enforced() -> None:

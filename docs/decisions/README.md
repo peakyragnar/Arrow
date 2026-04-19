@@ -62,3 +62,6 @@ What signal would tell us this decision should be reopened?
 | [0004](0004-hand-rolled-migrations.md) | Hand-rolled SQL migrations, not Alembic | accepted | 2026-04-19 |
 | [0005](0005-raw-responses-storage-split.md) | Storage split for raw_responses: JSONB + filesystem | accepted | 2026-04-19 |
 | [0006](0006-request-identity-vs-row-identity.md) | Request identity separated from row identity in raw_responses | accepted | 2026-04-19 |
+| [0007](0007-artifact-hybrid-metadata.md) | Hybrid artifact shape — columns + `artifact_metadata` jsonb | accepted | 2026-04-19 |
+| [0008](0008-chunks-tsvector-generated-from-search-text.md) | `artifact_chunks.tsv` generated from `search_text` with `text` fallback | accepted | 2026-04-19 |
+| [0009](0009-supersedes-restrict-not-set-null.md) | `supersedes` uses `ON DELETE RESTRICT`; `is_current` is derived, not stored | accepted | 2026-04-19 |
