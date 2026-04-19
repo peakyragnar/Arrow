@@ -157,7 +157,7 @@ Use FMP for historical backfill and normal operation:
 - some event/calendar coverage
 
 Flow:
-`FMP REST -> raw_responses -> artifacts / artifact_chunks / financial_facts / prices_daily / events`
+`FMP REST -> raw_responses -> artifacts / financial_facts / prices_daily / events` (chunks added later when document text is ingested)
 
 FMP = ingest source.
 Not data model.
@@ -283,8 +283,8 @@ Rules:
 Stated explicitly so future-us doesn't drift:
 
 - `artifacts` are source truth — never regenerated, only superseded.
-- `artifact_chunks` are regeneratable from artifacts — if chunking strategy changes, truncate and re-derive. Cheap under FTS-only.
 - `financial_facts` are regeneratable from artifacts + raw_responses — if extraction logic changes, bump `extraction_version` and re-derive; preserve prior row with `superseded_at`.
+- Chunks (when reintroduced) are regeneratable from artifacts — if chunking strategy changes, truncate and re-derive. Cheap under FTS-only.
 - If embeddings are ever added: they are regeneratable from chunks. Chunks do not depend on embeddings.
 
 Direction of dependency: `raw_responses → artifacts → chunks → (optional) embeddings`; `raw_responses/artifacts → facts`. Never the reverse.
@@ -350,23 +350,30 @@ Bake the columns now; enforcement is just a flag read at export time.
 
 ## v1 Tables
 
-- `companies`
-- `artifacts`
-- `artifact_chunks`
-- `financial_facts`
-- `prices_daily`
-- `prices_intraday`            -- schema only
-- `options_contracts`          -- schema only for now
-- `options_eod_snapshots`      -- schema only for now
-- `macro_series`
-- `macro_observations`
-- `company_events`
-- `signals`
-- `alerts`
-- `watchlists`
-- `ingest_runs`
-- `raw_responses`
-- `qa_log`
+Status legend:
+- **built** — schema applied, model + tests in place
+- **deferred** — named in v1 surface, no schema yet (will be added when its data source is real)
+- **withdrawn** — was built, then removed; see linked migration
+
+| Table | Status | Notes |
+|---|---|---|
+| `ingest_runs` | built | migration 002 |
+| `raw_responses` | built | migration 003 |
+| `artifacts` | built | migration 004 |
+| `companies` | built | migration 007 |
+| `financial_facts` | built | migration 008 |
+| `artifact_chunks` | withdrawn | migration 005 added it; migration 006 dropped it. Re-add when chunking has real documents to operate on. ADR-0008 captures the prior design. |
+| `prices_daily` | deferred | — |
+| `prices_intraday` | deferred | reserved for event-reaction workflows |
+| `options_contracts` | deferred | until Massive vendor active |
+| `options_eod_snapshots` | deferred | until Massive vendor active |
+| `macro_series` | deferred | — |
+| `macro_observations` | deferred | vintage-preserving |
+| `company_events` | deferred | — |
+| `signals` | deferred | — |
+| `alerts` | deferred | — |
+| `watchlists` | deferred | — |
+| `qa_log` | deferred | wired up the moment the analyst flow exists; consent flags must be enforced from the first interaction |
 
 ## Table Intent
 
@@ -430,30 +437,8 @@ Research-corpus rows (industry primers, product explainers, macro primers) carry
 
 Rationale: domain context rots. Analyst agent must be able to down-weight stale primers.
 
-### `artifact_chunks`
-Derived retrieval units. Regeneratable from `artifacts`.
-
-Deterministic units first:
-- filing sections
-- transcript speaker turns
-- timestamp spans
-- slide text blocks
-- table blocks
-- research-note sections
-- macro commentary sections
-
-Stores:
-- artifact_id
-- chunk_type
-- section
-- speaker
-- offsets / timestamps
-- ordinal
-- text
-- tsvector (GIN-indexed)
-- fiscal/calendar metadata where relevant
-- filter metadata
-- `chunker_version`
+### `artifact_chunks` *(withdrawn from v1)*
+Built in migration 005, dropped in 006 before any chunking happened. Re-design the table when chunking is reintroduced against actual ingested documents (filings, transcripts). The prior design — `chunk_type` enum, `text` + `search_text` + generated `tsv`, GIN index, fiscal/calendar denormalization, `chunker_version` — is preserved in [ADR-0008](../decisions/0008-chunks-tsvector-generated-from-search-text.md) and remains a reasonable starting point when the time comes.
 
 ### `financial_facts`
 Canonical long/skinny financial store.
@@ -827,7 +812,7 @@ Fresh filing fast path: SEC direct ingest for newly dropped 10-Q / 10-K / materi
 
 Output:
 - `artifacts`
-- `artifact_chunks`
+- chunks (table reintroduced when chunking is real — see v1 Tables status)
 - filing-derived `company_events`
 
 Preserve:
@@ -1060,27 +1045,32 @@ Local first for iteration. Cloud later for durability and reliability.
 
 ## Build Order
 
-1. finalize schema doc
-2. stand up local Postgres
-3. define fiscal-truth + calendar-normalization rules clearly
-4. define macro-series model and mapping rules clearly
-5. define training-trace requirements clearly
-6. implement `raw_responses` + `ingest_runs`
-7. implement `artifacts` + `artifact_chunks` (with double-hash)
-8. implement FMP ingest for historical filings and transcripts
-9. implement `financial_facts` with fiscal, calendar, and PIT fields
-9.5. implement FMP ↔ SEC/XBRL reconciliation job + divergence view (validates FMP empirically before trusting)
-10. implement `macro_series` + `macro_observations` (vintage-preserving)
-11. implement fiscal, calendar-normalized, and PIT derived views
-12. implement `prices_daily`
-13. implement `company_events`
-14. implement analyst retrieval tools (PIT-aware)
-15. implement `qa_log` as part of normal analyst flow (with consent flags)
-16. add section-over-time comparison support
-17. add `signals` + `alerts`
-18. add SEC fast-path ingest for newly dropped filings
-19. add Massive-backed options ingest later
-20. migrate to cloud when durability/reliability justify it
+Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). When a step lands, append the migration / PR that delivered it.
+
+1. ✅ finalize schema doc
+2. ✅ stand up local Postgres
+3. ✅ define fiscal-truth + calendar-normalization rules clearly (`docs/reference/periods.md`)
+4. ✅ define macro-series model and mapping rules clearly (this doc, § Macro)
+5. ✅ define training-trace requirements clearly (this doc, § qa_log + § Training-Ready By Design)
+6. ✅ implement `raw_responses` + `ingest_runs` (migrations 002, 003)
+7. ✅ implement `artifacts` (migration 004, with double-hash). `artifact_chunks` was added in 005 and withdrawn in 006 — re-list as a future step below.
+8. ⏳ implement FMP ingest for historical filings and transcripts
+9. ✅ implement `financial_facts` schema with fiscal, calendar, and PIT fields (migration 008). Populating depends on step 8.
+9.5. ⬜ implement FMP ↔ SEC/XBRL reconciliation job + divergence view (validates FMP empirically before trusting)
+10. ⬜ implement `macro_series` + `macro_observations` (vintage-preserving)
+11. ⬜ implement fiscal, calendar-normalized, and PIT derived views
+12. ⬜ implement `prices_daily`
+13. ⬜ implement `company_events`
+14. ⬜ implement analyst retrieval tools (PIT-aware)
+15. ⬜ implement `qa_log` as part of normal analyst flow (with consent flags)
+16. ⬜ reintroduce chunking table + chunker (driven by step 8 producing real text to chunk)
+17. ⬜ add section-over-time comparison support
+18. ⬜ add `signals` + `alerts`
+19. ⬜ add SEC fast-path ingest for newly dropped filings
+20. ⬜ add Massive-backed options ingest later
+21. ⬜ migrate to cloud when durability/reliability justify it
+
+✅ also: `companies` schema (migration 007) — implicit prerequisite to step 9, was not in the original numbered list but has to land before any fact references a company.
 
 ## Decision Rules
 

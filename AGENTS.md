@@ -64,6 +64,7 @@ Important:
 - Raw responses cached
 - Artifacts immutable
 - Facts derived and regeneratable
+- **Schema changes ship with their docs.** A migration that adds, removes, or supersedes a table updates the v1 Tables status table in `docs/architecture/system.md` and any reference-doc mentions in the same commit. ADRs about withdrawn or superseded tables get their status flipped, never their bodies edited. Build Order step markers get updated too.
 
 ## Data Rules
 
