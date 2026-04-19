@@ -93,9 +93,10 @@ def test_created_tables_exist() -> None:
         "ingest_runs",
         "raw_responses",
         "artifacts",
-        "artifact_chunks",
         "schema_migrations",
     }.issubset(tables)
+    # artifact_chunks created in 005 then dropped in 006
+    assert "artifact_chunks" not in tables
 
 
 def test_raw_responses_body_xor_enforced() -> None:

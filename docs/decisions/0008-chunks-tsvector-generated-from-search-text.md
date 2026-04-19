@@ -1,5 +1,5 @@
 # ADR-0008: `artifact_chunks.tsv` generated from `search_text` with `text` fallback
-Status: accepted
+Status: withdrawn (2026-04-19) — `artifact_chunks` table dropped in migration 006 before any chunking happened. Decision was made before there was real text to chunk; re-evaluate when the chunks table is reintroduced against actual ingested documents.
 Date: 2026-04-19
 
 ## Context

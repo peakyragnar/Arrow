@@ -21,7 +21,7 @@ Reason: filings, transcripts, guidance, and management commentary are expressed 
 
 ## 2. Canonical Fields
 
-All fiscal-period-bearing tables (`financial_facts`, `artifacts` where period-relevant, `company_events`, `artifact_chunks` where period-relevant) use these column names with these types.
+All fiscal-period-bearing tables (`financial_facts`, `artifacts` where period-relevant, `company_events`, and any chunking table when reintroduced) use these column names with these types.
 
 ### 2.1 Fiscal truth
 
