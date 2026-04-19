@@ -10,6 +10,7 @@ Start here. Read only the next doc you need.
 - Current architecture: `docs/architecture/system.md`
 - Repository flow / folder map: `docs/architecture/repository_flow.md`
 - Period spec (fiscal ↔ calendar rules): `docs/reference/periods.md`
+- Architecture decisions (tool + pattern choices): `docs/decisions/`
 - Setup runbook: `docs/setup.md`
 - Older strategy snapshot: `docs/strategy/plan.md`
 - Metric definitions: `docs/reference/formulas.md`
@@ -86,3 +87,4 @@ Important:
 - prefer `docs/architecture/system.md`
 - prefer live paths over archived paths
 - if a doc in `archive/` conflicts with a doc in `docs/architecture/`, the architecture doc wins
+- for "why did we choose X?" questions about tools/patterns, look in `docs/decisions/` — ADRs capture the trade-offs that principles don't settle
