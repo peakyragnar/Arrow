@@ -304,6 +304,40 @@ def _format_value(v: Decimal | None) -> str:
     return s
 
 
+def _col_letter(idx_1based: int) -> str:
+    """1 → A, 2 → B, 27 → AA, ..."""
+    result = ""
+    n = idx_1based
+    while n > 0:
+        n, rem = divmod(n - 1, 26)
+        result = chr(ord("A") + rem) + result
+    return result
+
+
+def _build_check_formula(
+    excel_col: str,
+    sub_row: int,
+    components_with_rows: list[tuple[int, int]],
+) -> str:
+    """Build an Excel formula:  =<subtotal> − (<signed sum of components>)
+
+    components_with_rows is a list of (excel_row, sign). Result cell
+    evaluates to filer_subtotal − sum(components × signs), which is 0
+    when the tie holds. Excel interprets the leading "=" as a formula;
+    the user sees the math in the formula bar and the computed delta
+    in the cell.
+    """
+    rhs_parts: list[str] = []
+    for i, (row, sign) in enumerate(components_with_rows):
+        cell = f"{excel_col}{row}"
+        if i == 0:
+            rhs_parts.append(cell if sign > 0 else f"-{cell}")
+        else:
+            rhs_parts.append(f"{'+' if sign > 0 else '-'}{cell}")
+    rhs = "".join(rhs_parts)
+    return f"={excel_col}{sub_row}-({rhs})"
+
+
 def _fetch_facts(conn, *, ticker: str, statement: str):
     """Return rows: (concept, fiscal_year, fiscal_quarter, period_type,
     fiscal_period_label, period_end, value, unit) for current facts."""
@@ -392,54 +426,101 @@ def _export_statement(
     display_order: list[str],
     checks: tuple[CheckRow, ...],
     out_path: Path,
-    # For cross-statement checks: values from the companion statement.
     companion_values: dict[str, dict[str, dict[tuple, Decimal]]] | None = None,
 ) -> tuple[int, int]:
-    """Write one CSV. Returns (rows_written, periods_included)."""
+    """Write one CSV. Returns (rows_written, periods_included).
+
+    Check rows emit Excel formulas (e.g., `=C4-(C2-C3)`) so the math is
+    visible in Excel's formula bar when you click a check cell. The cell
+    evaluates to the Δ (0 when the tie holds). Cross-statement checks
+    (which would need a reference into another CSV file) fall back to
+    pre-computed values since CSV can't cleanly reference between files.
+    """
     values, column_labels, units, columns = _load_statement_values(
         conn, ticker=ticker, statement=statement,
     )
 
-    # Include concepts that appear in display order AND have at least one
-    # value; append any "extra" concepts so we never silently drop data.
     present_concepts = set(values.keys())
     ordered = [c for c in display_order if c in present_concepts]
     extras = sorted(present_concepts - set(display_order))
 
-    # Bucket checks by insert_after concept.
     checks_by_after: dict[str, list[CheckRow]] = defaultdict(list)
     for c in checks:
         checks_by_after[c.insert_after].append(c)
 
+    # --- Pass 1: plan rows and assign Excel row numbers ---
+    # Excel rows are 1-indexed; row 1 is the header, so data rows start at 2.
+    concept_to_row: dict[str, int] = {}
+    row_plan: list[tuple[str, object]] = []  # ('concept', name) | ('check', CheckRow)
+    excel_row = 1
+    for concept in ordered + extras:
+        excel_row += 1
+        concept_to_row[concept] = excel_row
+        row_plan.append(("concept", concept))
+        for chk in checks_by_after.get(concept, ()):
+            excel_row += 1
+            row_plan.append(("check", chk))
+
+    # --- Pass 2: emit CSV ---
     with out_path.open("w", newline="") as f:
         w = csv.writer(f)
-        header = ["concept", "unit"] + [column_labels[k] for k in columns]
-        w.writerow(header)
+        w.writerow(["concept", "unit"] + [column_labels[k] for k in columns])
 
-        def _write_concept_row(concept: str) -> None:
-            row = [concept, units.get(concept, "")]
-            for k in columns:
-                row.append(_format_value(values[concept].get(k)))
-            w.writerow(row)
+        for kind, content in row_plan:
+            if kind == "concept":
+                concept = content  # type: ignore[assignment]
+                row = [concept, units.get(concept, "")]
+                for k in columns:
+                    row.append(_format_value(values[concept].get(k)))
+                w.writerow(row)
+            else:
+                chk: CheckRow = content  # type: ignore[assignment]
+                row = [chk.label, ""]
 
-        def _write_check_row(check: CheckRow) -> None:
-            other = None
-            if check.cross_statement and companion_values:
-                other = companion_values.get(check.cross_statement[1])
-            row = [check.label, ""]
-            for k in columns:
-                delta = _compute_check_delta(check, values, other, k)
-                row.append(_format_value(delta) if delta is not None else "")
-            w.writerow(row)
+                if chk.cross_statement:
+                    # Can't reference across CSV files cleanly — pre-compute.
+                    other = (
+                        companion_values.get(chk.cross_statement[1])
+                        if companion_values else None
+                    )
+                    for k in columns:
+                        delta = _compute_check_delta(chk, values, other, k)
+                        row.append(_format_value(delta) if delta is not None else "")
+                    w.writerow(row)
+                    continue
 
-        n_check_rows = 0
-        for concept in ordered + extras:
-            _write_concept_row(concept)
-            for chk in checks_by_after.get(concept, ()):
-                _write_check_row(chk)
-                n_check_rows += 1
+                sub_row = concept_to_row.get(chk.subtotal)
+                comp_rows_signs = [
+                    (concept_to_row.get(c), sign) for c, sign in chk.components
+                ]
+                any_concept_absent = (
+                    sub_row is None
+                    or any(r is None for r, _ in comp_rows_signs)
+                )
 
-    return len(ordered) + len(extras) + n_check_rows, len(columns)
+                for col_idx, k in enumerate(columns, start=3):
+                    if any_concept_absent:
+                        row.append("")
+                        continue
+                    # Also skip per-period if any component has no value this period.
+                    sub_val = values.get(chk.subtotal, {}).get(k)
+                    comp_vals = [
+                        values.get(c, {}).get(k) for c, _ in chk.components
+                    ]
+                    if sub_val is None or any(v is None for v in comp_vals):
+                        row.append("")
+                        continue
+
+                    excel_col = _col_letter(col_idx)
+                    # Narrow types: we already ensured sub_row + all comp rows are non-None
+                    comps = [(r, s) for r, s in comp_rows_signs if r is not None]  # type: ignore[misc]
+                    formula = _build_check_formula(
+                        excel_col, sub_row, comps,  # type: ignore[arg-type]
+                    )
+                    row.append(formula)
+                w.writerow(row)
+
+    return len(row_plan), len(columns)
 
 
 def main() -> int:
