@@ -13,6 +13,7 @@ Start here. Read only the next doc you need.
 - Artifact metadata key conventions: `docs/reference/artifact_metadata.md`
 - Architecture decisions (tool + pattern choices): `docs/decisions/`
 - Setup runbook: `docs/setup.md`
+- Schema (live visual view): `arrow_db_schema.html` — regenerated from the live database by `scripts/gen_schema_viz.py`. Authoritative DDL: `db/schema/*.sql`.
 - Older strategy snapshot: `docs/strategy/plan.md`
 - Metric definitions: `docs/reference/formulas.md`
 - R&D capitalization reference: `docs/reference/rd_capitalization_reference.md`
@@ -64,7 +65,7 @@ Important:
 - Raw responses cached
 - Artifacts immutable
 - Facts derived and regeneratable
-- **Schema changes ship with their docs.** A migration that adds, removes, or supersedes a table updates the v1 Tables status table in `docs/architecture/system.md` and any reference-doc mentions in the same commit. ADRs about withdrawn or superseded tables get their status flipped, never their bodies edited. Build Order step markers get updated too.
+- **Schema changes ship with their docs.** A migration that adds, removes, or supersedes a table updates the v1 Tables status table in `docs/architecture/system.md` and any reference-doc mentions in the same commit. ADRs about withdrawn or superseded tables get their status flipped, never their bodies edited. Build Order step markers get updated too. After applying a migration, re-run `uv run scripts/gen_schema_viz.py` to regenerate the live schema view at `arrow_db_schema.html`.
 
 ## Data Rules
 

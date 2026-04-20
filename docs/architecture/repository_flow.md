@@ -103,6 +103,11 @@ See the next section for the full subfolder breakdown. Everything importable liv
 
 Runnable commands. Parse argv, instantiate from `arrow.*`, call methods, log. No business logic.
 
+Present:
+- `scripts/db_ping.py` — smoke-test the DB connection
+- `scripts/apply_schema.py` — apply pending migrations under `db/schema/`
+- `scripts/gen_schema_viz.py` — introspect the live DB and regenerate `arrow_db_schema.html` (the visual source of truth for the schema)
+
 Examples (future):
 - `scripts/backfill_fmp.py NVDA` — pull every FMP endpoint for a ticker, write raw + load DB
 - `scripts/fetch_prices.py --tickers NVDA,MSFT --from 2022-01-01`

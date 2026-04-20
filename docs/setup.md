@@ -63,6 +63,24 @@ PostgreSQL 16.13 (Homebrew) on ...
 
 If that prints, the whole chain (env → Python → psycopg → pg 16) works.
 
+## 5. Apply the schema
+
+```bash
+uv run scripts/apply_schema.py
+```
+
+Runs every pending migration under `db/schema/` in numeric order. Idempotent — re-running after no changes prints `No pending migrations.`
+
+## 6. Generate the live schema view
+
+```bash
+uv run scripts/gen_schema_viz.py
+```
+
+Introspects the live database and writes `arrow_db_schema.html` — a full ER diagram plus per-table cards (columns, FKs, CHECK constraints, indexes). Open it directly in a browser, or serve the repo with any static server and load `/arrow_db_schema.html`.
+
+Re-run after every migration. The HTML is a pure projection of what's actually in Postgres; if it's not on the page, it's not in the database.
+
 ## Notes
 
 - **Why port 5433, not 5432?** Many developer Macs already have a Homebrew pg (often `postgresql@14`) running on 5432. Arrow picks 5433 so it can coexist. Cloud deployment uses whatever port the target provides — just update `DATABASE_URL`.

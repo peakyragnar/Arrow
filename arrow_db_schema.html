@@ -1,0 +1,945 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Arrow schema — live view</title>
+<style>
+    :root {
+        --fg: #3d3d3a;
+        --bg: #faf9f5;
+        --muted: #73726c;
+        --line: #d8d6cd;
+        --card-bg: #ffffff;
+        --accent: #b85c1c;
+        --pk: #3f7a3f;
+        --fk: #2b5c8c;
+        --uk: #8c2b6f;
+        --cons: #8a7a2a;
+        --partial: #6b3fa8;
+        --ondelete: #555;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --fg: #c2c0b6;
+            --bg: #1d1d1a;
+            --muted: #9c9a92;
+            --line: #3a3a35;
+            --card-bg: #26262200;
+            --accent: #d98642;
+            --pk: #7ec07e;
+            --fk: #5e9ed6;
+            --uk: #d87ab8;
+            --cons: #ccb85e;
+            --partial: #b091dd;
+            --ondelete: #9c9a92;
+        }
+    }
+    * { box-sizing: border-box; }
+    body {
+        font-family: "Anthropic Sans", "SF Pro Text", -apple-system, system-ui, sans-serif;
+        color: var(--fg);
+        background: var(--bg);
+        margin: 0;
+        padding: 2rem;
+        max-width: 1400px;
+        margin-inline: auto;
+        font-size: 14px;
+        line-height: 1.55;
+    }
+    h1 { margin-top: 0; }
+    h2 { border-bottom: 1px solid var(--line); padding-bottom: 0.25rem; margin-top: 2.5rem; }
+    h3 { margin-bottom: 0.5rem; color: var(--accent); }
+    h4 { margin: 1rem 0 0.25rem; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-block: 1rem; }
+    .legend span { font-size: 12px; }
+    .badge {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        border: 1px solid currentColor;
+    }
+    .badge.pk { color: var(--pk); }
+    .badge.fk { color: var(--fk); }
+    .badge.uk { color: var(--uk); }
+    .badge.cons { color: var(--cons); }
+    .badge.partial { color: var(--partial); }
+    .badge.on-delete { color: var(--ondelete); font-weight: 500; }
+    .null.notnull { color: var(--pk); font-weight: 500; }
+    .null.nullable { color: var(--muted); font-style: italic; }
+    nav.toc { margin-block: 1rem; font-size: 12.5px; color: var(--muted); }
+    nav.toc a { color: var(--accent); text-decoration: none; }
+    nav.toc a:hover { text-decoration: underline; }
+    .cards { display: flex; flex-direction: column; gap: 2rem; }
+    .table-card {
+        background: var(--card-bg);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 1rem 1.25rem 0.5rem;
+    }
+    table.cols {
+        border-collapse: collapse;
+        width: 100%;
+        margin-block: 0.5rem;
+    }
+    table.cols th, table.cols td {
+        text-align: left;
+        padding: 4px 8px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+    }
+    table.cols th { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+    .col-name { font-weight: 600; }
+    .col-default code { color: var(--muted); font-size: 11.5px; }
+    ul { padding-left: 1.2rem; margin-block: 0.25rem; }
+    ul li { margin-block: 0.2rem; }
+    .cname { font-size: 11px; color: var(--muted); }
+    code.check-def, code.index-def { white-space: pre-wrap; word-break: break-word; }
+    #erd { padding: 8px 0; }
+    #erd svg.erDiagram { max-width: 100%; height: auto; }
+    #erd svg.erDiagram .divider path { stroke-opacity: 0.5; }
+    #erd svg.erDiagram .row-rect-odd path,
+    #erd svg.erDiagram .row-rect-odd rect,
+    #erd svg.erDiagram .row-rect-even path,
+    #erd svg.erDiagram .row-rect-even rect { stroke: none !important; }
+    .meta { color: var(--muted); font-size: 12px; }
+    footer { margin-top: 3rem; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 1rem; }
+</style>
+</head>
+<body>
+
+<h1>Arrow schema — live view</h1>
+<p class="meta">Generated from the live database. Re-run <code>uv run scripts/gen_schema_viz.py</code> after any migration.</p>
+
+<h2>Entity-relationship diagram</h2>
+<div class="legend">
+    <span><span class="badge pk">PK</span> primary key</span>
+    <span><span class="badge fk">FK</span> foreign key</span>
+    <span><span class="badge uk">UK</span> unique (single column)</span>
+    <span>Cardinality: <code>||--o&#123;</code> = required parent, 0..N children · <code>|o--o&#123;</code> = optional parent (nullable FK), 0..N children</span>
+</div>
+<div id="erd"></div>
+
+<h2>Per-table detail</h2>
+<nav class="toc"><a href='#tbl-artifacts'>artifacts</a> · <a href='#tbl-companies'>companies</a> · <a href='#tbl-financial_facts'>financial_facts</a> · <a href='#tbl-ingest_runs'>ingest_runs</a> · <a href='#tbl-raw_responses'>raw_responses</a></nav>
+<div class="cards">
+    
+    <section class="table-card" id="tbl-artifacts">
+        <h3>artifacts</h3>
+        <table class="cols">
+            <thead>
+                <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td class="col-name">id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>nextval(&#x27;artifacts_id_seq&#x27;::regclass)</code></td>
+                <td class="col-keys"><span class="badge pk">PK</span></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">ingest_run_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→ingest_runs.id</span></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">artifact_type</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">source</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">source_document_id</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">raw_hash</td>
+                <td class="col-type"><code>bytea</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">canonical_hash</td>
+                <td class="col-type"><code>bytea</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">ticker</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">fiscal_year</td>
+                <td class="col-type"><code>smallint</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">fiscal_quarter</td>
+                <td class="col-type"><code>smallint</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">fiscal_period_label</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">period_end</td>
+                <td class="col-type"><code>date</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">period_type</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">calendar_year</td>
+                <td class="col-type"><code>smallint</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">calendar_quarter</td>
+                <td class="col-type"><code>smallint</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">calendar_period_label</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">title</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">url</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">content_type</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">language</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">published_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">effective_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">ingested_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>now()</code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">supersedes</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→artifacts.id</span></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">superseded_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">authored_by</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">last_reviewed_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">asserted_valid_through</td>
+                <td class="col-type"><code>date</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">artifact_metadata</td>
+                <td class="col-type"><code>jsonb</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>&#x27;{}&#x27;::jsonb</code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            </tbody>
+        </table>
+        <h4>Foreign keys</h4><ul><li><code>(ingest_run_id)</code> → <code>ingest_runs(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(artifacts_ingest_run_id_fkey)</span></li><li><code>(supersedes)</code> → <code>artifacts(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(artifacts_supersedes_fkey)</span></li></ul>
+        
+        <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK (((calendar_period_label IS NULL) OR (calendar_period_label ~ &#x27;^CY[0-9]{4} Q[1-4]$&#x27;::text)))</code> <span class='cname'>(artifacts_calendar_period_label_format)</span></li><li><code class='check-def'>CHECK (((calendar_quarter IS NULL) OR ((calendar_quarter &gt;= 1) AND (calendar_quarter &lt;= 4))))</code> <span class='cname'>(artifacts_calendar_quarter_range)</span></li><li><code class='check-def'>CHECK ((octet_length(canonical_hash) = 32))</code> <span class='cname'>(artifacts_canonical_hash_len)</span></li><li><code class='check-def'>CHECK (((fiscal_period_label IS NULL) OR (fiscal_period_label ~ &#x27;^FY[0-9]{4}( Q[1-4])?$&#x27;::text)))</code> <span class='cname'>(artifacts_fiscal_period_label_format)</span></li><li><code class='check-def'>CHECK (((fiscal_quarter IS NULL) OR ((fiscal_quarter &gt;= 1) AND (fiscal_quarter &lt;= 4))))</code> <span class='cname'>(artifacts_fiscal_quarter_range)</span></li><li><code class='check-def'>CHECK (((period_type IS NULL) OR (period_type = ANY (ARRAY[&#x27;quarter&#x27;::text, &#x27;annual&#x27;::text, &#x27;stub&#x27;::text]))))</code> <span class='cname'>(artifacts_period_type_check)</span></li><li><code class='check-def'>CHECK (((period_type IS NULL) OR ((period_type = ANY (ARRAY[&#x27;annual&#x27;::text, &#x27;stub&#x27;::text])) AND (fiscal_quarter IS NULL)) OR ((period_type = &#x27;quarter&#x27;::text) AND (fiscal_quarter IS NOT NULL))))</code> <span class='cname'>(artifacts_period_type_quarter_iff)</span></li><li><code class='check-def'>CHECK ((octet_length(raw_hash) = 32))</code> <span class='cname'>(artifacts_raw_hash_len)</span></li><li><code class='check-def'>CHECK (((supersedes IS NULL) OR (supersedes &lt;&gt; id)))</code> <span class='cname'>(artifacts_supersedes_not_self)</span></li><li><code class='check-def'>CHECK ((artifact_type = ANY (ARRAY[&#x27;10k&#x27;::text, &#x27;10q&#x27;::text, &#x27;8k&#x27;::text, &#x27;transcript&#x27;::text, &#x27;press_release&#x27;::text, &#x27;news_article&#x27;::text, &#x27;presentation&#x27;::text, &#x27;video_transcript&#x27;::text, &#x27;research_note&#x27;::text, &#x27;industry_primer&#x27;::text, &#x27;product_primer&#x27;::text, &#x27;macro_primer&#x27;::text, &#x27;macro_release&#x27;::text])))</code> <span class='cname'>(artifacts_type_check)</span></li></ul>
+        <h4>Indexes</h4><ul><li><b>artifacts_calendar_period_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_calendar_period_idx ON public.artifacts USING btree (calendar_year, calendar_quarter, artifact_type) WHERE (calendar_year IS NOT NULL)</code></li><li><b>artifacts_canonical_hash_idx</b> <br><code class='index-def'>CREATE INDEX artifacts_canonical_hash_idx ON public.artifacts USING btree (canonical_hash)</code></li><li><b>artifacts_current_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_current_idx ON public.artifacts USING btree (ticker, artifact_type, published_at DESC) WHERE ((superseded_at IS NULL) AND (ticker IS NOT NULL))</code></li><li><b>artifacts_fiscal_period_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_fiscal_period_idx ON public.artifacts USING btree (ticker, fiscal_year, fiscal_quarter) WHERE ((ticker IS NOT NULL) AND (fiscal_year IS NOT NULL))</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_raw_hash_idx</b> <br><code class='index-def'>CREATE INDEX artifacts_raw_hash_idx ON public.artifacts USING btree (raw_hash)</code></li><li><b>artifacts_research_freshness_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_research_freshness_idx ON public.artifacts USING btree (artifact_type, last_reviewed_at DESC) WHERE (artifact_type = ANY (ARRAY[&#x27;research_note&#x27;::text, &#x27;industry_primer&#x27;::text, &#x27;product_primer&#x27;::text, &#x27;macro_primer&#x27;::text]))</code></li><li><b>artifacts_source_doc_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_source_doc_idx ON public.artifacts USING btree (source, source_document_id) WHERE (source_document_id IS NOT NULL)</code></li><li><b>artifacts_supersedes_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_supersedes_idx ON public.artifacts USING btree (supersedes) WHERE (supersedes IS NOT NULL)</code></li><li><b>artifacts_ticker_type_published_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_ticker_type_published_idx ON public.artifacts USING btree (ticker, artifact_type, published_at DESC) WHERE (ticker IS NOT NULL)</code></li></ul>
+    </section>
+    
+
+    <section class="table-card" id="tbl-companies">
+        <h3>companies</h3>
+        <table class="cols">
+            <thead>
+                <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td class="col-name">id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>nextval(&#x27;companies_id_seq&#x27;::regclass)</code></td>
+                <td class="col-keys"><span class="badge pk">PK</span></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">cik</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">ticker</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">name</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">fiscal_year_end_md</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">status</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>&#x27;active&#x27;::text</code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">created_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>now()</code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">updated_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>now()</code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            </tbody>
+        </table>
+        
+        <h4>Unique constraints</h4><ul><li><code>UNIQUE (cik)</code> <span class='cname'>(companies_cik_key)</span></li></ul>
+        <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK ((cik &gt; 0))</code> <span class='cname'>(companies_cik_positive)</span></li><li><code class='check-def'>CHECK ((fiscal_year_end_md ~ &#x27;^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$&#x27;::text))</code> <span class='cname'>(companies_fiscal_year_end_md_format)</span></li><li><code class='check-def'>CHECK ((status = ANY (ARRAY[&#x27;active&#x27;::text, &#x27;delisted&#x27;::text, &#x27;merged&#x27;::text, &#x27;acquired&#x27;::text, &#x27;private&#x27;::text])))</code> <span class='cname'>(companies_status_check)</span></li></ul>
+        <h4>Indexes</h4><ul><li><b>companies_active_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX companies_active_idx ON public.companies USING btree (ticker) WHERE (status = &#x27;active&#x27;::text)</code></li><li><b>companies_cik_key</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_cik_key ON public.companies USING btree (cik)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_ticker_idx</b> <br><code class='index-def'>CREATE INDEX companies_ticker_idx ON public.companies USING btree (ticker)</code></li></ul>
+    </section>
+    
+
+    <section class="table-card" id="tbl-financial_facts">
+        <h3>financial_facts</h3>
+        <table class="cols">
+            <thead>
+                <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td class="col-name">id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>nextval(&#x27;financial_facts_id_seq&#x27;::regclass)</code></td>
+                <td class="col-keys"><span class="badge pk">PK</span></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">ingest_run_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→ingest_runs.id</span></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">company_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→companies.id</span></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">statement</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">concept</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">value</td>
+                <td class="col-type"><code>numeric(28,4)</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">unit</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">fiscal_year</td>
+                <td class="col-type"><code>smallint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">fiscal_quarter</td>
+                <td class="col-type"><code>smallint</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">fiscal_period_label</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">period_end</td>
+                <td class="col-type"><code>date</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">period_type</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">calendar_year</td>
+                <td class="col-type"><code>smallint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">calendar_quarter</td>
+                <td class="col-type"><code>smallint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">calendar_period_label</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">published_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">effective_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">superseded_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">ingested_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>now()</code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">source_raw_response_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→raw_responses.id</span></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">source_artifact_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→artifacts.id</span></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">extraction_version</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            </tbody>
+        </table>
+        <h4>Foreign keys</h4><ul><li><code>(company_id)</code> → <code>companies(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_company_id_fkey)</span></li><li><code>(ingest_run_id)</code> → <code>ingest_runs(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_ingest_run_id_fkey)</span></li><li><code>(source_artifact_id)</code> → <code>artifacts(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_source_artifact_id_fkey)</span></li><li><code>(source_raw_response_id)</code> → <code>raw_responses(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_source_raw_response_id_fkey)</span></li></ul>
+        <h4>Unique constraints</h4><ul><li><code>UNIQUE (company_id, concept, period_end, period_type, source_raw_response_id, extraction_version)</code> <span class='cname'>(financial_facts_unique_extraction)</span></li></ul>
+        <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK ((calendar_period_label ~ &#x27;^CY[0-9]{4} Q[1-4]$&#x27;::text))</code> <span class='cname'>(financial_facts_calendar_period_label_format)</span></li><li><code class='check-def'>CHECK (((calendar_quarter &gt;= 1) AND (calendar_quarter &lt;= 4)))</code> <span class='cname'>(financial_facts_calendar_quarter_range)</span></li><li><code class='check-def'>CHECK ((fiscal_period_label ~ &#x27;^FY[0-9]{4}( Q[1-4])?$&#x27;::text))</code> <span class='cname'>(financial_facts_fiscal_period_label_format)</span></li><li><code class='check-def'>CHECK (((fiscal_quarter IS NULL) OR ((fiscal_quarter &gt;= 1) AND (fiscal_quarter &lt;= 4))))</code> <span class='cname'>(financial_facts_fiscal_quarter_range)</span></li><li><code class='check-def'>CHECK ((period_type = ANY (ARRAY[&#x27;quarter&#x27;::text, &#x27;annual&#x27;::text, &#x27;stub&#x27;::text])))</code> <span class='cname'>(financial_facts_period_type_check)</span></li><li><code class='check-def'>CHECK ((((period_type = ANY (ARRAY[&#x27;annual&#x27;::text, &#x27;stub&#x27;::text])) AND (fiscal_quarter IS NULL)) OR ((period_type = &#x27;quarter&#x27;::text) AND (fiscal_quarter IS NOT NULL))))</code> <span class='cname'>(financial_facts_period_type_quarter_iff)</span></li><li><code class='check-def'>CHECK ((statement = ANY (ARRAY[&#x27;income_statement&#x27;::text, &#x27;balance_sheet&#x27;::text, &#x27;cash_flow&#x27;::text, &#x27;metrics&#x27;::text, &#x27;ratios&#x27;::text, &#x27;segment&#x27;::text])))</code> <span class='cname'>(financial_facts_statement_check)</span></li></ul>
+        <h4>Indexes</h4><ul><li><b>financial_facts_calendar_period_concept_idx</b> <br><code class='index-def'>CREATE INDEX financial_facts_calendar_period_concept_idx ON public.financial_facts USING btree (calendar_year, calendar_quarter, concept)</code></li><li><b>financial_facts_company_concept_period_idx</b> <br><code class='index-def'>CREATE INDEX financial_facts_company_concept_period_idx ON public.financial_facts USING btree (company_id, concept, period_end DESC)</code></li><li><b>financial_facts_current_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX financial_facts_current_idx ON public.financial_facts USING btree (company_id, concept, period_end DESC) WHERE (superseded_at IS NULL)</code></li><li><b>financial_facts_one_current_idx</b> <span class="badge uk">UNIQUE</span> <span class="badge partial">partial</span><br><code class='index-def'>CREATE UNIQUE INDEX financial_facts_one_current_idx ON public.financial_facts USING btree (company_id, concept, period_end, period_type, extraction_version) WHERE (superseded_at IS NULL)</code></li><li><b>financial_facts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX financial_facts_pkey ON public.financial_facts USING btree (id)</code></li><li><b>financial_facts_source_artifact_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX financial_facts_source_artifact_idx ON public.financial_facts USING btree (source_artifact_id) WHERE (source_artifact_id IS NOT NULL)</code></li><li><b>financial_facts_source_raw_response_idx</b> <br><code class='index-def'>CREATE INDEX financial_facts_source_raw_response_idx ON public.financial_facts USING btree (source_raw_response_id)</code></li><li><b>financial_facts_statement_company_idx</b> <br><code class='index-def'>CREATE INDEX financial_facts_statement_company_idx ON public.financial_facts USING btree (statement, company_id, period_end DESC)</code></li><li><b>financial_facts_unique_extraction</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX financial_facts_unique_extraction ON public.financial_facts USING btree (company_id, concept, period_end, period_type, source_raw_response_id, extraction_version)</code></li></ul>
+    </section>
+    
+
+    <section class="table-card" id="tbl-ingest_runs">
+        <h3>ingest_runs</h3>
+        <table class="cols">
+            <thead>
+                <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td class="col-name">id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>nextval(&#x27;ingest_runs_id_seq&#x27;::regclass)</code></td>
+                <td class="col-keys"><span class="badge pk">PK</span></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">run_kind</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">vendor</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">ticker_scope</td>
+                <td class="col-type"><code>text[]</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">status</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>&#x27;started&#x27;::text</code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">started_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>now()</code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">finished_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">counts</td>
+                <td class="col-type"><code>jsonb</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>&#x27;{}&#x27;::jsonb</code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">error_message</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">error_details</td>
+                <td class="col-type"><code>jsonb</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">code_version</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            </tbody>
+        </table>
+        
+        
+        <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK ((((status = &#x27;started&#x27;::text) AND (finished_at IS NULL)) OR ((status &lt;&gt; &#x27;started&#x27;::text) AND (finished_at IS NOT NULL))))</code> <span class='cname'>(ingest_runs_finished_at_check)</span></li><li><code class='check-def'>CHECK ((run_kind = ANY (ARRAY[&#x27;backfill&#x27;::text, &#x27;incremental&#x27;::text, &#x27;reconciliation&#x27;::text, &#x27;manual&#x27;::text])))</code> <span class='cname'>(ingest_runs_run_kind_check)</span></li><li><code class='check-def'>CHECK ((status = ANY (ARRAY[&#x27;started&#x27;::text, &#x27;succeeded&#x27;::text, &#x27;failed&#x27;::text, &#x27;partial&#x27;::text])))</code> <span class='cname'>(ingest_runs_status_check)</span></li></ul>
+        <h4>Indexes</h4><ul><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_status_problem_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX ingest_runs_status_problem_idx ON public.ingest_runs USING btree (started_at DESC) WHERE (status = ANY (ARRAY[&#x27;failed&#x27;::text, &#x27;partial&#x27;::text]))</code></li><li><b>ingest_runs_vendor_started_at_idx</b> <br><code class='index-def'>CREATE INDEX ingest_runs_vendor_started_at_idx ON public.ingest_runs USING btree (vendor, started_at DESC)</code></li></ul>
+    </section>
+    
+
+    <section class="table-card" id="tbl-raw_responses">
+        <h3>raw_responses</h3>
+        <table class="cols">
+            <thead>
+                <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td class="col-name">id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>nextval(&#x27;raw_responses_id_seq&#x27;::regclass)</code></td>
+                <td class="col-keys"><span class="badge pk">PK</span></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">ingest_run_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→ingest_runs.id</span></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">vendor</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">endpoint</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">params</td>
+                <td class="col-type"><code>jsonb</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>&#x27;{}&#x27;::jsonb</code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">params_hash</td>
+                <td class="col-type"><code>bytea</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">request_url</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">http_status</td>
+                <td class="col-type"><code>smallint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">content_type</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">response_headers</td>
+                <td class="col-type"><code>jsonb</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">body_jsonb</td>
+                <td class="col-type"><code>jsonb</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">body_raw</td>
+                <td class="col-type"><code>bytea</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">raw_hash</td>
+                <td class="col-type"><code>bytea</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">canonical_hash</td>
+                <td class="col-type"><code>bytea</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">fetched_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>now()</code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            </tbody>
+        </table>
+        <h4>Foreign keys</h4><ul><li><code>(ingest_run_id)</code> → <code>ingest_runs(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(raw_responses_ingest_run_id_fkey)</span></li></ul>
+        
+        <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK (((body_jsonb IS NULL) &lt;&gt; (body_raw IS NULL)))</code> <span class='cname'>(raw_responses_body_xor)</span></li><li><code class='check-def'>CHECK ((octet_length(canonical_hash) = 32))</code> <span class='cname'>(raw_responses_canonical_hash_len)</span></li><li><code class='check-def'>CHECK ((octet_length(params_hash) = 32))</code> <span class='cname'>(raw_responses_params_hash_len)</span></li><li><code class='check-def'>CHECK ((octet_length(raw_hash) = 32))</code> <span class='cname'>(raw_responses_raw_hash_len)</span></li></ul>
+        <h4>Indexes</h4><ul><li><b>raw_responses_canonical_hash_idx</b> <br><code class='index-def'>CREATE INDEX raw_responses_canonical_hash_idx ON public.raw_responses USING btree (canonical_hash)</code></li><li><b>raw_responses_ingest_run_id_idx</b> <br><code class='index-def'>CREATE INDEX raw_responses_ingest_run_id_idx ON public.raw_responses USING btree (ingest_run_id)</code></li><li><b>raw_responses_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX raw_responses_pkey ON public.raw_responses USING btree (id)</code></li><li><b>raw_responses_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX raw_responses_pkey ON public.raw_responses USING btree (id)</code></li><li><b>raw_responses_raw_hash_idx</b> <br><code class='index-def'>CREATE INDEX raw_responses_raw_hash_idx ON public.raw_responses USING btree (raw_hash)</code></li><li><b>raw_responses_request_fetched_idx</b> <br><code class='index-def'>CREATE INDEX raw_responses_request_fetched_idx ON public.raw_responses USING btree (vendor, endpoint, params_hash, fetched_at DESC)</code></li></ul>
+    </section>
+    
+</div>
+
+<footer>
+    Source: Postgres <code>public</code> schema, queried via <code>pg_catalog</code> + <code>information_schema</code>.
+    Tables excluded from view: <code>schema_migrations</code> (migration tracker).
+</footer>
+
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+await document.fonts.ready;
+mermaid.initialize({
+    startOnLoad: false,
+    theme: 'base',
+    fontFamily: '"Anthropic Sans", sans-serif',
+    themeVariables: {
+        darkMode: dark,
+        fontSize: '13px',
+        fontFamily: '"Anthropic Sans", sans-serif',
+        lineColor: dark ? '#9c9a92' : '#73726c',
+        textColor: dark ? '#c2c0b6' : '#3d3d3a',
+    },
+});
+
+const src = "erDiagram\n  INGEST_RUNS |o--o{ ARTIFACTS : \"artifacts_ingest_run_id_fkey\"\n  ARTIFACTS |o--o{ ARTIFACTS : \"artifacts_supersedes_fkey\"\n  COMPANIES ||--o{ FINANCIAL_FACTS : \"financial_facts_company_id_fkey\"\n  INGEST_RUNS |o--o{ FINANCIAL_FACTS : \"financial_facts_ingest_run_id_fkey\"\n  ARTIFACTS |o--o{ FINANCIAL_FACTS : \"financial_facts_source_artifact_id_fkey\"\n  RAW_RESPONSES ||--o{ FINANCIAL_FACTS : \"financial_facts_source_raw_response_id_fkey\"\n  INGEST_RUNS ||--o{ RAW_RESPONSES : \"raw_responses_ingest_run_id_fkey\"\n  ARTIFACTS {\n    bigint id PK \"NOT NULL, default nextval('artifacts_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"nullable\"\n    text artifact_type \"NOT NULL\"\n    text source \"NOT NULL\"\n    text source_document_id \"nullable\"\n    bytea raw_hash \"NOT NULL\"\n    bytea canonical_hash \"NOT NULL\"\n    text ticker \"nullable\"\n    smallint fiscal_year \"nullable\"\n    smallint fiscal_quarter \"nullable\"\n    text fiscal_period_label \"nullable\"\n    date period_end \"nullable\"\n    text period_type \"nullable\"\n    smallint calendar_year \"nullable\"\n    smallint calendar_quarter \"nullable\"\n    text calendar_period_label \"nullable\"\n    text title \"nullable\"\n    text url \"nullable\"\n    text content_type \"nullable\"\n    text language \"nullable\"\n    timestamp_with_time_zone published_at \"nullable\"\n    timestamp_with_time_zone effective_at \"nullable\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n    bigint supersedes FK \"nullable\"\n    timestamp_with_time_zone superseded_at \"nullable\"\n    text authored_by \"nullable\"\n    timestamp_with_time_zone last_reviewed_at \"nullable\"\n    date asserted_valid_through \"nullable\"\n    jsonb artifact_metadata \"NOT NULL, default '{}'::jsonb\"\n  }\n  COMPANIES {\n    bigint id PK \"NOT NULL, default nextval('companies_id_seq'::regclass)\"\n    bigint cik UK \"NOT NULL\"\n    text ticker \"NOT NULL\"\n    text name \"NOT NULL\"\n    text fiscal_year_end_md \"NOT NULL\"\n    text status \"NOT NULL, default 'active'::text\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone updated_at \"NOT NULL, default now()\"\n  }\n  FINANCIAL_FACTS {\n    bigint id PK \"NOT NULL, default nextval('financial_facts_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"nullable\"\n    bigint company_id FK \"NOT NULL\"\n    text statement \"NOT NULL\"\n    text concept \"NOT NULL\"\n    numeric_28_4 value \"NOT NULL\"\n    text unit \"NOT NULL\"\n    smallint fiscal_year \"NOT NULL\"\n    smallint fiscal_quarter \"nullable\"\n    text fiscal_period_label \"NOT NULL\"\n    date period_end \"NOT NULL\"\n    text period_type \"NOT NULL\"\n    smallint calendar_year \"NOT NULL\"\n    smallint calendar_quarter \"NOT NULL\"\n    text calendar_period_label \"NOT NULL\"\n    timestamp_with_time_zone published_at \"NOT NULL\"\n    timestamp_with_time_zone effective_at \"nullable\"\n    timestamp_with_time_zone superseded_at \"nullable\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n    bigint source_artifact_id FK \"nullable\"\n    text extraction_version \"NOT NULL\"\n  }\n  INGEST_RUNS {\n    bigint id PK \"NOT NULL, default nextval('ingest_runs_id_seq'::regclass)\"\n    text run_kind \"NOT NULL\"\n    text vendor \"NOT NULL\"\n    text[] ticker_scope \"nullable\"\n    text status \"NOT NULL, default 'started'::text\"\n    timestamp_with_time_zone started_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone finished_at \"nullable\"\n    jsonb counts \"NOT NULL, default '{}'::jsonb\"\n    text error_message \"nullable\"\n    jsonb error_details \"nullable\"\n    text code_version \"nullable\"\n  }\n  RAW_RESPONSES {\n    bigint id PK \"NOT NULL, default nextval('raw_responses_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"NOT NULL\"\n    text vendor \"NOT NULL\"\n    text endpoint \"NOT NULL\"\n    jsonb params \"NOT NULL, default '{}'::jsonb\"\n    bytea params_hash \"NOT NULL\"\n    text request_url \"nullable\"\n    smallint http_status \"NOT NULL\"\n    text content_type \"NOT NULL\"\n    jsonb response_headers \"nullable\"\n    jsonb body_jsonb \"nullable\"\n    bytea body_raw \"nullable\"\n    bytea raw_hash \"NOT NULL\"\n    bytea canonical_hash \"NOT NULL\"\n    timestamp_with_time_zone fetched_at \"NOT NULL, default now()\"\n  }";
+const { svg } = await mermaid.render('erd-svg', src);
+document.getElementById('erd').innerHTML = svg;
+
+// Round entity corners for a friendlier look
+document.querySelectorAll('#erd svg.erDiagram .node').forEach(node => {
+    const firstPath = node.querySelector('path[d]');
+    if (!firstPath) return;
+    const d = firstPath.getAttribute('d');
+    const nums = d.match(/-?[\d.]+/g)?.map(Number);
+    if (!nums || nums.length < 8) return;
+    const xs = [nums[0], nums[2], nums[4], nums[6]];
+    const ys = [nums[1], nums[3], nums[5], nums[7]];
+    const x = Math.min(...xs), y = Math.min(...ys);
+    const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', x); rect.setAttribute('y', y);
+    rect.setAttribute('width', w); rect.setAttribute('height', h);
+    rect.setAttribute('rx', '8');
+    for (const a of ['fill', 'stroke', 'stroke-width', 'class', 'style']) {
+        if (firstPath.hasAttribute(a)) rect.setAttribute(a, firstPath.getAttribute(a));
+    }
+    firstPath.replaceWith(rect);
+});
+</script>
+
+</body>
+</html>
