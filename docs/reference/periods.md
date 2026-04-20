@@ -48,7 +48,9 @@ All fiscal-period-bearing tables (`financial_facts`, `artifacts` where period-re
 
 ### 2.3 Fiscal-year-end anchor
 
-Every company carries its fiscal-year-end in `companies.fiscal_year_end_md` (format `MM-DD`, e.g. `01-26` for NVDA, `06-30` for MSFT, `12-31` for calendar-year filers). This anchors both derivations.
+Every company carries its fiscal-year-end in `companies.fiscal_year_end_md` (format `MM-DD`, e.g. `01-31` for NVDA, `06-30` for MSFT, `12-31` for calendar-year filers). This anchors both derivations.
+
+For 52/53-week filers like NVDA and AAPL, `fiscal_year_end_md` is the **nominal anchor** (SEC's `fiscalYearEnd` field — for NVDA, the end of January) — not the specific `period_end` date of any one fiscal year. The nominal anchor is the upper bound of where an actual period_end can fall; the algorithm in § 3.2 relies on this property. Storing a specific historical period_end (e.g. `01-26` from NVDA's FY2025 Q4) would misclassify years where the actual end date drifts past it.
 
 ---
 
@@ -301,7 +303,8 @@ Derived:
 
 ```
 period_end              = 2024-04-28   (last Sunday of April, not April 30)
-companies.fiscal_year_end_md = "01-26"  (current year; the MM-DD drifts ±6 days each year)
+companies.fiscal_year_end_md = "01-31"  (SEC nominal anchor; actual FY-end period_end drifts
+                                          across late Jan under NVDA's 52/53-week calendar)
 DEI fiscal_year_focus   = 2025
 DEI fiscal_period_focus = "Q1"
 
@@ -310,6 +313,7 @@ Derived (algorithmic cross-check):
   FY_start_month   = 2
   months_elapsed   = ((4 - 2) % 12) + 1 = 3
   fiscal_quarter   = ceil(3 / 3) = 1   ✓ matches DEI
+  year-before-check: (4,28) > (1,31) = true → fiscal_year = period_end.year + 1 = 2025 ✓
 
 Stored:
   fiscal_year           = 2025
