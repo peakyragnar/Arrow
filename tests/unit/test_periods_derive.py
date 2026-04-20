@@ -81,6 +81,67 @@ def test_nvda_fy2025_q3_ended_oct_27_2024() -> None:
     assert p.fiscal_quarter == 3
 
 
+# 52/53-week drift cases — the bug fixed by migrating to the
+# subtract-7-days algorithm. These are real NVDA period_ends where the
+# quarter-end Sunday drifted past the nominal calendar month-end.
+
+
+def test_nvda_fy2000_q2_drifted_to_aug_1() -> None:
+    """NVDA Q2 FY2000 ended 1999-08-01 (last Sunday of July rolled into August).
+    Old algorithm misclassified this as Q3. Subtract-7-days correctly
+    anchors it to the July content month.
+    """
+    p = derive_fiscal_period(date(1999, 8, 1), "01-31", period_type="quarter")
+    assert p.fiscal_year == 2000
+    assert p.fiscal_quarter == 2
+    assert p.fiscal_period_label == "FY2000 Q2"
+
+
+def test_nvda_fy2006_q1_drifted_to_may_1() -> None:
+    p = derive_fiscal_period(date(2005, 5, 1), "01-31", period_type="quarter")
+    assert p.fiscal_year == 2006
+    assert p.fiscal_quarter == 1
+
+
+def test_nvda_fy2011_q1_drifted_to_may_2() -> None:
+    """Two-day drift: May 2. Subtract-1-day would still misclassify this."""
+    p = derive_fiscal_period(date(2010, 5, 2), "01-31", period_type="quarter")
+    assert p.fiscal_year == 2011
+    assert p.fiscal_quarter == 1
+
+
+def test_nvda_fy2011_q2_drifted_to_aug_1() -> None:
+    p = derive_fiscal_period(date(2010, 8, 1), "01-31", period_type="quarter")
+    assert p.fiscal_year == 2011
+    assert p.fiscal_quarter == 2
+
+
+def test_nvda_fy2017_q1_drifted_to_may_1() -> None:
+    p = derive_fiscal_period(date(2016, 5, 1), "01-31", period_type="quarter")
+    assert p.fiscal_year == 2017
+    assert p.fiscal_quarter == 1
+
+
+def test_nvda_fy2022_q2_drifted_to_aug_1() -> None:
+    p = derive_fiscal_period(date(2021, 8, 1), "01-31", period_type="quarter")
+    assert p.fiscal_year == 2022
+    assert p.fiscal_quarter == 2
+
+
+def test_nvda_fy2023_q1_drifted_to_may_1() -> None:
+    p = derive_fiscal_period(date(2022, 5, 1), "01-31", period_type="quarter")
+    assert p.fiscal_year == 2023
+    assert p.fiscal_quarter == 1
+
+
+def test_nvda_drift_does_not_affect_canonical_late_month_cases() -> None:
+    """Subtract-7-days must be a no-op on canonical late-month period_ends."""
+    # Jul 31 canonical vs Aug 1 drifted — both must produce FY2000 Q2.
+    canonical = derive_fiscal_period(date(1999, 7, 31), "01-31")
+    drifted = derive_fiscal_period(date(1999, 8, 1), "01-31")
+    assert canonical.fiscal_period_label == drifted.fiscal_period_label == "FY2000 Q2"
+
+
 def test_nvda_annual_returns_null_quarter_and_bare_label() -> None:
     p = derive_fiscal_period(date(2025, 1, 26), "01-31", period_type="annual")
     assert p.fiscal_year == 2025

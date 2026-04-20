@@ -74,19 +74,33 @@ When DEI is absent, wrong (see Dell FY2024 Q1/Q2 mislabeling, § 11), or being c
 ```text
 FY_end_month, FY_end_day = parse(companies.fiscal_year_end_md)
 
-# Fiscal year naming: FY is named after the calendar year it ends in.
-if (period_end.month, period_end.day) > (FY_end_month, FY_end_day):
-    expected_fiscal_year = period_end.year + 1
-else:
-    expected_fiscal_year = period_end.year
+# 52/53-week drift absorption:
+# A 52/53-week filer's quarter-end day can land up to ~7 days past the
+# nominal calendar month-end. NVDA FY2000 Q2 actually ended 1999-08-01
+# because "Sunday nearest Jul 31" fell on Aug 1 that year — the CONTENT
+# month of that period is July, not August, for fiscal-month arithmetic.
+# Shift back one week before the month/day arithmetic; this is a no-op on
+# canonical late-month period_ends and a correction on early-next-month
+# drifted period_ends.
+effective = period_end - timedelta(days=7)
 
-# Quarter within fiscal year.
+# Fiscal year naming: FY is named after the calendar year it ends in.
+# A period whose EFFECTIVE date is past the fiscal-year-end anchor belongs
+# to the NEXT fiscal year.
+if (effective.month, effective.day) > (FY_end_month, FY_end_day):
+    expected_fiscal_year = effective.year + 1
+else:
+    expected_fiscal_year = effective.year
+
+# Quarter within fiscal year, computed on the effective date.
 FY_start_month = (FY_end_month % 12) + 1
-months_elapsed = ((period_end.month - FY_start_month) % 12) + 1
-expected_fiscal_quarter = ceil(months_elapsed / 3)  # 1..4
+months_elapsed = ((effective.month - FY_start_month) % 12) + 1   # 1..12
+expected_fiscal_quarter = ceil(months_elapsed / 3)                # 1..4
 ```
 
-**Use `ceil`, not `round`.** Companies with 52/53-week calendars and near-Saturday quarter-ends routinely have `period_end` one day into the next month (e.g. NUE Q2 ending July 1 → 6 months elapsed from Jan start → `ceil(6/3) = Q2`). `round(6/3)` = 3 would be wrong.
+**Use `ceil`, not `round`.** Once `effective` is in the content month, `months_elapsed` is exact (no drift) and we need `ceil(n/3)` to map 1..12 into quarters 1..4. `round(n/3)` would misclassify month 1 (→ round(1/3)=0) and is wrong.
+
+**Why subtract a week, not a day.** A single day handles 1-day drift past a month boundary (Aug 1 → Jul 31) but fails on 2-day drift (Aug 2 → Jul 31 OK, but May 2 → May 1, still the wrong month). Seven days covers a full week's drift with no ambiguity, and never wraps across a quarter boundary (each quarter spans ~13 weeks). Empirically fits every NVDA period_end from FY2000 to FY2026.
 
 ### 3.3 Rule: when DEI and algorithm disagree
 
