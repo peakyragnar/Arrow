@@ -27,7 +27,18 @@ from decimal import Decimal
 
 import psycopg
 
-from arrow.normalize.financials.verify_is import TOLERANCE_ABSOLUTE, TOLERANCE_PCT
+# Layer 3 tolerance is wider than Layer 1 because the identity sums FIVE
+# independently-rounded values (four quarterly discretes + the filer's
+# own reported annual). Each value is typically rounded to the nearest
+# $1M at filing time (±$0.5M noise), so the max expected rounding drift
+# on the identity is 5 × $0.5M = $2.5M. We saw this empirically on
+# NVDA FY2021 SG&A: SEC's XBRL itself reports Q1=$293M, Q2=$627M,
+# Q3=$515M, Q4_derived=$503M summing to $1,938M, vs reported FY=$1,940M —
+# a $2M delta that's entirely filer rounding (not an FMP or extraction
+# bug). The wider floor absorbs this without missing genuine issues
+# (anything beyond $2.5M is well above filer-rounding noise).
+LAYER3_TOLERANCE_ABSOLUTE = Decimal("2500000")  # $2.5M
+LAYER3_TOLERANCE_PCT = Decimal("0.001")         # 0.1% of larger abs (same as L1)
 
 # Flow buckets eligible for the Q1+Q2+Q3+Q4 ≈ FY identity.
 # Excludes BS stocks (not in IS anyway), per-share, and share-counts.
@@ -54,8 +65,8 @@ class PeriodArithmeticFailure:
 def _within_tolerance(a: Decimal, b: Decimal) -> tuple[bool, Decimal, Decimal]:
     delta = abs(a - b)
     threshold = max(
-        TOLERANCE_ABSOLUTE,
-        max(abs(a), abs(b)) * TOLERANCE_PCT,
+        LAYER3_TOLERANCE_ABSOLUTE,
+        max(abs(a), abs(b)) * LAYER3_TOLERANCE_PCT,
     )
     return delta <= threshold, delta, threshold
 

@@ -112,3 +112,38 @@ def derive_calendar_period(period_end: date) -> CalendarPeriod:
         calendar_quarter=cal_quarter,
         calendar_period_label=f"CY{cal_year} Q{cal_quarter}",
     )
+
+
+def min_fiscal_year_for_since_date(
+    since_date: date,
+    fiscal_year_end_md: str,
+) -> int:
+    """Round a calendar `since_date` forward to the first complete fiscal year.
+
+    Returns the earliest fiscal_year whose nominal FY-end date falls on or
+    after `since_date`. Use this when ingesting a "5-year validated window"
+    so partial fiscal years aren't included at the boundary — every
+    included fiscal year has all four quarters + annual, which keeps
+    Layer 3 period arithmetic and the Q4 XBRL derivation coherent.
+
+    Example: NVDA (fiscal_year_end_md='01-31'), since_date=2021-01-01.
+    FY2020 nominally ends 2020-01-31 (before since_date) — excluded.
+    FY2021 nominally ends 2021-01-31 (≥ since_date) — returned.
+    The full FY2021 (including Q1-Q3 period_ends in CY2020) then gets
+    ingested.
+
+    The nominal FY-end date is used as the boundary rather than specific
+    (possibly drifted) period_ends. For 52/53-week filers this is the
+    right upper-bound anchor — see periods.md § 2.3.
+    """
+    fy_end_month, fy_end_day = parse_fiscal_year_end_md(fiscal_year_end_md)
+    # Try a small window of candidate fiscal years around since_date.year.
+    for fy in range(since_date.year - 1, since_date.year + 2):
+        try:
+            fy_end = date(fy, fy_end_month, fy_end_day)
+        except ValueError:
+            continue  # e.g. 02-29 in a non-leap year
+        if fy_end >= since_date:
+            return fy
+    # Fallback: something very unusual with the inputs; return since_date.year.
+    return since_date.year

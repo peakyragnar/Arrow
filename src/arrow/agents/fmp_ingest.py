@@ -52,6 +52,7 @@ from arrow.normalize.financials.verify_period_arithmetic import (
     PeriodArithmeticFailure,
     verify_period_arithmetic,
 )
+from arrow.normalize.periods.derive import min_fiscal_year_for_since_date
 from arrow.reconcile.fmp_vs_xbrl import AnchorCheckResult, reconcile_anchors
 
 # Default scope: 5-year validated window. Change per ticker by passing
@@ -116,7 +117,7 @@ def _load_one_period(
     *,
     company: CompanyRow,
     period: str,
-    since_date: date,
+    min_fiscal_year: int,
     ingest_run_id: int,
     client: FMPClient,
 ) -> LoadResult:
@@ -135,7 +136,7 @@ def _load_one_period(
             rows=fetched.rows,
             source_raw_response_id=fetched.raw_response_id,
             ingest_run_id=ingest_run_id,
-            since_date=since_date,
+            min_fiscal_year=min_fiscal_year,
         )
 
 
@@ -194,6 +195,7 @@ def backfill_fmp_is(
 
     counts: dict[str, Any] = {
         "since_date": since_date.isoformat(),
+        "min_fiscal_year_by_ticker": {},
         "raw_responses": 0,
         "financial_facts_written": 0,
         "financial_facts_superseded": 0,
@@ -208,6 +210,13 @@ def backfill_fmp_is(
     try:
         for ticker in tickers:
             company = _get_company(conn, ticker)
+            # Round the calendar since_date forward to the first fiscal
+            # year whose end falls on/after it — so we get complete
+            # fiscal years, never partials at the boundary.
+            ticker_min_fy = min_fiscal_year_for_since_date(
+                since_date, company.fiscal_year_end_md
+            )
+            counts["min_fiscal_year_by_ticker"][ticker.upper()] = ticker_min_fy
 
             # Layer 1 (per-row): enforced inline.
             for period in ("quarter", "annual"):
@@ -215,7 +224,7 @@ def backfill_fmp_is(
                     conn,
                     company=company,
                     period=period,
-                    since_date=since_date,
+                    min_fiscal_year=ticker_min_fy,
                     ingest_run_id=run_id,
                     client=client,
                 )

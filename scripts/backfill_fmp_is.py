@@ -29,7 +29,13 @@ from arrow.normalize.financials.load import VerificationFailed
 
 def _print_success(tickers: list[str], counts: dict[str, Any]) -> None:
     print(f"Backfilled IS for {', '.join(t.upper() for t in tickers)}:")
-    print(f"  since_date:          {counts['since_date']}")
+    print(f"  since_date:          {counts['since_date']} (calendar input)")
+    fy_map = counts.get("min_fiscal_year_by_ticker", {})
+    if fy_map:
+        per_ticker = ", ".join(
+            f"{t}=FY{fy}" for t, fy in sorted(fy_map.items())
+        )
+        print(f"  window start (FY):   rounded forward → {per_ticker}")
     print(f"  ingest_run_id:       {counts['ingest_run_id']}")
     print(f"  raw_responses:       {counts['raw_responses']}")
     print(f"  rows_processed:      {counts['rows_processed']}")

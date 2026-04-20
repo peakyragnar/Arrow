@@ -16,6 +16,7 @@ from arrow.normalize.periods.derive import (
     FiscalPeriod,
     derive_calendar_period,
     derive_fiscal_period,
+    min_fiscal_year_for_since_date,
     parse_fiscal_year_end_md,
 )
 
@@ -200,6 +201,64 @@ def test_pltr_fy2024_q1_ended_mar_31_2024() -> None:
 def test_bad_period_type_raises() -> None:
     with pytest.raises(ValueError):
         derive_fiscal_period(date(2024, 6, 30), "06-30", period_type="stub")
+
+
+# ---------------------------------------------------------------------------
+# Calendar derivation (pure function of period_end)
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# min_fiscal_year_for_since_date — rounds calendar since_date forward
+# to the first complete fiscal year.
+# ---------------------------------------------------------------------------
+
+
+def test_min_fy_nvda_since_jan1_2021_rounds_to_fy2021() -> None:
+    """NVDA fy_end=01-31. Jan 1 2021 < FY2021 nominal end (2021-01-31).
+    FY2020 nominal end (2020-01-31) is before the since_date → excluded.
+    FY2021 nominal end is ≥ since_date → min = FY2021."""
+    assert min_fiscal_year_for_since_date(date(2021, 1, 1), "01-31") == 2021
+
+
+def test_min_fy_nvda_since_feb_1_2021_rounds_to_fy2022() -> None:
+    """Feb 1 2021 is past FY2021 nominal end (Jan 31, 2021). Round to FY2022."""
+    assert min_fiscal_year_for_since_date(date(2021, 2, 1), "01-31") == 2022
+
+
+def test_min_fy_msft_since_jan1_2021_rounds_to_fy2021() -> None:
+    """MSFT fy_end=06-30. FY2020 ends Jun 30 2020 (before since_date).
+    FY2021 ends Jun 30 2021 (after since_date) → min = FY2021.
+    This pulls in MSFT Q1 FY2021 (Sep 2020) through FY2021 annual."""
+    assert min_fiscal_year_for_since_date(date(2021, 1, 1), "06-30") == 2021
+
+
+def test_min_fy_calendar_year_filer_since_jan1_2021() -> None:
+    """Calendar-year filer (fy_end=12-31). FY2020 ends Dec 31 2020
+    (before since_date). FY2021 ends Dec 31 2021 (after) → min = FY2021."""
+    assert min_fiscal_year_for_since_date(date(2021, 1, 1), "12-31") == 2021
+
+
+def test_min_fy_since_after_fy_end_same_year() -> None:
+    """Since Jul 1 2021 for a calendar-year filer → FY2021 already ended
+    Dec 31 2020 (no, FY2021 ends Dec 31 2021; current = FY2021). But
+    since_date Jul 1 2021 is AFTER that year's FY end — wait, FY2021 ends
+    Dec 31 2021. Jul 1 is before. So FY2021 end is still in future.
+    Returns 2021."""
+    assert min_fiscal_year_for_since_date(date(2021, 7, 1), "12-31") == 2021
+
+
+def test_min_fy_year_rollover_for_calendar_filer() -> None:
+    """Since Jan 2 2022 for a calendar-year filer. FY2021 ended Dec 31 2021
+    (before). FY2022 ends Dec 31 2022 (after) → min = FY2022."""
+    assert min_fiscal_year_for_since_date(date(2022, 1, 2), "12-31") == 2022
+
+
+def test_min_fy_boundary_exact_match_on_fy_end() -> None:
+    """If since_date == fy_end exactly, FY ends ON the since_date (not before),
+    so it's still included. NVDA FY2021 ends Jan 31 2021. since_date = Jan 31 2021
+    → FY2021 end is ≥ since_date (equal) → min = FY2021."""
+    assert min_fiscal_year_for_since_date(date(2021, 1, 31), "01-31") == 2021
 
 
 # ---------------------------------------------------------------------------

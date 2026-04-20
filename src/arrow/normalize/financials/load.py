@@ -105,13 +105,15 @@ def load_fmp_is_rows(
     rows: list[dict[str, Any]],
     source_raw_response_id: int,
     ingest_run_id: int,
-    since_date: date | None = None,
+    min_fiscal_year: int | None = None,
 ) -> LoadResult:
     """Load every row in one FMP IS payload. Caller owns transaction.
 
-    since_date: skip rows whose period_end < since_date. Validated-window
-    scope control; rows outside the window are counted in rows_processed
-    but not written to financial_facts.
+    min_fiscal_year: skip rows whose derived fiscal_year < this value.
+    Rounds the validated window to complete fiscal years so Layer 3
+    period arithmetic and Q4 XBRL derivation have all the periods they
+    need. Rows outside the window are counted in rows_processed but not
+    written to financial_facts.
 
     Raises VerificationFailed or FiscalYearMismatch on data integrity issues;
     the caller's transaction should roll back and the ingest run should be
@@ -124,14 +126,20 @@ def load_fmp_is_rows(
             result.rows_processed += 1
             period_type = _parse_fmp_period(row["period"])
             period_end = datetime.strptime(row["date"], "%Y-%m-%d").date()
-
-            if since_date is not None and period_end < since_date:
-                continue  # outside validated window
             fiscal = derive_fiscal_period(
                 period_end,
                 company_fiscal_year_end_md,
                 period_type=period_type,
             )
+
+            # Skip rows outside the validated fiscal-year window. We filter
+            # on fiscal_year (not period_end / calendar date) so partial
+            # fiscal years never land — a filer's FY2021 Q1 period_end may
+            # be in calendar 2020, but it belongs to FY2021 and should come
+            # in with the rest of FY2021.
+            if min_fiscal_year is not None and fiscal.fiscal_year < min_fiscal_year:
+                continue
+
             calendar = derive_calendar_period(period_end)
 
             fmp_fiscal_year = int(row["fiscalYear"])

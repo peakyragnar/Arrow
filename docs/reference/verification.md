@@ -177,7 +177,28 @@ So Q1+Q2+Q3+Q4 ≡ FY by construction when Q4 is computed from the identity. Thi
 - Restatement cases where Q4 = restated_FY - restated_Q1..Q3 (not pre-restatement)
 - Cross-source divergence where FMP's quarterly sum doesn't match FMP's annual
 
-### 4.2 Stocks exempt
+### 4.2 Tolerance
+
+Layer 3 sums five independently-rounded values (four quarterly discrete flows plus the filer's own reported annual). Each is typically rounded to the nearest $1M at filing time (~±$0.5M noise). The max expected rounding drift on the identity is therefore 5 × $0.5M = **±$2.5M**, wider than Layer 1's per-line $1M.
+
+```
+Layer 3 tolerance: max($2.5M absolute, 0.1% of larger abs)
+```
+
+This is filing-level, not implementation-level — verifiable directly from SEC XBRL. Example: NVDA FY2021 SG&A. SEC's own XBRL reports:
+
+| source | value |
+|---|---|
+| Q1 (3-month) | $293M |
+| Q2 (3-month) | $627M |
+| Q3 (3-month) | $515M |
+| Q4 = FY − 9M_YTD | $503M |
+| **sum of quarters** | **$1,938M** |
+| **FY (10-K)** | **$1,940M** |
+
+The $2M delta is entirely NVDA's filing-level rounding — present in SEC XBRL before FMP ever touches it. The $2.5M floor absorbs this while keeping anything genuinely anomalous (beyond rounding scale) surfaced.
+
+### 4.3 Stocks exempt
 
 BS stocks are NOT subject to this check (they're snapshots, not flows).
 
