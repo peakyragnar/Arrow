@@ -4,22 +4,69 @@ This document is the canonical metric dictionary for v1. It combines the full fo
 
 ## Canonical Analytical Fields
 
-Metric formulas reference values by canonical short names. Those names are
-the **bucket names** defined in `archive/ai_extract/canonical_buckets.md` — one
-universal set per statement (IS, BS, CF), used for every company.
+Metric formulas reference values by canonical short names. Those names are the **bucket names** defined in [`concepts.md`](concepts.md) — one universal set per statement (IS, BS, CF), used for every company.
 
-- `archive/ai_extract/canonical_buckets.md` is the preserved source of truth for legacy field
-  names. Metric formulas below reference those names directly (e.g., `cfo`,
-  `capex`, `operating_income`, `total_assets`). Period is a qualifier:
-  `cfo_q` = quarterly, `cfo_ttm` = trailing twelve months, `cfo_fy` = full
-  fiscal year.
-- When a name could be ambiguous across statements (`dna` exists on IS and
-  CF), the formula explicitly qualifies it: `cf.dna` vs `is.dna`.
-- Do not invent parallel names or aliases. Adding a new metric means using
-  existing bucket names; adding a new bucket means editing the bucket-schema
-  source first, then referencing it here.
-- In the legacy SEC/XBRL pipeline, Stage 2 produced these bucket values directly
-  and `archive/legacy-root/calculate.py` consumed them without translation.
+- [`concepts.md`](concepts.md) is the source of truth for bucket names, stored signs, and null semantics. Metric formulas below reference those names directly (e.g., `cfo`, `capital_expenditures`, `operating_income`, `total_assets`). Period is a qualifier: `cfo_q` = quarterly, `cfo_ttm` = trailing twelve months, `cfo_fy` = full fiscal year.
+- When a name could be ambiguous across statements (`dna` exists on IS and CF), use the qualified names from `concepts.md`: `dna_is` and `dna_cf`.
+- Do not invent parallel names or aliases. Adding a new metric means using existing bucket names; adding a new bucket means editing `concepts.md` first, then referencing it here.
+- Legacy archive reference: `archive/ai_extract/canonical_buckets.md` was the pre-v1 draft this doc descended from; don't edit it further.
+
+### Name migration from the archive draft
+
+A small number of bucket names were clarified when lifting to `concepts.md`:
+
+| Legacy archive name | Current canonical (`concepts.md`) |
+|---|---|
+| `capex` | `capital_expenditures` |
+| `dna` (CF) | `dna_cf` |
+| `dna` (IS) | `dna_is` |
+| `sbc` | `sbc` (unchanged) |
+| `stock_repurchase` | `stock_repurchase` (unchanged, now cash-impact sign) |
+| `change_ar`, `change_inventory`, `change_ap` | same names, now cash-impact sign throughout |
+| `extraordinary_items` / `ni_common_excl_extra` | **dropped** (GAAP ASU 2015-01) |
+| `finance_div_revenue`, `insurance_div_revenue` | **dropped** (segment data → future segments table) |
+
+See [`concepts.md`](concepts.md) § 12 for the full change log.
+
+## Formula Correctness — Component Guards
+
+Every formula declares:
+- **requires**: the list of bucket names it consumes
+- **on_missing**: the behavior when any required bucket is NULL
+- **on_out_of_range**: (optional) behavior when an intermediate is economically impossible
+
+### Universal rule: suppress on missing, never plug
+
+```
+for each formula F with output bucket O:
+    for each required component C in F.requires:
+        if C is NULL in the required period:
+            O.value = NULL
+            O.provenance.reason = "missing component: C at period P"
+            STOP; do not compute F
+```
+
+**NEVER**:
+- substitute 0 for a NULL required component
+- interpolate from adjacent periods
+- use a prior period's value in place of the missing one
+- emit a partial value with a flag
+
+Rationale: a partially-computed metric that looks valid is worse than a missing metric. Suppression surfaces the data gap; plugs hide it.
+
+### Universal rule: handle denominator-near-zero
+
+```
+if denominator has |value| < 0.1% of numerator's scale (or absolute $1M, whichever larger):
+    O.value = NULL
+    O.provenance.reason = "denominator near zero"
+```
+
+Applies wherever a ratio is involved (tax rate, ROIC, margins, etc.). Precision loss near zero produces values that are mathematically valid but economically meaningless.
+
+### Enforcement
+
+These guards are layer 4 of the five-layer correctness stack. See [`verification.md`](verification.md) § 5 for the full stack and failure modes. Implementation lives in `src/arrow/normalize/financials/formulas.py` (not yet written).
 
 ## Global Calculation Rules
 

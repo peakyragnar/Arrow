@@ -10,13 +10,16 @@ Start here. Read only the next doc you need.
 - Current architecture: `docs/architecture/system.md`
 - Repository flow / folder map: `docs/architecture/repository_flow.md`
 - Period spec (fiscal ↔ calendar rules): `docs/reference/periods.md`
+- Canonical bucket schema (IS/BS/CF normalization contract): `docs/reference/concepts.md`
+- FMP ↔ canonical mapping: `docs/reference/fmp_mapping.md`
+- Verification stack (subtotal ties, cross-statement invariants, tolerances): `docs/reference/verification.md`
+- Metric definitions (formulas + component guards): `docs/reference/formulas.md`
+- R&D capitalization reference: `docs/reference/rd_capitalization_reference.md`
 - Artifact metadata key conventions: `docs/reference/artifact_metadata.md`
 - Architecture decisions (tool + pattern choices): `docs/decisions/`
 - Setup runbook: `docs/setup.md`
 - Schema (live visual view): `arrow_db_schema.html` — regenerated from the live database by `scripts/gen_schema_viz.py`. Authoritative DDL: `db/schema/*.sql`.
 - Older strategy snapshot: `docs/strategy/plan.md`
-- Metric definitions: `docs/reference/formulas.md`
-- R&D capitalization reference: `docs/reference/rd_capitalization_reference.md`
 - Benchmark workbook: `docs/benchmarks/golden_eval.xlsx`
 
 ## Read Order
