@@ -52,7 +52,7 @@ from arrow.normalize.financials.verify_period_arithmetic import (
     PeriodArithmeticFailure,
     verify_period_arithmetic,
 )
-from arrow.reconcile.fmp_vs_xbrl import ReconcileResult, reconcile_company
+from arrow.reconcile.fmp_vs_xbrl import AnchorCheckResult, reconcile_anchors
 
 # Default scope: 5-year validated window. Change per ticker by passing
 # `since_date` to backfill_fmp_is(...).
@@ -84,14 +84,16 @@ class PeriodArithmeticViolation(RuntimeError):
 
 
 class XBRLDivergenceFailed(RuntimeError):
-    def __init__(self, result: ReconcileResult) -> None:
+    def __init__(self, result: AnchorCheckResult) -> None:
         self.result = result
         summary = "; ".join(
-            f"{d.concept} {d.period_end} ({d.period_type}): fmp={d.fmp_value}, xbrl={d.xbrl_value} (tag={d.xbrl_tag})"
+            f"{d.concept} {d.period_end} ({d.period_type}): "
+            f"fmp={d.fmp_value}, xbrl={d.xbrl_value} "
+            f"({d.derivation}, tag={d.xbrl_tag})"
             for d in result.divergences[:5]
         )
         super().__init__(
-            f"FMP vs SEC XBRL diverged on {len(result.divergences)} row(s): {summary}"
+            f"FMP vs SEC XBRL diverged on {len(result.divergences)} anchor(s): {summary}"
         )
 
 
@@ -146,19 +148,19 @@ def _run_layer3(
     )
 
 
-def _run_xbrl_reconcile(
+def _run_xbrl_anchors(
     conn: psycopg.Connection,
     *,
     company: CompanyRow,
     ingest_run_id: int,
-) -> ReconcileResult:
-    """Fetch SEC XBRL companyfacts (inside a txn) and reconcile against stored facts."""
+) -> AnchorCheckResult:
+    """Fetch SEC XBRL companyfacts and run anchor check against stored IS anchors."""
     http = HttpClient(user_agent=SEC_USER_AGENT, rate_limit=SEC_RATE_LIMIT)
     with conn.transaction():
         fetched = fetch_company_facts(
             conn, cik=company.cik, ingest_run_id=ingest_run_id, http=http
         )
-        return reconcile_company(
+        return reconcile_anchors(
             conn,
             company_id=company.id,
             extraction_version=EXTRACTION_VERSION,
@@ -197,12 +199,10 @@ def backfill_fmp_is(
         "financial_facts_superseded": 0,
         "rows_processed": 0,
         "layer3_identities_checked": 0,
-        "xbrl_checked": 0,
-        "xbrl_matched": 0,
-        "xbrl_skipped_no_xbrl": 0,
-        "xbrl_skipped_q4": 0,
-        "xbrl_skipped_unmapped": 0,
-        "xbrl_skipped_split_sensitive": 0,
+        "anchors_stored": 0,
+        "anchors_checked": 0,
+        "anchors_matched": 0,
+        "anchors_not_in_xbrl": [],
     }
 
     try:
@@ -249,17 +249,20 @@ def backfill_fmp_is(
                 )
                 counts["layer3_identities_checked"] += cur.fetchone()[0]
 
-            # Layer 5: FMP vs SEC XBRL.
-            xbrl_result = _run_xbrl_reconcile(
+            # Layer 5: anchor check against SEC XBRL.
+            xbrl_result = _run_xbrl_anchors(
                 conn, company=company, ingest_run_id=run_id
             )
             counts["raw_responses"] += 1  # the companyfacts raw_response
-            counts["xbrl_checked"] += xbrl_result.checked
-            counts["xbrl_matched"] += xbrl_result.matched
-            counts["xbrl_skipped_no_xbrl"] += xbrl_result.skipped_no_xbrl
-            counts["xbrl_skipped_q4"] += xbrl_result.skipped_q4
-            counts["xbrl_skipped_unmapped"] += xbrl_result.skipped_unmapped
-            counts["xbrl_skipped_split_sensitive"] += xbrl_result.skipped_split_sensitive
+            counts["anchors_stored"] += xbrl_result.anchors_with_fmp_stored
+            counts["anchors_checked"] += xbrl_result.anchors_checked
+            counts["anchors_matched"] += xbrl_result.anchors_matched
+            for concept, pe, pt in xbrl_result.anchors_not_in_xbrl:
+                counts["anchors_not_in_xbrl"].append({
+                    "concept": concept,
+                    "period_end": pe.isoformat(),
+                    "period_type": pt,
+                })
             if xbrl_result.divergences:
                 raise XBRLDivergenceFailed(xbrl_result)
 
@@ -325,17 +328,21 @@ def backfill_fmp_is(
             error_message=str(e),
             error_details={
                 "kind": "xbrl_divergence",
-                "checked": e.result.checked,
-                "matched": e.result.matched,
+                "anchors_checked": e.result.anchors_checked,
+                "anchors_matched": e.result.anchors_matched,
                 "divergences": [
                     {
                         "concept": d.concept,
                         "period_end": d.period_end.isoformat(),
                         "period_type": d.period_type,
+                        "fiscal_year": d.fiscal_year,
+                        "fiscal_quarter": d.fiscal_quarter,
                         "fmp_value": str(d.fmp_value),
                         "xbrl_value": str(d.xbrl_value),
                         "xbrl_tag": d.xbrl_tag,
                         "xbrl_filed": d.xbrl_filed,
+                        "xbrl_accn": d.xbrl_accn,
+                        "derivation": d.derivation,
                         "delta": str(d.delta),
                         "tolerance": str(d.tolerance),
                     }

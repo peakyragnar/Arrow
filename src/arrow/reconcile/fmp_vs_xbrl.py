@@ -1,44 +1,51 @@
-"""Cross-source verification: FMP-derived financial_facts vs SEC XBRL.
+"""Layer 5 — anchor cross-check of FMP-derived facts against SEC XBRL.
 
-For every USD-magnitude (concept, period_end, period_type) row in our
-IS facts, find the corresponding SEC XBRL fact and compare values.
-Divergence beyond tolerance is a HARD BLOCK.
+FMP is canonical — we trust its normalization. Our job is to verify the
+TOP-LINE anchor values against SEC's own XBRL filing. If the anchors
+match, FMP's top-line normalization is trustworthy; internal arithmetic
+(Layer 1) and period arithmetic (Layer 3) propagate that confidence to
+the rest of the chain.
 
-Per-share (eps_*) and share-count (shares_*) buckets are SKIPPED from
-cross-check until a splits-events table exists. FMP back-adjusts these
-values for every historical split (e.g. NVDA's June 2024 10-for-1);
-SEC XBRL reports them as-originally-filed. Comparing the two without
-a split-aware transform always fails across a split boundary. Per
-fmp_mapping.md § 3.2 we've committed to storing FMP's adjusted values;
-external verification of the adjustment itself is future work
-(Build Order ~step 13 when company_events grows a stock_split event).
+Anchors (IS only in Slice 2a; BS/CF anchors added when those ingest slices
+land):
+    revenue            — the IS top line
+    gross_profit       — margin structure
+    operating_income   — operating performance
+    ebt_incl_unusual   — pre-tax figure
+    net_income         — the IS bottom line
 
-Matching algorithm:
-  1. Resolve `concept` to a list of candidate XBRL tags
-     (reconcile/xbrl_concepts.py).
-  2. Scan the companyfacts payload's us-gaap section for each tag.
-  3. Filter candidate facts by:
-     - `end` == stored period_end (exact match)
-     - duration (end - start) in the expected window:
-         quarter: 80..100 days (3-month discrete; excludes H1/9M YTD)
-         annual:  350..380 days
-  4. If multiple facts match (restatements in different filings), pick
-     the one with the latest `filed` date — matches our PIT semantics
-     of "the most recent authoritative value."
-  5. If no fact matches, SUPPRESS (skip) that comparison — we don't
-     fail the ingest on SEC-side absence (filers don't always report
-     every bucket, and some us-gaap tags are optional).
+For each anchor × period_end × period_type that we have stored:
+  quarterly Q1/Q2/Q3 → match against XBRL's 3-month discrete fact
+  annual FY          → match against XBRL's 12-month FY fact
+  quarterly Q4       → DERIVED from XBRL as (FY − 9M_YTD), then compared
+                       to FMP's stored Q4 value. This gives Q4 a
+                       genuine external cross-check, since SEC does not
+                       file Q4 discrete directly.
 
-Tolerance:
-  USD: same as Layer 1 — max($1M, 0.1% of larger abs).
-  USD/shares (EPS): $0.01 absolute (per-share rounding).
-  shares: 500K absolute (share-count rounding).
+What this catches:
+  - FMP top-line values disagree with SEC's own filing (FMP extractor bug,
+    vendor drift, or our mapping error).
+  - Q4 value is inconsistent with the implied XBRL Q4 (FY − 9M).
 
-Coverage caveat:
-  Q4 flows aren't in XBRL directly (SEC only reports Q1/Q2/Q3 + FY on
-  flow concepts). Q4 divergence is caught by Layer 3 period arithmetic
-  (Q1+Q2+Q3+Q4 ≈ FY), not here. This module explicitly skips Q4 for
-  flow buckets.
+What this does NOT catch:
+  - FMP returning a wrong value that still ties with an equally-wrong
+    companion (compensating error). The top-line anchor check is
+    mathematical downstream verification — the anchors are independent of
+    each other in SEC's filing, so a consistent set of anchor matches is
+    strong confirmation.
+  - Concepts outside the anchor set. Those are trusted via Layer 1 ties.
+
+Tolerance: max($1M, 0.1% of larger absolute value). Same as Layer 1.
+HARD BLOCK on any divergence.
+
+Per-share and share-count buckets are NOT anchors. FMP back-adjusts for
+splits, SEC XBRL does not — apples to oranges. Internal relation
+eps ≈ net_income / shares is validated within FMP's own output.
+
+Items the filer doesn't report on IS face (e.g., a company that doesn't
+break out gross_profit) simply have no stored FMP value for that bucket,
+so the anchor check doesn't fire for that (filer, concept, period). FMP
+is our canonical source for what's reported; we don't second-guess it.
 """
 
 from __future__ import annotations
@@ -52,176 +59,265 @@ import psycopg
 
 from arrow.reconcile.xbrl_concepts import XBRLConceptMapping, mapping_for
 
-# Tolerances (shared names with verify_is for the USD magnitude case).
+# Tolerance (shared with Layer 1 USD case).
 USD_TOLERANCE_ABSOLUTE = Decimal("1000000")
 USD_TOLERANCE_PCT = Decimal("0.001")
-EPS_TOLERANCE_ABSOLUTE = Decimal("0.01")
-SHARES_TOLERANCE_ABSOLUTE = Decimal("500000")
+
+# IS anchor set — the small number of top-line figures whose XBRL match
+# validates FMP's overall IS normalization. Expand when BS/CF land.
+IS_ANCHORS: tuple[str, ...] = (
+    "revenue",
+    "gross_profit",
+    "operating_income",
+    "ebt_incl_unusual",
+    "net_income",
+)
+
+# XBRL fact-matching duration windows.
+QUARTER_DURATION = (80, 100)       # 3-month discrete
+ANNUAL_DURATION = (350, 380)        # 52/53-week FY
+NINE_MONTH_DURATION = (260, 285)    # 9-month YTD (Q3 10-Q reports this)
 
 
 @dataclass(frozen=True)
 class XBRLDivergence:
+    """One anchor failed to match SEC XBRL. Carries every field needed
+    for a human to debug: what tie we computed, the two values, where
+    they came from."""
     concept: str
     period_end: date
     period_type: str
+    fiscal_year: int
+    fiscal_quarter: int | None
     fmp_value: Decimal
     xbrl_value: Decimal
     xbrl_tag: str
     xbrl_filed: str | None
+    xbrl_accn: str | None
     delta: Decimal
     tolerance: Decimal
+    derivation: str  # "direct" | "q4_derived_fy_minus_9m"
 
 
 @dataclass
-class ReconcileResult:
-    checked: int = 0
-    matched: int = 0
-    skipped_no_xbrl: int = 0
-    skipped_q4: int = 0
-    skipped_unmapped: int = 0
-    skipped_split_sensitive: int = 0
+class AnchorCheckResult:
+    anchors_with_fmp_stored: int = 0   # total anchor facts we have in DB
+    anchors_checked: int = 0           # anchors we could match to XBRL
+    anchors_matched: int = 0           # anchors where FMP and XBRL agreed
+    anchors_not_in_xbrl: list[tuple[str, date, str]] = field(default_factory=list)
     divergences: list[XBRLDivergence] = field(default_factory=list)
 
 
-# Per-share and share-count buckets — SEC XBRL stores as-originally-filed,
-# FMP stores split-adjusted. Safe direct comparison requires a splits-aware
-# transform that we haven't built yet.
-_SPLIT_SENSITIVE_CONCEPTS = frozenset({
-    "eps_basic", "eps_diluted",
-    "shares_basic_weighted_avg", "shares_diluted_weighted_avg",
-})
+def _within_tolerance(a: Decimal, b: Decimal) -> tuple[bool, Decimal, Decimal]:
+    delta = abs(a - b)
+    threshold = max(
+        USD_TOLERANCE_ABSOLUTE,
+        max(abs(a), abs(b)) * USD_TOLERANCE_PCT,
+    )
+    return delta <= threshold, delta, threshold
 
 
-def _tolerance_for(unit: str, a: Decimal, b: Decimal) -> Decimal:
-    # Storage writes 'USD/share' (singular, per fmp_mapping.md § 4); XBRL
-    # uses 'USD/shares' (plural). Treat both as EPS.
-    if unit == "USD":
-        return max(
-            USD_TOLERANCE_ABSOLUTE,
-            max(abs(a), abs(b)) * USD_TOLERANCE_PCT,
-        )
-    if unit in ("USD/share", "USD/shares"):
-        return EPS_TOLERANCE_ABSOLUTE
-    if unit == "shares":
-        return SHARES_TOLERANCE_ABSOLUTE
-    raise ValueError(f"unknown unit: {unit!r}")
-
-
-def _duration_window(period_type: str) -> tuple[int, int]:
-    if period_type == "quarter":
-        return (80, 100)  # 3-month discrete
-    if period_type == "annual":
-        return (350, 380)  # 52- or 53-week FY
-    raise ValueError(f"unknown period_type: {period_type!r}")
-
-
-def _find_xbrl_value(
-    companyfacts: dict[str, Any],
+def _find_xbrl_fact(
+    us_gaap: dict[str, Any],
     mapping: XBRLConceptMapping,
-    period_end: date,
-    period_type: str,
-) -> tuple[Decimal, str, dict[str, Any]] | None:
-    """Return (value, xbrl_tag, fact_entry) or None if no match."""
-    us_gaap = companyfacts.get("facts", {}).get("us-gaap", {})
-    min_days, max_days = _duration_window(period_type)
-    target_end_iso = period_end.isoformat()
-
+    *,
+    end: date,
+    duration: tuple[int, int],
+) -> dict[str, Any] | None:
+    """Find the XBRL fact entry matching (end, duration window) across any
+    of the concept's alternate tags. Picks the latest-filed on ties
+    (restatement semantics)."""
+    target_end_iso = end.isoformat()
+    min_days, max_days = duration
     for tag in mapping.xbrl_tags:
         concept_block = us_gaap.get(tag)
         if not concept_block:
             continue
         entries = concept_block.get("units", {}).get(mapping.unit, [])
-        candidates = []
+        candidates: list[dict[str, Any]] = []
         for entry in entries:
             if entry.get("end") != target_end_iso:
                 continue
             start_iso = entry.get("start")
-            if start_iso is None:
-                continue  # instant fact (BS); IS/CF facts must have start
+            if not start_iso:
+                continue
             try:
-                start_d = date.fromisoformat(start_iso)
-                end_d = date.fromisoformat(entry["end"])
+                span = (date.fromisoformat(entry["end"]) - date.fromisoformat(start_iso)).days
             except ValueError:
                 continue
-            duration = (end_d - start_d).days
-            if not (min_days <= duration <= max_days):
-                continue
-            candidates.append(entry)
-
+            if min_days <= span <= max_days:
+                candidates.append({**entry, "__tag": tag})
         if candidates:
-            # Pick most recently filed (handles restatements).
             candidates.sort(key=lambda e: e.get("filed", ""), reverse=True)
-            entry = candidates[0]
-            return Decimal(str(entry["val"])), tag, entry
+            return candidates[0]
     return None
 
 
-def reconcile_company(
+def _derive_xbrl_q4(
+    us_gaap: dict[str, Any],
+    mapping: XBRLConceptMapping,
+    *,
+    fy_end: date,
+    q3_period_end: date,
+) -> tuple[Decimal, dict[str, Any], dict[str, Any]] | None:
+    """Compute Q4 discrete = FY − 9M YTD from two XBRL facts.
+
+    `fy_end` is the period_end of the fiscal year (= Q4 period_end).
+    `q3_period_end` is the period_end of that fiscal year's Q3 — the
+    end-date of the 9M YTD fact we subtract from FY.
+
+    We match the 9M YTD fact by its end date, NOT by `fy`/`fp` tags. In
+    SEC companyfacts, `fy` and `fp` denote the FILING's fiscal period
+    (e.g., a 10-Q for FY2026 Q3 will tag both its own 9M YTD AND the
+    prior-year comparative 9M YTD as `fy=2026, fp=Q3`). End-date
+    matching disambiguates cleanly.
+
+    Returns (q4_value, fy_entry, ytd_entry) or None if either side is absent.
+    """
+    fy_entry = _find_xbrl_fact(us_gaap, mapping, end=fy_end, duration=ANNUAL_DURATION)
+    if not fy_entry:
+        return None
+
+    ytd_entry = _find_xbrl_fact(
+        us_gaap, mapping, end=q3_period_end, duration=NINE_MONTH_DURATION,
+    )
+    if not ytd_entry:
+        return None
+
+    q4_value = Decimal(str(fy_entry["val"])) - Decimal(str(ytd_entry["val"]))
+    return q4_value, fy_entry, ytd_entry
+
+
+def _lookup_q3_period_end(
+    conn: psycopg.Connection,
+    *,
+    company_id: int,
+    fiscal_year: int,
+    extraction_version: str,
+) -> date | None:
+    """Look up the period_end we've stored for (company, fiscal_year, Q3)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT period_end FROM financial_facts
+            WHERE company_id = %s
+              AND fiscal_year = %s
+              AND fiscal_quarter = 3
+              AND period_type = 'quarter'
+              AND superseded_at IS NULL
+              AND extraction_version = %s
+            LIMIT 1;
+            """,
+            (company_id, fiscal_year, extraction_version),
+        )
+        row = cur.fetchone()
+    return row[0] if row else None
+
+
+def reconcile_anchors(
     conn: psycopg.Connection,
     *,
     company_id: int,
     extraction_version: str,
     companyfacts: dict[str, Any],
-) -> ReconcileResult:
-    """Compare every current IS fact for this company against XBRL."""
-    result = ReconcileResult()
+) -> AnchorCheckResult:
+    """Anchor check: compare FMP-stored anchor values to SEC XBRL.
+
+    Q1/Q2/Q3 and annual: direct XBRL lookup.
+    Q4: derived as FY − 9M YTD from XBRL, compared to FMP's stored Q4.
+    """
+    result = AnchorCheckResult()
+    us_gaap = companyfacts.get("facts", {}).get("us-gaap", {})
 
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT concept, period_end, period_type, fiscal_quarter, value, unit
+            SELECT concept, period_end, period_type,
+                   fiscal_year, fiscal_quarter, value
             FROM financial_facts
             WHERE company_id = %s
               AND extraction_version = %s
               AND superseded_at IS NULL
               AND statement = 'income_statement'
+              AND concept = ANY(%s)
             ORDER BY period_end, period_type, concept;
             """,
-            (company_id, extraction_version),
+            (company_id, extraction_version, list(IS_ANCHORS)),
         )
         rows = cur.fetchall()
 
-    for concept, period_end, period_type, fiscal_quarter, fmp_value, unit in rows:
-        # Q4 flow isn't reported directly by SEC; Layer 3 covers it.
-        if period_type == "quarter" and fiscal_quarter == 4:
-            result.skipped_q4 += 1
-            continue
-
-        # Split-sensitive buckets: FMP back-adjusts, SEC XBRL doesn't.
-        # Direct comparison is wrong; skip until splits-aware transform exists.
-        if concept in _SPLIT_SENSITIVE_CONCEPTS:
-            result.skipped_split_sensitive += 1
-            continue
-
+    for concept, period_end, period_type, fy, fq, fmp_value in rows:
+        result.anchors_with_fmp_stored += 1
         mapping = mapping_for(concept)
         if mapping is None:
-            result.skipped_unmapped += 1
-            continue
+            continue  # shouldn't happen; anchors are all mapped
 
-        match = _find_xbrl_value(companyfacts, mapping, period_end, period_type)
-        if match is None:
-            result.skipped_no_xbrl += 1
-            continue
-
-        xbrl_value, xbrl_tag, entry = match
-        result.checked += 1
-        tolerance = _tolerance_for(unit, fmp_value, xbrl_value)
-        delta = abs(fmp_value - xbrl_value)
-        if delta <= tolerance:
-            result.matched += 1
-        else:
-            result.divergences.append(
-                XBRLDivergence(
-                    concept=concept,
-                    period_end=period_end,
-                    period_type=period_type,
-                    fmp_value=fmp_value,
-                    xbrl_value=xbrl_value,
-                    xbrl_tag=xbrl_tag,
-                    xbrl_filed=entry.get("filed"),
-                    delta=delta,
-                    tolerance=tolerance,
-                )
+        # Quarter Q4 → derive from XBRL FY − 9M YTD.
+        if period_type == "quarter" and fq == 4:
+            q3_period_end = _lookup_q3_period_end(
+                conn,
+                company_id=company_id,
+                fiscal_year=fy,
+                extraction_version=extraction_version,
             )
+            if q3_period_end is None:
+                # Q3 isn't in our validated window — can't derive Q4.
+                result.anchors_not_in_xbrl.append((concept, period_end, period_type))
+                continue
+            derived = _derive_xbrl_q4(
+                us_gaap, mapping,
+                fy_end=period_end,
+                q3_period_end=q3_period_end,
+            )
+            if derived is None:
+                result.anchors_not_in_xbrl.append((concept, period_end, period_type))
+                continue
+            xbrl_value, fy_entry, ytd_entry = derived
+            result.anchors_checked += 1
+            ok, delta, threshold = _within_tolerance(fmp_value, xbrl_value)
+            if ok:
+                result.anchors_matched += 1
+            else:
+                result.divergences.append(XBRLDivergence(
+                    concept=concept, period_end=period_end,
+                    period_type=period_type,
+                    fiscal_year=fy, fiscal_quarter=fq,
+                    fmp_value=fmp_value, xbrl_value=xbrl_value,
+                    xbrl_tag=fy_entry.get("__tag", ""),
+                    xbrl_filed=fy_entry.get("filed"),
+                    xbrl_accn=fy_entry.get("accn"),
+                    delta=delta, tolerance=threshold,
+                    derivation="q4_derived_fy_minus_9m",
+                ))
+            continue
+
+        # Q1/Q2/Q3/annual → direct XBRL lookup
+        duration = (
+            ANNUAL_DURATION if period_type == "annual" else QUARTER_DURATION
+        )
+        entry = _find_xbrl_fact(
+            us_gaap, mapping, end=period_end, duration=duration,
+        )
+        if entry is None:
+            result.anchors_not_in_xbrl.append((concept, period_end, period_type))
+            continue
+
+        xbrl_value = Decimal(str(entry["val"]))
+        result.anchors_checked += 1
+        ok, delta, threshold = _within_tolerance(fmp_value, xbrl_value)
+        if ok:
+            result.anchors_matched += 1
+        else:
+            result.divergences.append(XBRLDivergence(
+                concept=concept, period_end=period_end,
+                period_type=period_type,
+                fiscal_year=fy, fiscal_quarter=fq,
+                fmp_value=fmp_value, xbrl_value=xbrl_value,
+                xbrl_tag=entry.get("__tag", ""),
+                xbrl_filed=entry.get("filed"),
+                xbrl_accn=entry.get("accn"),
+                delta=delta, tolerance=threshold,
+                derivation="direct",
+            ))
 
     return result
