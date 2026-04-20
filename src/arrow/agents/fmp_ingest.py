@@ -466,6 +466,13 @@ def backfill_fmp_statements(
                 extraction_version=CF_EXTRACTION_VERSION,
             )
 
+            # --- Fetch XBRL once — used by both Layer 2 (restricted cash
+            # lookup for cash roll-forward ties) and Layer 5 (anchor match).
+            xbrl_payload = _fetch_xbrl_payload(
+                conn, company=company, ingest_run_id=run_id
+            )
+            counts["raw_responses"] += 1
+
             # --- Layer 2: cross-statement ties (IS ↔ BS ↔ CF) ---
             cross_failures = verify_cross_statement_ties(
                 conn,
@@ -473,21 +480,16 @@ def backfill_fmp_statements(
                 is_extraction_version=IS_EXTRACTION_VERSION,
                 bs_extraction_version=BS_EXTRACTION_VERSION,
                 cf_extraction_version=CF_EXTRACTION_VERSION,
+                companyfacts=xbrl_payload,
             )
             if cross_failures:
                 raise CrossStatementViolation(cross_failures)
-            # One active tie per CF period (cf.net_income_start ≈ is.net_income).
-            # Cash roll-forward ties are deferred pending restricted-cash
-            # mapping — see verify_cross_statement.py docstring.
+            # 4 ties per CF period: NI, cash_end, cash_begin, net_change.
+            # Ties 4/5 skip on the first window period (no prior BS),
+            # so "evaluated" is an upper bound.
             counts["cross_statement_ties_checked"] += _count_cf_periods(
                 conn, company_id=company.id,
-            )
-
-            # --- Layer 5: fetch XBRL once, reconcile IS + BS + CF ---
-            xbrl_payload = _fetch_xbrl_payload(
-                conn, company=company, ingest_run_id=run_id
-            )
-            counts["raw_responses"] += 1
+            ) * 4
 
             is_result = reconcile_is_anchors(
                 conn,

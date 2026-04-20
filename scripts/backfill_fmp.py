@@ -99,10 +99,8 @@ def _print_success(tickers: list[str], counts: dict[str, Any]) -> None:
     )
     print()
     print("Cross-statement (Layer 2):")
-    print(f"  ties evaluated:         {counts['cross_statement_ties_checked']} "
-          f"(cf.net_income_start ≈ is.net_income) — all passed")
-    print(f"  cash roll-forward ties: DEFERRED pending restricted-cash mapping "
-          f"(see verify_cross_statement.py)")
+    print(f"  ties evaluated:         up to {counts['cross_statement_ties_checked']} "
+          f"(NI@IS=CF, cash_end@CF=BS+xbrl_restricted, cash_begin, net_change) — all passed")
     print()
     print("Status: PASS — every stored fact validated by internal arithmetic, "
           "period arithmetic, cross-statement ties, and anchor XBRL match.")
