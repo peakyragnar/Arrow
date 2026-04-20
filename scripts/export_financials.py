@@ -283,10 +283,25 @@ CF_CHECKS: tuple[CheckRow, ...] = (
 )
 
 
+# Concepts eligible for the annual Δ (Q1+Q2+Q3+Q4 = FY) check.
+# These are flow buckets where the identity holds under FMP's
+# normalization. Excluded: per-share (EPS), share counts, and cash
+# balance snapshots (cash_begin/cash_end, which are instants, not flows).
+IS_FLOW_CONCEPTS = frozenset(
+    c for c in IS_DISPLAY_ORDER
+    if not c.startswith("eps") and not c.startswith("shares_")
+)
+CF_FLOW_CONCEPTS = frozenset(
+    c for c in CF_DISPLAY_ORDER
+    if c not in ("cash_begin_of_period", "cash_end_of_period")
+)
+
+
 STATEMENTS = [
-    ("income_statement", "income_statement", IS_DISPLAY_ORDER, IS_CHECKS),
-    ("balance_sheet",    "balance_sheet",    BS_DISPLAY_ORDER, BS_CHECKS),
-    ("cash_flow",        "cash_flow",        CF_DISPLAY_ORDER, CF_CHECKS),
+    # (db_statement, file_suffix, display_order, checks, flow_concepts_for_annual_delta)
+    ("income_statement", "income_statement", IS_DISPLAY_ORDER, IS_CHECKS, IS_FLOW_CONCEPTS),
+    ("balance_sheet",    "balance_sheet",    BS_DISPLAY_ORDER, BS_CHECKS, None),  # stocks — no Q-sum check
+    ("cash_flow",        "cash_flow",        CF_DISPLAY_ORDER, CF_CHECKS, CF_FLOW_CONCEPTS),
 ]
 
 
@@ -418,6 +433,88 @@ def _compute_check_delta(
     return sub - total
 
 
+@dataclass(frozen=True)
+class ColSpec:
+    """One column in the output. `kind` tells us how to fill its cells."""
+    label: str                  # header text
+    letter: str                 # Excel column letter (e.g., "AB")
+    kind: str                   # 'quarter' | 'annual' | 'delta_annual' | 'blank'
+    period_key: tuple | None = None  # for quarter/annual: the period sort key
+    fiscal_year: int | None = None   # for delta_annual: the year it checks
+
+
+def _build_columns(
+    columns: list[tuple],
+    column_labels: dict[tuple, str],
+    add_annual_delta_block: bool,
+) -> tuple[list[ColSpec], dict[int, dict[int, str]], dict[int, str]]:
+    """Build the final column layout.
+
+    Returns (col_specs, fy_to_quarter_letters, fy_to_annual_letter).
+
+    When add_annual_delta_block is True (IS, CF), quarterly periods land
+    in the left block, a blank column separates, then annual+Δ pairs go
+    on the right. When False (BS), it's just the original interleaved
+    order.
+    """
+    col_specs: list[ColSpec] = []
+    fy_to_quarter_letters: dict[int, dict[int, str]] = defaultdict(dict)
+    fy_to_annual_letter: dict[int, str] = {}
+
+    excel_col_idx = 3  # A=concept, B=unit, C=first data column
+
+    if not add_annual_delta_block:
+        for k in columns:
+            letter = _col_letter(excel_col_idx)
+            (fy, q_rank), _label = k
+            kind = "annual" if q_rank == 5 else "quarter"
+            col_specs.append(ColSpec(
+                label=column_labels[k], letter=letter, kind=kind, period_key=k,
+            ))
+            if kind == "quarter":
+                fy_to_quarter_letters[fy][q_rank] = letter
+            else:
+                fy_to_annual_letter[fy] = letter
+            excel_col_idx += 1
+        return col_specs, fy_to_quarter_letters, fy_to_annual_letter
+
+    # IS/CF layout: quarters on the left, blank, then annuals + Δ pairs.
+    quarter_keys = [k for k in columns if k[0][1] != 5]
+    annual_keys = [k for k in columns if k[0][1] == 5]
+
+    for k in quarter_keys:
+        letter = _col_letter(excel_col_idx)
+        (fy, q_rank), _label = k
+        col_specs.append(ColSpec(
+            label=column_labels[k], letter=letter, kind="quarter", period_key=k,
+        ))
+        fy_to_quarter_letters[fy][q_rank] = letter
+        excel_col_idx += 1
+
+    # Blank separator
+    col_specs.append(ColSpec(label="", letter=_col_letter(excel_col_idx), kind="blank"))
+    excel_col_idx += 1
+
+    # Annual + Δ pairs, chronological
+    for k in annual_keys:
+        letter = _col_letter(excel_col_idx)
+        (fy, _), label = k
+        col_specs.append(ColSpec(
+            label=column_labels[k], letter=letter, kind="annual", period_key=k,
+        ))
+        fy_to_annual_letter[fy] = letter
+        excel_col_idx += 1
+
+        delta_letter = _col_letter(excel_col_idx)
+        col_specs.append(ColSpec(
+            label=f"Δ {label} − Σ(Q1..Q4)",
+            letter=delta_letter, kind="delta_annual", fiscal_year=fy,
+        ))
+        excel_col_idx += 1
+
+    return col_specs, fy_to_quarter_letters, fy_to_annual_letter
+
+
 def _export_statement(
     conn,
     *,
@@ -425,16 +522,18 @@ def _export_statement(
     statement: str,
     display_order: list[str],
     checks: tuple[CheckRow, ...],
+    flow_concepts: frozenset[str] | None,
     out_path: Path,
     companion_values: dict[str, dict[str, dict[tuple, Decimal]]] | None = None,
 ) -> tuple[int, int]:
     """Write one CSV. Returns (rows_written, periods_included).
 
-    Check rows emit Excel formulas (e.g., `=C4-(C2-C3)`) so the math is
-    visible in Excel's formula bar when you click a check cell. The cell
-    evaluates to the Δ (0 when the tie holds). Cross-statement checks
-    (which would need a reference into another CSV file) fall back to
-    pre-computed values since CSV can't cleanly reference between files.
+    Check rows and annual Δ cells emit live Excel formulas. For IS and
+    CF, the output layout is:
+        concept | unit | [Q1..Q4 of each FY] | (blank) | [FY | ΔFY] × n_years
+    The Δ column for each fiscal year contains, per flow concept,
+        = <FY_cell> - (<Q1> + <Q2> + <Q3> + <Q4>)
+    which evaluates to 0 when the Layer-3 identity holds.
     """
     values, column_labels, units, columns = _load_statement_values(
         conn, ticker=ticker, statement=statement,
@@ -448,11 +547,14 @@ def _export_statement(
     for c in checks:
         checks_by_after[c.insert_after].append(c)
 
+    col_specs, fy_to_q_letters, fy_to_annual_letter = _build_columns(
+        columns, column_labels, add_annual_delta_block=flow_concepts is not None,
+    )
+
     # --- Pass 1: plan rows and assign Excel row numbers ---
-    # Excel rows are 1-indexed; row 1 is the header, so data rows start at 2.
     concept_to_row: dict[str, int] = {}
-    row_plan: list[tuple[str, object]] = []  # ('concept', name) | ('check', CheckRow)
-    excel_row = 1
+    row_plan: list[tuple[str, object]] = []
+    excel_row = 1  # header
     for concept in ordered + extras:
         excel_row += 1
         concept_to_row[concept] = excel_row
@@ -461,66 +563,122 @@ def _export_statement(
             excel_row += 1
             row_plan.append(("check", chk))
 
-    # --- Pass 2: emit CSV ---
+    # --- Pass 2: emit ---
     with out_path.open("w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["concept", "unit"] + [column_labels[k] for k in columns])
+        w.writerow(["concept", "unit"] + [cs.label for cs in col_specs])
 
         for kind, content in row_plan:
             if kind == "concept":
                 concept = content  # type: ignore[assignment]
                 row = [concept, units.get(concept, "")]
-                for k in columns:
-                    row.append(_format_value(values[concept].get(k)))
+                for cs in col_specs:
+                    row.append(_concept_cell(
+                        concept, cs, values,
+                        fy_to_q_letters, fy_to_annual_letter,
+                        concept_to_row, flow_concepts,
+                    ))
                 w.writerow(row)
             else:
                 chk: CheckRow = content  # type: ignore[assignment]
                 row = [chk.label, ""]
-
-                if chk.cross_statement:
-                    # Can't reference across CSV files cleanly — pre-compute.
-                    other = (
-                        companion_values.get(chk.cross_statement[1])
-                        if companion_values else None
-                    )
-                    for k in columns:
-                        delta = _compute_check_delta(chk, values, other, k)
-                        row.append(_format_value(delta) if delta is not None else "")
-                    w.writerow(row)
-                    continue
-
-                sub_row = concept_to_row.get(chk.subtotal)
-                comp_rows_signs = [
-                    (concept_to_row.get(c), sign) for c, sign in chk.components
-                ]
-                any_concept_absent = (
-                    sub_row is None
-                    or any(r is None for r, _ in comp_rows_signs)
-                )
-
-                for col_idx, k in enumerate(columns, start=3):
-                    if any_concept_absent:
-                        row.append("")
-                        continue
-                    # Also skip per-period if any component has no value this period.
-                    sub_val = values.get(chk.subtotal, {}).get(k)
-                    comp_vals = [
-                        values.get(c, {}).get(k) for c, _ in chk.components
-                    ]
-                    if sub_val is None or any(v is None for v in comp_vals):
-                        row.append("")
-                        continue
-
-                    excel_col = _col_letter(col_idx)
-                    # Narrow types: we already ensured sub_row + all comp rows are non-None
-                    comps = [(r, s) for r, s in comp_rows_signs if r is not None]  # type: ignore[misc]
-                    formula = _build_check_formula(
-                        excel_col, sub_row, comps,  # type: ignore[arg-type]
-                    )
-                    row.append(formula)
+                for cs in col_specs:
+                    row.append(_check_cell(
+                        chk, cs, values, companion_values, concept_to_row,
+                    ))
                 w.writerow(row)
 
     return len(row_plan), len(columns)
+
+
+def _check_cell(
+    chk: CheckRow,
+    cs: ColSpec,
+    values: dict[str, dict[tuple, Decimal]],
+    companion_values: dict[str, dict[str, dict[tuple, Decimal]]] | None,
+    concept_to_row: dict[str, int],
+) -> str:
+    if cs.kind in ("blank", "delta_annual"):
+        return ""  # check rows don't have meaningful values in these columns
+    if cs.kind not in ("quarter", "annual"):
+        return ""
+
+    k = cs.period_key
+    if k is None:
+        return ""
+
+    if chk.cross_statement:
+        other = (
+            companion_values.get(chk.cross_statement[1])
+            if companion_values else None
+        )
+        delta = _compute_check_delta(chk, values, other, k)
+        return _format_value(delta) if delta is not None else ""
+
+    sub_row = concept_to_row.get(chk.subtotal)
+    if sub_row is None:
+        return ""
+    comp_rows_signs: list[tuple[int, int]] = []
+    for c, sign in chk.components:
+        r = concept_to_row.get(c)
+        if r is None:
+            return ""  # unresolvable component
+        comp_rows_signs.append((r, sign))
+
+    # Skip if any value is absent for this period.
+    sub_val = values.get(chk.subtotal, {}).get(k)
+    comp_vals = [values.get(c, {}).get(k) for c, _ in chk.components]
+    if sub_val is None or any(v is None for v in comp_vals):
+        return ""
+
+    return _build_check_formula(cs.letter, sub_row, comp_rows_signs)
+
+
+def _concept_cell(
+    concept: str,
+    cs: ColSpec,
+    values: dict[str, dict[tuple, Decimal]],
+    fy_to_q_letters: dict[int, dict[int, str]],
+    fy_to_annual_letter: dict[int, str],
+    concept_to_row: dict[str, int],
+    flow_concepts: frozenset[str] | None,
+) -> str:
+    if cs.kind == "blank":
+        return ""
+    if cs.kind in ("quarter", "annual"):
+        v = values.get(concept, {}).get(cs.period_key) if cs.period_key else None
+        return _format_value(v)
+    if cs.kind == "delta_annual":
+        if flow_concepts is None or concept not in flow_concepts:
+            return ""
+        fy = cs.fiscal_year
+        annual_letter = fy_to_annual_letter.get(fy) if fy is not None else None
+        q_letters = fy_to_q_letters.get(fy, {}) if fy is not None else {}
+        if annual_letter is None or set(q_letters.keys()) != {1, 2, 3, 4}:
+            return ""
+
+        concept_row = concept_to_row.get(concept)
+        if concept_row is None:
+            return ""
+
+        # Need all 4 quarters + annual present in this concept's values.
+        # (Check via the sort keys for this fiscal year.)
+        required_keys = []
+        for k, period_values in values[concept].items() if concept in values else []:
+            pass
+        # Simpler: look at all value keys belonging to this fy
+        fy_keys = [k for k in values.get(concept, {}) if k[0][0] == fy]
+        quarters_present = {k[0][1] for k in fy_keys if k[0][1] != 5}
+        annual_present = any(k[0][1] == 5 for k in fy_keys)
+        if quarters_present != {1, 2, 3, 4} or not annual_present:
+            return ""
+
+        # Build formula: =<annual_letter><row> - (<Q1>+<Q2>+<Q3>+<Q4>)
+        rhs = "+".join(
+            f"{q_letters[q]}{concept_row}" for q in (1, 2, 3, 4)
+        )
+        return f"={annual_letter}{concept_row}-({rhs})"
+    return ""
 
 
 def main() -> int:
@@ -540,11 +698,12 @@ def main() -> int:
             )
             companion = {"income_statement": is_values}
 
-            for statement, suffix, display_order, checks in STATEMENTS:
+            for statement, suffix, display_order, checks, flow_concepts in STATEMENTS:
                 out_path = EXPORT_DIR / f"{ticker}_{suffix}.csv"
                 n_rows, n_periods = _export_statement(
                     conn, ticker=ticker, statement=statement,
                     display_order=display_order, checks=checks,
+                    flow_concepts=flow_concepts,
                     out_path=out_path, companion_values=companion,
                 )
                 rel = out_path.relative_to(REPO_ROOT)
