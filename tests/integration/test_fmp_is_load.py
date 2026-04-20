@@ -127,20 +127,80 @@ def _seed_nvda(conn: psycopg.Connection) -> int:
     return cid
 
 
+def _bs_q4_row() -> dict:
+    """NVDA FY2026 Q4 balance sheet (2026-01-25). All subtotals tie."""
+    return {
+        "date": "2026-01-25", "period": "Q4", "fiscalYear": "2026",
+        "symbol": "NVDA", "filingDate": "2026-02-25",
+        "acceptedDate": "2026-02-25 16:42:19",
+        "cashAndCashEquivalents": 10605000000,
+        "shortTermInvestments": 51951000000,
+        "accountsReceivables": 38466000000,
+        "inventory": 21403000000,
+        "prepaids": 0,
+        "otherCurrentAssets": 3180000000,
+        "totalCurrentAssets": 125605000000,
+        "propertyPlantEquipmentNet": 13250000000,
+        "longTermInvestments": 22251000000,
+        "goodwill": 20832000000,
+        "intangibleAssets": 3306000000,
+        "taxAssets": 13258000000,
+        "otherNonCurrentAssets": 8301000000,
+        "totalAssets": 206803000000,
+        "accountPayables": 9812000000,
+        "otherPayables": 2669000000,
+        "accruedExpenses": 9239000000,
+        "shortTermDebt": 999000000,
+        "capitalLeaseObligationsCurrent": 372000000,
+        "deferredRevenue": 1379000000,
+        "otherCurrentLiabilities": 7693000000,
+        "totalCurrentLiabilities": 32163000000,
+        "longTermDebt": 7469000000,
+        "capitalLeaseObligationsNonCurrent": 2572000000,
+        "deferredRevenueNonCurrent": 1193000000,
+        "deferredTaxLiabilitiesNonCurrent": 1774000000,
+        "otherNonCurrentLiabilities": 4339000000,
+        "totalLiabilities": 49510000000,
+        "preferredStock": 0,
+        "commonStock": 24000000,
+        "additionalPaidInCapital": 10118000000,
+        "retainedEarnings": 146973000000,
+        "treasuryStock": 0,
+        "accumulatedOtherComprehensiveIncomeLoss": 178000000,
+        "minorityInterest": 0,
+        "totalEquity": 157293000000,
+        "totalLiabilitiesAndTotalEquity": 206803000000,
+    }
+
+
 def _fake_fmp_get(self, endpoint: str, **params) -> Response:  # noqa: ARG001
-    """Mocked FMPClient.get — serves quarter vs annual based on params."""
-    if params.get("period") == "quarter":
-        body = json.dumps([_q4_row()]).encode()
-    elif params.get("period") == "annual":
-        body = json.dumps([_fy_row()]).encode()
+    """Mocked FMPClient.get — routes by endpoint + period."""
+    if endpoint == "income-statement":
+        if params.get("period") == "quarter":
+            rows = [_q4_row()]
+        elif params.get("period") == "annual":
+            rows = [_fy_row()]
+        else:
+            raise AssertionError(f"unexpected IS params: {params}")
+    elif endpoint == "balance-sheet-statement":
+        # periods.md § 6.3: the 10-K's BS IS the Q4 BS snapshot. FMP reports
+        # the same numbers under period=Q4 (quarter endpoint) and period=FY
+        # (annual endpoint); we emit a 'quarter'/Q4 row and an 'annual' row
+        # at the same period_end.
+        bs_row = _bs_q4_row()
+        if params.get("period") == "annual":
+            bs_row = dict(bs_row)
+            bs_row["period"] = "FY"
+        rows = [bs_row]
     else:
-        raise AssertionError(f"unexpected params: {params}")
+        raise AssertionError(f"unexpected endpoint: {endpoint}")
+    body = json.dumps(rows).encode()
     return Response(
         status=200,
         body=body,
         content_type="application/json",
         headers={"content-type": "application/json"},
-        url=f"https://financialmodelingprep.com/stable/{endpoint}?symbol=NVDA&period={params['period']}",
+        url=f"https://financialmodelingprep.com/stable/{endpoint}?symbol=NVDA&period={params.get('period','?')}",
     )
 
 
@@ -179,7 +239,7 @@ def _empty_xbrl_fetch(conn, *, cik, ingest_run_id, http):  # noqa: ARG001
 
 
 def test_backfill_writes_raw_and_facts_end_to_end() -> None:
-    from arrow.agents.fmp_ingest import backfill_fmp_is
+    from arrow.agents.fmp_ingest import backfill_fmp_statements
 
     with get_conn() as conn:
         _reset(conn)
@@ -188,18 +248,26 @@ def test_backfill_writes_raw_and_facts_end_to_end() -> None:
         with patch("arrow.ingest.fmp.client.FMPClient.get", new=_fake_fmp_get), patch(
             "arrow.agents.fmp_ingest.fetch_company_facts", new=_empty_xbrl_fetch
         ):
-            counts = backfill_fmp_is(conn, ["NVDA"])
+            counts = backfill_fmp_statements(conn, ["NVDA"])
 
-        assert counts["raw_responses"] == 3  # FMP quarter + FMP annual + SEC companyfacts
-        assert counts["rows_processed"] == 2  # 1 row per FMP payload in this fixture
-        assert counts["financial_facts_written"] == 36  # 18 buckets * 2 periods
-        assert counts["financial_facts_superseded"] == 0  # first run
+        # 5 raw_responses = FMP IS quarter + IS annual + BS quarter + BS annual + SEC companyfacts
+        assert counts["raw_responses"] == 5
+        # 4 FMP rows (1 per payload × 4 payloads)
+        assert counts["rows_processed"] == 4
+        # IS: 18 buckets × 2 periods = 36
+        assert counts["is_facts_written"] == 36
+        assert counts["is_facts_superseded"] == 0
+        # BS: all populated buckets × 2 periods. NVDA Q4 FY26 populates every
+        # bucket in the mapper (some with 0).
+        assert counts["bs_facts_written"] > 0
+        assert counts["bs_facts_superseded"] == 0
 
         with conn.cursor() as cur:
             cur.execute(
                 """
                 SELECT count(*) FROM financial_facts
-                WHERE company_id = %s AND superseded_at IS NULL;
+                WHERE company_id = %s AND superseded_at IS NULL
+                  AND statement = 'income_statement';
                 """,
                 (company_id,),
             )
@@ -255,6 +323,7 @@ def test_backfill_writes_raw_and_facts_end_to_end() -> None:
             assert rows[0][0].isoformat().startswith("2026-02-25T16:42:19")
 
             # Source raw_response ids point at real raw_responses.
+            # 4 distinct: IS quarter, IS annual, BS quarter, BS annual.
             cur.execute(
                 """
                 SELECT COUNT(DISTINCT source_raw_response_id) FROM financial_facts
@@ -262,7 +331,7 @@ def test_backfill_writes_raw_and_facts_end_to_end() -> None:
                 """,
                 (company_id,),
             )
-            assert cur.fetchone()[0] == 2  # quarter + annual
+            assert cur.fetchone()[0] == 4
 
             # Ingest run succeeded.
             cur.execute(
@@ -272,11 +341,12 @@ def test_backfill_writes_raw_and_facts_end_to_end() -> None:
             assert status == "succeeded"
             assert vendor == "fmp"
             assert run_kind == "manual"
-            assert run_counts["financial_facts_written"] == 36
+            assert run_counts["is_facts_written"] == 36
+            assert run_counts["bs_facts_written"] > 0
 
 
 def test_rerun_supersedes_old_rows_and_writes_new_ones() -> None:
-    from arrow.agents.fmp_ingest import backfill_fmp_is
+    from arrow.agents.fmp_ingest import backfill_fmp_statements
 
     with get_conn() as conn:
         _reset(conn)
@@ -285,15 +355,18 @@ def test_rerun_supersedes_old_rows_and_writes_new_ones() -> None:
         with patch("arrow.ingest.fmp.client.FMPClient.get", new=_fake_fmp_get), patch(
             "arrow.agents.fmp_ingest.fetch_company_facts", new=_empty_xbrl_fetch
         ):
-            backfill_fmp_is(conn, ["NVDA"])
-            counts = backfill_fmp_is(conn, ["NVDA"])  # second run
+            first_counts = backfill_fmp_statements(conn, ["NVDA"])
+            counts = backfill_fmp_statements(conn, ["NVDA"])  # second run
 
-        # Second run: superseded 36 from run 1, wrote 36 new.
-        assert counts["financial_facts_superseded"] == 36
-        assert counts["financial_facts_written"] == 36
+        # Second run supersedes everything from run 1 and writes the same count new.
+        assert counts["is_facts_superseded"] == first_counts["is_facts_written"]
+        assert counts["is_facts_written"] == first_counts["is_facts_written"]
+        assert counts["bs_facts_superseded"] == first_counts["bs_facts_written"]
+        assert counts["bs_facts_written"] == first_counts["bs_facts_written"]
 
         with conn.cursor() as cur:
-            # Current rows: still 36 (the new ones).
+            total_current = first_counts["is_facts_written"] + first_counts["bs_facts_written"]
+
             cur.execute(
                 """
                 SELECT count(*) FROM financial_facts
@@ -301,16 +374,14 @@ def test_rerun_supersedes_old_rows_and_writes_new_ones() -> None:
                 """,
                 (company_id,),
             )
-            assert cur.fetchone()[0] == 36
+            assert cur.fetchone()[0] == total_current  # still just the new ones
 
-            # Total rows: 72 (36 superseded + 36 current).
             cur.execute(
                 "SELECT count(*) FROM financial_facts WHERE company_id = %s;",
                 (company_id,),
             )
-            assert cur.fetchone()[0] == 72
+            assert cur.fetchone()[0] == 2 * total_current  # new + superseded
 
-            # Superseded rows have superseded_at set.
             cur.execute(
                 """
                 SELECT count(*) FROM financial_facts
@@ -318,18 +389,25 @@ def test_rerun_supersedes_old_rows_and_writes_new_ones() -> None:
                 """,
                 (company_id,),
             )
-            assert cur.fetchone()[0] == 36
+            assert cur.fetchone()[0] == total_current
 
 
 def test_verification_failure_rolls_back_and_marks_run_failed() -> None:
-    from arrow.agents.fmp_ingest import backfill_fmp_is
+    from arrow.agents.fmp_ingest import backfill_fmp_statements
     from arrow.normalize.financials.load import VerificationFailed
 
     def _bad_fmp_get(self, endpoint: str, **params) -> Response:  # noqa: ARG001
-        broken = _q4_row()
-        # Move gross_profit $5B off — well beyond tolerance.
-        broken["grossProfit"] = broken["grossProfit"] + 5_000_000_000
-        body = json.dumps([broken if params["period"] == "quarter" else _fy_row()]).encode()
+        # IS payload with grossProfit broken → Layer 1 IS fires before BS
+        # ingest even starts.
+        if endpoint == "income-statement":
+            broken = _q4_row()
+            broken["grossProfit"] = broken["grossProfit"] + 5_000_000_000
+            rows = [broken if params["period"] == "quarter" else _fy_row()]
+        elif endpoint == "balance-sheet-statement":
+            rows = [_bs_q4_row()]
+        else:
+            raise AssertionError(f"unexpected endpoint: {endpoint}")
+        body = json.dumps(rows).encode()
         return Response(
             status=200, body=body, content_type="application/json",
             headers={"content-type": "application/json"},
@@ -344,23 +422,18 @@ def test_verification_failure_rolls_back_and_marks_run_failed() -> None:
             "arrow.agents.fmp_ingest.fetch_company_facts", new=_empty_xbrl_fetch
         ):
             with pytest.raises(VerificationFailed):
-                backfill_fmp_is(conn, ["NVDA"])
+                backfill_fmp_statements(conn, ["NVDA"])
 
         with conn.cursor() as cur:
-            # Quarter payload transaction rolled back -> no facts from that raw_response.
-            # (Annual may not have been reached.)
             cur.execute(
                 "SELECT count(*) FROM financial_facts WHERE company_id = %s;",
                 (company_id,),
             )
-            fact_count = cur.fetchone()[0]
-            assert fact_count == 0  # nothing persisted
+            assert cur.fetchone()[0] == 0  # IS txn rolled back; BS never reached
 
-            # raw_responses row for quarter was also rolled back (same txn).
             cur.execute("SELECT count(*) FROM raw_responses WHERE vendor = 'fmp';")
-            assert cur.fetchone()[0] == 0
+            assert cur.fetchone()[0] == 0  # IS raw_response rolled back too
 
-            # Ingest run status = failed, with structured error_details.
             cur.execute(
                 "SELECT status, error_message, error_details FROM ingest_runs "
                 "ORDER BY id DESC LIMIT 1;"
@@ -368,13 +441,13 @@ def test_verification_failure_rolls_back_and_marks_run_failed() -> None:
             status, msg, details = cur.fetchone()
             assert status == "failed"
             assert "verification failed" in msg.lower()
-            assert details["kind"] == "verification_failed"
+            assert details["kind"] == "is_verification_failed"
             assert details["period_label"] == "FY2026 Q4"
             assert len(details["failed_ties"]) >= 1
 
 
 def test_company_not_seeded_fails_cleanly() -> None:
-    from arrow.agents.fmp_ingest import CompanyNotSeeded, backfill_fmp_is
+    from arrow.agents.fmp_ingest import CompanyNotSeeded, backfill_fmp_statements
 
     with get_conn() as conn:
         _reset(conn)
@@ -384,7 +457,7 @@ def test_company_not_seeded_fails_cleanly() -> None:
             "arrow.agents.fmp_ingest.fetch_company_facts", new=_empty_xbrl_fetch
         ):
             with pytest.raises(CompanyNotSeeded) as exc_info:
-                backfill_fmp_is(conn, ["NVDA"])
+                backfill_fmp_statements(conn, ["NVDA"])
 
         assert "NVDA" in str(exc_info.value)
 

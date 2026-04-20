@@ -238,9 +238,9 @@ Sub-detail rule: if both `gross_ppe` and `accumulated_depreciation` are reported
 | `additional_paid_in_capital` | detail | positive | null if bundled |
 | `common_stock_and_apic` | detail | positive | used when the filer reports common+APIC as a single XBRL concept; null if split into the two above |
 | `retained_earnings` | detail | reported sign | negative if accumulated deficit |
-| `treasury_stock` | detail | positive magnitude | subtracted in the formula |
+| `treasury_stock` | detail | signed negative (for buybacks) | added in the formula; see `fmp_mapping.md` for FMP empirical convention |
 | `accumulated_other_comprehensive_income` | detail | reported sign | AOCI, can be + or - |
-| `common_equity` | subtotal | reported | `= preferred_stock + (common_stock + additional_paid_in_capital OR common_stock_and_apic) + retained_earnings - treasury_stock + accumulated_other_comprehensive_income` |
+| `common_equity` | subtotal | reported | `= preferred_stock + (common_stock + additional_paid_in_capital OR common_stock_and_apic) + retained_earnings + treasury_stock + accumulated_other_comprehensive_income` (treasury is added because it's stored with its signed value, which is negative for buybacks — see § 5.5 note) |
 | `noncontrolling_interest` | detail | positive | |
 | `total_equity` | subtotal | reported | `= common_equity + noncontrolling_interest` |
 | `total_liabilities_and_equity` | subtotal | positive | `= total_liabilities + total_equity` |
@@ -414,7 +414,7 @@ Balance sheet:
 - `total_assets == total_current_assets + net_ppe + ROU_operating + LT_investments + equity_method + goodwill + intangibles + DTA_noncurrent + other_noncurrent`
 - `total_current_liabilities == AP + accrued_expenses + current_portion_lt_debt + ST_borrowings + operating_lease_current + finance_lease_current + itax_payable_current + deferred_rev_current + other_current_liabilities`
 - `total_liabilities == total_current_liabilities + LT_debt + operating_lease_LT + finance_lease_LT + deferred_rev_noncurrent + DTL_noncurrent + other_noncurrent_liabilities`
-- `common_equity == preferred + common_stock + APIC + retained_earnings - treasury + AOCI`
+- `common_equity == preferred + common_stock + APIC + retained_earnings + treasury + AOCI`  (treasury signed; negative for buybacks)
 - `total_equity == common_equity + NCI`
 - `total_liabilities_and_equity == total_liabilities + total_equity`
 

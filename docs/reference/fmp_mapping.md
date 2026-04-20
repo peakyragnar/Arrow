@@ -235,7 +235,7 @@ Per-share and share-count buckets use their own units:
 | `additional_paid_in_capital` | `us-gaap:AdditionalPaidInCapital` | `additionalPaidInCapital` | verified | |
 | `common_stock_and_apic` | `us-gaap:CommonStocksIncludingAdditionalPaidInCapital` | — | seed | alternative XBRL concept; populate when filer uses this |
 | `retained_earnings` | `us-gaap:RetainedEarningsAccumulatedDeficit` | `retainedEarnings` | verified | |
-| `treasury_stock` | `us-gaap:TreasuryStockValue` | `treasuryStock` | verified | FMP stores signed positive; our canonical also positive magnitude |
+| `treasury_stock` | `us-gaap:TreasuryStockValue` | `treasuryStock` | verified | **FMP stores SIGNED NEGATIVE** for buybacks (e.g. NVDA FY2022 Q3 returns -12,038,000,000). Empirically confirmed during BS ingest live smoke — filer-reported totalEquity only balances when treasuryStock is ADDED with its FMP-returned sign, not subtracted. Store as-is; BS equity tie adds it. Earlier doc claim of "signed positive magnitude" was incorrect. |
 | `accumulated_other_comprehensive_income` | `us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax` | `accumulatedOtherComprehensiveIncomeLoss` | verified | |
 | `common_equity` | — | — | derived | subtotal computed in the mapper |
 | `noncontrolling_interest` | `us-gaap:MinorityInterest` | `minorityInterest` | verified | |

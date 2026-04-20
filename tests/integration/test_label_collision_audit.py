@@ -112,16 +112,19 @@ def _drift_stress_rows() -> list[dict]:
 
 
 def test_no_two_periods_share_a_fiscal_period_label() -> None:
-    from arrow.agents.fmp_ingest import backfill_fmp_is
+    from arrow.agents.fmp_ingest import backfill_fmp_statements as backfill_fmp_is
 
     rows = _drift_stress_rows()
 
     def _fake_get(self, endpoint: str, **params) -> Response:  # noqa: ARG001
         import json
-        if params["period"] == "quarter":
-            body = json.dumps(rows).encode()
+        if endpoint == "income-statement":
+            body = json.dumps(rows if params["period"] == "quarter" else []).encode()
+        elif endpoint == "balance-sheet-statement":
+            # Empty BS — the test doesn't exercise BS; just keep the endpoint happy.
+            body = b"[]"
         else:
-            body = b"[]"  # no annual rows for this fixture
+            raise AssertionError(f"unexpected endpoint: {endpoint}")
         return Response(
             status=200, body=body, content_type="application/json",
             headers={"content-type": "application/json"}, url="https://mock/",
@@ -154,7 +157,7 @@ def test_no_two_periods_share_a_fiscal_period_label() -> None:
 
 
 def test_stored_facts_still_tie_after_ingest() -> None:
-    from arrow.agents.fmp_ingest import backfill_fmp_is
+    from arrow.agents.fmp_ingest import backfill_fmp_statements as backfill_fmp_is
 
     rows = _drift_stress_rows()
 

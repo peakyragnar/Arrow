@@ -90,7 +90,28 @@ _IS_MAPPINGS: tuple[XBRLConceptMapping, ...] = (
 )
 
 
-_BY_CANONICAL: dict[str, XBRLConceptMapping] = {m.canonical: m for m in _IS_MAPPINGS}
+_BS_MAPPINGS: tuple[XBRLConceptMapping, ...] = (
+    XBRLConceptMapping("cash_and_equivalents", ("CashAndCashEquivalentsAtCarryingValue",), "USD"),
+    XBRLConceptMapping("total_assets", ("Assets",), "USD"),
+    XBRLConceptMapping("total_liabilities", ("Liabilities",), "USD"),
+    XBRLConceptMapping(
+        "total_equity",
+        (
+            "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest",
+            "StockholdersEquity",
+        ),
+        "USD",
+    ),
+    XBRLConceptMapping(
+        "total_liabilities_and_equity",
+        ("LiabilitiesAndStockholdersEquity",),
+        "USD",
+    ),
+)
+
+_BY_CANONICAL: dict[str, XBRLConceptMapping] = {
+    m.canonical: m for m in (*_IS_MAPPINGS, *_BS_MAPPINGS)
+}
 
 
 def mapping_for(canonical: str) -> XBRLConceptMapping | None:
@@ -100,3 +121,7 @@ def mapping_for(canonical: str) -> XBRLConceptMapping | None:
 
 def all_is_mappings() -> tuple[XBRLConceptMapping, ...]:
     return _IS_MAPPINGS
+
+
+def all_bs_mappings() -> tuple[XBRLConceptMapping, ...]:
+    return _BS_MAPPINGS
