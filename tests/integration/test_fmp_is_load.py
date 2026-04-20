@@ -173,25 +173,78 @@ def _bs_q4_row() -> dict:
     }
 
 
+def _cf_q4_row() -> dict:
+    """NVDA FY2026 Q4 cash flow (discrete 3-month, signs cash-impact).
+    Numbers chosen so all CF subtotal ties and cash roll-forward hold."""
+    return {
+        "date": "2026-01-25", "period": "Q4", "fiscalYear": "2026",
+        "symbol": "NVDA", "filingDate": "2026-02-25",
+        "acceptedDate": "2026-02-25 16:42:19",
+        "netIncome": 42960000000,
+        "depreciationAndAmortization": 812000000,
+        "stockBasedCompensation": 1633000000,
+        "deferredIncomeTax": 611000000,
+        "otherNonCashItems": 6121000000,
+        "accountsReceivables": -5074000000,
+        "inventory": -1621000000,
+        "accountsPayables": 1064000000,
+        "otherWorkingCapital": -10318000000,
+        # cfo tie: 42960 + 812 + 1633 + 611 + 6121 + (-5074) + (-1621) + 1064 + (-10318) = 36,188
+        "netCashProvidedByOperatingActivities": 36188000000,
+        "investmentsInPropertyPlantAndEquipment": -1284000000,
+        "acquisitionsNet": -165000000,
+        "purchasesOfInvestments": -33340000000,
+        "salesMaturitiesOfInvestments": 16928000000,
+        "otherInvestingActivities": -13000000000,
+        # cfi: -1284 -165 -33340 +16928 -13000 = -30,861
+        "netCashProvidedByInvestingActivities": -30861000000,
+        "shortTermNetDebtIssuance": 0,
+        "longTermNetDebtIssuance": 0,
+        "commonStockIssuance": 0,
+        "commonStockRepurchased": -3815000000,
+        "commonDividendsPaid": -242000000,
+        "preferredDividendsPaid": 0,
+        "otherFinancingActivities": -2151000000,
+        # cff: -3815 -242 -2151 = -6,208
+        "netCashProvidedByFinancingActivities": -6208000000,
+        "effectOfForexChangesOnCash": 0,
+        # net_change = 36188 - 30861 - 6208 + 0 = -881
+        "netChangeInCash": -881000000,
+        # cash end - cash begin = -881; begin=11486, end=10605 → change=-881
+        "cashAtBeginningOfPeriod": 11486000000,
+        "cashAtEndOfPeriod": 10605000000,
+    }
+
+
 def _fake_fmp_get(self, endpoint: str, **params) -> Response:  # noqa: ARG001
-    """Mocked FMPClient.get — routes by endpoint + period."""
+    """Mocked FMPClient.get — routes by endpoint + period.
+
+    Fixture uses the same Q4 numbers for both quarter and annual endpoints
+    (treating the test's fiscal year as "single-quarter Q4"). That keeps
+    IS/BS/CF internally consistent across ALL the cross-statement ties —
+    which is what the Layer 2 verifier requires. To test distinct FY
+    values, use a more elaborate fixture in a separate test.
+    """
     if endpoint == "income-statement":
-        if params.get("period") == "quarter":
-            rows = [_q4_row()]
-        elif params.get("period") == "annual":
-            rows = [_fy_row()]
-        else:
-            raise AssertionError(f"unexpected IS params: {params}")
+        # Same Q4 values for both quarter and annual — keeps CF.NI == IS.NI
+        # at both period_types so Layer 2 tie holds.
+        is_row = _q4_row()
+        if params.get("period") == "annual":
+            is_row = dict(is_row)
+            is_row["period"] = "FY"
+        rows = [is_row]
     elif endpoint == "balance-sheet-statement":
-        # periods.md § 6.3: the 10-K's BS IS the Q4 BS snapshot. FMP reports
-        # the same numbers under period=Q4 (quarter endpoint) and period=FY
-        # (annual endpoint); we emit a 'quarter'/Q4 row and an 'annual' row
-        # at the same period_end.
         bs_row = _bs_q4_row()
         if params.get("period") == "annual":
             bs_row = dict(bs_row)
             bs_row["period"] = "FY"
         rows = [bs_row]
+    elif endpoint == "cash-flow-statement":
+        cf_row = _cf_q4_row()
+        if params.get("period") == "annual":
+            cf_row = dict(cf_row)
+            cf_row["period"] = "FY"
+        rows = [cf_row]
     else:
         raise AssertionError(f"unexpected endpoint: {endpoint}")
     body = json.dumps(rows).encode()
@@ -250,17 +303,17 @@ def test_backfill_writes_raw_and_facts_end_to_end() -> None:
         ):
             counts = backfill_fmp_statements(conn, ["NVDA"])
 
-        # 5 raw_responses = FMP IS quarter + IS annual + BS quarter + BS annual + SEC companyfacts
-        assert counts["raw_responses"] == 5
-        # 4 FMP rows (1 per payload × 4 payloads)
-        assert counts["rows_processed"] == 4
+        # 7 raw_responses = FMP IS q+a + BS q+a + CF q+a + SEC companyfacts
+        assert counts["raw_responses"] == 7
+        # 6 FMP rows (1 per payload × 6 payloads: IS q/a, BS q/a, CF q/a)
+        assert counts["rows_processed"] == 6
         # IS: 18 buckets × 2 periods = 36
         assert counts["is_facts_written"] == 36
         assert counts["is_facts_superseded"] == 0
-        # BS: all populated buckets × 2 periods. NVDA Q4 FY26 populates every
-        # bucket in the mapper (some with 0).
         assert counts["bs_facts_written"] > 0
         assert counts["bs_facts_superseded"] == 0
+        assert counts["cf_facts_written"] > 0
+        assert counts["cf_facts_superseded"] == 0
 
         with conn.cursor() as cur:
             cur.execute(
@@ -295,6 +348,7 @@ def test_backfill_writes_raw_and_facts_end_to_end() -> None:
             assert pt == "quarter"
 
             # Annual row: fiscal_quarter is NULL, label is "FY2026".
+            # Note: fixture uses same Q4 values for FY, so value == Q4's.
             cur.execute(
                 """
                 SELECT fiscal_quarter, fiscal_period_label, period_type, value
@@ -308,7 +362,7 @@ def test_backfill_writes_raw_and_facts_end_to_end() -> None:
             assert fq_ann is None
             assert fl_ann == "FY2026"
             assert pt_ann == "annual"
-            assert val_ann == 215938000000
+            assert val_ann == 68127000000  # Q4 revenue (fixture's annual == Q4)
 
             # published_at picked up from acceptedDate
             cur.execute(
@@ -322,8 +376,7 @@ def test_backfill_writes_raw_and_facts_end_to_end() -> None:
             assert len(rows) == 1  # both periods share the same filing
             assert rows[0][0].isoformat().startswith("2026-02-25T16:42:19")
 
-            # Source raw_response ids point at real raw_responses.
-            # 4 distinct: IS quarter, IS annual, BS quarter, BS annual.
+            # 6 distinct: IS q/a + BS q/a + CF q/a
             cur.execute(
                 """
                 SELECT COUNT(DISTINCT source_raw_response_id) FROM financial_facts
@@ -331,7 +384,7 @@ def test_backfill_writes_raw_and_facts_end_to_end() -> None:
                 """,
                 (company_id,),
             )
-            assert cur.fetchone()[0] == 4
+            assert cur.fetchone()[0] == 6
 
             # Ingest run succeeded.
             cur.execute(
@@ -343,6 +396,7 @@ def test_backfill_writes_raw_and_facts_end_to_end() -> None:
             assert run_kind == "manual"
             assert run_counts["is_facts_written"] == 36
             assert run_counts["bs_facts_written"] > 0
+            assert run_counts["cf_facts_written"] > 0
 
 
 def test_rerun_supersedes_old_rows_and_writes_new_ones() -> None:
@@ -358,14 +412,20 @@ def test_rerun_supersedes_old_rows_and_writes_new_ones() -> None:
             first_counts = backfill_fmp_statements(conn, ["NVDA"])
             counts = backfill_fmp_statements(conn, ["NVDA"])  # second run
 
-        # Second run supersedes everything from run 1 and writes the same count new.
+        # Second run supersedes everything from run 1 and writes same count new.
         assert counts["is_facts_superseded"] == first_counts["is_facts_written"]
         assert counts["is_facts_written"] == first_counts["is_facts_written"]
         assert counts["bs_facts_superseded"] == first_counts["bs_facts_written"]
         assert counts["bs_facts_written"] == first_counts["bs_facts_written"]
+        assert counts["cf_facts_superseded"] == first_counts["cf_facts_written"]
+        assert counts["cf_facts_written"] == first_counts["cf_facts_written"]
 
         with conn.cursor() as cur:
-            total_current = first_counts["is_facts_written"] + first_counts["bs_facts_written"]
+            total_current = (
+                first_counts["is_facts_written"]
+                + first_counts["bs_facts_written"]
+                + first_counts["cf_facts_written"]
+            )
 
             cur.execute(
                 """

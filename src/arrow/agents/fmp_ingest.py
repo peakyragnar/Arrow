@@ -41,6 +41,7 @@ import psycopg
 from arrow.ingest.common.http import HttpClient
 from arrow.ingest.common.runs import close_failed, close_succeeded, open_run
 from arrow.ingest.fmp.balance_sheet import fetch_balance_sheet
+from arrow.ingest.fmp.cash_flow import fetch_cash_flow
 from arrow.ingest.fmp.client import FMPClient
 from arrow.ingest.fmp.income_statement import fetch_income_statement
 from arrow.ingest.sec.bootstrap import SEC_RATE_LIMIT, SEC_USER_AGENT
@@ -48,12 +49,19 @@ from arrow.ingest.sec.company_facts import fetch_company_facts
 from arrow.normalize.financials.load import (
     BS_EXTRACTION_VERSION,
     BSVerificationFailed,
+    CF_EXTRACTION_VERSION,
+    CFVerificationFailed,
     FiscalYearMismatch,
     IS_EXTRACTION_VERSION,
     LoadResult,
     VerificationFailed,
     load_fmp_bs_rows,
+    load_fmp_cf_rows,
     load_fmp_is_rows,
+)
+from arrow.normalize.financials.verify_cross_statement import (
+    CrossStatementFailure,
+    verify_cross_statement_ties,
 )
 from arrow.normalize.financials.verify_period_arithmetic import (
     PeriodArithmeticFailure,
@@ -63,6 +71,7 @@ from arrow.normalize.periods.derive import min_fiscal_year_for_since_date
 from arrow.reconcile.fmp_vs_xbrl import (
     AnchorCheckResult,
     reconcile_bs_anchors,
+    reconcile_cf_anchors,
     reconcile_is_anchors,
 )
 
@@ -82,14 +91,32 @@ class CompanyNotSeeded(RuntimeError):
 
 
 class PeriodArithmeticViolation(RuntimeError):
-    def __init__(self, failures: list[PeriodArithmeticFailure]) -> None:
+    def __init__(
+        self, failures: list[PeriodArithmeticFailure], statement: str
+    ) -> None:
         self.failures = failures
+        self.statement = statement
         summary = "; ".join(
             f"{f.concept} FY{f.fiscal_year}: Q-sum={f.quarters_sum}, FY={f.annual}, delta={f.delta}"
             for f in failures[:5]
         )
         super().__init__(
-            f"Layer-3 period arithmetic failed on {len(failures)} (concept, FY) pair(s): {summary}"
+            f"Layer-3 period arithmetic failed on {len(failures)} "
+            f"({statement}, concept, FY) pair(s): {summary}"
+        )
+
+
+class CrossStatementViolation(RuntimeError):
+    """Layer 2: IS, BS, CF don't cohere."""
+    def __init__(self, failures: list[CrossStatementFailure]) -> None:
+        self.failures = failures
+        summary = "; ".join(
+            f"{f.tie} @ {f.period_end} ({f.period_type}): "
+            f"lhs={f.lhs_value}, rhs={f.rhs_value}, delta={f.delta}"
+            for f in failures[:5]
+        )
+        super().__init__(
+            f"Layer-2 cross-statement tie failed on {len(failures)} row(s): {summary}"
         )
 
 
@@ -178,9 +205,45 @@ def _load_bs_period(
         )
 
 
-def _run_layer3_is(conn: psycopg.Connection, company: CompanyRow) -> list[PeriodArithmeticFailure]:
+def _load_cf_period(
+    conn: psycopg.Connection,
+    *,
+    company: CompanyRow,
+    period: str,
+    min_fiscal_year: int,
+    ingest_run_id: int,
+    client: FMPClient,
+) -> LoadResult:
+    with conn.transaction():
+        fetched = fetch_cash_flow(
+            conn,
+            ticker=company.ticker,
+            period=period,
+            ingest_run_id=ingest_run_id,
+            client=client,
+        )
+        return load_fmp_cf_rows(
+            conn,
+            company_id=company.id,
+            company_fiscal_year_end_md=company.fiscal_year_end_md,
+            rows=fetched.rows,
+            source_raw_response_id=fetched.raw_response_id,
+            ingest_run_id=ingest_run_id,
+            min_fiscal_year=min_fiscal_year,
+        )
+
+
+def _run_layer3(
+    conn: psycopg.Connection,
+    company: CompanyRow,
+    *,
+    statement: str,
+    extraction_version: str,
+) -> list[PeriodArithmeticFailure]:
     return verify_period_arithmetic(
-        conn, company_id=company.id, extraction_version=IS_EXTRACTION_VERSION
+        conn, company_id=company.id,
+        extraction_version=extraction_version,
+        statement=statement,
     )
 
 
@@ -196,8 +259,31 @@ def _fetch_xbrl_payload(
         return fetched.payload
 
 
-def _count_layer3_identities(conn: psycopg.Connection, *, company_id: int) -> int:
-    """Count (concept, fiscal_year) pairs with all 5 values (Q1-Q4 + FY)."""
+def _count_cf_periods(conn: psycopg.Connection, *, company_id: int) -> int:
+    """Count distinct (period_end, period_type) pairs in stored CF data
+    — upper bound on Layer 2 cross-statement ties we can check."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT count(DISTINCT (period_end, period_type))
+            FROM financial_facts
+            WHERE company_id = %s AND statement = 'cash_flow'
+              AND extraction_version = %s AND superseded_at IS NULL;
+            """,
+            (company_id, CF_EXTRACTION_VERSION),
+        )
+        return cur.fetchone()[0]
+
+
+def _count_layer3_identities(
+    conn: psycopg.Connection,
+    *,
+    company_id: int,
+    statement: str,
+    extraction_version: str,
+) -> int:
+    """Count (concept, fiscal_year) pairs with all 5 values (Q1-Q4 + FY)
+    for a given statement / extraction_version."""
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -205,14 +291,14 @@ def _count_layer3_identities(conn: psycopg.Connection, *, company_id: int) -> in
                 SELECT concept, fiscal_year
                 FROM financial_facts
                 WHERE company_id = %s AND superseded_at IS NULL
-                  AND statement = 'income_statement'
+                  AND statement = %s
                   AND extraction_version = %s
                 GROUP BY concept, fiscal_year
                 HAVING count(*) FILTER (WHERE period_type='quarter') = 4
                    AND count(*) FILTER (WHERE period_type='annual') = 1
             ) t;
             """,
-            (company_id, IS_EXTRACTION_VERSION),
+            (company_id, statement, extraction_version),
         )
         return cur.fetchone()[0]
 
@@ -276,7 +362,7 @@ def backfill_fmp_statements(
         # IS
         "is_facts_written": 0,
         "is_facts_superseded": 0,
-        "layer3_identities_checked": 0,
+        "is_layer3_identities_checked": 0,
         "is_anchors_stored": 0,
         "is_anchors_checked": 0,
         "is_anchors_matched": 0,
@@ -288,6 +374,16 @@ def backfill_fmp_statements(
         "bs_anchors_checked": 0,
         "bs_anchors_matched": 0,
         "bs_anchors_not_in_xbrl": [],
+        # CF
+        "cf_facts_written": 0,
+        "cf_facts_superseded": 0,
+        "cf_layer3_identities_checked": 0,
+        "cf_anchors_stored": 0,
+        "cf_anchors_checked": 0,
+        "cf_anchors_matched": 0,
+        "cf_anchors_not_in_xbrl": [],
+        # Layer 2 (cross-statement)
+        "cross_statement_ties_checked": 0,
     }
 
     try:
@@ -328,15 +424,66 @@ def backfill_fmp_statements(
                 counts["bs_facts_written"] += result.facts_written
                 counts["bs_facts_superseded"] += result.facts_superseded
 
-            # --- Layer 3: IS period arithmetic ---
-            l3_failures = _run_layer3_is(conn, company)
-            if l3_failures:
-                raise PeriodArithmeticViolation(l3_failures)
-            counts["layer3_identities_checked"] += _count_layer3_identities(
-                conn, company_id=company.id
+            # --- CF ingest (Layer 1 CF inline) ---
+            for period in ("quarter", "annual"):
+                result = _load_cf_period(
+                    conn,
+                    company=company,
+                    period=period,
+                    min_fiscal_year=ticker_min_fy,
+                    ingest_run_id=run_id,
+                    client=client,
+                )
+                counts["raw_responses"] += 1
+                counts["rows_processed"] += result.rows_processed
+                counts["cf_facts_written"] += result.facts_written
+                counts["cf_facts_superseded"] += result.facts_superseded
+
+            # --- Layer 3: period arithmetic on IS + CF flow buckets ---
+            is_l3 = _run_layer3(
+                conn, company,
+                statement="income_statement",
+                extraction_version=IS_EXTRACTION_VERSION,
+            )
+            if is_l3:
+                raise PeriodArithmeticViolation(is_l3, statement="income_statement")
+            counts["is_layer3_identities_checked"] += _count_layer3_identities(
+                conn, company_id=company.id,
+                statement="income_statement",
+                extraction_version=IS_EXTRACTION_VERSION,
             )
 
-            # --- Layer 5: fetch XBRL once, reconcile IS + BS ---
+            cf_l3 = _run_layer3(
+                conn, company,
+                statement="cash_flow",
+                extraction_version=CF_EXTRACTION_VERSION,
+            )
+            if cf_l3:
+                raise PeriodArithmeticViolation(cf_l3, statement="cash_flow")
+            counts["cf_layer3_identities_checked"] += _count_layer3_identities(
+                conn, company_id=company.id,
+                statement="cash_flow",
+                extraction_version=CF_EXTRACTION_VERSION,
+            )
+
+            # --- Layer 2: cross-statement ties (IS ↔ BS ↔ CF) ---
+            cross_failures = verify_cross_statement_ties(
+                conn,
+                company_id=company.id,
+                is_extraction_version=IS_EXTRACTION_VERSION,
+                bs_extraction_version=BS_EXTRACTION_VERSION,
+                cf_extraction_version=CF_EXTRACTION_VERSION,
+            )
+            if cross_failures:
+                raise CrossStatementViolation(cross_failures)
+            # One active tie per CF period (cf.net_income_start ≈ is.net_income).
+            # Cash roll-forward ties are deferred pending restricted-cash
+            # mapping — see verify_cross_statement.py docstring.
+            counts["cross_statement_ties_checked"] += _count_cf_periods(
+                conn, company_id=company.id,
+            )
+
+            # --- Layer 5: fetch XBRL once, reconcile IS + BS + CF ---
             xbrl_payload = _fetch_xbrl_payload(
                 conn, company=company, ingest_run_id=run_id
             )
@@ -374,6 +521,22 @@ def backfill_fmp_statements(
             if bs_result.divergences:
                 raise XBRLDivergenceFailed(bs_result, statement="balance_sheet")
 
+            cf_result = reconcile_cf_anchors(
+                conn,
+                company_id=company.id,
+                extraction_version=CF_EXTRACTION_VERSION,
+                companyfacts=xbrl_payload,
+            )
+            counts["cf_anchors_stored"] += cf_result.anchors_with_fmp_stored
+            counts["cf_anchors_checked"] += cf_result.anchors_checked
+            counts["cf_anchors_matched"] += cf_result.anchors_matched
+            for concept, pe, pt in cf_result.anchors_not_in_xbrl:
+                counts["cf_anchors_not_in_xbrl"].append({
+                    "concept": concept, "period_end": pe.isoformat(), "period_type": pt,
+                })
+            if cf_result.divergences:
+                raise XBRLDivergenceFailed(cf_result, statement="cash_flow")
+
     except VerificationFailed as e:
         close_failed(
             conn, run_id, error_message=str(e),
@@ -402,6 +565,20 @@ def backfill_fmp_statements(
             },
         )
         raise
+    except CFVerificationFailed as e:
+        close_failed(
+            conn, run_id, error_message=str(e),
+            error_details={
+                "kind": "cf_verification_failed",
+                "period_label": e.period_label,
+                "failed_ties": [
+                    {"tie": f.tie, "filer": str(f.filer), "computed": str(f.computed),
+                     "delta": str(f.delta), "tolerance": str(f.tolerance)}
+                    for f in e.failures
+                ],
+            },
+        )
+        raise
     except FiscalYearMismatch as e:
         close_failed(
             conn, run_id, error_message=str(e),
@@ -418,10 +595,31 @@ def backfill_fmp_statements(
             conn, run_id, error_message=str(e),
             error_details={
                 "kind": "period_arithmetic_violation",
+                "statement": e.statement,
                 "failures": [
                     {"concept": f.concept, "fiscal_year": f.fiscal_year,
                      "quarters_sum": str(f.quarters_sum), "annual": str(f.annual),
                      "delta": str(f.delta), "tolerance": str(f.tolerance)}
+                    for f in e.failures
+                ],
+            },
+        )
+        raise
+    except CrossStatementViolation as e:
+        close_failed(
+            conn, run_id, error_message=str(e),
+            error_details={
+                "kind": "cross_statement_violation",
+                "failures": [
+                    {"tie": f.tie,
+                     "period_end": f.period_end.isoformat(),
+                     "period_type": f.period_type,
+                     "fiscal_year": f.fiscal_year,
+                     "fiscal_quarter": f.fiscal_quarter,
+                     "lhs_value": str(f.lhs_value),
+                     "rhs_value": str(f.rhs_value),
+                     "delta": str(f.delta),
+                     "tolerance": str(f.tolerance)}
                     for f in e.failures
                 ],
             },

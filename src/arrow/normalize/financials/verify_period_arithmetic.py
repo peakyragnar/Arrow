@@ -41,14 +41,35 @@ LAYER3_TOLERANCE_ABSOLUTE = Decimal("2500000")  # $2.5M
 LAYER3_TOLERANCE_PCT = Decimal("0.001")         # 0.1% of larger abs (same as L1)
 
 # Flow buckets eligible for the Q1+Q2+Q3+Q4 ≈ FY identity.
-# Excludes BS stocks (not in IS anyway), per-share, and share-counts.
-_FLOW_BUCKETS = {
+# IS: excludes per-share + share-counts (not additive).
+# CF: excludes cash_begin/cash_end (snapshots, not flows) and the raw
+# roll-forward components that are themselves subtotals but would
+# double-count if we summed each subtotal AND each detail.
+_IS_FLOW_BUCKETS = {
     "revenue", "cogs", "gross_profit",
     "rd", "sga", "total_opex", "operating_income",
     "interest_expense", "interest_income",
     "ebt_incl_unusual", "tax",
     "continuing_ops_after_tax", "discontinued_ops", "net_income",
 }
+
+# CF Layer 3: subtotals only. The detail-level line items within
+# CFO/CFI/CFF are empirically RECLASSIFIED between the 10-Q and 10-K
+# (e.g., NVDA moves items between change_accounts_payable and
+# change_other_working_capital; classifies something as
+# long_term_debt_issuance in the 10-K that was in other_financing in
+# the 10-Qs). This is documented filing practice — see concepts.md
+# § 7.1 on reclassification detection. The SUBTOTALS (CFO, CFI, CFF,
+# net_change_in_cash) DO tie across Q1+Q2+Q3+Q4 = FY because they're
+# normalized by FMP at the filing level. We enforce the identity on
+# subtotals only; details are trusted per FMP's single-filing
+# consistency + the subtotal tie above them.
+_CF_FLOW_BUCKETS = {
+    "cfo", "cfi", "cff", "net_change_in_cash",
+}
+
+# Backward-compat name for the IS set (used by older callers / tests).
+_FLOW_BUCKETS = _IS_FLOW_BUCKETS
 
 
 @dataclass(frozen=True)
@@ -76,13 +97,28 @@ def verify_period_arithmetic(
     *,
     company_id: int,
     extraction_version: str,
+    statement: str = "income_statement",
 ) -> list[PeriodArithmeticFailure]:
     """Check Q1+Q2+Q3+Q4 ≈ FY for every (concept, fiscal_year) with all five.
 
-    Reads from financial_facts (current rows only, matching extraction_version).
-    Returns list of failures (empty = all checkable identities passed).
-    Fiscal years missing any of the five values are skipped (not failed).
+    Reads from financial_facts (current rows only, matching extraction_version
+    and statement). Returns list of failures (empty = all checkable
+    identities passed). Fiscal years missing any of the five values are
+    skipped (not failed).
+
+    statement: 'income_statement' (default) or 'cash_flow'. Balance-sheet
+    stocks are exempt from this check per concepts.md / verification.md.
     """
+    if statement == "income_statement":
+        flow_buckets = _IS_FLOW_BUCKETS
+    elif statement == "cash_flow":
+        flow_buckets = _CF_FLOW_BUCKETS
+    else:
+        raise ValueError(
+            f"verify_period_arithmetic only defined for "
+            f"'income_statement' or 'cash_flow', got {statement!r}"
+        )
+
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -91,10 +127,10 @@ def verify_period_arithmetic(
             WHERE company_id = %s
               AND extraction_version = %s
               AND superseded_at IS NULL
-              AND statement = 'income_statement'
+              AND statement = %s
               AND concept = ANY(%s);
             """,
-            (company_id, extraction_version, list(_FLOW_BUCKETS)),
+            (company_id, extraction_version, statement, list(flow_buckets)),
         )
         rows = cur.fetchall()
 

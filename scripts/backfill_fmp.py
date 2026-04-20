@@ -26,6 +26,7 @@ import sys
 from typing import Any
 
 from arrow.agents.fmp_ingest import (
+    CrossStatementViolation,
     PeriodArithmeticViolation,
     XBRLDivergenceFailed,
     backfill_fmp_statements,
@@ -33,12 +34,34 @@ from arrow.agents.fmp_ingest import (
 from arrow.db.connection import get_conn
 from arrow.normalize.financials.load import (
     BSVerificationFailed,
+    CFVerificationFailed,
     VerificationFailed,
 )
 
 
+def _print_statement_block(name: str, counts: dict, fw_key: str, fs_key: str,
+                             l3_key: str | None, ach_key: str, amt_key: str,
+                             gaps_key: str, extra_l1: str = "") -> None:
+    print(f"{name}:")
+    print(f"  facts written:          {counts[fw_key]}")
+    print(f"  facts superseded:       {counts[fs_key]}")
+    print(f"  Layer 1{extra_l1}:          enforced inline; all rows passed")
+    if l3_key is not None:
+        print(f"  Layer 3 (Q1+Q2+Q3+Q4=FY):  {counts[l3_key]} identities passed")
+    checked = counts[ach_key]
+    matched = counts[amt_key]
+    print(f"  Layer 5 (SEC XBRL anchors): {matched}/{checked} matched")
+    gaps = counts.get(gaps_key, [])
+    if gaps:
+        print(f"    anchors without XBRL counterpart ({len(gaps)}, informational):")
+        for g in gaps[:5]:
+            print(f"      - {g['concept']} @ {g['period_end']} ({g['period_type']})")
+        if len(gaps) > 5:
+            print(f"      ... +{len(gaps) - 5} more")
+
+
 def _print_success(tickers: list[str], counts: dict[str, Any]) -> None:
-    print(f"Backfilled IS + BS for {', '.join(t.upper() for t in tickers)}:")
+    print(f"Backfilled IS + BS + CF for {', '.join(t.upper() for t in tickers)}:")
     print(f"  since_date:             {counts['since_date']} (calendar input)")
     fy_map = counts.get("min_fiscal_year_by_ticker", {})
     if fy_map:
@@ -48,38 +71,41 @@ def _print_success(tickers: list[str], counts: dict[str, Any]) -> None:
     print(f"  raw_responses written:  {counts['raw_responses']}")
     print(f"  rows processed:         {counts['rows_processed']}")
     print()
-    print("Income statement:")
-    print(f"  facts written:          {counts['is_facts_written']}")
-    print(f"  facts superseded:       {counts['is_facts_superseded']}")
-    print(f"  Layer 1 (subtotal ties):   enforced inline; all rows passed")
-    print(f"  Layer 3 (Q1+Q2+Q3+Q4=FY):  {counts['layer3_identities_checked']} identities passed")
-    is_checked = counts["is_anchors_checked"]
-    is_matched = counts["is_anchors_matched"]
-    print(f"  Layer 5 (SEC XBRL anchors): {is_matched}/{is_checked} matched")
-    is_gaps = counts.get("is_anchors_not_in_xbrl", [])
-    if is_gaps:
-        print(f"    IS anchors without XBRL counterpart ({len(is_gaps)}, informational):")
-        for g in is_gaps[:5]:
-            print(f"      - {g['concept']} @ {g['period_end']} ({g['period_type']})")
-        if len(is_gaps) > 5:
-            print(f"      ... +{len(is_gaps) - 5} more")
+    _print_statement_block(
+        "Income statement", counts,
+        fw_key="is_facts_written", fs_key="is_facts_superseded",
+        l3_key="is_layer3_identities_checked",
+        ach_key="is_anchors_checked", amt_key="is_anchors_matched",
+        gaps_key="is_anchors_not_in_xbrl",
+        extra_l1=" (subtotal ties)",
+    )
     print()
-    print("Balance sheet:")
-    print(f"  facts written:          {counts['bs_facts_written']}")
-    print(f"  facts superseded:       {counts['bs_facts_superseded']}")
-    print(f"  Layer 1 (subtotal ties + balance identity): enforced inline; all rows passed")
-    bs_checked = counts["bs_anchors_checked"]
-    bs_matched = counts["bs_anchors_matched"]
-    print(f"  Layer 5 (SEC XBRL anchors): {bs_matched}/{bs_checked} matched")
-    bs_gaps = counts.get("bs_anchors_not_in_xbrl", [])
-    if bs_gaps:
-        print(f"    BS anchors without XBRL counterpart ({len(bs_gaps)}, informational):")
-        for g in bs_gaps[:5]:
-            print(f"      - {g['concept']} @ {g['period_end']} ({g['period_type']})")
-        if len(bs_gaps) > 5:
-            print(f"      ... +{len(bs_gaps) - 5} more")
+    _print_statement_block(
+        "Balance sheet", counts,
+        fw_key="bs_facts_written", fs_key="bs_facts_superseded",
+        l3_key=None,  # BS stocks exempt from Layer 3 per concepts.md
+        ach_key="bs_anchors_checked", amt_key="bs_anchors_matched",
+        gaps_key="bs_anchors_not_in_xbrl",
+        extra_l1=" (subtotal ties + balance identity)",
+    )
     print()
-    print("Status: PASS — every stored fact validated by internal arithmetic + anchor XBRL match.")
+    _print_statement_block(
+        "Cash flow", counts,
+        fw_key="cf_facts_written", fs_key="cf_facts_superseded",
+        l3_key="cf_layer3_identities_checked",
+        ach_key="cf_anchors_checked", amt_key="cf_anchors_matched",
+        gaps_key="cf_anchors_not_in_xbrl",
+        extra_l1=" (subtotal ties + cash roll-forward)",
+    )
+    print()
+    print("Cross-statement (Layer 2):")
+    print(f"  ties evaluated:         {counts['cross_statement_ties_checked']} "
+          f"(cf.net_income_start ≈ is.net_income) — all passed")
+    print(f"  cash roll-forward ties: DEFERRED pending restricted-cash mapping "
+          f"(see verify_cross_statement.py)")
+    print()
+    print("Status: PASS — every stored fact validated by internal arithmetic, "
+          "period arithmetic, cross-statement ties, and anchor XBRL match.")
 
 
 def _print_failure_header(kind: str, msg: str) -> None:
@@ -111,12 +137,34 @@ def _print_bs_verification_failed(e: BSVerificationFailed) -> None:
         print(f"    delta        : {f.delta}  (tolerance {f.tolerance})")
 
 
+def _print_cf_verification_failed(e: CFVerificationFailed) -> None:
+    _print_failure_header("Layer 1 CF (subtotal tie)", str(e))
+    print(f"Period: {e.period_label}")
+    for f in e.failures:
+        print(f"  - {f.tie}")
+        print(f"    filer (FMP)  : {f.filer}")
+        print(f"    computed     : {f.computed}")
+        print(f"    delta        : {f.delta}  (tolerance {f.tolerance})")
+
+
 def _print_period_arithmetic(e: PeriodArithmeticViolation) -> None:
-    _print_failure_header("Layer 3 (Q1+Q2+Q3+Q4 = FY)", str(e))
+    _print_failure_header(f"Layer 3 {e.statement.upper()} (Q1+Q2+Q3+Q4 = FY)", str(e))
     for f in e.failures:
         print(f"  - {f.concept} / FY{f.fiscal_year}")
         print(f"    Q1+Q2+Q3+Q4  : {f.quarters_sum}")
         print(f"    FY           : {f.annual}")
+        print(f"    delta        : {f.delta}  (tolerance {f.tolerance})")
+
+
+def _print_cross_statement(e: CrossStatementViolation) -> None:
+    _print_failure_header("Layer 2 (cross-statement tie)", str(e))
+    for f in e.failures:
+        label = f"FY{f.fiscal_year}"
+        if f.fiscal_quarter is not None:
+            label += f" Q{f.fiscal_quarter}"
+        print(f"  - {f.tie}  {label} ({f.period_type}, period_end={f.period_end})")
+        print(f"    lhs          : {f.lhs_value}")
+        print(f"    rhs          : {f.rhs_value}")
         print(f"    delta        : {f.delta}  (tolerance {f.tolerance})")
 
 
@@ -152,8 +200,14 @@ def main() -> int:
     except BSVerificationFailed as e:
         _print_bs_verification_failed(e)
         return 1
+    except CFVerificationFailed as e:
+        _print_cf_verification_failed(e)
+        return 1
     except PeriodArithmeticViolation as e:
         _print_period_arithmetic(e)
+        return 1
+    except CrossStatementViolation as e:
+        _print_cross_statement(e)
         return 1
     except XBRLDivergenceFailed as e:
         _print_xbrl_divergence(e)

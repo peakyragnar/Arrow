@@ -85,6 +85,18 @@ BS_ANCHORS: tuple[str, ...] = (
     "total_liabilities_and_equity",
 )
 
+# CF anchor set — the three net-flow subtotals. XBRL has these as
+# DURATION facts (like IS), but 10-Q filings typically only publish YTD
+# (H1 for Q2, 9M for Q3) — not 3-month discrete — so Q2/Q3 direct
+# matching fails in XBRL. We still get Q1 direct, Q4 derived
+# (FY − 9M YTD), and annual direct; Q2/Q3 discrete CF is covered
+# inductively by Layer 3 (Q1+Q2+Q3+Q4 = FY for CF flows).
+CF_ANCHORS: tuple[str, ...] = (
+    "cfo",
+    "cfi",
+    "cff",
+)
+
 # XBRL fact-matching duration windows.
 QUARTER_DURATION = (80, 100)       # 3-month discrete (IS/CF)
 ANNUAL_DURATION = (350, 380)        # 52/53-week FY (IS/CF)
@@ -430,6 +442,124 @@ def reconcile_bs_anchors(
                 xbrl_accn=entry.get("accn"),
                 delta=delta, tolerance=threshold,
                 derivation="instant",
+            ))
+
+    return result
+
+
+def reconcile_cf_anchors(
+    conn: psycopg.Connection,
+    *,
+    company_id: int,
+    extraction_version: str,
+    companyfacts: dict[str, Any],
+) -> AnchorCheckResult:
+    """CF anchor check — compare FMP-stored CFO/CFI/CFF to SEC XBRL.
+
+    Q1 and annual: direct duration XBRL lookup.
+    Q2 and Q3: SKIPPED — SEC filings publish YTD for these (H1 and 9M),
+               not 3-month discrete. Layer 3 period arithmetic covers
+               these inductively (Q1+Q2+Q3+Q4 ≈ FY on CF flows).
+    Q4: derived as FY − 9M YTD from XBRL, compared to FMP's stored Q4.
+    """
+    result = AnchorCheckResult()
+    us_gaap = companyfacts.get("facts", {}).get("us-gaap", {})
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT concept, period_end, period_type,
+                   fiscal_year, fiscal_quarter, value
+            FROM financial_facts
+            WHERE company_id = %s
+              AND extraction_version = %s
+              AND superseded_at IS NULL
+              AND statement = 'cash_flow'
+              AND concept = ANY(%s)
+            ORDER BY period_end, period_type, concept;
+            """,
+            (company_id, extraction_version, list(CF_ANCHORS)),
+        )
+        rows = cur.fetchall()
+
+    for concept, period_end, period_type, fy, fq, fmp_value in rows:
+        result.anchors_with_fmp_stored += 1
+        mapping = mapping_for(concept)
+        if mapping is None:
+            continue
+
+        # Q2 and Q3 of a quarter aren't directly filed as 3-month
+        # discrete CF in XBRL — skip. Layer 3 period arithmetic
+        # catches quarterly CF errors inductively.
+        if period_type == "quarter" and fq in (2, 3):
+            result.anchors_not_in_xbrl.append((concept, period_end, period_type))
+            continue
+
+        # Q4 → derive FY − 9M YTD
+        if period_type == "quarter" and fq == 4:
+            q3_period_end = _lookup_q3_period_end(
+                conn,
+                company_id=company_id,
+                fiscal_year=fy,
+                extraction_version=extraction_version,
+            )
+            if q3_period_end is None:
+                result.anchors_not_in_xbrl.append((concept, period_end, period_type))
+                continue
+            derived = _derive_xbrl_q4(
+                us_gaap, mapping,
+                fy_end=period_end,
+                q3_period_end=q3_period_end,
+            )
+            if derived is None:
+                result.anchors_not_in_xbrl.append((concept, period_end, period_type))
+                continue
+            xbrl_value, fy_entry, _ytd = derived
+            result.anchors_checked += 1
+            ok, delta, threshold = _within_tolerance(fmp_value, xbrl_value)
+            if ok:
+                result.anchors_matched += 1
+            else:
+                result.divergences.append(XBRLDivergence(
+                    concept=concept, period_end=period_end,
+                    period_type=period_type,
+                    fiscal_year=fy, fiscal_quarter=fq,
+                    fmp_value=fmp_value, xbrl_value=xbrl_value,
+                    xbrl_tag=fy_entry.get("__tag", ""),
+                    xbrl_filed=fy_entry.get("filed"),
+                    xbrl_accn=fy_entry.get("accn"),
+                    delta=delta, tolerance=threshold,
+                    derivation="q4_derived_fy_minus_9m",
+                ))
+            continue
+
+        # Q1 / annual → direct duration lookup.
+        duration = (
+            ANNUAL_DURATION if period_type == "annual" else QUARTER_DURATION
+        )
+        entry = _find_xbrl_fact(
+            us_gaap, mapping, end=period_end, duration=duration,
+        )
+        if entry is None:
+            result.anchors_not_in_xbrl.append((concept, period_end, period_type))
+            continue
+
+        xbrl_value = Decimal(str(entry["val"]))
+        result.anchors_checked += 1
+        ok, delta, threshold = _within_tolerance(fmp_value, xbrl_value)
+        if ok:
+            result.anchors_matched += 1
+        else:
+            result.divergences.append(XBRLDivergence(
+                concept=concept, period_end=period_end,
+                period_type=period_type,
+                fiscal_year=fy, fiscal_quarter=fq,
+                fmp_value=fmp_value, xbrl_value=xbrl_value,
+                xbrl_tag=entry.get("__tag", ""),
+                xbrl_filed=entry.get("filed"),
+                xbrl_accn=entry.get("accn"),
+                delta=delta, tolerance=threshold,
+                derivation="direct",
             ))
 
     return result

@@ -120,8 +120,9 @@ def test_no_two_periods_share_a_fiscal_period_label() -> None:
         import json
         if endpoint == "income-statement":
             body = json.dumps(rows if params["period"] == "quarter" else []).encode()
-        elif endpoint == "balance-sheet-statement":
-            # Empty BS — the test doesn't exercise BS; just keep the endpoint happy.
+        elif endpoint in ("balance-sheet-statement", "cash-flow-statement"):
+            # Test exercises IS-only period-derivation bug; empty BS/CF
+            # keep the agent happy without contributing data.
             body = b"[]"
         else:
             raise AssertionError(f"unexpected endpoint: {endpoint}")
