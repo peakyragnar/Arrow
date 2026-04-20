@@ -144,6 +144,35 @@ def _fake_fmp_get(self, endpoint: str, **params) -> Response:  # noqa: ARG001
     )
 
 
+def _empty_xbrl_fetch(conn, *, cik, ingest_run_id, http):  # noqa: ARG001
+    """Stub fetch_company_facts that writes a raw_responses row + returns an
+    empty companyfacts payload (no us-gaap facts). Reconcile will skip every
+    comparison — valid pass-through for tests that aren't exercising XBRL
+    matching specifically."""
+    from arrow.ingest.common.raw_responses import write_raw_response
+    from arrow.ingest.sec.company_facts import (
+        CompanyFactsFetch,
+        COMPANY_FACTS_ENDPOINT_TEMPLATE,
+    )
+    payload = {"cik": cik, "entityName": "NVDA", "facts": {"us-gaap": {}}}
+    body = json.dumps(payload).encode()
+    endpoint = COMPANY_FACTS_ENDPOINT_TEMPLATE.format(cik10=f"{cik:010d}")
+    raw_id = write_raw_response(
+        conn,
+        ingest_run_id=ingest_run_id,
+        vendor="sec",
+        endpoint=endpoint,
+        params={"cik": cik},
+        request_url=f"https://data.sec.gov/{endpoint}",
+        http_status=200,
+        content_type="application/json",
+        response_headers={"content-type": "application/json"},
+        body=body,
+        cache_path=None,
+    )
+    return CompanyFactsFetch(raw_response_id=raw_id, payload=payload)
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -156,11 +185,13 @@ def test_backfill_writes_raw_and_facts_end_to_end() -> None:
         _reset(conn)
         company_id = _seed_nvda(conn)
 
-        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_fake_fmp_get):
+        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_fake_fmp_get), patch(
+            "arrow.agents.fmp_ingest.fetch_company_facts", new=_empty_xbrl_fetch
+        ):
             counts = backfill_fmp_is(conn, ["NVDA"])
 
-        assert counts["raw_responses"] == 2  # quarter + annual
-        assert counts["rows_processed"] == 2  # 1 row per payload in this fixture
+        assert counts["raw_responses"] == 3  # FMP quarter + FMP annual + SEC companyfacts
+        assert counts["rows_processed"] == 2  # 1 row per FMP payload in this fixture
         assert counts["financial_facts_written"] == 36  # 18 buckets * 2 periods
         assert counts["financial_facts_superseded"] == 0  # first run
 
@@ -251,7 +282,9 @@ def test_rerun_supersedes_old_rows_and_writes_new_ones() -> None:
         _reset(conn)
         company_id = _seed_nvda(conn)
 
-        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_fake_fmp_get):
+        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_fake_fmp_get), patch(
+            "arrow.agents.fmp_ingest.fetch_company_facts", new=_empty_xbrl_fetch
+        ):
             backfill_fmp_is(conn, ["NVDA"])
             counts = backfill_fmp_is(conn, ["NVDA"])  # second run
 
@@ -307,7 +340,9 @@ def test_verification_failure_rolls_back_and_marks_run_failed() -> None:
         _reset(conn)
         company_id = _seed_nvda(conn)
 
-        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_bad_fmp_get):
+        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_bad_fmp_get), patch(
+            "arrow.agents.fmp_ingest.fetch_company_facts", new=_empty_xbrl_fetch
+        ):
             with pytest.raises(VerificationFailed):
                 backfill_fmp_is(conn, ["NVDA"])
 
@@ -345,7 +380,9 @@ def test_company_not_seeded_fails_cleanly() -> None:
         _reset(conn)
         # NOT seeding NVDA
 
-        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_fake_fmp_get):
+        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_fake_fmp_get), patch(
+            "arrow.agents.fmp_ingest.fetch_company_facts", new=_empty_xbrl_fetch
+        ):
             with pytest.raises(CompanyNotSeeded) as exc_info:
                 backfill_fmp_is(conn, ["NVDA"])
 

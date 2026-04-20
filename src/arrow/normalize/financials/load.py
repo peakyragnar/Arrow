@@ -105,8 +105,13 @@ def load_fmp_is_rows(
     rows: list[dict[str, Any]],
     source_raw_response_id: int,
     ingest_run_id: int,
+    since_date: date | None = None,
 ) -> LoadResult:
     """Load every row in one FMP IS payload. Caller owns transaction.
+
+    since_date: skip rows whose period_end < since_date. Validated-window
+    scope control; rows outside the window are counted in rows_processed
+    but not written to financial_facts.
 
     Raises VerificationFailed or FiscalYearMismatch on data integrity issues;
     the caller's transaction should roll back and the ingest run should be
@@ -119,6 +124,9 @@ def load_fmp_is_rows(
             result.rows_processed += 1
             period_type = _parse_fmp_period(row["period"])
             period_end = datetime.strptime(row["date"], "%Y-%m-%d").date()
+
+            if since_date is not None and period_end < since_date:
+                continue  # outside validated window
             fiscal = derive_fiscal_period(
                 period_end,
                 company_fiscal_year_end_md,
