@@ -7,8 +7,8 @@ us-gaap concepts for the same semantic item (e.g., `Revenues` vs
 between these post-ASC 606 adoption). The reconciler tries tags in order
 and uses the first one that has a matching fact for the target period.
 
-Only IS concepts are mapped here (matches Slice 2a scope). BS and CF
-concepts will be added when those mappers land.
+IS / BS / CF concepts used by reconciliation and amendment supersession
+are mapped here.
 
 Per-share and share-count buckets get their own unit key in XBRL
 (`USD/shares` and `shares` respectively).
@@ -150,8 +150,61 @@ _IS_MAPPINGS: tuple[XBRLConceptMapping, ...] = (
 
 _BS_MAPPINGS: tuple[XBRLConceptMapping, ...] = (
     XBRLConceptMapping("cash_and_equivalents", ("CashAndCashEquivalentsAtCarryingValue",), "USD"),
+    XBRLConceptMapping("short_term_investments", ("MarketableSecuritiesCurrent",), "USD"),
+    XBRLConceptMapping("accounts_receivable", ("AccountsReceivableNetCurrent",), "USD"),
+    XBRLConceptMapping(
+        "other_receivables",
+        ("OtherReceivablesNetCurrent", "NotesAndLoansReceivableNetCurrent"),
+        "USD",
+    ),
+    XBRLConceptMapping("inventory", ("InventoryNet",), "USD"),
+    XBRLConceptMapping("prepaid_expenses", ("PrepaidExpenseCurrent",), "USD"),
+    XBRLConceptMapping("other_current_assets", ("OtherAssetsCurrent",), "USD"),
+    XBRLConceptMapping("total_current_assets", ("AssetsCurrent",), "USD"),
+    XBRLConceptMapping("net_ppe", ("PropertyPlantAndEquipmentNet",), "USD"),
+    XBRLConceptMapping("long_term_investments", ("MarketableSecuritiesNoncurrent",), "USD"),
+    XBRLConceptMapping("goodwill", ("Goodwill",), "USD"),
+    XBRLConceptMapping("other_intangibles", ("IntangibleAssetsNetExcludingGoodwill",), "USD"),
+    XBRLConceptMapping("deferred_tax_assets_noncurrent", ("DeferredTaxAssetsNet",), "USD"),
+    XBRLConceptMapping("other_noncurrent_assets", ("OtherAssetsNoncurrent",), "USD"),
     XBRLConceptMapping("total_assets", ("Assets",), "USD"),
+    XBRLConceptMapping("accounts_payable", ("AccountsPayableCurrent",), "USD"),
+    XBRLConceptMapping("accrued_expenses", ("AccruedLiabilitiesCurrent",), "USD"),
+    XBRLConceptMapping("current_portion_lt_debt", ("LongTermDebtCurrent",), "USD"),
+    XBRLConceptMapping(
+        "current_portion_leases_operating", ("OperatingLeaseLiabilityCurrent",), "USD",
+    ),
+    XBRLConceptMapping("income_taxes_payable_current", ("AccruedIncomeTaxesCurrent",), "USD"),
+    XBRLConceptMapping(
+        "deferred_revenue_current", ("ContractWithCustomerLiabilityCurrent",), "USD",
+    ),
+    XBRLConceptMapping("other_current_liabilities", ("OtherLiabilitiesCurrent",), "USD"),
+    XBRLConceptMapping("total_current_liabilities", ("LiabilitiesCurrent",), "USD"),
+    XBRLConceptMapping("long_term_debt", ("LongTermDebtNoncurrent",), "USD"),
+    XBRLConceptMapping(
+        "long_term_leases_operating", ("OperatingLeaseLiabilityNoncurrent",), "USD",
+    ),
+    XBRLConceptMapping(
+        "deferred_revenue_noncurrent", ("ContractWithCustomerLiabilityNoncurrent",), "USD",
+    ),
+    XBRLConceptMapping(
+        "deferred_tax_liability_noncurrent", ("DeferredIncomeTaxLiabilitiesNet",), "USD",
+    ),
+    XBRLConceptMapping("other_noncurrent_liabilities", ("OtherLiabilitiesNoncurrent",), "USD"),
     XBRLConceptMapping("total_liabilities", ("Liabilities",), "USD"),
+    XBRLConceptMapping("preferred_stock", ("PreferredStockValue",), "USD"),
+    XBRLConceptMapping("common_stock", ("CommonStockValue",), "USD"),
+    XBRLConceptMapping("additional_paid_in_capital", ("AdditionalPaidInCapital",), "USD"),
+    XBRLConceptMapping(
+        "retained_earnings", ("RetainedEarningsAccumulatedDeficit",), "USD",
+    ),
+    XBRLConceptMapping("treasury_stock", ("TreasuryStockValue",), "USD"),
+    XBRLConceptMapping(
+        "accumulated_other_comprehensive_income",
+        ("AccumulatedOtherComprehensiveIncomeLossNetOfTax",),
+        "USD",
+    ),
+    XBRLConceptMapping("noncontrolling_interest", ("MinorityInterest",), "USD"),
     XBRLConceptMapping(
         "total_equity",
         (

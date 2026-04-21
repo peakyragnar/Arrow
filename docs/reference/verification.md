@@ -1,8 +1,13 @@
-# Verification — Correctness Stack
+# Verification — Adjudication Stack
 
 Arrow runs **five independent checks** on every ingest. Only **Layer 1** is a hard gate — its failure prevents ingest entirely. Layers 2, 3, and 5 are **soft gates**: they still run, they still catch problems, but they record findings to `data_quality_flags` rather than blocking ingest. Layer 4 is formula-level and advisory.
 
 This design reflects the empirical reality that financial data has irreducible noise: filers restate prior periods in subsequent filings, vendors normalize inconsistently, and even within a single 10-K manual reconciliation doesn't always tie. The system faithfully represents this messiness instead of forcing it away, and surfaces every inconsistency alongside the data so an analyst can decide what matters for their specific question.
+
+**Framing:** this stack is not just "five ways to validate FMP." It is Arrow's **adjudication stack**:
+- trust FMP when it remains the best usable normalized value
+- supersede FMP when SEC/XBRL is clearly better
+- keep FMP and flag when the disagreement is real but not safe to auto-resolve
 
 Complements:
 - `concepts.md` — the normalization contract (what the checks enforce)
@@ -41,11 +46,75 @@ Why Layers 2/3/5 are soft: they catch cross-filing, cross-source, and cross-peri
 
 - **Layer 2** often catches vendor-internal inconsistency (FMP's IS endpoint and CF endpoint reporting different pre-NCI net income for the same period). This is FMP's bug, not data corruption.
 - **Layer 3** catches restatements — when a filer restates prior quarters in a later 10-K (or later 10-Q comparative) but the earlier filings' tagged values don't change. The data isn't wrong; it reflects two different snapshots in time.
-- **Layer 5** catches FMP-vs-SEC XBRL divergence, usually because FMP hasn't picked up a comparative-period restatement. The SEC value is usually authoritative; the FMP value was correct at its filing date.
+- **Layer 5** catches FMP-vs-SEC XBRL divergence, usually because FMP hasn't picked up a comparative-period restatement. The SEC value is often the better audit rail, but it only overrides when the criteria in § 1.3 hold.
 
 In all three cases, **blocking ingest would prevent loading legitimate filers**. Flagging preserves the data for use while surfacing the known caveat.
 
 Severity of an individual flag: `informational` (<1% delta), `warning` (1-10% delta), `investigate` (≥10% or sanity-bound violation).
+
+### 1.1 Decision contract
+
+For each disputed fact or period, Arrow must end in exactly one of three states:
+
+1. `trusted`
+   FMP row remains current.
+2. `superseded`
+   a later SEC-backed row becomes current with provenance.
+3. `flagged_unresolved`
+   FMP row remains current and a flag records why Arrow refused to guess.
+
+A flagged case is therefore not automatically a pipeline failure. It is often the correct outcome of adjudication.
+
+### 1.2 What the layers mean now
+
+- **Layer 1**: is the statement internally usable at all?
+- **Layer 2**: do related statements agree strongly enough to trust together?
+- **Layer 3**: did a later filing probably restate this period?
+- **Layer 4**: are downstream formulas allowed to compute from these facts?
+- **Layer 5**: after comparing to SEC, should Arrow trust, supersede, or flag?
+
+### 1.3 When SEC is "clearly better"
+
+SEC/XBRL does **not** win automatically whenever it differs from FMP. A SEC-backed value is eligible to supersede FMP only when **all** of the following hold:
+
+1. **Later authority**
+   the SEC fact is later-filed than the filing context represented by the current FMP row.
+2. **Same economic meaning**
+   the SEC tag and the Arrow canonical bucket mean the same thing, not a narrower/wider cousin.
+3. **Same period geometry**
+   same `period_end`, same duration semantics for flows, same instant semantics for BS facts.
+4. **Sanity bounds pass**
+   no forbidden sign flip, no implausible magnitude jump unless policy explicitly allows it.
+5. **Package survives Layer 1**
+   replacing the value, together with any sibling concepts required for that period, still leaves the statement internally coherent.
+
+If any one fails:
+- SEC is **not** "clearly better" for auto-supersession
+- FMP remains current
+- Arrow writes a flag instead of inventing certainty
+
+### 1.4 Mapping-confidence classes
+
+To make "same economic meaning" operational, Arrow should reason about concepts in these classes:
+
+| class | meaning | auto-supersede? | example |
+|---|---|---|---|
+| `exact_equivalent` | SEC tag and FMP bucket are the same economic line | yes, if all other checks pass | `revenue`, `total_assets` |
+| `equivalent_if_packaged` | same concept, but only safe if neighboring lines also move coherently | yes, but only as a period package | `total_equity`, some subtotals |
+| `bundled_mismatch` | FMP bucket is wider/narrower than the SEC tag | no, flag/manual only | FMP `accounts_payable` vs SEC `AccountsPayableCurrent` when FMP bundles other payables |
+| `derived_only` | Arrow can justify the value only by deriving it from other accepted SEC facts | only under explicit derivation rules | subtotal-support concepts |
+| `unknown` | mapping confidence insufficient | no, flag/manual only | filer-specific residual buckets |
+
+### 1.5 Decision table
+
+| situation | Arrow action | current row |
+|---|---|---|
+| FMP passes the stack; no better SEC evidence | trust FMP | FMP row stays current |
+| SEC is later, semantically equivalent, sane, and Layer 1 survives | supersede | XBRL-amendment row becomes current |
+| SEC is later but narrower/wider than FMP | flag | FMP row stays current |
+| SEC is later and looks plausible, but replacing it breaks Layer 1 | flag | FMP row stays current |
+| SEC candidate fails sanity bounds | flag | FMP row stays current |
+| SEC has no matching fact for the Arrow concept/period | trust FMP, possibly with informational note | FMP row stays current |
 
 ---
 
@@ -347,7 +416,15 @@ Rationale: per `periods.md` § 7.1, this is the tolerance the legacy pipeline us
 
 **SOFT — writes `data_quality_flags` rows of type `layer5_xbrl_anchor` and continues.**
 
-The helper `_write_layer5_flags` in `src/arrow/agents/fmp_ingest.py` inserts one flag row per (concept, period) divergence. Each flag captures: FMP's stored value, SEC XBRL's latest-filed value, which XBRL tag matched, accession + filed date of the XBRL source, delta, tolerance, severity, and a human-readable reason. SEC XBRL is generally authoritative when they disagree (since it's the filer's own SEC record), but analyst confirms before overriding.
+The helper `_write_layer5_flags` in `src/arrow/agents/fmp_ingest.py` inserts one flag row per (concept, period) divergence. Each flag captures: FMP's stored value, SEC XBRL's latest-filed value, which XBRL tag matched, accession + filed date of the XBRL source, delta, tolerance, severity, and a human-readable reason.
+
+Important: Layer 5 itself is an **audit layer**, not an unconditional override layer.
+
+- If SEC is later, semantically equivalent, sane, and the replacement package survives Layer 1, Arrow may supersede FMP.
+- If SEC is later but narrower/wider than the FMP bucket, fails sanity bounds, or breaks Layer 1 when applied, Arrow keeps FMP and flags the divergence.
+- If SEC has no matching fact, Arrow keeps FMP and records nothing beyond any informational anchor note.
+
+So the practical rule is: **SEC disagreement triggers adjudication, not automatic replacement.**
 
 Persistent divergence on the same concept across many periods is a signal worth promoting to a per-company "data quality status" annotation for dashboard visibility.
 

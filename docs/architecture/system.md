@@ -18,7 +18,7 @@ It remains valuable as archived reference and benchmark context, but it is no lo
 Build Arrow into a searchable, replayable, time-aware company-intelligence system.
 
 Core outcome:
-- trusted financial data
+- adjudicated financial history: trust, supersede, or flag with provenance
 - trusted company documents
 - trusted market data
 - trusted macroeconomic data
@@ -42,6 +42,7 @@ Do:
 - search-first retrieval
 - FMP = primary source for historical ingest and normal operation
 - SEC direct = narrow low-latency path only for newly dropped filings
+- SEC/XBRL = audit rail and amendment rail, not automatic winner on every mismatch
 - Massive = planned options vendor later; deferred until paid
 - macro data is first-class and time-aligned to company data
 - raw responses cached and replayable
@@ -188,7 +189,14 @@ Rule:
 
 ### FMP vs SEC reconciliation is inline, every ingest
 
-When both sources exist for the same filing/period/concept, Layer 5 of the verification stack compares them during ingest and writes a `data_quality_flags` row for any divergence. Trust in FMP is only earned empirically; without this check we're trusting by assertion. Originally planned as a scheduled job (see Build Order step 9.5); now runs inline so divergences surface at load time instead of requiring a separate reconciliation pass. See `docs/reference/verification.md` § 6 for details.
+When both sources exist for the same filing/period/concept, Layer 5 of the verification stack compares them during ingest and adjudicates the result:
+- keep FMP when it remains the best usable normalized value
+- supersede with SEC/XBRL when SEC is clearly better
+- keep FMP and write a `data_quality_flags` row when the mismatch is real but not safe to auto-resolve
+
+This is a deliberate design choice. Arrow is not trying to pretend every mismatch has a single auto-fixable "correct" answer. It is trying to make the right trust decision with provenance.
+
+Trust in FMP is only earned empirically; without this check we're trusting by assertion. Originally planned as a scheduled job (see Build Order step 9.5); now runs inline so divergences surface at load time instead of requiring a separate reconciliation pass. See `docs/reference/verification.md` § 1 and § 6 for the decision contract and Layer 5 details.
 
 ### Massive later
 

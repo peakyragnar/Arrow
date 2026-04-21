@@ -221,6 +221,66 @@ def _find_xbrl_latest_fact(
     return candidates[0]
 
 
+def _find_xbrl_latest_instant_fact(
+    us_gaap: dict[str, Any],
+    canonical_concept: str,
+    *,
+    period_end: date,
+) -> dict[str, Any] | None:
+    """Return the LATEST-FILED XBRL instant fact matching (concept, period_end)."""
+    mapping = mapping_for(canonical_concept)
+    if mapping is None:
+        return None
+
+    target_end = period_end.isoformat()
+    candidates: list[dict[str, Any]] = []
+    for tag in mapping.xbrl_tags:
+        block = us_gaap.get(tag)
+        if not block:
+            continue
+        entries = block.get("units", {}).get(mapping.unit, [])
+        for entry in entries:
+            if entry.get("end") != target_end:
+                continue
+            if entry.get("start"):
+                continue
+            candidates.append({**entry, "__tag": tag})
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda e: e.get("filed", ""), reverse=True)
+    return candidates[0]
+
+
+def _find_matching_xbrl_fact(
+    us_gaap: dict[str, Any],
+    *,
+    statement: str,
+    canonical_concept: str,
+    period_end: date,
+    period_type: str,
+) -> dict[str, Any] | None:
+    """Statement-aware latest-filed XBRL fact lookup for a stored Arrow row."""
+    if statement == "balance_sheet":
+        return _find_xbrl_latest_instant_fact(
+            us_gaap, canonical_concept, period_end=period_end,
+        )
+
+    if period_type == "quarter":
+        duration_min_days, duration_max_days = 80, 100
+    elif period_type == "annual":
+        duration_min_days, duration_max_days = 350, 380
+    else:
+        return None
+
+    return _find_xbrl_latest_fact(
+        us_gaap, canonical_concept,
+        period_end=period_end,
+        duration_min_days=duration_min_days,
+        duration_max_days=duration_max_days,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Step 3: query FMP-stored facts we might supersede
 # ---------------------------------------------------------------------------
@@ -967,67 +1027,78 @@ def detect_and_apply_amendments(
                 (statement, q_row["period_end"], q_row["fiscal_quarter"], fy)
             )
 
-    # Cross-statement coordination: when an IS period is affected, also
-    # mark the matching CF period so CF-side concepts (notably
-    # net_income_start, which mirrors IS.net_income via Layer 2) get
-    # co-superseded. Without this, IS supersession breaks Layer 2's
-    # cross-statement net_income tie.
+    # Cross-statement coordination:
+    #   - when an IS period is affected, also mark the matching CF period so
+    #     CF-side concepts (notably net_income_start, which mirrors
+    #     IS.net_income via Layer 2) get co-superseded.
+    #   - when any flow period is affected, also mark the matching BS period
+    #     so instant facts restated in the later filing get refreshed too.
+    #     At FY-end we store both Q4 and annual BS rows against the same end
+    #     date, so Step 3b refreshes both.
     cross_statement_additions: set[tuple[str, date, int, int]] = set()
     for (stmt, pe, fq, fy) in affected_quarter_set:
         if stmt == "income_statement":
             cross_statement_additions.add(("cash_flow", pe, fq, fy))
+        if stmt in {"income_statement", "cash_flow"}:
+            cross_statement_additions.add(("balance_sheet", pe, fq, fy))
     affected_quarter_set.update(cross_statement_additions)
 
     # Step 3b: for every affected period, pull ALL current FMP rows at that
     # (company, statement, period_end, period_type) and find XBRL candidates.
     candidates: list[SupersessionCandidate] = []
     for statement, period_end, fiscal_quarter, fy in affected_quarter_set:
-        all_fmp_rows = _all_fmp_facts_for_period(
-            conn, company_id=company_id, statement=statement,
-            period_end=period_end, period_type="quarter",
-        )
-        for fmp_row in all_fmp_rows:
-            concept = fmp_row["concept"]
-            xbrl_fact = _find_xbrl_latest_fact(
-                xbrl_us_gaap, concept,
-                period_end=period_end,
-                duration_min_days=80, duration_max_days=100,
+        period_types = ["quarter"]
+        if statement == "balance_sheet" and fiscal_quarter == 4:
+            period_types.append("annual")
+        for period_type in period_types:
+            all_fmp_rows = _all_fmp_facts_for_period(
+                conn, company_id=company_id, statement=statement,
+                period_end=period_end, period_type=period_type,
             )
-            if xbrl_fact is None:
-                continue  # No XBRL mapping or no matching fact — leave FMP alone
-            xbrl_val = Decimal(str(xbrl_fact["val"]))
-            fmp_val = fmp_row["value"]
-            if abs(xbrl_val - fmp_val) < Decimal("1"):
-                continue  # FMP already current
-
-            # Rule B: sanity check. If the XBRL candidate looks unreasonable
-            # (sign flip, >50% delta), skip it with a flag — don't supersede,
-            # don't raise. Analyst reviews.
-            ok, reason = _passes_sanity_bounds(fmp_val, xbrl_val)
-            if not ok:
-                _write_sanity_flag(
-                    conn, company_id=company_id,
-                    statement=statement, concept=concept,
-                    period_end=period_end, fiscal_year=fy,
-                    fiscal_quarter=fiscal_quarter, period_type="quarter",
-                    fmp_value=fmp_val, xbrl_value=xbrl_val,
-                    reason_text=reason, xbrl_accn=xbrl_fact.get("accn", ""),
-                    ingest_run_id=ingest_run_id,
+            for fmp_row in all_fmp_rows:
+                concept = fmp_row["concept"]
+                xbrl_fact = _find_matching_xbrl_fact(
+                    xbrl_us_gaap,
+                    statement=statement,
+                    canonical_concept=concept,
+                    period_end=period_end,
+                    period_type=period_type,
                 )
-                continue
-            candidates.append(SupersessionCandidate(
-                statement=statement, concept=concept,
-                period_end=period_end, period_type="quarter",
-                fiscal_year=fy, fiscal_quarter=fiscal_quarter,
-                fmp_fact_id=fmp_row["id"], fmp_value=fmp_val,
-                fmp_published_at=fmp_row["published_at"],
-                xbrl_value=xbrl_val, xbrl_tag=xbrl_fact["__tag"],
-                xbrl_accn=xbrl_fact.get("accn", ""),
-                xbrl_filed=xbrl_fact.get("filed", ""),
-                xbrl_form=xbrl_fact.get("form", ""),
-                xbrl_start=xbrl_fact.get("start", ""),
-                xbrl_end=xbrl_fact.get("end", ""),
-            ))
+                if xbrl_fact is None:
+                    continue  # No XBRL mapping or no matching fact — leave FMP alone
+                xbrl_val = Decimal(str(xbrl_fact["val"]))
+                fmp_val = fmp_row["value"]
+                if abs(xbrl_val - fmp_val) < Decimal("1"):
+                    continue  # FMP already current
+
+                # Rule B: sanity check. If the XBRL candidate looks unreasonable
+                # (sign flip, >50% delta), skip it with a flag — don't supersede,
+                # don't raise. Analyst reviews.
+                ok, reason = _passes_sanity_bounds(fmp_val, xbrl_val)
+                if not ok:
+                    _write_sanity_flag(
+                        conn, company_id=company_id,
+                        statement=statement, concept=concept,
+                        period_end=period_end, fiscal_year=fy,
+                        fiscal_quarter=fiscal_quarter, period_type=period_type,
+                        fmp_value=fmp_val, xbrl_value=xbrl_val,
+                        reason_text=reason, xbrl_accn=xbrl_fact.get("accn", ""),
+                        ingest_run_id=ingest_run_id,
+                    )
+                    continue
+                candidates.append(SupersessionCandidate(
+                    statement=statement, concept=concept,
+                    period_end=period_end, period_type=period_type,
+                    fiscal_year=fy, fiscal_quarter=fiscal_quarter,
+                    fmp_fact_id=fmp_row["id"], fmp_value=fmp_val,
+                    fmp_published_at=fmp_row["published_at"],
+                    xbrl_value=xbrl_val, xbrl_tag=xbrl_fact["__tag"],
+                    xbrl_accn=xbrl_fact.get("accn", ""),
+                    xbrl_filed=xbrl_fact.get("filed", ""),
+                    xbrl_form=xbrl_fact.get("form", ""),
+                    xbrl_start=xbrl_fact.get("start", ""),
+                    xbrl_end=xbrl_fact.get("end", ""),
+                ))
 
     # Also include FY-annual restatements: look at FY rows for each affected (statement, fy).
     for statement, fy in failing_fys:
@@ -1036,10 +1107,12 @@ def detect_and_apply_amendments(
         )
         for fmp_row in fy_rows:
             concept = fmp_row["concept"]
-            xbrl_fact = _find_xbrl_latest_fact(
-                xbrl_us_gaap, concept,
+            xbrl_fact = _find_matching_xbrl_fact(
+                xbrl_us_gaap,
+                statement=statement,
+                canonical_concept=concept,
                 period_end=fmp_row["period_end"],
-                duration_min_days=350, duration_max_days=380,  # annual 52/53-week
+                period_type="annual",
             )
             if xbrl_fact is None:
                 continue
@@ -1117,55 +1190,64 @@ def detect_and_apply_amendments(
         )
     )
 
-    # Step 4: apply all supersessions in a SAVEPOINT.
-    #   - If Layer 1 would break post-supersession: ROLLBACK the savepoint and
-    #     write flags for every Layer 3 failure. FMP values retained.
-    #   - If Layer 1 passes but Layer 3 still has residuals: COMMIT the
-    #     savepoint (keep the resolutions) and write flags for what's left.
-    #   - If everything passes: COMMIT and return amended.
-    affected_periods: set[tuple[str, date, str]] = set()
-    for c in candidates:
-        affected_periods.add((c.statement, c.period_end, c.period_type))
-
+    # Step 4: apply supersessions in PER-PERIOD SAVEPOINTS.
+    # One bad period must not block unrelated restatements elsewhere in the
+    # company. Atomicity boundary = (period_end, period_type) across all
+    # statements touched for that period.
     class _SupersessionWouldBreakL1(Exception):
-        """Sentinel to roll back the savepoint via transaction-context exit."""
+        """Sentinel to roll back one period-scoped savepoint."""
         def __init__(self, fails: list[str]) -> None:
             super().__init__("supersession breaks Layer 1")
             self.fails = fails
 
-    l1_break_fails: list[str] | None = None
-    try:
-        with conn.transaction():
-            for c in candidates:
-                _apply_supersession(
-                    conn, c, company_id=company_id,
-                    xbrl_raw_response_id=fetched.raw_response_id,
-                    ingest_run_id=ingest_run_id,
-                )
-                affected_periods.add((c.statement, c.period_end, c.period_type))
-            l1_fails = _reverify_layer1(
-                conn, company_id=company_id, affected_periods=affected_periods,
-            )
-            if l1_fails:
-                # Savepoint will roll back on exception exit.
-                raise _SupersessionWouldBreakL1(l1_fails)
-            # Savepoint commits on normal exit.
-    except _SupersessionWouldBreakL1 as sp_exc:
-        l1_break_fails = sp_exc.fails
+    by_period: dict[tuple[date, str], list[SupersessionCandidate]] = {}
+    for c in candidates:
+        by_period.setdefault((c.period_end, c.period_type), []).append(c)
 
-    if l1_break_fails is not None:
-        # Supersessions rolled back. Write flags for every Layer 3 failure.
+    applied_candidates: list[SupersessionCandidate] = []
+    rolled_back_periods: dict[tuple[date, str], list[str]] = {}
+    for period_key in sorted(by_period.keys()):
+        period_candidates = by_period[period_key]
+        affected_periods = {
+            (c.statement, c.period_end, c.period_type) for c in period_candidates
+        }
+        try:
+            with conn.transaction():
+                for c in period_candidates:
+                    _apply_supersession(
+                        conn, c, company_id=company_id,
+                        xbrl_raw_response_id=fetched.raw_response_id,
+                        ingest_run_id=ingest_run_id,
+                    )
+                l1_fails = _reverify_layer1(
+                    conn, company_id=company_id, affected_periods=affected_periods,
+                )
+                if l1_fails:
+                    raise _SupersessionWouldBreakL1(l1_fails)
+        except _SupersessionWouldBreakL1 as sp_exc:
+            rolled_back_periods[period_key] = sp_exc.fails
+            continue
+        applied_candidates.extend(period_candidates)
+
+    if not applied_candidates:
+        # Every candidate period rolled back (or there were none, handled above).
         flag_count = 0
         for statement, l3_fail in layer3_failures:
             _write_layer3_flag(
                 conn, company_id=company_id, statement=statement,
                 layer3_fail=l3_fail, ingest_run_id=ingest_run_id,
                 reason_extra=(
-                    f"Auto-resolution attempted but would break {len(l1_break_fails)} "
-                    f"Layer-1 tie(s) post-supersession — supersessions rolled back. "
-                    f"FMP values retained; analyst review needed."
+                    f"Auto-resolution attempted but every candidate period rolled back "
+                    f"on Layer-1 reverify (worst period preview had "
+                    f"{max((len(f) for f in rolled_back_periods.values()), default=0)} "
+                    f"failed tie(s)) — FMP values retained; analyst review needed."
                 ),
-                context={"layer1_failures_preview": l1_break_fails[:5]},
+                context={
+                    "layer1_failures_preview": (
+                        next(iter(rolled_back_periods.values()))[:5]
+                        if rolled_back_periods else []
+                    ),
+                },
             )
             flag_count += 1
         return AmendmentResult(
@@ -1174,36 +1256,42 @@ def detect_and_apply_amendments(
             flags_written=flag_count,
         )
 
-    # Savepoint committed. Supersessions are now persisted. Check remaining L3.
+    # Savepoints for good periods committed. Check remaining L3.
     flag_count = 0
     for statement, fy in failing_fys:
         l3_remaining = _reverify_layer3_for_fiscal_year(
             conn, company_id=company_id, statement=statement, fiscal_year=fy,
         )
         for f in l3_remaining:
+            reason_extra = (
+                "Auto-resolution via XBRL supersession applied for some "
+                "concepts in this fiscal year but this specific tie still "
+                "doesn't hold. May indicate filer-level annual-only "
+                "restatement or a concept we can't map."
+            )
+            if rolled_back_periods:
+                reason_extra += (
+                    f" Some candidate periods also rolled back on Layer-1 "
+                    f"reverify; preview: {next(iter(rolled_back_periods.values()))[:2]}."
+                )
             _write_layer3_flag(
                 conn, company_id=company_id, statement=statement,
                 layer3_fail=f, ingest_run_id=ingest_run_id,
-                reason_extra=(
-                    "Auto-resolution via XBRL supersession applied for some "
-                    "concepts in this fiscal year but this specific tie still "
-                    "doesn't hold. May indicate filer-level annual-only "
-                    "restatement or a concept we can't map."
-                ),
+                reason_extra=reason_extra,
             )
             flag_count += 1
 
     if flag_count > 0:
         return AmendmentResult(
             status="partially_amended",
-            supersessions_applied=candidates,
+            supersessions_applied=applied_candidates,
             fiscal_years_checked=list(failing_fys),
             flags_written=flag_count,
         )
 
     return AmendmentResult(
         status="amended",
-        supersessions_applied=candidates,
+        supersessions_applied=applied_candidates,
         fiscal_years_checked=list(failing_fys),
         flags_written=0,
     )
