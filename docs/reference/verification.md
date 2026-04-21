@@ -27,6 +27,14 @@ Layer 5 — Cross-source reconciliation    (FMP ↔ SEC XBRL anchors; SOFT — w
 
 - **SOFT GATE (Layers 2, 3, 5)** — the check still runs, but failures write rows to the `data_quality_flags` table (see `db/schema/011_data_quality_flags.sql`). The data loads into `financial_facts` as the filer reported it. The flag records: what check fired, which concept and period, what values disagreed, by how much, a human-readable reason, and where to look for verification. Analyst queries the flag table to see all known issues; resolved flags retain a provenance record (`resolved_at`, `resolution`, `resolution_value`).
 
+### Flag lifecycle on re-ingest
+
+When a re-ingest supersedes `financial_facts` rows, the flags raised by earlier runs against those facts no longer point at current data. Leaving them open would contaminate the "unresolved flags for this company" view with anomalies that may not reproduce against the fresh payload.
+
+Rule, enforced by `backfill_fmp_statements`: before any fact is written for a ticker, unresolved flags in the re-ingested `(company_id, fiscal_year ∈ [min_fy, max_fy])` window are auto-resolved with `resolution = 'superseded_by_reingest'`. The new run's verification pass then raises its own fresh flags for anything that still applies. Migration 012 adds the resolution code; it is distinct from the three analyst-action codes (`approve_suggestion`, `override`, `accept_as_is`) so audit queries can separate automated housekeeping from human decisions.
+
+Flags with NULL `fiscal_year` are not auto-closed — they aren't FY-scoped, so a FY-window re-ingest cannot decide whether it subsumes them.
+
 - **ADVISORY (Layer 4)** — formula-component guards. If a required input is missing, the dependent formula returns null rather than producing a misleading value. No flags currently written; may be added if downstream analysis needs them.
 
 Why Layers 2/3/5 are soft: they catch cross-filing, cross-source, and cross-period inconsistencies that frequently reflect **legitimate filer or vendor behavior** rather than data errors:

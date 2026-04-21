@@ -138,6 +138,61 @@ class XBRLDivergenceFailed(RuntimeError):
         )
 
 
+def _close_superseded_flags(
+    conn: psycopg.Connection,
+    *,
+    company_id: int,
+    min_fiscal_year: int,
+    max_fiscal_year: int | None,
+    ingest_run_id: int,
+) -> int:
+    """Auto-resolve unresolved flags for the fiscal-year window being re-ingested.
+
+    Any `data_quality_flags` rows raised by earlier ingest runs for fiscal
+    years inside [min_fiscal_year, max_fiscal_year] are about to have their
+    underlying facts superseded. Their `resolved_at IS NULL` state would
+    then point at stale (superseded) data and contaminate the "open flags
+    for this company" view.
+
+    Mark them `superseded_by_reingest` so the new run's fresh verification
+    pass is the sole source of truth for which anomalies currently apply.
+    Flags stay in the table — the audit trail is preserved — but they no
+    longer show up in "unresolved" queries.
+
+    Flags with NULL fiscal_year are left alone: they aren't FY-scoped so
+    we can't decide whether this re-ingest subsumes them.
+    """
+    sql = """
+        UPDATE data_quality_flags
+        SET resolved_at = now(),
+            resolution = 'superseded_by_reingest',
+            resolution_note = format(
+                'Auto-closed by ingest_run_id=%%s (FY window %%s-%%s): '
+                'underlying facts superseded by fresh ingest.',
+                %s::text, %s::text, %s::text
+            )
+        WHERE company_id = %s
+          AND resolved_at IS NULL
+          AND fiscal_year IS NOT NULL
+          AND fiscal_year >= %s
+          AND (%s::int IS NULL OR fiscal_year <= %s::int);
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            sql,
+            (
+                ingest_run_id,
+                min_fiscal_year,
+                max_fiscal_year if max_fiscal_year is not None else "∞",
+                company_id,
+                min_fiscal_year,
+                max_fiscal_year,
+                max_fiscal_year,
+            ),
+        )
+        return cur.rowcount
+
+
 def _get_company(conn: psycopg.Connection, ticker: str) -> CompanyRow:
     with conn.cursor() as cur:
         cur.execute(
@@ -528,6 +583,8 @@ def backfill_fmp_statements(
         "cf_anchors_not_in_xbrl": [],
         # Layer 2 (cross-statement)
         "cross_statement_ties_checked": 0,
+        # Housekeeping
+        "flags_closed_by_reingest": 0,
     }
 
     try:
@@ -543,6 +600,20 @@ def backfill_fmp_statements(
                 else None
             )
             counts["max_fiscal_year_by_ticker"][ticker.upper()] = ticker_max_fy
+
+            # Close flags raised by earlier runs for the FY window being
+            # re-ingested. Their facts are about to be superseded; their
+            # `resolved_at IS NULL` state would otherwise point at stale
+            # data. New verification runs below will raise fresh flags for
+            # anything that still applies.
+            with conn.transaction():
+                counts["flags_closed_by_reingest"] += _close_superseded_flags(
+                    conn,
+                    company_id=company.id,
+                    min_fiscal_year=ticker_min_fy,
+                    max_fiscal_year=ticker_max_fy,
+                    ingest_run_id=run_id,
+                )
 
             # --- IS ingest (Layer 1 IS inline) ---
             for period in ("quarter", "annual"):

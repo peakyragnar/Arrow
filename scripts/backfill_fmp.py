@@ -108,10 +108,14 @@ def _print_success(tickers: list[str], counts: dict[str, Any]) -> None:
     amend_flags = counts.get("amendment_flags_written", 0)
     layer2_flags = counts.get("layer2_flags_written", 0)
     layer5_flags = counts.get("layer5_flags_written", 0)
+    closed_flags = counts.get("flags_closed_by_reingest", 0)
     amend_status = counts.get("amendment_status_by_ticker", {})
     total_flags = amend_flags + layer2_flags + layer5_flags
-    if amend_sups or total_flags:
+    if amend_sups or total_flags or closed_flags:
         print("Data quality (soft gates):")
+        if closed_flags:
+            print(f"  prior flags auto-closed:       {closed_flags}  "
+                  f"(superseded by this re-ingest)")
         for t, status in sorted(amend_status.items()):
             print(f"  {t}:  amendment status={status}")
         if amend_sups:
@@ -227,9 +231,17 @@ def _print_xbrl_divergence(e: XBRLDivergenceFailed) -> None:
 def main() -> int:
     from datetime import date as _d
 
+    from arrow.agents.fmp_ingest import DEFAULT_SINCE_DATE
+
+    usage = (
+        "Usage: backfill_fmp.py "
+        "[--since YYYY-MM-DD] [--until YYYY-MM-DD] [--scoped] TICKER [TICKER ...]"
+    )
+
     args = sys.argv[1:]
     since_date = None
     until_date = None
+    scoped = False
 
     def _pop_date_flag(flag: str):
         nonlocal args
@@ -237,7 +249,7 @@ def main() -> int:
             return None
         i = args.index(flag)
         if i + 1 >= len(args):
-            print(f"Usage: backfill_fmp.py [--since YYYY-MM-DD] [--until YYYY-MM-DD] TICKER [TICKER ...]", file=sys.stderr)
+            print(usage, file=sys.stderr)
             sys.exit(2)
         try:
             y, m, d = args[i + 1].split("-")
@@ -250,9 +262,34 @@ def main() -> int:
 
     since_date = _pop_date_flag("--since")
     until_date = _pop_date_flag("--until")
+    if "--scoped" in args:
+        scoped = True
+        args = [a for a in args if a != "--scoped"]
 
     if not args:
-        print("Usage: backfill_fmp.py [--since YYYY-MM-DD] [--until YYYY-MM-DD] TICKER [TICKER ...]", file=sys.stderr)
+        print(usage, file=sys.stderr)
+        return 2
+
+    # Guard: a non-default window must be explicitly opted into. The default
+    # window (since_date=DEFAULT_SINCE_DATE, until_date=None) is what loads
+    # the complete ~5-year validated horizon every formula and dashboard
+    # downstream assumes. Silent partial backfills caused real data gaps
+    # once (DELL loaded as FY2023–FY2025 only) — forcing --scoped for
+    # anything narrower makes that accident impossible to repeat.
+    is_custom_window = (
+        (since_date is not None and since_date != DEFAULT_SINCE_DATE)
+        or (until_date is not None)
+    )
+    if is_custom_window and not scoped:
+        print(
+            "ERROR: --since / --until differ from defaults "
+            f"(default since={DEFAULT_SINCE_DATE.isoformat()}, until=None).\n"
+            "       Partial backfills are the wrong default; they silently "
+            "skip fiscal years.\n"
+            "       If this narrow window is intentional (dev/test/bisect), "
+            "re-run with --scoped.",
+            file=sys.stderr,
+        )
         return 2
 
     tickers = args

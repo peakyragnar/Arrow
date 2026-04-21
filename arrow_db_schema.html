@@ -124,7 +124,7 @@
 <div id="erd"></div>
 
 <h2>Per-table detail</h2>
-<nav class="toc"><a href='#tbl-artifacts'>artifacts</a> · <a href='#tbl-companies'>companies</a> · <a href='#tbl-financial_facts'>financial_facts</a> · <a href='#tbl-ingest_runs'>ingest_runs</a> · <a href='#tbl-raw_responses'>raw_responses</a></nav>
+<nav class="toc"><a href='#tbl-artifacts'>artifacts</a> · <a href='#tbl-companies'>companies</a> · <a href='#tbl-data_quality_flags'>data_quality_flags</a> · <a href='#tbl-financial_facts'>financial_facts</a> · <a href='#tbl-ingest_runs'>ingest_runs</a> · <a href='#tbl-raw_responses'>raw_responses</a></nav>
 <div class="cards">
     
     <section class="table-card" id="tbl-artifacts">
@@ -453,7 +453,216 @@
         
         <h4>Unique constraints</h4><ul><li><code>UNIQUE (cik)</code> <span class='cname'>(companies_cik_key)</span></li></ul>
         <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK ((cik &gt; 0))</code> <span class='cname'>(companies_cik_positive)</span></li><li><code class='check-def'>CHECK ((fiscal_year_end_md ~ &#x27;^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$&#x27;::text))</code> <span class='cname'>(companies_fiscal_year_end_md_format)</span></li><li><code class='check-def'>CHECK ((status = ANY (ARRAY[&#x27;active&#x27;::text, &#x27;delisted&#x27;::text, &#x27;merged&#x27;::text, &#x27;acquired&#x27;::text, &#x27;private&#x27;::text])))</code> <span class='cname'>(companies_status_check)</span></li></ul>
-        <h4>Indexes</h4><ul><li><b>companies_active_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX companies_active_idx ON public.companies USING btree (ticker) WHERE (status = &#x27;active&#x27;::text)</code></li><li><b>companies_cik_key</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_cik_key ON public.companies USING btree (cik)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_ticker_idx</b> <br><code class='index-def'>CREATE INDEX companies_ticker_idx ON public.companies USING btree (ticker)</code></li></ul>
+        <h4>Indexes</h4><ul><li><b>companies_active_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX companies_active_idx ON public.companies USING btree (ticker) WHERE (status = &#x27;active&#x27;::text)</code></li><li><b>companies_cik_key</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_cik_key ON public.companies USING btree (cik)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_ticker_idx</b> <br><code class='index-def'>CREATE INDEX companies_ticker_idx ON public.companies USING btree (ticker)</code></li></ul>
+    </section>
+    
+
+    <section class="table-card" id="tbl-data_quality_flags">
+        <h3>data_quality_flags</h3>
+        <table class="cols">
+            <thead>
+                <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td class="col-name">id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>nextval(&#x27;data_quality_flags_id_seq&#x27;::regclass)</code></td>
+                <td class="col-keys"><span class="badge pk">PK</span></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">company_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→companies.id</span></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">statement</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">concept</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">fiscal_year</td>
+                <td class="col-type"><code>integer</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">fiscal_quarter</td>
+                <td class="col-type"><code>integer</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">period_end</td>
+                <td class="col-type"><code>date</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">period_type</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">flag_type</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">severity</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">expected_value</td>
+                <td class="col-type"><code>numeric</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">computed_value</td>
+                <td class="col-type"><code>numeric</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">delta</td>
+                <td class="col-type"><code>numeric</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">tolerance</td>
+                <td class="col-type"><code>numeric</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">suggested_value</td>
+                <td class="col-type"><code>numeric</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">reason</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">context</td>
+                <td class="col-type"><code>jsonb</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">source_run_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→ingest_runs.id</span></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">flagged_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>now()</code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">resolved_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">resolution</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">resolution_value</td>
+                <td class="col-type"><code>numeric</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">resolution_source</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">resolution_note</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
+            </tbody>
+        </table>
+        <h4>Foreign keys</h4><ul><li><code>(company_id)</code> → <code>companies(id)</code> <span class='badge on-delete'>ON DELETE CASCADE</span> <span class='cname'>(data_quality_flags_company_id_fkey)</span></li><li><code>(source_run_id)</code> → <code>ingest_runs(id)</code> <span class='badge on-delete'>ON DELETE NO ACTION</span> <span class='cname'>(data_quality_flags_source_run_id_fkey)</span></li></ul>
+        
+        <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK ((length(flag_type) &gt; 0))</code> <span class='cname'>(data_quality_flags_flag_type_nonempty)</span></li><li><code class='check-def'>CHECK (((resolution IS NULL) OR (resolution = ANY (ARRAY[&#x27;approve_suggestion&#x27;::text, &#x27;override&#x27;::text, &#x27;accept_as_is&#x27;::text, &#x27;superseded_by_reingest&#x27;::text]))))</code> <span class='cname'>(data_quality_flags_resolution_enum)</span></li><li><code class='check-def'>CHECK ((severity = ANY (ARRAY[&#x27;informational&#x27;::text, &#x27;warning&#x27;::text, &#x27;investigate&#x27;::text])))</code> <span class='cname'>(data_quality_flags_severity_enum)</span></li></ul>
+        <h4>Indexes</h4><ul><li><b>data_quality_flags_company_unresolved_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX data_quality_flags_company_unresolved_idx ON public.data_quality_flags USING btree (company_id, flagged_at DESC) WHERE (resolved_at IS NULL)</code></li><li><b>data_quality_flags_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX data_quality_flags_pkey ON public.data_quality_flags USING btree (id)</code></li><li><b>data_quality_flags_scope_idx</b> <br><code class='index-def'>CREATE INDEX data_quality_flags_scope_idx ON public.data_quality_flags USING btree (company_id, concept, fiscal_year)</code></li><li><b>data_quality_flags_type_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX data_quality_flags_type_idx ON public.data_quality_flags USING btree (flag_type, severity) WHERE (resolved_at IS NULL)</code></li></ul>
     </section>
     
 
@@ -641,12 +850,28 @@
                 <td class="col-keys"></td>
             </tr>
         
+            <tr>
+                <td class="col-name">supersedes_fact_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→financial_facts.id</span></td>
+            </tr>
+        
+            <tr>
+                <td class="col-name">supersession_reason</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+        
             </tbody>
         </table>
-        <h4>Foreign keys</h4><ul><li><code>(company_id)</code> → <code>companies(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_company_id_fkey)</span></li><li><code>(ingest_run_id)</code> → <code>ingest_runs(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_ingest_run_id_fkey)</span></li><li><code>(source_artifact_id)</code> → <code>artifacts(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_source_artifact_id_fkey)</span></li><li><code>(source_raw_response_id)</code> → <code>raw_responses(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_source_raw_response_id_fkey)</span></li></ul>
+        <h4>Foreign keys</h4><ul><li><code>(company_id)</code> → <code>companies(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_company_id_fkey)</span></li><li><code>(ingest_run_id)</code> → <code>ingest_runs(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_ingest_run_id_fkey)</span></li><li><code>(source_artifact_id)</code> → <code>artifacts(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_source_artifact_id_fkey)</span></li><li><code>(source_raw_response_id)</code> → <code>raw_responses(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_source_raw_response_id_fkey)</span></li><li><code>(supersedes_fact_id)</code> → <code>financial_facts(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_supersedes_fact_id_fkey)</span></li></ul>
         <h4>Unique constraints</h4><ul><li><code>UNIQUE (company_id, concept, period_end, period_type, source_raw_response_id, extraction_version)</code> <span class='cname'>(financial_facts_unique_extraction)</span></li></ul>
         <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK ((calendar_period_label ~ &#x27;^CY[0-9]{4} Q[1-4]$&#x27;::text))</code> <span class='cname'>(financial_facts_calendar_period_label_format)</span></li><li><code class='check-def'>CHECK (((calendar_quarter &gt;= 1) AND (calendar_quarter &lt;= 4)))</code> <span class='cname'>(financial_facts_calendar_quarter_range)</span></li><li><code class='check-def'>CHECK ((fiscal_period_label ~ &#x27;^FY[0-9]{4}( Q[1-4])?$&#x27;::text))</code> <span class='cname'>(financial_facts_fiscal_period_label_format)</span></li><li><code class='check-def'>CHECK (((fiscal_quarter IS NULL) OR ((fiscal_quarter &gt;= 1) AND (fiscal_quarter &lt;= 4))))</code> <span class='cname'>(financial_facts_fiscal_quarter_range)</span></li><li><code class='check-def'>CHECK ((period_type = ANY (ARRAY[&#x27;quarter&#x27;::text, &#x27;annual&#x27;::text, &#x27;stub&#x27;::text])))</code> <span class='cname'>(financial_facts_period_type_check)</span></li><li><code class='check-def'>CHECK ((((period_type = ANY (ARRAY[&#x27;annual&#x27;::text, &#x27;stub&#x27;::text])) AND (fiscal_quarter IS NULL)) OR ((period_type = &#x27;quarter&#x27;::text) AND (fiscal_quarter IS NOT NULL))))</code> <span class='cname'>(financial_facts_period_type_quarter_iff)</span></li><li><code class='check-def'>CHECK ((statement = ANY (ARRAY[&#x27;income_statement&#x27;::text, &#x27;balance_sheet&#x27;::text, &#x27;cash_flow&#x27;::text, &#x27;metrics&#x27;::text, &#x27;ratios&#x27;::text, &#x27;segment&#x27;::text])))</code> <span class='cname'>(financial_facts_statement_check)</span></li></ul>
-        <h4>Indexes</h4><ul><li><b>financial_facts_calendar_period_concept_idx</b> <br><code class='index-def'>CREATE INDEX financial_facts_calendar_period_concept_idx ON public.financial_facts USING btree (calendar_year, calendar_quarter, concept)</code></li><li><b>financial_facts_company_concept_period_idx</b> <br><code class='index-def'>CREATE INDEX financial_facts_company_concept_period_idx ON public.financial_facts USING btree (company_id, concept, period_end DESC)</code></li><li><b>financial_facts_current_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX financial_facts_current_idx ON public.financial_facts USING btree (company_id, concept, period_end DESC) WHERE (superseded_at IS NULL)</code></li><li><b>financial_facts_one_current_idx</b> <span class="badge uk">UNIQUE</span> <span class="badge partial">partial</span><br><code class='index-def'>CREATE UNIQUE INDEX financial_facts_one_current_idx ON public.financial_facts USING btree (company_id, concept, period_end, period_type, extraction_version) WHERE (superseded_at IS NULL)</code></li><li><b>financial_facts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX financial_facts_pkey ON public.financial_facts USING btree (id)</code></li><li><b>financial_facts_source_artifact_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX financial_facts_source_artifact_idx ON public.financial_facts USING btree (source_artifact_id) WHERE (source_artifact_id IS NOT NULL)</code></li><li><b>financial_facts_source_raw_response_idx</b> <br><code class='index-def'>CREATE INDEX financial_facts_source_raw_response_idx ON public.financial_facts USING btree (source_raw_response_id)</code></li><li><b>financial_facts_statement_company_idx</b> <br><code class='index-def'>CREATE INDEX financial_facts_statement_company_idx ON public.financial_facts USING btree (statement, company_id, period_end DESC)</code></li><li><b>financial_facts_unique_extraction</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX financial_facts_unique_extraction ON public.financial_facts USING btree (company_id, concept, period_end, period_type, source_raw_response_id, extraction_version)</code></li></ul>
+        <h4>Indexes</h4><ul><li><b>financial_facts_calendar_period_concept_idx</b> <br><code class='index-def'>CREATE INDEX financial_facts_calendar_period_concept_idx ON public.financial_facts USING btree (calendar_year, calendar_quarter, concept)</code></li><li><b>financial_facts_company_concept_period_idx</b> <br><code class='index-def'>CREATE INDEX financial_facts_company_concept_period_idx ON public.financial_facts USING btree (company_id, concept, period_end DESC)</code></li><li><b>financial_facts_current_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX financial_facts_current_idx ON public.financial_facts USING btree (company_id, concept, period_end DESC) WHERE (superseded_at IS NULL)</code></li><li><b>financial_facts_one_current_idx</b> <span class="badge uk">UNIQUE</span> <span class="badge partial">partial</span><br><code class='index-def'>CREATE UNIQUE INDEX financial_facts_one_current_idx ON public.financial_facts USING btree (company_id, concept, period_end, period_type, extraction_version) WHERE (superseded_at IS NULL)</code></li><li><b>financial_facts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX financial_facts_pkey ON public.financial_facts USING btree (id)</code></li><li><b>financial_facts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX financial_facts_pkey ON public.financial_facts USING btree (id)</code></li><li><b>financial_facts_source_artifact_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX financial_facts_source_artifact_idx ON public.financial_facts USING btree (source_artifact_id) WHERE (source_artifact_id IS NOT NULL)</code></li><li><b>financial_facts_source_raw_response_idx</b> <br><code class='index-def'>CREATE INDEX financial_facts_source_raw_response_idx ON public.financial_facts USING btree (source_raw_response_id)</code></li><li><b>financial_facts_statement_company_idx</b> <br><code class='index-def'>CREATE INDEX financial_facts_statement_company_idx ON public.financial_facts USING btree (statement, company_id, period_end DESC)</code></li><li><b>financial_facts_supersedes_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX financial_facts_supersedes_idx ON public.financial_facts USING btree (supersedes_fact_id) WHERE (supersedes_fact_id IS NOT NULL)</code></li><li><b>financial_facts_unique_extraction</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX financial_facts_unique_extraction ON public.financial_facts USING btree (company_id, concept, period_end, period_type, source_raw_response_id, extraction_version)</code></li></ul>
     </section>
     
 
@@ -751,7 +976,7 @@
         
         
         <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK ((((status = &#x27;started&#x27;::text) AND (finished_at IS NULL)) OR ((status &lt;&gt; &#x27;started&#x27;::text) AND (finished_at IS NOT NULL))))</code> <span class='cname'>(ingest_runs_finished_at_check)</span></li><li><code class='check-def'>CHECK ((run_kind = ANY (ARRAY[&#x27;backfill&#x27;::text, &#x27;incremental&#x27;::text, &#x27;reconciliation&#x27;::text, &#x27;manual&#x27;::text])))</code> <span class='cname'>(ingest_runs_run_kind_check)</span></li><li><code class='check-def'>CHECK ((status = ANY (ARRAY[&#x27;started&#x27;::text, &#x27;succeeded&#x27;::text, &#x27;failed&#x27;::text, &#x27;partial&#x27;::text])))</code> <span class='cname'>(ingest_runs_status_check)</span></li></ul>
-        <h4>Indexes</h4><ul><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_status_problem_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX ingest_runs_status_problem_idx ON public.ingest_runs USING btree (started_at DESC) WHERE (status = ANY (ARRAY[&#x27;failed&#x27;::text, &#x27;partial&#x27;::text]))</code></li><li><b>ingest_runs_vendor_started_at_idx</b> <br><code class='index-def'>CREATE INDEX ingest_runs_vendor_started_at_idx ON public.ingest_runs USING btree (vendor, started_at DESC)</code></li></ul>
+        <h4>Indexes</h4><ul><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_status_problem_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX ingest_runs_status_problem_idx ON public.ingest_runs USING btree (started_at DESC) WHERE (status = ANY (ARRAY[&#x27;failed&#x27;::text, &#x27;partial&#x27;::text]))</code></li><li><b>ingest_runs_vendor_started_at_idx</b> <br><code class='index-def'>CREATE INDEX ingest_runs_vendor_started_at_idx ON public.ingest_runs USING btree (vendor, started_at DESC)</code></li></ul>
     </section>
     
 
@@ -915,7 +1140,7 @@ mermaid.initialize({
     },
 });
 
-const src = "erDiagram\n  INGEST_RUNS |o--o{ ARTIFACTS : \"artifacts_ingest_run_id_fkey\"\n  ARTIFACTS |o--o{ ARTIFACTS : \"artifacts_supersedes_fkey\"\n  COMPANIES ||--o{ FINANCIAL_FACTS : \"financial_facts_company_id_fkey\"\n  INGEST_RUNS |o--o{ FINANCIAL_FACTS : \"financial_facts_ingest_run_id_fkey\"\n  ARTIFACTS |o--o{ FINANCIAL_FACTS : \"financial_facts_source_artifact_id_fkey\"\n  RAW_RESPONSES ||--o{ FINANCIAL_FACTS : \"financial_facts_source_raw_response_id_fkey\"\n  INGEST_RUNS ||--o{ RAW_RESPONSES : \"raw_responses_ingest_run_id_fkey\"\n  ARTIFACTS {\n    bigint id PK \"NOT NULL, default nextval('artifacts_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"nullable\"\n    text artifact_type \"NOT NULL\"\n    text source \"NOT NULL\"\n    text source_document_id \"nullable\"\n    bytea raw_hash \"NOT NULL\"\n    bytea canonical_hash \"NOT NULL\"\n    text ticker \"nullable\"\n    smallint fiscal_year \"nullable\"\n    smallint fiscal_quarter \"nullable\"\n    text fiscal_period_label \"nullable\"\n    date period_end \"nullable\"\n    text period_type \"nullable\"\n    smallint calendar_year \"nullable\"\n    smallint calendar_quarter \"nullable\"\n    text calendar_period_label \"nullable\"\n    text title \"nullable\"\n    text url \"nullable\"\n    text content_type \"nullable\"\n    text language \"nullable\"\n    timestamp_with_time_zone published_at \"nullable\"\n    timestamp_with_time_zone effective_at \"nullable\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n    bigint supersedes FK \"nullable\"\n    timestamp_with_time_zone superseded_at \"nullable\"\n    text authored_by \"nullable\"\n    timestamp_with_time_zone last_reviewed_at \"nullable\"\n    date asserted_valid_through \"nullable\"\n    jsonb artifact_metadata \"NOT NULL, default '{}'::jsonb\"\n  }\n  COMPANIES {\n    bigint id PK \"NOT NULL, default nextval('companies_id_seq'::regclass)\"\n    bigint cik UK \"NOT NULL\"\n    text ticker \"NOT NULL\"\n    text name \"NOT NULL\"\n    text fiscal_year_end_md \"NOT NULL\"\n    text status \"NOT NULL, default 'active'::text\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone updated_at \"NOT NULL, default now()\"\n  }\n  FINANCIAL_FACTS {\n    bigint id PK \"NOT NULL, default nextval('financial_facts_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"nullable\"\n    bigint company_id FK \"NOT NULL\"\n    text statement \"NOT NULL\"\n    text concept \"NOT NULL\"\n    numeric_28_4 value \"NOT NULL\"\n    text unit \"NOT NULL\"\n    smallint fiscal_year \"NOT NULL\"\n    smallint fiscal_quarter \"nullable\"\n    text fiscal_period_label \"NOT NULL\"\n    date period_end \"NOT NULL\"\n    text period_type \"NOT NULL\"\n    smallint calendar_year \"NOT NULL\"\n    smallint calendar_quarter \"NOT NULL\"\n    text calendar_period_label \"NOT NULL\"\n    timestamp_with_time_zone published_at \"NOT NULL\"\n    timestamp_with_time_zone effective_at \"nullable\"\n    timestamp_with_time_zone superseded_at \"nullable\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n    bigint source_artifact_id FK \"nullable\"\n    text extraction_version \"NOT NULL\"\n  }\n  INGEST_RUNS {\n    bigint id PK \"NOT NULL, default nextval('ingest_runs_id_seq'::regclass)\"\n    text run_kind \"NOT NULL\"\n    text vendor \"NOT NULL\"\n    text[] ticker_scope \"nullable\"\n    text status \"NOT NULL, default 'started'::text\"\n    timestamp_with_time_zone started_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone finished_at \"nullable\"\n    jsonb counts \"NOT NULL, default '{}'::jsonb\"\n    text error_message \"nullable\"\n    jsonb error_details \"nullable\"\n    text code_version \"nullable\"\n  }\n  RAW_RESPONSES {\n    bigint id PK \"NOT NULL, default nextval('raw_responses_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"NOT NULL\"\n    text vendor \"NOT NULL\"\n    text endpoint \"NOT NULL\"\n    jsonb params \"NOT NULL, default '{}'::jsonb\"\n    bytea params_hash \"NOT NULL\"\n    text request_url \"nullable\"\n    smallint http_status \"NOT NULL\"\n    text content_type \"NOT NULL\"\n    jsonb response_headers \"nullable\"\n    jsonb body_jsonb \"nullable\"\n    bytea body_raw \"nullable\"\n    bytea raw_hash \"NOT NULL\"\n    bytea canonical_hash \"NOT NULL\"\n    timestamp_with_time_zone fetched_at \"NOT NULL, default now()\"\n  }";
+const src = "erDiagram\n  INGEST_RUNS |o--o{ ARTIFACTS : \"artifacts_ingest_run_id_fkey\"\n  ARTIFACTS |o--o{ ARTIFACTS : \"artifacts_supersedes_fkey\"\n  COMPANIES ||--o{ DATA_QUALITY_FLAGS : \"data_quality_flags_company_id_fkey\"\n  INGEST_RUNS |o--o{ DATA_QUALITY_FLAGS : \"data_quality_flags_source_run_id_fkey\"\n  COMPANIES ||--o{ FINANCIAL_FACTS : \"financial_facts_company_id_fkey\"\n  INGEST_RUNS |o--o{ FINANCIAL_FACTS : \"financial_facts_ingest_run_id_fkey\"\n  ARTIFACTS |o--o{ FINANCIAL_FACTS : \"financial_facts_source_artifact_id_fkey\"\n  RAW_RESPONSES ||--o{ FINANCIAL_FACTS : \"financial_facts_source_raw_response_id_fkey\"\n  FINANCIAL_FACTS |o--o{ FINANCIAL_FACTS : \"financial_facts_supersedes_fact_id_fkey\"\n  INGEST_RUNS ||--o{ RAW_RESPONSES : \"raw_responses_ingest_run_id_fkey\"\n  ARTIFACTS {\n    bigint id PK \"NOT NULL, default nextval('artifacts_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"nullable\"\n    text artifact_type \"NOT NULL\"\n    text source \"NOT NULL\"\n    text source_document_id \"nullable\"\n    bytea raw_hash \"NOT NULL\"\n    bytea canonical_hash \"NOT NULL\"\n    text ticker \"nullable\"\n    smallint fiscal_year \"nullable\"\n    smallint fiscal_quarter \"nullable\"\n    text fiscal_period_label \"nullable\"\n    date period_end \"nullable\"\n    text period_type \"nullable\"\n    smallint calendar_year \"nullable\"\n    smallint calendar_quarter \"nullable\"\n    text calendar_period_label \"nullable\"\n    text title \"nullable\"\n    text url \"nullable\"\n    text content_type \"nullable\"\n    text language \"nullable\"\n    timestamp_with_time_zone published_at \"nullable\"\n    timestamp_with_time_zone effective_at \"nullable\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n    bigint supersedes FK \"nullable\"\n    timestamp_with_time_zone superseded_at \"nullable\"\n    text authored_by \"nullable\"\n    timestamp_with_time_zone last_reviewed_at \"nullable\"\n    date asserted_valid_through \"nullable\"\n    jsonb artifact_metadata \"NOT NULL, default '{}'::jsonb\"\n  }\n  COMPANIES {\n    bigint id PK \"NOT NULL, default nextval('companies_id_seq'::regclass)\"\n    bigint cik UK \"NOT NULL\"\n    text ticker \"NOT NULL\"\n    text name \"NOT NULL\"\n    text fiscal_year_end_md \"NOT NULL\"\n    text status \"NOT NULL, default 'active'::text\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone updated_at \"NOT NULL, default now()\"\n  }\n  DATA_QUALITY_FLAGS {\n    bigint id PK \"NOT NULL, default nextval('data_quality_flags_id_seq'::regclass)\"\n    bigint company_id FK \"NOT NULL\"\n    text statement \"nullable\"\n    text concept \"nullable\"\n    integer fiscal_year \"nullable\"\n    integer fiscal_quarter \"nullable\"\n    date period_end \"nullable\"\n    text period_type \"nullable\"\n    text flag_type \"NOT NULL\"\n    text severity \"NOT NULL\"\n    numeric expected_value \"nullable\"\n    numeric computed_value \"nullable\"\n    numeric delta \"nullable\"\n    numeric tolerance \"nullable\"\n    numeric suggested_value \"nullable\"\n    text reason \"NOT NULL\"\n    jsonb context \"nullable\"\n    bigint source_run_id FK \"nullable\"\n    timestamp_with_time_zone flagged_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone resolved_at \"nullable\"\n    text resolution \"nullable\"\n    numeric resolution_value \"nullable\"\n    text resolution_source \"nullable\"\n    text resolution_note \"nullable\"\n  }\n  FINANCIAL_FACTS {\n    bigint id PK \"NOT NULL, default nextval('financial_facts_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"nullable\"\n    bigint company_id FK \"NOT NULL\"\n    text statement \"NOT NULL\"\n    text concept \"NOT NULL\"\n    numeric_28_4 value \"NOT NULL\"\n    text unit \"NOT NULL\"\n    smallint fiscal_year \"NOT NULL\"\n    smallint fiscal_quarter \"nullable\"\n    text fiscal_period_label \"NOT NULL\"\n    date period_end \"NOT NULL\"\n    text period_type \"NOT NULL\"\n    smallint calendar_year \"NOT NULL\"\n    smallint calendar_quarter \"NOT NULL\"\n    text calendar_period_label \"NOT NULL\"\n    timestamp_with_time_zone published_at \"NOT NULL\"\n    timestamp_with_time_zone effective_at \"nullable\"\n    timestamp_with_time_zone superseded_at \"nullable\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n    bigint source_artifact_id FK \"nullable\"\n    text extraction_version \"NOT NULL\"\n    bigint supersedes_fact_id FK \"nullable\"\n    text supersession_reason \"nullable\"\n  }\n  INGEST_RUNS {\n    bigint id PK \"NOT NULL, default nextval('ingest_runs_id_seq'::regclass)\"\n    text run_kind \"NOT NULL\"\n    text vendor \"NOT NULL\"\n    text[] ticker_scope \"nullable\"\n    text status \"NOT NULL, default 'started'::text\"\n    timestamp_with_time_zone started_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone finished_at \"nullable\"\n    jsonb counts \"NOT NULL, default '{}'::jsonb\"\n    text error_message \"nullable\"\n    jsonb error_details \"nullable\"\n    text code_version \"nullable\"\n  }\n  RAW_RESPONSES {\n    bigint id PK \"NOT NULL, default nextval('raw_responses_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"NOT NULL\"\n    text vendor \"NOT NULL\"\n    text endpoint \"NOT NULL\"\n    jsonb params \"NOT NULL, default '{}'::jsonb\"\n    bytea params_hash \"NOT NULL\"\n    text request_url \"nullable\"\n    smallint http_status \"NOT NULL\"\n    text content_type \"NOT NULL\"\n    jsonb response_headers \"nullable\"\n    jsonb body_jsonb \"nullable\"\n    bytea body_raw \"nullable\"\n    bytea raw_hash \"NOT NULL\"\n    bytea canonical_hash \"NOT NULL\"\n    timestamp_with_time_zone fetched_at \"NOT NULL, default now()\"\n  }";
 const { svg } = await mermaid.render('erd-svg', src);
 document.getElementById('erd').innerHTML = svg;
 
