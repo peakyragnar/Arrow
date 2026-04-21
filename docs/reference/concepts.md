@@ -104,7 +104,9 @@ Tie: `gross_profit` must equal the filer's reported gross profit.
 
 | name | type | stored_sign | notes |
 |---|---|---|---|
-| `sga` | detail | positive magnitude | S, G & A; includes selling + G&A (split not required) |
+| `sga` | detail | positive magnitude | Combined S, G & A aggregate. Always populated when filer reports SG&A in any form. Ties reference this aggregate, not the split below. |
+| `general_and_admin_expense` | detail | positive magnitude | G&A only, when filer reports it separately. Zero when filer reports combined SG&A. Tie relationship when populated: `sga = general_and_admin_expense + selling_and_marketing_expense` (verified empirically across MSFT, GOOGL, PANW, PLTR, TDG, OKLO, S, UNP, VLO, ET). |
+| `selling_and_marketing_expense` | detail | positive magnitude | Selling + marketing only, split-reporters. Zero otherwise. See note on `general_and_admin_expense`. |
 | `rd` | detail | positive magnitude | R&D expense (may be null if filer doesn't break out) |
 | `dna_is` | detail | positive magnitude | D&A when reported as a separate operating line; else null (D&A is typically embedded in cogs and sga) |
 | `other_opex` | detail | reported sign | operating expenses not fitting above (may be gain or loss, hence reported sign) |
@@ -142,15 +144,24 @@ Unusual items are stored with reported sign because they can be gains or losses.
 | name | type | stored_sign | notes |
 |---|---|---|---|
 | `tax` | detail | positive magnitude | income tax expense (negative stored value = tax benefit) |
-| `continuing_ops_after_tax` | subtotal | reported | `= ebt_incl_unusual - tax` |
-| `discontinued_ops` | detail | reported sign | gain/loss from discontinued operations, after-tax |
-| `net_income` | subtotal | reported | `= continuing_ops_after_tax + discontinued_ops` |
-| `minority_interest` | detail | positive magnitude | NCI's share of net income |
-| `net_income_attributable_to_parent` | subtotal | reported | `= net_income - minority_interest` |
+| `continuing_ops_after_tax` | subtotal | reported | `= ebt_incl_unusual - tax`. **Pre-NCI consolidated.** Maps to `us-gaap:IncomeLossFromContinuingOperations` / FMP `netIncomeFromContinuingOperations`. |
+| `discontinued_ops` | detail | reported sign | gain/loss from discontinued operations, after-tax. Pre-NCI. |
+| `net_income` | subtotal | reported | **Pre-NCI consolidated total.** `= continuing_ops_after_tax + discontinued_ops`. Maps to `us-gaap:ProfitLoss` (primary) / `us-gaap:NetIncomeLoss` (fallback for non-NCI filers). **Computed by the mapper** (not from FMP's IS-endpoint `netIncome`, which is post-NCI — see `fmp_mapping.md` § 5.4). |
+| `minority_interest` | detail | reported sign | **NCI's share of consolidated net income, with sign.** Positive = NCI gained; negative = NCI took a loss. Maps to `us-gaap:NetIncomeLossAttributableToNoncontrollingInterest`. **Computed by the mapper** as `net_income - net_income_attributable_to_parent`. Zero for non-NCI filers. |
+| `net_income_attributable_to_parent` | subtotal | reported | **Post-NCI parent-shareholder NI.** `= net_income - minority_interest`. Maps to `us-gaap:NetIncomeLoss` / FMP IS-endpoint `netIncome`. **This is the NI used in EPS, P/E, and analyst conventions for "net income."** For non-NCI filers equals `net_income`. |
 | `preferred_dividends_is` | detail | positive magnitude | preferred dividends declared for the period (if reported on IS) |
 | `ni_common` | subtotal | reported | `= net_income_attributable_to_parent - preferred_dividends_is` |
 
-Tie: `net_income` must equal the filer's reported consolidated net income AND equal `cash_flow.net_income_start`.
+**Ties:**
+- `net_income == continuing_ops_after_tax + discontinued_ops` (tautological by mapper's derivation, retained as contract guard)
+- `net_income_attributable_to_parent == net_income - minority_interest` (tautological by mapper's derivation, retained as contract guard)
+- `net_income == cash_flow.net_income_start` (both are pre-NCI consolidated; ties at Layer 2)
+
+**Which NI to use when:**
+- CF roll-forward tie (Layer 2): `net_income` (pre-NCI, matches what CF reports at the top)
+- EPS, P/E, analyst "net income": `net_income_attributable_to_parent` (post-NCI)
+- ROE using `common_equity`: `net_income_attributable_to_parent` (must pair parent NI with parent equity)
+- ROE using `total_equity`: `net_income` (whole-entity consistency)
 
 ### 4.7 Per-share data
 
@@ -240,7 +251,8 @@ Sub-detail rule: if both `gross_ppe` and `accumulated_depreciation` are reported
 | `retained_earnings` | detail | reported sign | negative if accumulated deficit |
 | `treasury_stock` | detail | signed negative (for buybacks) | added in the formula; see `fmp_mapping.md` for FMP empirical convention |
 | `accumulated_other_comprehensive_income` | detail | reported sign | AOCI, can be + or - |
-| `common_equity` | subtotal | reported | `= preferred_stock + (common_stock + additional_paid_in_capital OR common_stock_and_apic) + retained_earnings + treasury_stock + accumulated_other_comprehensive_income` (treasury is added because it's stored with its signed value, which is negative for buybacks — see § 5.5 note) |
+| `other_equity` | detail | reported sign | filer-specific equity lines that don't fit the standard 6 buckets above (e.g., cumulative translation adjustment reported separately from AOCI, partners' capital for MLP-style filers, specific stock-based-compensation reserves). FMP surfaces these as `otherTotalStockholdersEquity`. Non-zero value = "look at the filer's 10-K equity section for semantic meaning." |
+| `common_equity` | subtotal | reported | `= preferred_stock + (common_stock + additional_paid_in_capital OR common_stock_and_apic) + retained_earnings + treasury_stock + accumulated_other_comprehensive_income + other_equity` (treasury is added because it's stored with its signed value, which is negative for buybacks — see § 5.5 note) |
 | `noncontrolling_interest` | detail | positive | |
 | `total_equity` | subtotal | reported | `= common_equity + noncontrolling_interest` |
 | `total_liabilities_and_equity` | subtotal | positive | `= total_liabilities + total_equity` |

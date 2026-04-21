@@ -74,7 +74,25 @@ _IS_MAPPINGS: tuple[XBRLConceptMapping, ...] = (
         ("IncomeLossFromDiscontinuedOperationsNetOfTax",),
         "USD",
     ),
-    XBRLConceptMapping("net_income", ("NetIncomeLoss",), "USD"),
+    # Net-income chain (concepts.md § 4.6):
+    #   net_income                        = PRE-NCI consolidated = XBRL ProfitLoss
+    #   net_income_attributable_to_parent = POST-NCI parent      = XBRL NetIncomeLoss
+    #   minority_interest                 = NCI's share          = XBRL NetIncomeLossAttributableToNoncontrollingInterest
+    #
+    # Non-NCI filers (e.g., NVDA) typically only publish NetIncomeLoss (no
+    # ProfitLoss fact at all). For those filers, parent == consolidated, so
+    # NetIncomeLoss is the correct fallback for the pre-NCI `net_income`
+    # anchor. For NCI filers (e.g., DELL), ProfitLoss is primary so we
+    # compare pre-NCI to pre-NCI.
+    XBRLConceptMapping("net_income", ("ProfitLoss", "NetIncomeLoss"), "USD"),
+    XBRLConceptMapping(
+        "net_income_attributable_to_parent", ("NetIncomeLoss",), "USD",
+    ),
+    XBRLConceptMapping(
+        "minority_interest",
+        ("NetIncomeLossAttributableToNoncontrollingInterest",),
+        "USD",
+    ),
     XBRLConceptMapping("eps_basic", ("EarningsPerShareBasic",), "USD/shares"),
     XBRLConceptMapping("eps_diluted", ("EarningsPerShareDiluted",), "USD/shares"),
     XBRLConceptMapping(

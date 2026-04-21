@@ -52,7 +52,17 @@ def _val(values: dict[str, Decimal], concept: str) -> Decimal:
     return values.get(concept, Decimal("0"))
 
 
-# Each tie: (name, subtotal_name, [(component, sign)])
+# FMP-SOURCED TIES (see verify_bs.py header comment for rationale).
+# concepts.md § 6 describes the full CF vocabulary. Several concepts
+# (gain_on_sale_assets_cf, gain_on_sale_investments_cf, asset_writedown,
+# change_deferred_revenue, change_income_taxes, divestitures,
+# loans_originated, loans_collected, short_term_debt_repayment,
+# long_term_debt_repayment, special_dividends_paid, misc_cf_adjustments)
+# are NOT separately exposed by FMP — FMP bundles them into
+# otherNonCashItems, otherWorkingCapital, otherInvestingActivities,
+# net debt issuance figures, or commonDividendsPaid. The ties below
+# reflect FMP's data model. SEC XBRL direct ingest (future) would use
+# ties with the full component set.
 _CF_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
     (
         "cfo == net_income_start + non-cash adjustments + working capital changes",
@@ -62,57 +72,60 @@ _CF_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
             ("dna_cf", +1),
             ("sbc", +1),
             ("deferred_income_tax", +1),
-            ("gain_on_sale_assets_cf", +1),
-            ("gain_on_sale_investments_cf", +1),
-            ("asset_writedown", +1),
+            # FMP lumps gain_on_sale_*, asset_writedown into otherNonCashItems.
             ("other_noncash", +1),
             ("change_accounts_receivable", +1),
             ("change_inventory", +1),
             ("change_accounts_payable", +1),
-            ("change_deferred_revenue", +1),
-            ("change_income_taxes", +1),
+            # FMP lumps change_deferred_revenue + change_income_taxes into
+            # otherWorkingCapital.
             ("change_other_working_capital", +1),
         ],
     ),
     (
-        "cfi == capex + acquisitions + divestitures + investments + loans + other_investing",
+        "cfi == capex + acquisitions + investments + other_investing",
         "cfi",
         [
             ("capital_expenditures", +1),
             ("acquisitions", +1),
-            ("divestitures", +1),
+            # FMP lumps divestitures, loans_originated, loans_collected into
+            # otherInvestingActivities.
             ("purchases_of_investments", +1),
             ("sales_of_investments", +1),
-            ("loans_originated", +1),
-            ("loans_collected", +1),
             ("other_investing", +1),
         ],
     ),
     (
-        "cff == debt issuance/repayment + stock + dividends + other_financing",
+        "cff == debt issuance + stock + dividends + other_financing",
         "cff",
         [
+            # FMP exposes NET debt issuance (gross issuance - repayment) as
+            # shortTermNetDebtIssuance and longTermNetDebtIssuance. No separate
+            # repayment fields — so short_term_debt_repayment and
+            # long_term_debt_repayment buckets stay unpopulated. Per
+            # fmp_cf_mapper.py:65-69.
             ("short_term_debt_issuance", +1),
-            ("short_term_debt_repayment", +1),
             ("long_term_debt_issuance", +1),
-            ("long_term_debt_repayment", +1),
+            # stock_issuance bundle includes commonStockIssuance +
+            # netPreferredStockIssuance (see fmp_cf_mapper.py).
             ("stock_issuance", +1),
             ("stock_repurchase", +1),
             ("common_dividends_paid", +1),
             ("preferred_dividends_paid", +1),
-            ("special_dividends_paid", +1),
+            # special_dividends_paid not separately exposed by FMP.
             ("other_financing", +1),
         ],
     ),
     (
-        "net_change_in_cash == cfo + cfi + cff + fx + misc",
+        "net_change_in_cash == cfo + cfi + cff + fx",
         "net_change_in_cash",
         [
+            # misc_cf_adjustments not separately exposed by FMP; would be in fx
+            # or a reconciling item when it exists.
             ("cfo", +1),
             ("cfi", +1),
             ("cff", +1),
             ("fx_effect_on_cash", +1),
-            ("misc_cf_adjustments", +1),
         ],
     ),
     (
@@ -127,14 +140,29 @@ _CF_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
 
 
 def verify_cf_ties(values_by_concept: dict[str, Decimal]) -> list[TieFailure]:
-    """Return the list of ties that failed (empty = all passed)."""
+    """Return the list of ties that failed (empty = all passed).
+
+    STRICT coverage: see verify_is/verify_bs for semantics. Every component
+    (and subtotal) must be emitted by the mapper. Missing components surface
+    as COVERAGE MISSING TieFailure entries rather than silently skipping.
+    """
     failures: list[TieFailure] = []
     for name, subtotal, components in _CF_TIES:
-        if subtotal not in values_by_concept:
-            continue  # can't check if the reported subtotal itself is absent
+        component_concepts = [c for c, _sign in components]
+        required = [subtotal] + component_concepts
+        missing = [c for c in required if c not in values_by_concept]
+        if missing:
+            failures.append(TieFailure(
+                tie=f"COVERAGE MISSING [{', '.join(missing)}] in {name}",
+                filer=Decimal(0),
+                computed=Decimal(0),
+                delta=Decimal(0),
+                tolerance=Decimal(0),
+            ))
+            continue
         filer = values_by_concept[subtotal]
         computed = sum(
-            (_val(values_by_concept, c) * s for c, s in components),
+            (values_by_concept[c] * s for c, s in components),
             start=Decimal("0"),
         )
         ok, delta, threshold = _within_tolerance(filer, computed)

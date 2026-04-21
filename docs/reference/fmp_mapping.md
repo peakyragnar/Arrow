@@ -166,7 +166,9 @@ Per-share and share-count buckets use their own units:
 | `cogs` | `us-gaap:CostOfRevenue` | `costOfRevenue` | verified | |
 | `gross_profit` | `us-gaap:GrossProfit` | `grossProfit` | verified | subtotal; tie to `revenue - cogs` |
 | `rd` | `us-gaap:ResearchAndDevelopmentExpense` | `researchAndDevelopmentExpenses` | verified | |
-| `sga` | `us-gaap:SellingGeneralAndAdministrativeExpense` | `sellingGeneralAndAdministrativeExpenses` | verified | |
+| `general_and_admin_expense` | `us-gaap:GeneralAndAdministrativeExpense` | `generalAndAdministrativeExpenses` | verified | detail line; zero for filers who only report combined SG&A (e.g., NVDA, DELL); populated for MSFT, GOOGL, PANW, PLTR, TDG, OKLO, S, UNP, VLO, DELL, ET, SYM-like mixes |
+| `selling_and_marketing_expense` | `us-gaap:SellingAndMarketingExpense` | `sellingAndMarketingExpenses` | verified | detail line; same pattern. Empirically `sga == gna + sme` for split-reporting filers; `gna = sme = 0` and `sga` = filer-reported combined for non-split filers. |
+| `sga` | `us-gaap:SellingGeneralAndAdministrativeExpense` | `sellingGeneralAndAdministrativeExpenses` | verified | the aggregate; always populated. FMP's `operatingExpenses` tie uses this aggregate, not the split — so the detail-level split is stored but NOT added to any Layer-1 tie. |
 | `dna_is` | `us-gaap:DepreciationAndAmortization` (IS face line) | `depreciationAndAmortization` | needs_check | FMP exposes this on IS; whether NVDA reports it on IS face is filer-dependent |
 | `other_opex` | (varies) | — | seed | no clean FMP mapping; compute as `operatingExpenses − rd − sga` when needed, or populate from XBRL direct |
 | `total_opex` | `us-gaap:OperatingExpenses` | `operatingExpenses` | verified | |
@@ -176,11 +178,12 @@ Per-share and share-count buckets use their own units:
 | `other_nonop` | `us-gaap:OtherNonoperatingIncomeExpense` or filer-specific | `nonOperatingIncomeExcludingInterest` | needs_check | XBRL concept drifts across NVDA filings; FMP may aggregate differently than the archive line. Low priority — small magnitudes in most periods. |
 | `ebt_excl_unusual` / `ebt_incl_unusual` | `us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxes...` | `incomeBeforeTax` | verified | Arrow doesn't separate unusual items in FMP-sourced data (FMP doesn't break them out); `ebt_incl_unusual` maps directly to FMP's `incomeBeforeTax`. Unusual-item buckets may remain null when sourcing from FMP. |
 | `tax` | `us-gaap:IncomeTaxExpenseBenefit` | `incomeTaxExpense` | verified | positive magnitude (tax benefit = negative) |
-| `continuing_ops_after_tax` | `us-gaap:IncomeLossFromContinuingOperations` | `netIncomeFromContinuingOperations` | verified | |
-| `discontinued_ops` | `us-gaap:IncomeLossFromDiscontinuedOperationsNetOfTax` | `netIncomeFromDiscontinuedOperations` | verified | zero for NVDA; value tested on filers with discontinued ops |
-| `net_income` | `us-gaap:NetIncomeLoss` | `netIncome` | verified | subtotal; tie: `== cf.net_income_start` |
-| `minority_interest` | `us-gaap:NetIncomeLossAttributableToNoncontrollingInterest` | (implicit) | seed | FMP typically returns consolidated NI; NCI may not be separately exposed. For NCI-bearing filers, cross-source from XBRL. |
-| `ni_common` | `us-gaap:NetIncomeLossAvailableToCommonStockholdersBasic` | `bottomLineNetIncome` | needs_check | FMP's `bottomLineNetIncome` purpose unclear; verify against NCI/preferred filers |
+| `continuing_ops_after_tax` | `us-gaap:IncomeLossFromContinuingOperations` (consolidated, pre-NCI) | `netIncomeFromContinuingOperations` | verified | Includes NCI's share when NCI is present; for non-NCI filers equals the full consolidated value. |
+| `discontinued_ops` | `us-gaap:IncomeLossFromDiscontinuedOperationsNetOfTax` | `netIncomeFromDiscontinuedOperations` | verified | zero for most filers; FMP always emits a value (0 when not reported). |
+| `net_income` | `us-gaap:ProfitLoss` (pre-NCI consolidated) | — | verified (DERIVED) | **Computed by mapper as `continuing_ops_after_tax + discontinued_ops`** (concepts.md § 4.6). Pre-NCI. Ties to `cf.net_income_start` (which comes from FMP's CF-endpoint `netIncome`, empirically also pre-NCI). XBRL anchor: `ProfitLoss` primary, `NetIncomeLoss` fallback for non-NCI filers. |
+| `net_income_attributable_to_parent` | `us-gaap:NetIncomeLoss` (post-NCI) | `netIncome` | verified | **FMP's IS-endpoint `netIncome` is the POST-NCI value** (= XBRL NetIncomeLoss). For non-NCI filers equals `net_income`; for NCI filers differs by the NCI amount. Used in EPS/P/E. |
+| `minority_interest` | `us-gaap:NetIncomeLossAttributableToNoncontrollingInterest` | — | verified (DERIVED) | **Computed by mapper as `net_income - net_income_attributable_to_parent`**. Positive = NCI gained; negative = NCI took a loss. DELL Q3 FY25: `1,127 - 1,132 = -5M` (NCI loss). Zero for non-NCI filers. |
+| `ni_common` | `us-gaap:NetIncomeLossAvailableToCommonStockholdersBasic` | `bottomLineNetIncome` | needs_check | FMP's `bottomLineNetIncome` empirically equals `netIncome` for most filers; differs only when preferred dividends are non-trivial. Not currently mapped. |
 | `eps_basic` | `us-gaap:EarningsPerShareBasic` | `eps` | verified (split-adjusted) | FMP back-applies splits |
 | `eps_diluted` | `us-gaap:EarningsPerShareDiluted` | `epsDiluted` | verified (split-adjusted) | |
 | `shares_basic_weighted_avg` | `us-gaap:WeightedAverageNumberOfSharesOutstandingBasic` | `weightedAverageShsOut` | verified (split-adjusted) | absolute shares, not millions |
@@ -198,7 +201,7 @@ Per-share and share-count buckets use their own units:
 | `short_term_investments` | `us-gaap:MarketableSecuritiesCurrent` | `shortTermInvestments` | verified | |
 | `restricted_cash_current` | `us-gaap:RestrictedCashCurrent` | — | seed | FMP doesn't expose separately; null from FMP sourcing |
 | `accounts_receivable` | `us-gaap:AccountsReceivableNetCurrent` | `accountsReceivables` | verified | |
-| `other_receivables` | `us-gaap:OtherReceivablesNetCurrent` | `otherReceivables` | needs_check | |
+| `other_receivables` | `us-gaap:OtherReceivablesNetCurrent` OR `us-gaap:NotesAndLoansReceivableNetCurrent` | `otherReceivables` | verified | Non-trade current receivables. For filers with a financing arm (DELL DFS, ADM merchandising receivables) this is a material current-asset line; for most filers it's zero. FMP's `netReceivables = accountsReceivables + otherReceivables`. |
 | `inventory` | `us-gaap:InventoryNet` | `inventory` | verified | |
 | `prepaid_expenses` | `us-gaap:PrepaidExpenseCurrent` | `prepaids` | verified | |
 | `income_taxes_receivable_current` | `us-gaap:IncomeTaxesReceivableCurrent` | — | seed | not separately in FMP BS response |
@@ -217,10 +220,10 @@ Per-share and share-count buckets use their own units:
 | `total_assets` | `us-gaap:Assets` | `totalAssets` | verified | subtotal; tie: `== total_liabilities + total_equity` |
 | `accounts_payable` | `us-gaap:AccountsPayableCurrent` | `accountPayables` | verified | |
 | `accrued_expenses` | `us-gaap:AccruedLiabilitiesCurrent` | `accruedExpenses` | needs_check | FMP aggregation wider than the archive's "accrued expenses" — may include items archive broke out separately |
-| `current_portion_lt_debt` | `us-gaap:LongTermDebtCurrent` | `shortTermDebt` | needs_check | FMP bundles current-portion-of-LT-debt with short-term-borrowings into `shortTermDebt` |
-| `short_term_borrowings` | `us-gaap:ShortTermBorrowings` | (same as above) | needs_check | |
-| `current_portion_leases_operating` | `us-gaap:OperatingLeaseLiabilityCurrent` | `capitalLeaseObligationsCurrent` | needs_check | FMP's field name is `capitalLease...` (stale term); verify it actually maps to operating lease |
-| `income_taxes_payable_current` | `us-gaap:AccruedIncomeTaxesCurrent` | `taxPayables` | needs_check | |
+| `current_portion_lt_debt` | `us-gaap:LongTermDebtCurrent` | `shortTermDebt` | verified | **FMP bundles `short_term_borrowings` (us-gaap:ShortTermBorrowings) into this same `shortTermDebt` field.** Per § 5.4 — `short_term_borrowings` canonical bucket stays unpopulated from FMP. |
+| `short_term_borrowings` | `us-gaap:ShortTermBorrowings` | — (bundled into shortTermDebt above) | not populated from FMP | See § 5.4 bundling map. |
+| `current_portion_leases_operating` | `us-gaap:OperatingLeaseLiabilityCurrent` | `capitalLeaseObligationsCurrent` | verified | FMP's field name uses stale "capitalLease" terminology but the value is ASC 842 operating-lease liability. **FMP does NOT expose finance-lease current separately** — `current_portion_leases_finance` stays unpopulated from FMP. |
+| `income_taxes_payable_current` | `us-gaap:AccruedIncomeTaxesCurrent` | `taxPayables` | verified (DETAIL ONLY) | **FMP's `taxPayables` is a DETAIL breakdown of `otherPayables`, not a disjoint BS line.** Empirically: NVDA Q1 FY25 `taxPayables = otherPayables = $3,881M` (identical values). Since `accounts_payable` bundles `accountPayables + otherPayables` (§ 5.2 bundling), the tax payables amount is already inside `accounts_payable`. **The canonical bucket `income_taxes_payable_current` is stored for queryability but is NOT summed into the `total_current_liabilities` tie** (doing so would double-count). |
 | `deferred_revenue_current` | `us-gaap:ContractWithCustomerLiabilityCurrent` | `deferredRevenue` | needs_check | FMP's `deferredRevenue` may not split current/noncurrent |
 | `other_current_liabilities` | `us-gaap:OtherLiabilitiesCurrent` | `otherCurrentLiabilities` | verified | |
 | `total_current_liabilities` | `us-gaap:LiabilitiesCurrent` | `totalCurrentLiabilities` | verified | |
@@ -237,6 +240,7 @@ Per-share and share-count buckets use their own units:
 | `retained_earnings` | `us-gaap:RetainedEarningsAccumulatedDeficit` | `retainedEarnings` | verified | |
 | `treasury_stock` | `us-gaap:TreasuryStockValue` | `treasuryStock` | verified | **FMP stores SIGNED NEGATIVE** for buybacks (e.g. NVDA FY2022 Q3 returns -12,038,000,000). Empirically confirmed during BS ingest live smoke — filer-reported totalEquity only balances when treasuryStock is ADDED with its FMP-returned sign, not subtracted. Store as-is; BS equity tie adds it. Earlier doc claim of "signed positive magnitude" was incorrect. |
 | `accumulated_other_comprehensive_income` | `us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax` | `accumulatedOtherComprehensiveIncomeLoss` | verified | |
+| `other_equity` | (filer-specific; may be `us-gaap:StockholdersEquityOther` or filer-custom concepts) | `otherTotalStockholdersEquity` | verified | **FMP's reconciliation plug** — equity lines FMP couldn't classify into the standard 6 buckets (preferred/common/APIC/retained/treasury/AOCI). For most filers this is zero; for filers with cumulative translation adjustments reported separately, partners' capital (MLPs), specific stock-comp reserves, or similar filer-specific equity lines, it carries the residual that makes `total_equity` balance. **Non-zero value signals: look at the filer's 10-K equity section for semantic detail.** Observed: KOP $95.7M (legitimate residual); VLO FY2025 annual $23.7B (FMP parsing bug — only current annual affected, all other VLO periods cleanly decomposed). See § 10. |
 | `common_equity` | — | — | derived | subtotal computed in the mapper |
 | `noncontrolling_interest` | `us-gaap:MinorityInterest` | `minorityInterest` | verified | |
 | `total_equity` | `us-gaap:StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest` | `totalEquity` | verified | |
@@ -266,13 +270,13 @@ Per-share and share-count buckets use their own units:
 | `sales_of_investments` | `us-gaap:ProceedsFromSaleOfAvailableForSaleSecurities` OR `us-gaap:ProceedsFromSaleAndMaturityOfOtherInvestments` | `salesMaturitiesOfInvestments` | verified | |
 | `other_investing` | — | `otherInvestingActivities` | verified | |
 | `cfi` | `us-gaap:NetCashProvidedByUsedInInvestingActivities` | `netCashProvidedByInvestingActivities` | verified | |
-| `short_term_debt_issuance` | `us-gaap:ProceedsFromShortTermDebt` | `shortTermNetDebtIssuance` | needs_check | FMP exposes net issuance; may bundle issuance and repayment |
-| `long_term_debt_issuance` | `us-gaap:ProceedsFromIssuanceOfLongTermDebt` | `longTermNetDebtIssuance` | needs_check | same net-vs-gross ambiguity |
-| `stock_issuance` | `us-gaap:ProceedsFromIssuanceOfCommonStock` | `commonStockIssuance` | verified | |
+| `short_term_debt_issuance` | `us-gaap:ProceedsFromShortTermDebt` | `shortTermNetDebtIssuance` | verified | **FMP reports NET issuance** (gross issuance − repayment) not gross. So `short_term_debt_repayment` canonical bucket stays unpopulated from FMP — see § 5.4 bundling map. |
+| `long_term_debt_issuance` | `us-gaap:ProceedsFromIssuanceOfLongTermDebt` | `longTermNetDebtIssuance` | verified | Same net-not-gross pattern as short-term. |
+| `stock_issuance` | `us-gaap:ProceedsFromIssuanceOfCommonStock` + `us-gaap:ProceedsFromIssuanceOfPreferredStockAndPreferenceStock` | `commonStockIssuance` + `netPreferredStockIssuance` (BUNDLED) | verified | **Bundle: common gross + preferred net.** FMP exposes `commonStockIssuance` (gross) and `netPreferredStockIssuance` (net). We sum both into `stock_issuance`. For filers with a preferred-stock IPO event (e.g., S FY2021 $419.3M IPO proceeds), this is material. For most filers the preferred side is zero. |
 | `stock_repurchase` | `us-gaap:PaymentsForRepurchaseOfCommonStock` | `commonStockRepurchased` | verified | cash-impact negative |
 | `common_dividends_paid` | `us-gaap:PaymentsOfDividendsCommonStock` | `commonDividendsPaid` | verified | cash-impact negative |
-| `preferred_dividends_paid` | `us-gaap:PaymentsOfDividendsPreferredStockAndPreferenceStock` | `preferredDividendsPaid` | seed | zero for NVDA |
-| `other_financing` | — | `otherFinancingActivities` | verified | |
+| `preferred_dividends_paid` | `us-gaap:PaymentsOfDividendsPreferredStockAndPreferenceStock` | `preferredDividendsPaid` | verified | zero for most filers; non-zero for preferred-paying filers (observed on ET). |
+| `other_financing` | — | `otherFinancingActivities` | verified | Catch-all for CFF items not in the dedicated buckets above. |
 | `cff` | `us-gaap:NetCashProvidedByUsedInFinancingActivities` | `netCashProvidedByFinancingActivities` | verified | |
 | `fx_effect_on_cash` | `us-gaap:EffectOfExchangeRateOnCashAndCashEquivalents` | `effectOfForexChangesOnCash` | verified | |
 | `misc_cf_adjustments` | — | — | seed | rare |
@@ -283,31 +287,94 @@ Per-share and share-count buckets use their own units:
 Additional FMP CF fields not mapped (disclosure-level):
 - `incomeTaxesPaid`, `interestPaid`: supplementary disclosure, not part of CFO/CFI/CFF composition. Can be ingested as separate metric buckets later.
 - `freeCashFlow`: FMP-computed = `operatingCashFlow + capitalExpenditure`. Do NOT store — our `formulas.md` computes FCF canonically.
+- `netCommonStockIssuance`, `netStockIssuance`, `netDividendsPaid`, `netDebtIssuance`: FMP-computed aggregates of fields we already map separately. Do NOT store — would double-count.
+- `operatingCashFlow` / `capitalExpenditure`: aliases of `netCashProvidedByOperatingActivities` / `investmentsInPropertyPlantAndEquipment` respectively. Do NOT store.
 
 ---
 
-## 6. Coverage Gaps (TO-DO)
+## 5.4 FMP Bundling Map — definitive reference
 
-Concepts in `concepts.md` that have **no reliable FMP source**, so must be left null from FMP ingest or sourced from SEC XBRL direct:
+**Purpose:** For every canonical bucket defined in `concepts.md` that Arrow does NOT populate from FMP (i.e., the mapper emits nothing for it), this table answers: "where does FMP put the value instead?" This is the load-bearing documentation for why our FMP-sourced Layer-1 tie formulas (see `verify_bs.py`, `verify_cf.py`) are narrower than the economic identities in `concepts.md` § 12.
 
-**Balance sheet:**
-- `gross_ppe`, `accumulated_depreciation` (FMP only exposes net)
-- `right_of_use_assets_operating` (ROU assets — not in FMP BS response as of the stable API)
-- `equity_method_investments` (bundled into long_term_investments on FMP)
-- `restricted_cash_current`
-- `income_taxes_receivable_current`
+If FMP's normalization changes in a future API release, this table is the first thing that needs updating.
 
-**Income statement:**
-- Unusual items (restructuring, goodwill_impairment, gain_sale_assets, gain_sale_investments) — FMP does not break out
-- `equity_affiliates` — not explicitly in FMP IS response
+### 5.4.1 Balance Sheet — bundled concepts
 
-**Cash flow:**
-- `gain_on_sale_assets_cf`, `gain_on_sale_investments_cf`, `asset_writedown` — not separately in FMP CF; bundled into `otherNonCashItems`
-- `change_deferred_revenue` — may be bundled into `changeInWorkingCapital`
+| Canonical bucket (concepts.md) | FMP bundles into | How to verify the bundling |
+|---|---|---|
+| `restricted_cash_current` | `cashAndCashEquivalents` | SEC XBRL exposes `us-gaap:RestrictedCashCurrent` as separate instant fact. FMP rolls it into `cashAndCashEquivalents`. Observed on DELL FY26 Q2: XBRL `RestrictedCashCurrent = $146M`, XBRL `CashAndCashEquivalentsAtCarryingValue = $8,145M`, FMP `cashAndCashEquivalents = $8,291M = $8,145M + $146M`. |
+| `income_taxes_receivable_current` | `otherCurrentAssets` | FMP has no `taxReceivables` field. Current-period income-tax receivables get folded into the `otherCurrentAssets` aggregate. |
+| `short_term_borrowings` | `shortTermDebt` (which we map to `current_portion_lt_debt`) | FMP's single `shortTermDebt` field is `us-gaap:LongTermDebtCurrent + us-gaap:ShortTermBorrowings`. Mapper picks `current_portion_lt_debt` as the canonical home; `short_term_borrowings` stays unpopulated. |
+| `current_portion_leases_finance` | `capitalLeaseObligationsCurrent` (→ `current_portion_leases_operating`) | FMP does NOT split finance vs operating leases. The stale-named `capitalLeaseObligationsCurrent` field is the combined current lease liability. Mapper routes it to operating-lease; `current_portion_leases_finance` stays unpopulated. |
+| `long_term_leases_finance` | `capitalLeaseObligationsNonCurrent` (→ `long_term_leases_operating`) | Same pattern noncurrent. |
+| `right_of_use_assets_operating` | `otherNonCurrentAssets` OR `propertyPlantEquipmentNet` | ASC 842 ROU assets aren't a separate FMP field. They're folded into either noncurrent-other or net-PP&E depending on filer classification. |
+| `equity_method_investments` | `longTermInvestments` OR `otherNonCurrentAssets` | FMP doesn't separate equity-method investees from other long-term investments. |
+| `income_taxes_payable_current` | `accounts_payable` (via `otherPayables` bundling) | **Special case: detail-stored but not disjoint.** FMP exposes `taxPayables` as a DETAIL breakdown of `otherPayables`, with identical value. NVDA Q1 FY25: `taxPayables = otherPayables = $3,881M`. Mapper stores `income_taxes_payable_current` for queryability but does NOT add it to the `total_current_liabilities` tie (accounts_payable bundle already includes it). |
+| `gross_ppe`, `accumulated_depreciation` | `propertyPlantEquipmentNet` (only net is exposed) | FMP provides net PP&E only. |
+| `common_stock_and_apic` (combined XBRL concept) | `commonStock` + `additionalPaidInCapital` (split) | FMP always splits into two fields when the filer reports combined `CommonStocksIncludingAdditionalPaidInCapital`. |
 
-These gaps become relevant when (a) we ingest a filer that has those items, or (b) a formula in `formulas.md` requires one of them. Either case triggers adding an SEC XBRL direct source (Build Order step ~19) to fill the gap.
+### 5.4.2 Income Statement — bundled concepts
 
-For v1 FMP-only ingest, unmapped concepts are stored as NULL with `financial_facts.value = NULL` disallowed by the NOT NULL constraint — meaning the row is simply not written. The absence is auditable via the set of buckets the filer reports (XBRL) minus the set we wrote (FMP).
+| Canonical bucket (concepts.md) | FMP bundles into | How to verify |
+|---|---|---|
+| `general_and_admin_expense`, `selling_and_marketing_expense` | `sellingGeneralAndAdministrativeExpenses` (aggregate, when filer doesn't split) | For split-reporting filers (MSFT, GOOGL, PANW, PLTR, TDG, OKLO, S, UNP, VLO, ET, DELL's G&A-ish): FMP returns non-zero `generalAndAdministrativeExpenses` + `sellingAndMarketingExpenses` AND the aggregate `sellingGeneralAndAdministrativeExpenses = gna + sme`. For non-split filers (NVDA, DELL, CAT, NUE, etc.): gna = sme = 0, sga = filer-reported combined. |
+| Unusual items (`restructuring`, `goodwill_impairment`, `gain_sale_assets`, `gain_sale_investments`) | Variously inside `operatingExpenses`, `otherExpenses`, or not at all | FMP's IS endpoint does not separate unusual items. For analysts needing these, SEC XBRL direct is required. Arrow's `ebt_incl_unusual == incomeBeforeTax` treats them as opaquely included in pre-tax income. |
+| `equity_affiliates` (IS income from equity-method investments) | `otherExpenses` or `nonOperatingIncomeExcludingInterest` | FMP doesn't separate. |
+
+### 5.4.3 Cash Flow — bundled concepts
+
+| Canonical bucket (concepts.md) | FMP bundles into | How to verify |
+|---|---|---|
+| `gain_on_sale_assets_cf`, `gain_on_sale_investments_cf`, `asset_writedown` | `otherNonCashItems` | CF non-cash adjustments that aren't D&A, SBC, or deferred taxes get lumped into the umbrella `otherNonCashItems`. |
+| `change_deferred_revenue`, `change_income_taxes` | `otherWorkingCapital` | Working-capital detail beyond AR/inventory/AP gets lumped into `otherWorkingCapital`. |
+| `divestitures`, `loans_originated`, `loans_collected` | `otherInvestingActivities` | CFI detail beyond capex/acquisitions/investments gets lumped. |
+| `short_term_debt_repayment`, `long_term_debt_repayment` | Net debt issuance (`shortTermNetDebtIssuance` + `longTermNetDebtIssuance`) | FMP reports net (issuance − repayment), not gross. Our mapper puts the NETS into the `*_issuance` buckets; `*_repayment` stay unpopulated. |
+| `special_dividends_paid` | `commonDividendsPaid` (when FMP doesn't split) OR `otherFinancingActivities` | FMP doesn't consistently split special dividends from regular. |
+| `misc_cf_adjustments` | Not applicable — FMP has no such line | Rare — FMP's CFO + CFI + CFF + FX already sums to netChangeInCash without a misc bucket. |
+
+### 5.4.4 What this means for Layer 1 ties
+
+The tie formulas in `verify_bs.py` and `verify_cf.py` have been narrowed to match FMP's data reality. Each removed component is documented above. Specifically:
+
+- **BS `total_current_assets` tie**: omits `restricted_cash_current`, `income_taxes_receivable_current` (FMP-bundled into cash and other-current-assets respectively)
+- **BS `total_assets` tie**: omits `right_of_use_assets_operating`, `equity_method_investments` (FMP-bundled into other-noncurrent and long-term-investments)
+- **BS `total_current_liabilities` tie**: omits `short_term_borrowings`, `current_portion_leases_finance`, `income_taxes_payable_current` (all FMP-bundled)
+- **BS `total_liabilities` tie**: omits `long_term_leases_finance` (FMP-bundled into operating)
+- **CF `cfo` tie**: omits `gain_on_sale_*`, `asset_writedown`, `change_deferred_revenue`, `change_income_taxes` (FMP-bundled into other_noncash and other_wc)
+- **CF `cfi` tie**: omits `divestitures`, `loans_originated`, `loans_collected` (FMP-bundled into other_investing)
+- **CF `cff` tie**: omits `short_term_debt_repayment`, `long_term_debt_repayment`, `special_dividends_paid` (FMP uses net debt fields; no split)
+- **CF `net_change_in_cash` tie**: omits `misc_cf_adjustments` (no FMP equivalent)
+
+When a future SEC XBRL direct ingest path is added (Build Order step 19), a parallel set of ties with the full granularity becomes appropriate — XBRL exposes every concept separately.
+
+---
+
+## 6. Coverage Gaps (post-Phase-1 state)
+
+Canonical concepts that **FMP does not expose separately**, so our mapper leaves unpopulated when sourcing from FMP. Each is documented in § 5.4 with the FMP aggregate it's bundled into. The Layer-1 FMP tie formulas already account for the bundling (do not include these components).
+
+**Balance sheet (7 concepts):**
+- `restricted_cash_current` → inside `cashAndCashEquivalents`
+- `income_taxes_receivable_current` → inside `otherCurrentAssets`
+- `short_term_borrowings` → inside `shortTermDebt`
+- `current_portion_leases_finance` → inside `capitalLeaseObligationsCurrent`
+- `long_term_leases_finance` → inside `capitalLeaseObligationsNonCurrent`
+- `right_of_use_assets_operating` → inside `otherNonCurrentAssets`/PP&E
+- `equity_method_investments` → inside `longTermInvestments`/`otherNonCurrentAssets`
+- `gross_ppe`, `accumulated_depreciation` → FMP exposes only net
+
+**Income statement (2 concept clusters):**
+- Unusual items (`restructuring`, `goodwill_impairment`, `gain_sale_assets`, `gain_sale_investments`): FMP does NOT break these out on the IS endpoint. Arrow's FMP-sourced `ebt_incl_unusual = incomeBeforeTax` treats them as opaquely included in pre-tax income. Populating these requires SEC XBRL direct ingest.
+- `equity_affiliates`: not exposed by FMP.
+
+**Cash flow (7 concepts):**
+- `gain_on_sale_assets_cf`, `gain_on_sale_investments_cf`, `asset_writedown` → inside `otherNonCashItems`
+- `change_deferred_revenue`, `change_income_taxes` → inside `otherWorkingCapital`
+- `divestitures`, `loans_originated`, `loans_collected` → inside `otherInvestingActivities`
+- `short_term_debt_repayment`, `long_term_debt_repayment` → FMP reports net (inside net-issuance fields)
+- `special_dividends_paid` → may be inside `commonDividendsPaid` or `otherFinancingActivities`
+
+These gaps become relevant when (a) a downstream formula in `formulas.md` requires the disjoint split, or (b) we want to catch FMP mis-bundling at Layer 1 on a specific concept. Either case motivates adding an SEC XBRL direct source (Build Order step ~19). XBRL has every concept exposed separately, so a parallel verification path would populate these cleanly.
 
 ---
 
@@ -359,3 +426,49 @@ When FMP changes behavior:
 - It does not specify **metric formulas**. Formulas are in `formulas.md` and compute on the canonical buckets.
 - It does not specify **verification logic**. Subtotal ties, cross-statement invariants, tolerances, and failure modes live in `verification.md`.
 - It does not specify **period logic**. YTD→discrete conversion, Q4 derivation, 52/53-week handling are all in `periods.md`.
+
+---
+
+## 10. FMP Filer-Specific Data Quirks
+
+FMP's normalization is generally excellent across the 20-ticker golden-eval set, but a few filers have systematic or one-off FMP-side data anomalies that Layer 1 catches. This section tracks known quirks so an analyst reviewing a sweep failure can quickly recognize "this is a known FMP quirk" vs. "this is a genuine data-integrity issue."
+
+**Principle:** these are data issues in FMP's output, not bugs in Arrow's mapping. The corresponding quirk fix would be either (a) FMP correcting the data, or (b) a small per-filer notation table, or (c) falling back to SEC XBRL direct for that specific filer/period.
+
+### 10.1 Systematic filer quirks (multi-period)
+
+**ET — Energy Transfer LP. `shortTermInvestments` double-exposure.**  
+Pattern: for every ET period observed (19 of 19 across 2021-2025), FMP exposes `shortTermInvestments` as a non-zero value AND includes it inside `cashAndCashEquivalents`. Our tie sums both (cash + sti + ...) → overcount by exactly the STI amount → `total_current_assets` tie fails by exactly STI.  
+Example: ET 2022-03-31 Q1. cash=$1,111M, sti=$41M, delta=+$41M (= sti).  
+Economics: ET (an MLP) classifies its marketable securities as part of cash and cash equivalents per its policy. FMP's normalization reports it both ways inconsistently.  
+**Parallel to deterministic-flow**: LYB previously had the same issue (see `archive/deterministic-flow/companies/lyb.py`). LYB no longer exhibits it (FMP fixed). ET is the current case.
+
+**FCX — Freeport-McMoRan. `longTermInvestments` double-exposure.**  
+Pattern: for every FCX period 2022-2023 (7 observed), FMP exposes `longTermInvestments = $133-134M` as non-zero AND `otherNonCurrentAssets` is NEGATIVE (e.g., -$1,301M), which suggests FMP's `otherNonCurrentAssets` is already net of long-term investments. Sum-of-components exceeds filer `totalNonCurrentAssets` by exactly `longTermInvestments`.  
+Economics: FCX has specific equity-method investments (Indonesian mining JVs etc.). FMP's classification of these as `longTermInvestments` double-counts against their residual bucket logic.
+
+### 10.2 One-off filing data bugs
+
+**DELL — Q2 FY26 (period_end 2025-08-01).**  
+FMP returned inconsistent component totals for this specific filing only.  
+- `total_current_assets` tie fails by $146M — which exactly equals `RestrictedCashCurrent` in XBRL. FMP bundled restricted cash into `cashAndCashEquivalents` correctly but then reported `totalCurrentAssets` without including it. Other DELL periods tie cleanly.
+- `total_current_liabilities` tie fails by $241M — which exactly equals `OperatingLeaseLiabilityCurrent` in XBRL. FMP omitted this from its Q2 FY26 return (normally populates `capitalLeaseObligationsCurrent`). Other DELL periods include it correctly.  
+Resolution path: wait for FMP to republish corrected data, or skip this specific filing from ingest.
+
+**VLO — FY2025 annual (period_end 2025-12-31).**  
+FMP dumped ALL $23.7B of VLO's stockholders' equity into `otherTotalStockholdersEquity` with all other equity buckets (commonStock, retainedEarnings, APIC, treasuryStock, AOCI) at zero. FY2021-FY2024 are correctly decomposed.  
+Trigger: likely FMP's parser had an issue with VLO's most recent 10-K equity-section structure.  
+Resolution path: FMP republish, or VLO FY2025 annual period is excluded until corrected.
+
+### 10.3 Tolerance-boundary residuals
+
+Some filers have small Layer-1 delta values ($1-20M) on 1-2 periods that sit right at the $1M / 0.1% tolerance boundary. These are typically filer-level rounding between reported subtotals and FMP's sum of FMP's own rounded component values. Not structural issues, not worth per-filer notation. Examples: PANW FY25 Q4 current_assets $10.6M; S FY26 Q3 current_assets $1.8M; OKLO FY23 Q3 equity $1.4M.
+
+### 10.4 How to add a new quirk entry
+
+When a filer's sweep reveals a systematic Layer-1 failure pattern (same tie, same concept, multiple periods):
+
+1. Verify against SEC XBRL directly — is the filer's own 10-K correct? If so, the issue is FMP's normalization.
+2. Check if FMP exposes the problematic value through a different field that we're double-counting (the ET STI pattern).
+3. Document here with: ticker, the tie that fails, the FMP field involved, the economic reason, observed periods, and whether it's single-period (data bug) or systematic (classification quirk).
+4. Decide handling: accept failure, add to a future `fmp_filer_quirks` table, or request FMP correction. Do not write filer-specific Python code — that's the deterministic-flow anti-pattern we've avoided.

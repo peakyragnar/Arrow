@@ -52,31 +52,50 @@ def _val(values: dict[str, Decimal], concept: str) -> Decimal:
 # Each tie: (name, subtotal_name, [(component, sign)])
 # Computed value = sum(components × signs); tie passes if
 # computed ≈ values[subtotal_name] within tolerance.
+# FMP-SOURCED TIES (Layer 1 when FMP is the source):
+# concepts.md § 5 describes the FULL economic vocabulary — every GAAP
+# balance-sheet line analysts might query. Several of those concepts
+# (restricted_cash_current, income_taxes_receivable_current,
+# short_term_borrowings, current_portion_leases_finance, ROU_operating,
+# equity_method_investments, long_term_leases_finance) are NOT separately
+# exposed by FMP — FMP bundles them into higher-level aggregates we
+# already sum here. Including them in these tie formulas would cause
+# strict-coverage failures on every filer without adding integrity value,
+# since the bundled aggregate already reflects them.
+#
+# The ties below reflect what's actually verifiable against FMP's data
+# model. When SEC XBRL direct ingest lands (Build Order step 19), a
+# parallel set of ties with the full concept set becomes appropriate.
 _BS_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
     (
-        "total_current_assets == cash + sti + restricted_cash + AR + other_receivables + inventory + prepaid + itax_receivable + other_current_assets",
+        "total_current_assets == cash + sti + AR + other_receivables + inventory + prepaid + other_current_assets",
         "total_current_assets",
         [
+            # FMP bundles restricted_cash_current into cash_and_equivalents
+            # (observed: DELL FY26 Q2 has RestrictedCashCurrent=$146M reported
+            # in XBRL but folded into FMP's cash, +$146M delta in tie — see
+            # also LYB per deterministic-flow notes). Similarly, FMP folds
+            # income_taxes_receivable_current into otherCurrentAssets.
             ("cash_and_equivalents", +1),
             ("short_term_investments", +1),
-            ("restricted_cash_current", +1),
             ("accounts_receivable", +1),
             ("other_receivables", +1),
             ("inventory", +1),
             ("prepaid_expenses", +1),
-            ("income_taxes_receivable_current", +1),
             ("other_current_assets", +1),
         ],
     ),
     (
-        "total_assets == total_current_assets + net_ppe + ROU_operating + LT_investments + equity_method + goodwill + intangibles + DTA_noncurrent + other_noncurrent",
+        "total_assets == total_current_assets + net_ppe + LT_investments + goodwill + intangibles + DTA_noncurrent + other_noncurrent",
         "total_assets",
         [
+            # FMP doesn't separately expose right_of_use_assets_operating or
+            # equity_method_investments. ROU assets are typically folded into
+            # propertyPlantEquipmentNet or otherNonCurrentAssets. Equity-method
+            # investments are folded into longTermInvestments or otherNonCurrent.
             ("total_current_assets", +1),
             ("net_ppe", +1),
-            ("right_of_use_assets_operating", +1),
             ("long_term_investments", +1),
-            ("equity_method_investments", +1),
             ("goodwill", +1),
             ("other_intangibles", +1),
             ("deferred_tax_assets_noncurrent", +1),
@@ -84,28 +103,31 @@ _BS_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
         ],
     ),
     (
-        "total_current_liabilities == AP + accrued + current_lt_debt + ST_borrowings + lease_current_op + lease_current_fin + itax_payable + deferred_rev_current + other_current",
+        "total_current_liabilities == AP + accrued + current_lt_debt + lease_current_op + deferred_rev_current + other_current",
         "total_current_liabilities",
         [
+            # FMP bundles short_term_borrowings into shortTermDebt → which we
+            # map to current_portion_lt_debt (single bucket). FMP doesn't split
+            # finance vs operating lease current portions. And
+            # income_taxes_payable_current is a detail of accounts_payable
+            # (see fmp_bs_mapper.py:67 bundling accountPayables + otherPayables).
             ("accounts_payable", +1),
             ("accrued_expenses", +1),
             ("current_portion_lt_debt", +1),
-            ("short_term_borrowings", +1),
             ("current_portion_leases_operating", +1),
-            ("current_portion_leases_finance", +1),
-            ("income_taxes_payable_current", +1),
             ("deferred_revenue_current", +1),
             ("other_current_liabilities", +1),
         ],
     ),
     (
-        "total_liabilities == total_current_liab + LT_debt + LT_lease_op + LT_lease_fin + deferred_rev_noncurrent + DTL + other_noncurrent_liab",
+        "total_liabilities == total_current_liab + LT_debt + LT_lease_op + deferred_rev_noncurrent + DTL + other_noncurrent_liab",
         "total_liabilities",
         [
+            # FMP doesn't split finance vs operating leases in the noncurrent
+            # portion either. The single operating-lease bucket is sufficient.
             ("total_current_liabilities", +1),
             ("long_term_debt", +1),
             ("long_term_leases_operating", +1),
-            ("long_term_leases_finance", +1),
             ("deferred_revenue_noncurrent", +1),
             ("deferred_tax_liability_noncurrent", +1),
             ("other_noncurrent_liabilities", +1),
@@ -122,7 +144,7 @@ _BS_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
     # per the "FMP is canonical" principle. Concepts.md + fmp_mapping.md
     # updated accordingly.
     (
-        "total_equity == preferred + common_stock + APIC + treasury + retained_earnings + AOCI + NCI",
+        "total_equity == preferred + common_stock + APIC + treasury + retained_earnings + AOCI + other_equity + NCI",
         "total_equity",
         [
             ("preferred_stock", +1),
@@ -131,6 +153,7 @@ _BS_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
             ("treasury_stock", +1),  # FMP stores signed (negative for buybacks)
             ("retained_earnings", +1),
             ("accumulated_other_comprehensive_income", +1),
+            ("other_equity", +1),  # FMP reconciliation plug; see concepts.md § 5.5
             ("noncontrolling_interest", +1),
         ],
     ),
@@ -152,14 +175,32 @@ _BS_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
 
 
 def verify_bs_ties(values_by_concept: dict[str, Decimal]) -> list[TieFailure]:
-    """Return the list of ties that failed (empty = all passed)."""
+    """Return the list of ties that failed (empty = all passed).
+
+    STRICT coverage: every component (AND the subtotal) referenced by a tie
+    must be present in `values_by_concept`. Missing components surface as
+    COVERAGE MISSING TieFailure entries. The historical `_val()` fallback
+    (treat absent as zero) is gone — zero must be explicitly emitted by the
+    mapper if the filer reports zero, so that "absent" always means coverage
+    gap, not "filer had nothing."
+    """
     failures: list[TieFailure] = []
     for name, subtotal, components in _BS_TIES:
-        if subtotal not in values_by_concept:
-            continue  # can't check if the reported subtotal itself is absent
+        component_concepts = [c for c, _sign in components]
+        required = [subtotal] + component_concepts
+        missing = [c for c in required if c not in values_by_concept]
+        if missing:
+            failures.append(TieFailure(
+                tie=f"COVERAGE MISSING [{', '.join(missing)}] in {name}",
+                filer=Decimal(0),
+                computed=Decimal(0),
+                delta=Decimal(0),
+                tolerance=Decimal(0),
+            ))
+            continue
         filer = values_by_concept[subtotal]
         computed = sum(
-            (_val(values_by_concept, c) * s for c, s in components),
+            (values_by_concept[c] * s for c, s in components),
             start=Decimal("0"),
         )
         ok, delta, threshold = _within_tolerance(filer, computed)

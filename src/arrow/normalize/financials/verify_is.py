@@ -73,16 +73,41 @@ _IS_TIES: list[tuple[str, list[str], list[tuple[str, int]]]] = [
         ["continuing_ops_after_tax", "discontinued_ops", "net_income"],
         [("continuing_ops_after_tax", +1), ("discontinued_ops", +1)],
     ),
+    # Post-NCI vs pre-NCI reconciliation (concepts.md § 4.6). Tautological
+    # by the mapper's derivation of minority_interest, but retained as a
+    # contract guard — any future mapper change that breaks this relationship
+    # fails loudly.
+    (
+        "net_income_attributable_to_parent == net_income - minority_interest",
+        ["net_income", "minority_interest", "net_income_attributable_to_parent"],
+        [("net_income", +1), ("minority_interest", -1)],
+    ),
 ]
 
 
 def verify_is_ties(values_by_concept: dict[str, Decimal]) -> list[TieFailure]:
-    """Return the list of ties that failed (empty = all ties passed or skipped)."""
+    """Return the list of ties that failed (empty = all ties passed).
+
+    STRICT coverage: every component referenced by a tie must be present in
+    `values_by_concept`. A missing component is reported as a TieFailure with
+    a distinctive tie name (`COVERAGE MISSING ...`) so callers can
+    distinguish structural-bridge gaps from numeric-tie failures. There is
+    no silent-skip path: the ingest contract is that the mapper must emit
+    every concept our verifier checks.
+    """
     failures: list[TieFailure] = []
 
     for name, required, components in _IS_TIES:
-        if any(c not in values_by_concept for c in required):
-            continue  # SUPPRESS: skip tie when any component is absent
+        missing = [c for c in required if c not in values_by_concept]
+        if missing:
+            failures.append(TieFailure(
+                tie=f"COVERAGE MISSING [{', '.join(missing)}] in {name}",
+                filer=Decimal(0),
+                computed=Decimal(0),
+                delta=Decimal(0),
+                tolerance=Decimal(0),
+            ))
+            continue
         filer = values_by_concept[required[-1]]
         computed = sum(
             (values_by_concept[concept] * sign for concept, sign in components),

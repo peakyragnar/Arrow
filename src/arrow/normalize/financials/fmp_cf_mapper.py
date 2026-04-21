@@ -69,7 +69,14 @@ _CF_BUCKETS: list[tuple[str, list[str], str]] = [
     # repayment when needed.
     ("short_term_debt_issuance",       ["shortTermNetDebtIssuance"],           "USD"),
     ("long_term_debt_issuance",        ["longTermNetDebtIssuance"],            "USD"),
-    ("stock_issuance",                 ["commonStockIssuance"],                "USD"),
+    # Bundle common + preferred issuance into stock_issuance. FMP exposes
+    # preferred as a NET figure (netPreferredStockIssuance) rather than
+    # splitting gross issuance vs repurchase — acceptable because preferred
+    # stock activity is rare; when present (e.g., TDG FY2022 FY = $132M),
+    # we count it here to keep the CFF subtotal tie clean. If a future
+    # analyst needs the preferred/common split, SEC XBRL direct ingest has
+    # the gross concepts separately.
+    ("stock_issuance",                 ["commonStockIssuance", "netPreferredStockIssuance"], "USD"),
     ("stock_repurchase",               ["commonStockRepurchased"],             "USD"),
     ("common_dividends_paid",          ["commonDividendsPaid"],                "USD"),
     ("preferred_dividends_paid",       ["preferredDividendsPaid"],             "USD"),

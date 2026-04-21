@@ -46,6 +46,11 @@ _BS_BUCKETS: list[tuple[str, list[str], str]] = [
     ("cash_and_equivalents",           ["cashAndCashEquivalents"],         "USD"),
     ("short_term_investments",         ["shortTermInvestments"],           "USD"),
     ("accounts_receivable",            ["accountsReceivables"],            "USD"),
+    # Non-trade current receivables. For filers with a financing arm (Dell
+    # DFS, CAT financing, ADM merchandising receivables, etc.) this is a
+    # material component of current assets; for filers without, it's absent
+    # or zero. Per concepts.md § 5.1.
+    ("other_receivables",              ["otherReceivables"],               "USD"),
     ("inventory",                      ["inventory"],                      "USD"),
     ("prepaid_expenses",               ["prepaids"],                       "USD"),
     ("other_current_assets",           ["otherCurrentAssets"],             "USD"),
@@ -76,6 +81,9 @@ _BS_BUCKETS: list[tuple[str, list[str], str]] = [
     # (see fmp_mapping.md § 5.2 note). Map to operating-lease bucket.
     ("current_portion_leases_operating", ["capitalLeaseObligationsCurrent"], "USD"),
     ("deferred_revenue_current",       ["deferredRevenue"],                "USD"),
+    # Income taxes payable separately on the BS when filer reports it; null
+    # otherwise. 16/20 golden-eval tickers expose this. Per concepts.md § 5.x.
+    ("income_taxes_payable_current",   ["taxPayables"],                    "USD"),
     ("other_current_liabilities",      ["otherCurrentLiabilities"],        "USD"),
     ("total_current_liabilities",      ["totalCurrentLiabilities"],        "USD"),
     # --- Noncurrent liabilities ---
@@ -93,6 +101,12 @@ _BS_BUCKETS: list[tuple[str, list[str], str]] = [
     ("treasury_stock",                 ["treasuryStock"],                  "USD"),
     ("accumulated_other_comprehensive_income",
                                        ["accumulatedOtherComprehensiveIncomeLoss"], "USD"),
+    # Reconciliation plug: equity lines FMP couldn't classify into the
+    # standard 6 buckets above. For most filers this is 0; for filers with
+    # cumulative translation adjustments reported separately, partners'
+    # capital, or other specific equity items, it carries the residual that
+    # makes the total_equity identity hold. See concepts.md § 5.5.
+    ("other_equity",                   ["otherTotalStockholdersEquity"],   "USD"),
     ("noncontrolling_interest",        ["minorityInterest"],               "USD"),
     ("total_equity",                   ["totalEquity"],                    "USD"),
     ("total_liabilities_and_equity",   ["totalLiabilitiesAndTotalEquity"], "USD"),

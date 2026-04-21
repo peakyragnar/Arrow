@@ -70,7 +70,8 @@ IS_ANCHORS: tuple[str, ...] = (
     "gross_profit",
     "operating_income",
     "ebt_incl_unusual",
-    "net_income",
+    "net_income",                         # PRE-NCI (concepts.md § 4.6)
+    "net_income_attributable_to_parent",  # POST-NCI; for non-NCI filers == net_income
 )
 
 # BS anchor set — the top-line balance-sheet figures. `total_assets` and
