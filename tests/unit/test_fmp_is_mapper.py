@@ -1,6 +1,7 @@
 """Unit tests for the FMP income-statement -> canonical buckets mapper.
 
-Tests the 18 verified buckets from fmp_mapping.md § 5.1. Fixture uses
+Tests the current FMP IS contract, including the NCI-aware net-income
+chain. Fixture uses
 real NVDA FY2026 Q4 values (period ending 2026-01-25) — see
 data/raw/fmp/income-statement/NVDA/quarter.json for provenance.
 """
@@ -52,7 +53,7 @@ def _by_concept(facts: list[MappedFact]) -> dict[str, MappedFact]:
 
 def test_maps_all_18_verified_buckets() -> None:
     facts = map_income_statement_row(_NVDA_FY26_Q4_ROW)
-    assert len(facts) == 18
+    assert len(facts) == 20
 
 
 def test_usd_magnitudes_carry_usd_unit() -> None:
@@ -62,6 +63,7 @@ def test_usd_magnitudes_carry_usd_unit() -> None:
         "operating_income", "interest_expense", "interest_income",
         "ebt_incl_unusual", "tax", "continuing_ops_after_tax",
         "discontinued_ops", "net_income",
+        "net_income_attributable_to_parent", "minority_interest",
     ]:
         assert facts[concept].unit == "USD", f"{concept} should be USD"
 
@@ -96,6 +98,8 @@ def test_values_match_fmp_fields_exactly() -> None:
         "continuing_ops_after_tax":    Decimal("42960000000"),
         "discontinued_ops":            Decimal("0"),
         "net_income":                  Decimal("42960000000"),
+        "net_income_attributable_to_parent": Decimal("42960000000"),
+        "minority_interest":           Decimal("0"),
         "eps_basic":                   Decimal("1.77"),
         "eps_diluted":                 Decimal("1.76"),
         "shares_basic_weighted_avg":   Decimal("24304000000"),

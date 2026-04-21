@@ -32,12 +32,13 @@ def test_mapping_for_unknown_bucket_returns_none() -> None:
     assert mapping_for("") is None
 
 
-def test_all_mappings_cover_the_18_verified_is_buckets() -> None:
+def test_all_mappings_cover_the_current_is_buckets() -> None:
     expected = {
         "revenue", "cogs", "gross_profit", "rd", "sga", "total_opex",
         "operating_income", "interest_expense", "interest_income",
         "ebt_incl_unusual", "tax", "continuing_ops_after_tax",
         "discontinued_ops", "net_income",
+        "net_income_attributable_to_parent", "minority_interest",
         "eps_basic", "eps_diluted",
         "shares_basic_weighted_avg", "shares_diluted_weighted_avg",
     }

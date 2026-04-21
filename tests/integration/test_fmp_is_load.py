@@ -5,7 +5,7 @@ and annual rows (from the cached FMP response) so verification ties pass.
 
 Asserts:
   - raw_responses rows (one per period_type)
-  - financial_facts: 18 verified buckets per period; two-clocks columns correct;
+  - financial_facts: current IS contract per period; two-clocks columns correct;
     PIT columns set
   - ingest_runs success with counts
   - Idempotency: re-running supersedes old rows + writes new ones, net zero
@@ -307,8 +307,9 @@ def test_backfill_writes_raw_and_facts_end_to_end() -> None:
         assert counts["raw_responses"] == 7
         # 6 FMP rows (1 per payload × 6 payloads: IS q/a, BS q/a, CF q/a)
         assert counts["rows_processed"] == 6
-        # IS: 18 buckets × 2 periods = 36
-        assert counts["is_facts_written"] == 36
+        # IS: 20 buckets × 2 periods = 40 (NVDA fixture omits gna/sme, includes
+        # parent-NI + minority_interest derived chain).
+        assert counts["is_facts_written"] == 40
         assert counts["is_facts_superseded"] == 0
         assert counts["bs_facts_written"] > 0
         assert counts["bs_facts_superseded"] == 0
@@ -324,7 +325,7 @@ def test_backfill_writes_raw_and_facts_end_to_end() -> None:
                 """,
                 (company_id,),
             )
-            assert cur.fetchone()[0] == 36
+            assert cur.fetchone()[0] == 40
 
             # Two-clocks columns populated for the Q4 quarter row.
             cur.execute(
@@ -394,7 +395,7 @@ def test_backfill_writes_raw_and_facts_end_to_end() -> None:
             assert status == "succeeded"
             assert vendor == "fmp"
             assert run_kind == "manual"
-            assert run_counts["is_facts_written"] == 36
+            assert run_counts["is_facts_written"] == 40
             assert run_counts["bs_facts_written"] > 0
             assert run_counts["cf_facts_written"] > 0
 

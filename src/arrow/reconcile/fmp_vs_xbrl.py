@@ -6,13 +6,13 @@ match, FMP's top-line normalization is trustworthy; internal arithmetic
 (Layer 1) and period arithmetic (Layer 3) propagate that confidence to
 the rest of the chain.
 
-Anchors (IS only in Slice 2a; BS/CF anchors added when those ingest slices
-land):
+Anchors:
     revenue            — the IS top line
     gross_profit       — margin structure
     operating_income   — operating performance
     ebt_incl_unusual   — pre-tax figure
-    net_income         — the IS bottom line
+    net_income         — pre-NCI consolidated bottom line
+    net_income_attributable_to_parent — post-NCI parent NI
 
 For each anchor × period_end × period_type that we have stored:
   quarterly Q1/Q2/Q3 → match against XBRL's 3-month discrete fact
@@ -36,7 +36,8 @@ What this does NOT catch:
   - Concepts outside the anchor set. Those are trusted via Layer 1 ties.
 
 Tolerance: max($1M, 0.1% of larger absolute value). Same as Layer 1.
-HARD BLOCK on any divergence.
+This module only reports divergences; the caller decides whether they are
+hard-blocking or soft-flagged. Inline backfill currently soft-flags them.
 
 Per-share and share-count buckets are NOT anchors. FMP back-adjusts for
 splits, SEC XBRL does not — apples to oranges. Internal relation

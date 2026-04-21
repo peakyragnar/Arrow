@@ -351,13 +351,14 @@ def test_non_anchor_concepts_are_not_checked() -> None:
     assert result.anchors_checked == 0
 
 
-def test_is_anchors_cover_the_five_expected_subtotals() -> None:
+def test_is_anchors_cover_the_current_expected_subtotals() -> None:
     assert set(IS_ANCHORS) == {
         "revenue",
         "gross_profit",
         "operating_income",
         "ebt_incl_unusual",
         "net_income",
+        "net_income_attributable_to_parent",
     }
 
 

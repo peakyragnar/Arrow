@@ -164,7 +164,12 @@ def test_stored_facts_still_tie_after_ingest() -> None:
 
     def _fake_get(self, endpoint: str, **params) -> Response:  # noqa: ARG001
         import json
-        body = json.dumps(rows if params["period"] == "quarter" else []).encode()
+        if endpoint == "income-statement":
+            body = json.dumps(rows if params["period"] == "quarter" else []).encode()
+        elif endpoint in ("balance-sheet-statement", "cash-flow-statement"):
+            body = b"[]"
+        else:
+            raise AssertionError(f"unexpected endpoint: {endpoint}")
         return Response(
             status=200, body=body, content_type="application/json",
             headers={"content-type": "application/json"}, url="https://mock/",

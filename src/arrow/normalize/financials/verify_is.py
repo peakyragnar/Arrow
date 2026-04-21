@@ -1,9 +1,10 @@
 """IS subtotal-tie verification (verification.md Layer 1, § 2.1).
 
 HARD BLOCK. The load aborts the ingest run if any tie fails. Ties where
-at least one component is missing from the mapped data are SKIPPED
-rather than failing — this matches the Layer 1 + component-guard
-interaction in verification.md.
+at least one component is missing from the mapped data are skipped
+rather than failed — this matches the Layer 1 + component-guard
+interaction in verification.md and lets filer-optional / source-missing
+concepts stay null without turning absence into a false hard failure.
 
 For FMP-sourced IS, four ties can be checked end-to-end (all components
 are in FMP's verified field set):
@@ -88,25 +89,16 @@ _IS_TIES: list[tuple[str, list[str], list[tuple[str, int]]]] = [
 def verify_is_ties(values_by_concept: dict[str, Decimal]) -> list[TieFailure]:
     """Return the list of ties that failed (empty = all ties passed).
 
-    STRICT coverage: every component referenced by a tie must be present in
-    `values_by_concept`. A missing component is reported as a TieFailure with
-    a distinctive tie name (`COVERAGE MISSING ...`) so callers can
-    distinguish structural-bridge gaps from numeric-tie failures. There is
-    no silent-skip path: the ingest contract is that the mapper must emit
-    every concept our verifier checks.
+    Component-guard semantics: if a required component for a tie isn't
+    present in `values_by_concept`, that tie is suppressed rather than
+    failed. This is required for FMP-sourced ingest, where some concepts are
+    legitimately filer-optional (e.g. discontinued_ops usually 0/absent) or
+    source-absent (e.g. the NCI reconciliation on non-NCI filers).
     """
     failures: list[TieFailure] = []
 
     for name, required, components in _IS_TIES:
-        missing = [c for c in required if c not in values_by_concept]
-        if missing:
-            failures.append(TieFailure(
-                tie=f"COVERAGE MISSING [{', '.join(missing)}] in {name}",
-                filer=Decimal(0),
-                computed=Decimal(0),
-                delta=Decimal(0),
-                tolerance=Decimal(0),
-            ))
+        if any(c not in values_by_concept for c in required):
             continue
         filer = values_by_concept[required[-1]]
         computed = sum(
