@@ -268,6 +268,132 @@ def _fetch_xbrl_payload(
         return fetched.payload
 
 
+def _write_layer2_flags(
+    conn: psycopg.Connection,
+    *,
+    company_id: int,
+    failures: list[CrossStatementFailure],
+    ingest_run_id: int,
+) -> None:
+    """Write each Layer 2 cross-statement failure as a data_quality_flag.
+
+    These catch vendor-internal inconsistency (FMP IS vs FMP CF disagreement
+    on the same net_income), cash/restricted-cash classification drift, etc.
+    The data still loads; analyst reviews flags and resolves via manual
+    supersession if they care for their specific analysis.
+    """
+    from decimal import Decimal
+    for f in failures:
+        ref = max(abs(f.lhs_value), abs(f.rhs_value))
+        if ref == 0:
+            severity = "investigate"
+        else:
+            pct = abs(f.delta) / ref
+            if pct < Decimal("0.01"):
+                severity = "informational"
+            elif pct < Decimal("0.10"):
+                severity = "warning"
+            else:
+                severity = "investigate"
+        reason = (
+            f"Layer 2 cross-statement tie failed: {f.tie}. "
+            f"LHS={f.lhs_value:,.0f}, RHS={f.rhs_value:,.0f}, "
+            f"delta={f.delta:,.0f} (tolerance {f.tolerance:,.0f}). "
+            f"Typically caused by vendor-internal inconsistency (FMP's IS "
+            f"and CF endpoints reporting different pre-NCI net income) or "
+            f"cash/restricted-cash classification drift. FMP values retained; "
+            f"analyst review needed if this concept matters for your analysis."
+        )
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO data_quality_flags (
+                    company_id, statement, concept, fiscal_year, fiscal_quarter,
+                    period_end, period_type,
+                    flag_type, severity,
+                    expected_value, computed_value, delta, tolerance,
+                    reason, source_run_id
+                ) VALUES (
+                    %s, 'cross_statement', %s, %s, %s,
+                    %s, %s,
+                    'layer2_cross_statement', %s,
+                    %s, %s, %s, %s,
+                    %s, %s
+                );
+                """,
+                (
+                    company_id, f.tie, f.fiscal_year, f.fiscal_quarter,
+                    f.period_end, f.period_type,
+                    severity,
+                    f.lhs_value, f.rhs_value, f.delta, f.tolerance,
+                    reason, ingest_run_id,
+                ),
+            )
+
+
+def _write_layer5_flags(
+    conn: psycopg.Connection,
+    *,
+    company_id: int,
+    statement: str,
+    divergences: list,
+    ingest_run_id: int,
+) -> None:
+    """Write each Layer 5 XBRL anchor divergence as a data_quality_flag.
+
+    Divergences mean FMP's stored value disagrees with SEC XBRL's latest-filed
+    value for the same (concept, period). Typically FMP hasn't picked up a
+    comparative-period restatement. XBRL value is often more authoritative
+    (since it's SEC's own filing record), but analyst confirms.
+    """
+    from decimal import Decimal
+    for d in divergences:
+        ref = max(abs(d.fmp_value), abs(d.xbrl_value))
+        if ref == 0:
+            severity = "investigate"
+        else:
+            pct = abs(d.delta) / ref
+            if pct < Decimal("0.01"):
+                severity = "informational"
+            elif pct < Decimal("0.10"):
+                severity = "warning"
+            else:
+                severity = "investigate"
+        reason = (
+            f"Layer 5 anchor divergence: FMP stores {d.fmp_value:,.0f} but "
+            f"SEC XBRL ({d.xbrl_tag}, accn {d.xbrl_accn}, filed {d.xbrl_filed}) "
+            f"reports {d.xbrl_value:,.0f}. Derivation: {d.derivation}. "
+            f"Delta = {d.delta:,.0f} (tolerance {d.tolerance:,.0f}). "
+            f"Typically FMP missed a comparative-period restatement; "
+            f"XBRL value is usually authoritative. Analyst verifies."
+        )
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO data_quality_flags (
+                    company_id, statement, concept, fiscal_year, fiscal_quarter,
+                    period_end, period_type,
+                    flag_type, severity,
+                    expected_value, computed_value, delta, tolerance, suggested_value,
+                    reason, source_run_id
+                ) VALUES (
+                    %s, %s, %s, %s, %s,
+                    %s, %s,
+                    'layer5_xbrl_anchor', %s,
+                    %s, %s, %s, %s, %s,
+                    %s, %s
+                );
+                """,
+                (
+                    company_id, statement, d.concept, d.fiscal_year, d.fiscal_quarter,
+                    d.period_end, d.period_type,
+                    severity,
+                    d.fmp_value, d.xbrl_value, d.delta, d.tolerance, d.xbrl_value,
+                    reason, ingest_run_id,
+                ),
+            )
+
+
 def _count_cf_periods(conn: psycopg.Connection, *, company_id: int) -> int:
     """Count distinct (period_end, period_type) pairs in stored CF data
     — upper bound on Layer 2 cross-statement ties we can check."""
@@ -484,50 +610,21 @@ def backfill_fmp_statements(
             )
 
             if is_l3 or cf_l3:
-                # Attempt amendment resolution. The agent either resolves (returns
-                # AmendmentResult.status == "amended") or raises UnresolvableAmendment.
-                from arrow.agents.amendment_detect import (
-                    detect_and_apply_amendments,
-                    UnresolvableAmendment,
+                # Layer 3 is a soft gate. The amendment agent attempts XBRL
+                # supersession for clean cases; remaining anomalies are written
+                # as rows in data_quality_flags for analyst review. The agent
+                # NEVER raises — ingest always proceeds past Layer 3.
+                from arrow.agents.amendment_detect import detect_and_apply_amendments
+                amend_result = detect_and_apply_amendments(
+                    conn, company_id=company.id, company_cik=company.cik,
+                    ingest_run_id=run_id,
                 )
-                try:
-                    amend_result = detect_and_apply_amendments(
-                        conn, company_id=company.id, company_cik=company.cik,
-                        ingest_run_id=run_id,
-                    )
-                    counts.setdefault("amendment_supersessions", 0)
-                    counts["amendment_supersessions"] += len(amend_result.supersessions_applied)
-                    counts.setdefault("amendment_status_by_ticker", {})
-                    counts["amendment_status_by_ticker"][ticker.upper()] = amend_result.status
-                except UnresolvableAmendment as e:
-                    # Re-raise as PeriodArithmeticViolation with the unresolvable
-                    # reason attached, so downstream error handling is consistent.
-                    combined = is_l3 + cf_l3
-                    exc = PeriodArithmeticViolation(
-                        combined,
-                        statement="income_statement" if is_l3 else "cash_flow",
-                    )
-                    exc.unresolvable_reason = e.reason  # type: ignore[attr-defined]
-                    exc.unresolvable_diagnostics = e.diagnostics  # type: ignore[attr-defined]
-                    raise exc from e
-
-                # Re-run Layer 3 after supersession just to confirm cleanly (defense in depth).
-                is_l3 = _run_layer3(
-                    conn, company,
-                    statement="income_statement",
-                    extraction_version=IS_EXTRACTION_VERSION,
-                )
-                cf_l3 = _run_layer3(
-                    conn, company,
-                    statement="cash_flow",
-                    extraction_version=CF_EXTRACTION_VERSION,
-                )
-                # Note: _run_layer3 still uses the FMP extraction_version filter, so
-                # after amendment it may still show "failures" for concepts where the
-                # FMP Q rows were superseded. The correct post-amendment state is
-                # verified INSIDE detect_and_apply_amendments via
-                # _reverify_layer3_for_fiscal_year which reads current rows across
-                # all extraction_versions. Don't raise here on the FMP-scoped output.
+                counts.setdefault("amendment_supersessions", 0)
+                counts["amendment_supersessions"] += len(amend_result.supersessions_applied)
+                counts.setdefault("amendment_flags_written", 0)
+                counts["amendment_flags_written"] += amend_result.flags_written
+                counts.setdefault("amendment_status_by_ticker", {})
+                counts["amendment_status_by_ticker"][ticker.upper()] = amend_result.status
 
             counts["is_layer3_identities_checked"] += _count_layer3_identities(
                 conn, company_id=company.id,
@@ -548,6 +645,17 @@ def backfill_fmp_statements(
             counts["raw_responses"] += 1
 
             # --- Layer 2: cross-statement ties (IS ↔ BS ↔ CF) ---
+            # SOFT GATE: Layer 2 failures are written as flags in
+            # data_quality_flags rather than raising. Most Layer 2 failures
+            # catch vendor-internal inconsistency (FMP's IS endpoint and CF
+            # endpoint disagree on the same "net income" for the same
+            # period) or timing mismatches (BS cash snapshot vs CF
+            # cash_end_of_period with restricted-cash classification drift).
+            # These are real data issues worth surfacing, but they shouldn't
+            # block ingest — the data itself is still loadable and usable
+            # with appropriate annotation. Analyst reviews flags and
+            # resolves via manual supersession if they care for their
+            # specific analysis.
             cross_failures = verify_cross_statement_ties(
                 conn,
                 company_id=company.id,
@@ -557,7 +665,12 @@ def backfill_fmp_statements(
                 companyfacts=xbrl_payload,
             )
             if cross_failures:
-                raise CrossStatementViolation(cross_failures)
+                _write_layer2_flags(
+                    conn, company_id=company.id,
+                    failures=cross_failures, ingest_run_id=run_id,
+                )
+                counts.setdefault("layer2_flags_written", 0)
+                counts["layer2_flags_written"] += len(cross_failures)
             # 4 ties per CF period: NI, cash_end, cash_begin, net_change.
             # Ties 4/5 skip on the first window period (no prior BS),
             # so "evaluated" is an upper bound.
@@ -565,11 +678,15 @@ def backfill_fmp_statements(
                 conn, company_id=company.id,
             ) * 4
 
+            # --- Layer 5: XBRL anchor match (SOFT GATE) ---
+            # Divergences between FMP and SEC XBRL are written as flags rather
+            # than raising. These catch cases where FMP's normalization differs
+            # from SEC's (often because FMP didn't pick up in-10-K or in-later-10-Q
+            # comparative restatements that XBRL does have). The data still
+            # loads; analyst sees which concepts disagree with SEC and reviews.
             is_result = reconcile_is_anchors(
-                conn,
-                company_id=company.id,
-                extraction_version=IS_EXTRACTION_VERSION,
-                companyfacts=xbrl_payload,
+                conn, company_id=company.id,
+                extraction_version=IS_EXTRACTION_VERSION, companyfacts=xbrl_payload,
             )
             counts["is_anchors_stored"] += is_result.anchors_with_fmp_stored
             counts["is_anchors_checked"] += is_result.anchors_checked
@@ -579,13 +696,16 @@ def backfill_fmp_statements(
                     "concept": concept, "period_end": pe.isoformat(), "period_type": pt,
                 })
             if is_result.divergences:
-                raise XBRLDivergenceFailed(is_result, statement="income_statement")
+                _write_layer5_flags(
+                    conn, company_id=company.id, statement="income_statement",
+                    divergences=is_result.divergences, ingest_run_id=run_id,
+                )
+                counts.setdefault("layer5_flags_written", 0)
+                counts["layer5_flags_written"] += len(is_result.divergences)
 
             bs_result = reconcile_bs_anchors(
-                conn,
-                company_id=company.id,
-                extraction_version=BS_EXTRACTION_VERSION,
-                companyfacts=xbrl_payload,
+                conn, company_id=company.id,
+                extraction_version=BS_EXTRACTION_VERSION, companyfacts=xbrl_payload,
             )
             counts["bs_anchors_stored"] += bs_result.anchors_with_fmp_stored
             counts["bs_anchors_checked"] += bs_result.anchors_checked
@@ -595,13 +715,16 @@ def backfill_fmp_statements(
                     "concept": concept, "period_end": pe.isoformat(), "period_type": pt,
                 })
             if bs_result.divergences:
-                raise XBRLDivergenceFailed(bs_result, statement="balance_sheet")
+                _write_layer5_flags(
+                    conn, company_id=company.id, statement="balance_sheet",
+                    divergences=bs_result.divergences, ingest_run_id=run_id,
+                )
+                counts.setdefault("layer5_flags_written", 0)
+                counts["layer5_flags_written"] += len(bs_result.divergences)
 
             cf_result = reconcile_cf_anchors(
-                conn,
-                company_id=company.id,
-                extraction_version=CF_EXTRACTION_VERSION,
-                companyfacts=xbrl_payload,
+                conn, company_id=company.id,
+                extraction_version=CF_EXTRACTION_VERSION, companyfacts=xbrl_payload,
             )
             counts["cf_anchors_stored"] += cf_result.anchors_with_fmp_stored
             counts["cf_anchors_checked"] += cf_result.anchors_checked
@@ -611,7 +734,12 @@ def backfill_fmp_statements(
                     "concept": concept, "period_end": pe.isoformat(), "period_type": pt,
                 })
             if cf_result.divergences:
-                raise XBRLDivergenceFailed(cf_result, statement="cash_flow")
+                _write_layer5_flags(
+                    conn, company_id=company.id, statement="cash_flow",
+                    divergences=cf_result.divergences, ingest_run_id=run_id,
+                )
+                counts.setdefault("layer5_flags_written", 0)
+                counts["layer5_flags_written"] += len(cf_result.divergences)
 
     except VerificationFailed as e:
         close_failed(

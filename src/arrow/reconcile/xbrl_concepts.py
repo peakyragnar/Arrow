@@ -51,10 +51,37 @@ _IS_MAPPINGS: tuple[XBRLConceptMapping, ...] = (
         "USD",
     ),
     XBRLConceptMapping("operating_income", ("OperatingIncomeLoss",), "USD"),
-    XBRLConceptMapping("interest_expense", ("InterestExpense",), "USD"),
+    # Interest expense: filers tag this variously depending on whether
+    # interest is part of operations (banks etc. — out of scope for our
+    # non-financial universe) or below the operating line. Non-financial
+    # filers typically use `InterestExpense` OR `InterestExpenseNonoperating`
+    # (DELL uses the latter). `InterestExpenseDebt` is a subset (interest
+    # on debt specifically). All three are acceptable sources for our
+    # canonical `interest_expense`.
+    XBRLConceptMapping(
+        "interest_expense",
+        (
+            "InterestExpense",
+            "InterestExpenseNonoperating",
+            "InterestExpenseDebt",
+        ),
+        "USD",
+    ),
+    # Interest income: similar pattern. Filers variously use
+    # InvestmentIncomeInterest / InterestIncomeOperating / InterestIncomeNonoperating.
+    # `InvestmentIncomeInterestAndDividend` is the combined concept some filers
+    # use (DELL, others) — technically conflates interest + dividend income, but
+    # for non-financial filers dividend income is typically negligible (<1% of
+    # total investment income), so using it as fallback is empirically safe.
+    # If a filer has meaningful dividend income, Layer 5 XBRL anchor would flag it.
     XBRLConceptMapping(
         "interest_income",
-        ("InvestmentIncomeInterest", "InterestIncomeOperating"),
+        (
+            "InvestmentIncomeInterest",
+            "InterestIncomeOperating",
+            "InterestIncomeNonoperating",
+            "InvestmentIncomeInterestAndDividend",
+        ),
         "USD",
     ),
     XBRLConceptMapping(
@@ -144,6 +171,11 @@ _CF_MAPPINGS: tuple[XBRLConceptMapping, ...] = (
     XBRLConceptMapping("cfo", ("NetCashProvidedByUsedInOperatingActivities",), "USD"),
     XBRLConceptMapping("cfi", ("NetCashProvidedByUsedInInvestingActivities",), "USD"),
     XBRLConceptMapping("cff", ("NetCashProvidedByUsedInFinancingActivities",), "USD"),
+    # CF `net_income_start` = pre-NCI consolidated, same as IS `net_income`.
+    # Maps to ProfitLoss (primary) with NetIncomeLoss fallback for non-NCI
+    # filers. When the amendment agent supersedes IS.net_income it MUST
+    # also supersede CF.net_income_start to preserve Layer 2.
+    XBRLConceptMapping("net_income_start", ("ProfitLoss", "NetIncomeLoss"), "USD"),
     XBRLConceptMapping(
         "capital_expenditures",
         (

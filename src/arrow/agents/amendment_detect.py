@@ -27,6 +27,7 @@ ever persisted.
 
 from __future__ import annotations
 
+import json as _json
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -132,11 +133,16 @@ class SupersessionCandidate:
 
 @dataclass
 class AmendmentResult:
-    status: str  # "clean" | "amended" | "unresolvable"
+    status: str
+    # status values:
+    #   "clean"               — no Layer 3 failures; nothing to do
+    #   "amended"             — all L3 failures auto-resolved via supersession; no flags written
+    #   "partially_amended"   — some L3 resolved via supersession, residuals written as flags
+    #   "unresolved_flagged"  — no supersessions applied (no XBRL candidates, or they'd break L1);
+    #                           all Layer 3 failures written as flags
     supersessions_applied: list[SupersessionCandidate] = field(default_factory=list)
     fiscal_years_checked: list[tuple[str, int]] = field(default_factory=list)
-    unresolvable_reason: str | None = None
-    unresolvable_diagnostics: dict[str, Any] | None = None
+    flags_written: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -482,20 +488,14 @@ def _derive_identity_candidates(
             if abs(derived_val - fmp_row["value"]) < Decimal("1"):
                 continue  # already current
 
-            # Rule B sanity on derived value
+            # Rule B sanity on derived value. Skip + flag if bizarre.
             ok, reason = _passes_sanity_bounds(fmp_row["value"], derived_val)
             if not ok:
-                raise UnresolvableAmendment(
-                    f"Rule B violation on derived candidate for "
-                    f"{statement}/{derived_concept} @ {period_end} FY{fy}: {reason}",
-                    diagnostics={
-                        "statement": statement, "concept": derived_concept,
-                        "period_end": str(period_end), "fiscal_year": fy,
-                        "fmp_value": str(fmp_row["value"]),
-                        "derived_value": str(derived_val),
-                        "derivation": reason_stub,
-                    },
-                )
+                # Note: conn/ingest_run_id aren't in this function's scope;
+                # the derivation is already post-supersession-candidate-set.
+                # Bizarre derivations are rare; we simply skip and let Layer 3
+                # surface the residual as its own flag downstream.
+                continue
 
             # Build the derived candidate — use the partner's XBRL provenance
             # as the supersession's nominal source (same accn/filed), but
@@ -756,6 +756,134 @@ def _reverify_layer3_for_fiscal_year(
 
 
 # ---------------------------------------------------------------------------
+# Flag writers (Layer 3 soft-gate: write to data_quality_flags, don't raise)
+# ---------------------------------------------------------------------------
+
+
+def _classify_severity(delta: Decimal, reference: Decimal) -> str:
+    """Severity buckets: informational <1%, warning 1-10%, investigate >=10%."""
+    if reference == 0:
+        return "investigate"
+    pct = abs(delta) / abs(reference)
+    if pct < Decimal("0.01"):
+        return "informational"
+    if pct < Decimal("0.10"):
+        return "warning"
+    return "investigate"
+
+
+def _write_layer3_flag(
+    conn: psycopg.Connection,
+    *,
+    company_id: int,
+    statement: str,
+    layer3_fail: PeriodArithmeticFailure,
+    ingest_run_id: int,
+    reason_extra: str | None = None,
+    suggested_value: Decimal | None = None,
+    context: dict[str, Any] | None = None,
+) -> int:
+    """Insert a Layer 3 anomaly row into data_quality_flags. Returns new flag id."""
+    sev = _classify_severity(layer3_fail.delta, layer3_fail.annual)
+    base_reason = (
+        f"Q1+Q2+Q3+Q4 ≠ FY for {layer3_fail.concept} in FY{layer3_fail.fiscal_year}. "
+        f"Quarter sum = {layer3_fail.quarters_sum:,.0f}, annual = {layer3_fail.annual:,.0f}, "
+        f"delta = {layer3_fail.delta:,.0f} (tolerance {layer3_fail.tolerance:,.0f})."
+    )
+    if reason_extra:
+        base_reason += f" {reason_extra}"
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO data_quality_flags (
+                company_id, statement, concept, fiscal_year, fiscal_quarter,
+                period_end, period_type,
+                flag_type, severity,
+                expected_value, computed_value, delta, tolerance, suggested_value,
+                reason, context,
+                source_run_id
+            ) VALUES (
+                %s, %s, %s, %s, NULL,
+                NULL, 'annual',
+                'layer3_q_sum_vs_fy', %s,
+                %s, %s, %s, %s, %s,
+                %s, %s::jsonb,
+                %s
+            )
+            RETURNING id;
+            """,
+            (
+                company_id, statement, layer3_fail.concept, layer3_fail.fiscal_year,
+                sev,
+                layer3_fail.annual,   # expected (filer-reported FY)
+                layer3_fail.quarters_sum,  # computed (sum of our stored quarters)
+                layer3_fail.delta, layer3_fail.tolerance, suggested_value,
+                base_reason,
+                _json.dumps(context or {}),
+                ingest_run_id,
+            ),
+        )
+        (flag_id,) = cur.fetchone()
+    return flag_id
+
+
+def _write_sanity_flag(
+    conn: psycopg.Connection,
+    *,
+    company_id: int,
+    statement: str,
+    concept: str,
+    period_end: date,
+    fiscal_year: int,
+    fiscal_quarter: int | None,
+    period_type: str,
+    fmp_value: Decimal,
+    xbrl_value: Decimal,
+    reason_text: str,
+    xbrl_accn: str,
+    ingest_run_id: int,
+) -> int:
+    """Rule B sanity violation on an XBRL supersession candidate — write a
+    flag explaining why the candidate was skipped, and move on. The candidate
+    is NOT applied; FMP's value remains authoritative until an analyst reviews."""
+    delta = xbrl_value - fmp_value
+    sev = "investigate"  # sanity-bound violations are always worth looking at
+    reason = (
+        f"Rule B sanity-bound violation: FMP stores {fmp_value:,.0f} but XBRL "
+        f"({xbrl_accn}) reports {xbrl_value:,.0f}. {reason_text}. "
+        f"Supersession was NOT applied; FMP value retained."
+    )
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO data_quality_flags (
+                company_id, statement, concept, fiscal_year, fiscal_quarter,
+                period_end, period_type,
+                flag_type, severity,
+                expected_value, computed_value, delta, suggested_value,
+                reason, source_run_id
+            ) VALUES (
+                %s, %s, %s, %s, %s,
+                %s, %s,
+                'xbrl_sanity_bound', %s,
+                %s, %s, %s, %s,
+                %s, %s
+            )
+            RETURNING id;
+            """,
+            (
+                company_id, statement, concept, fiscal_year, fiscal_quarter,
+                period_end, period_type,
+                sev,
+                fmp_value, xbrl_value, delta, xbrl_value,  # suggested = XBRL (human judges)
+                reason, ingest_run_id,
+            ),
+        )
+        (flag_id,) = cur.fetchone()
+    return flag_id
+
+
+# ---------------------------------------------------------------------------
 # Main orchestration
 # ---------------------------------------------------------------------------
 
@@ -839,6 +967,17 @@ def detect_and_apply_amendments(
                 (statement, q_row["period_end"], q_row["fiscal_quarter"], fy)
             )
 
+    # Cross-statement coordination: when an IS period is affected, also
+    # mark the matching CF period so CF-side concepts (notably
+    # net_income_start, which mirrors IS.net_income via Layer 2) get
+    # co-superseded. Without this, IS supersession breaks Layer 2's
+    # cross-statement net_income tie.
+    cross_statement_additions: set[tuple[str, date, int, int]] = set()
+    for (stmt, pe, fq, fy) in affected_quarter_set:
+        if stmt == "income_statement":
+            cross_statement_additions.add(("cash_flow", pe, fq, fy))
+    affected_quarter_set.update(cross_statement_additions)
+
     # Step 3b: for every affected period, pull ALL current FMP rows at that
     # (company, statement, period_end, period_type) and find XBRL candidates.
     candidates: list[SupersessionCandidate] = []
@@ -861,20 +1000,21 @@ def detect_and_apply_amendments(
             if abs(xbrl_val - fmp_val) < Decimal("1"):
                 continue  # FMP already current
 
-            # Rule B: sanity check
+            # Rule B: sanity check. If the XBRL candidate looks unreasonable
+            # (sign flip, >50% delta), skip it with a flag — don't supersede,
+            # don't raise. Analyst reviews.
             ok, reason = _passes_sanity_bounds(fmp_val, xbrl_val)
             if not ok:
-                raise UnresolvableAmendment(
-                    f"Rule B violation for {statement}/{concept} @ "
-                    f"{period_end} FY{fy}: {reason}",
-                    diagnostics={
-                        "statement": statement, "concept": concept,
-                        "period_end": str(period_end),
-                        "fiscal_year": fy, "fmp_value": str(fmp_val),
-                        "xbrl_value": str(xbrl_val),
-                        "xbrl_accn": xbrl_fact.get("accn"),
-                    },
+                _write_sanity_flag(
+                    conn, company_id=company_id,
+                    statement=statement, concept=concept,
+                    period_end=period_end, fiscal_year=fy,
+                    fiscal_quarter=fiscal_quarter, period_type="quarter",
+                    fmp_value=fmp_val, xbrl_value=xbrl_val,
+                    reason_text=reason, xbrl_accn=xbrl_fact.get("accn", ""),
+                    ingest_run_id=ingest_run_id,
                 )
+                continue
             candidates.append(SupersessionCandidate(
                 statement=statement, concept=concept,
                 period_end=period_end, period_type="quarter",
@@ -909,17 +1049,16 @@ def detect_and_apply_amendments(
                 continue
             ok, reason = _passes_sanity_bounds(fmp_val, xbrl_val)
             if not ok:
-                raise UnresolvableAmendment(
-                    f"Rule B violation for {statement}/{concept} @ "
-                    f"{fmp_row['period_end']} FY{fy} (annual): {reason}",
-                    diagnostics={
-                        "statement": statement, "concept": concept,
-                        "period_end": str(fmp_row["period_end"]),
-                        "fiscal_year": fy, "fmp_value": str(fmp_val),
-                        "xbrl_value": str(xbrl_val),
-                        "xbrl_accn": xbrl_fact.get("accn"),
-                    },
+                _write_sanity_flag(
+                    conn, company_id=company_id,
+                    statement=statement, concept=concept,
+                    period_end=fmp_row["period_end"], fiscal_year=fy,
+                    fiscal_quarter=None, period_type="annual",
+                    fmp_value=fmp_val, xbrl_value=xbrl_val,
+                    reason_text=reason, xbrl_accn=xbrl_fact.get("accn", ""),
+                    ingest_run_id=ingest_run_id,
                 )
+                continue
             candidates.append(SupersessionCandidate(
                 statement=statement, concept=concept,
                 period_end=fmp_row["period_end"], period_type="annual",
@@ -935,19 +1074,26 @@ def detect_and_apply_amendments(
             ))
 
     if not candidates:
-        # Layer 3 failed but XBRL has no superseding values — NOT an amendment.
-        # Could be spinoff, reclassification, or real data error.
-        raise UnresolvableAmendment(
-            "Layer 3 failed but no XBRL supersession candidates found — not an "
-            "amendment (likely spinoff/reclassification or data error). "
-            "See docs/research/amendment_phase_1_5_design.md § 6.",
-            diagnostics={
-                "layer3_failures": [
-                    {"statement": s, "concept": f.concept, "fiscal_year": f.fiscal_year,
-                     "delta": str(f.delta)}
-                    for s, f in layer3_failures
-                ],
-            },
+        # Layer 3 failed but XBRL has no superseding values. This is NOT an
+        # amendment — likely a spinoff, a filer reclassification that kept
+        # quarterly values but changed annual, or an FMP data issue. Write
+        # flags for each Layer 3 failure and return. Ingest continues.
+        flag_count = 0
+        for statement, l3_fail in layer3_failures:
+            _write_layer3_flag(
+                conn, company_id=company_id, statement=statement,
+                layer3_fail=l3_fail, ingest_run_id=ingest_run_id,
+                reason_extra=(
+                    "No XBRL supersession candidates found for this concept — "
+                    "not an amendment (likely spinoff/reclassification or "
+                    "FMP data issue). FMP values retained; analyst review needed."
+                ),
+            )
+            flag_count += 1
+        return AmendmentResult(
+            status="unresolved_flagged",
+            fiscal_years_checked=list(failing_fys),
+            flags_written=flag_count,
         )
 
     # Step 3c: identity-derived candidates. When XBRL tagged N-1 components
@@ -971,54 +1117,93 @@ def detect_and_apply_amendments(
         )
     )
 
-    # Step 4: apply all supersessions in a SAVEPOINT; re-verify; rollback if any layer fails.
-    # `affected_periods` includes both quarters and annuals for Layer 1 re-check.
+    # Step 4: apply all supersessions in a SAVEPOINT.
+    #   - If Layer 1 would break post-supersession: ROLLBACK the savepoint and
+    #     write flags for every Layer 3 failure. FMP values retained.
+    #   - If Layer 1 passes but Layer 3 still has residuals: COMMIT the
+    #     savepoint (keep the resolutions) and write flags for what's left.
+    #   - If everything passes: COMMIT and return amended.
     affected_periods: set[tuple[str, date, str]] = set()
     for c in candidates:
         affected_periods.add((c.statement, c.period_end, c.period_type))
-    with conn.transaction():
-        sp_saved_candidates: list[SupersessionCandidate] = []
-        try:
+
+    class _SupersessionWouldBreakL1(Exception):
+        """Sentinel to roll back the savepoint via transaction-context exit."""
+        def __init__(self, fails: list[str]) -> None:
+            super().__init__("supersession breaks Layer 1")
+            self.fails = fails
+
+    l1_break_fails: list[str] | None = None
+    try:
+        with conn.transaction():
             for c in candidates:
                 _apply_supersession(
                     conn, c, company_id=company_id,
                     xbrl_raw_response_id=fetched.raw_response_id,
                     ingest_run_id=ingest_run_id,
                 )
-                sp_saved_candidates.append(c)
                 affected_periods.add((c.statement, c.period_end, c.period_type))
-
-            # Rule C: re-verify Layer 1 on every affected period
             l1_fails = _reverify_layer1(
                 conn, company_id=company_id, affected_periods=affected_periods,
             )
             if l1_fails:
-                raise UnresolvableAmendment(
-                    f"post-supersession Layer 1 re-verify failed on "
-                    f"{len(l1_fails)} tie(s)",
-                    diagnostics={"layer1_failures": l1_fails[:10]},
-                )
+                # Savepoint will roll back on exception exit.
+                raise _SupersessionWouldBreakL1(l1_fails)
+            # Savepoint commits on normal exit.
+    except _SupersessionWouldBreakL1 as sp_exc:
+        l1_break_fails = sp_exc.fails
 
-            # Rule C: re-verify Layer 3 on every affected (statement, fiscal_year)
-            for statement, fy in failing_fys:
-                l3_fails = _reverify_layer3_for_fiscal_year(
-                    conn, company_id=company_id, statement=statement, fiscal_year=fy,
-                )
-                if l3_fails:
-                    raise UnresolvableAmendment(
-                        f"post-supersession Layer 3 re-verify still fails on "
-                        f"{statement}/FY{fy} ({len(l3_fails)} concept pairs)",
-                        diagnostics={"layer3_failures_remaining": [
-                            {"concept": f.concept, "delta": str(f.delta)}
-                            for f in l3_fails[:10]
-                        ]},
-                    )
-        except Exception:
-            # Savepoint rollback happens automatically on exception within transaction().
-            raise
+    if l1_break_fails is not None:
+        # Supersessions rolled back. Write flags for every Layer 3 failure.
+        flag_count = 0
+        for statement, l3_fail in layer3_failures:
+            _write_layer3_flag(
+                conn, company_id=company_id, statement=statement,
+                layer3_fail=l3_fail, ingest_run_id=ingest_run_id,
+                reason_extra=(
+                    f"Auto-resolution attempted but would break {len(l1_break_fails)} "
+                    f"Layer-1 tie(s) post-supersession — supersessions rolled back. "
+                    f"FMP values retained; analyst review needed."
+                ),
+                context={"layer1_failures_preview": l1_break_fails[:5]},
+            )
+            flag_count += 1
+        return AmendmentResult(
+            status="unresolved_flagged",
+            fiscal_years_checked=list(failing_fys),
+            flags_written=flag_count,
+        )
+
+    # Savepoint committed. Supersessions are now persisted. Check remaining L3.
+    flag_count = 0
+    for statement, fy in failing_fys:
+        l3_remaining = _reverify_layer3_for_fiscal_year(
+            conn, company_id=company_id, statement=statement, fiscal_year=fy,
+        )
+        for f in l3_remaining:
+            _write_layer3_flag(
+                conn, company_id=company_id, statement=statement,
+                layer3_fail=f, ingest_run_id=ingest_run_id,
+                reason_extra=(
+                    "Auto-resolution via XBRL supersession applied for some "
+                    "concepts in this fiscal year but this specific tie still "
+                    "doesn't hold. May indicate filer-level annual-only "
+                    "restatement or a concept we can't map."
+                ),
+            )
+            flag_count += 1
+
+    if flag_count > 0:
+        return AmendmentResult(
+            status="partially_amended",
+            supersessions_applied=candidates,
+            fiscal_years_checked=list(failing_fys),
+            flags_written=flag_count,
+        )
 
     return AmendmentResult(
         status="amended",
         supersessions_applied=candidates,
         fiscal_years_checked=list(failing_fys),
+        flags_written=0,
     )

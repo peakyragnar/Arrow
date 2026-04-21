@@ -102,8 +102,38 @@ def _print_success(tickers: list[str], counts: dict[str, Any]) -> None:
     print(f"  ties evaluated:         up to {counts['cross_statement_ties_checked']} "
           f"(NI@IS=CF, cash_end@CF=BS+xbrl_restricted, cash_begin, net_change) — all passed")
     print()
-    print("Status: PASS — every stored fact validated by internal arithmetic, "
-          "period arithmetic, cross-statement ties, and anchor XBRL match.")
+
+    # Data quality summary (Layer 2/3 soft gates).
+    amend_sups = counts.get("amendment_supersessions", 0)
+    amend_flags = counts.get("amendment_flags_written", 0)
+    layer2_flags = counts.get("layer2_flags_written", 0)
+    layer5_flags = counts.get("layer5_flags_written", 0)
+    amend_status = counts.get("amendment_status_by_ticker", {})
+    total_flags = amend_flags + layer2_flags + layer5_flags
+    if amend_sups or total_flags:
+        print("Data quality (soft gates):")
+        for t, status in sorted(amend_status.items()):
+            print(f"  {t}:  amendment status={status}")
+        if amend_sups:
+            print(f"  XBRL supersessions applied:    {amend_sups}")
+        if amend_flags:
+            print(f"  Layer-3 flags written:         {amend_flags}")
+        if layer2_flags:
+            print(f"  Layer-2 flags written:         {layer2_flags}")
+        if layer5_flags:
+            print(f"  Layer-5 flags written:         {layer5_flags}")
+        if total_flags:
+            print(f"  query to review:               "
+                  f"SELECT * FROM data_quality_flags "
+                  f"WHERE resolved_at IS NULL AND source_run_id = {counts['ingest_run_id']};")
+        print()
+
+    if total_flags:
+        print(f"Status: LOADED WITH FLAGS — Layer 1 passes for every stored "
+              f"fact; {total_flags} Layer-2/3/5 anomalies flagged for analyst review.")
+    else:
+        print("Status: PASS — every stored fact validated by internal arithmetic, "
+              "period arithmetic, cross-statement ties, and anchor XBRL match.")
 
 
 def _print_failure_header(kind: str, msg: str) -> None:
