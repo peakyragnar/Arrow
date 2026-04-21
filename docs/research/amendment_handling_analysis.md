@@ -207,3 +207,17 @@ This collapses the two cases I originally thought were distinct (DELL "in-10-K" 
 - Do all 20 filers in golden_eval with formal 10-Q/A amendments pass Layer 3? (Need to scan EDGAR for 10-Q/A filings across the set — SYM FY24 Q1-Q3 was the explicit test.)
 - How many of the other 18 tickers have comparative-period restatements (the broader Phase 1.5 target)?
 - Does FMP occasionally miss a formal 10-Q/A? Edge case worth checking on one ticker manually.
+
+### 10.8 Update (2026-04-22): further finding — Layer 2 / Layer 5 inconsistencies too
+
+Empirical DELL testing revealed that amendment detection at Layer 3 is not sufficient to cleanly ingest DELL. Three additional classes of disagreement surface that are NOT amendments and can't be resolved by supersession:
+
+1. **FMP internal inconsistency (Layer 2)**: FMP's IS endpoint and CF endpoint return different values for what should be the same concept at the same period. For DELL Q2 FY25, FMP's IS returns `netIncomeFromContinuingOperations = $841M` while FMP's CF returns `netIncome = $804M`. Both should be pre-NCI consolidated NI. Neither matches XBRL cleanly — this is FMP's bug, not a filer restatement.
+
+2. **Cash/restricted-cash classification drift (Layer 2)**: `cf.cash_end_of_period ≠ bs.cash + xbrl.restricted_cash` by $141M-$287M on several DELL periods. Real-world reason: FMP's BS cash figure, CF cash_end figure, and SEC XBRL's restricted cash tag don't line up cleanly for DELL's specific filings.
+
+3. **FMP-vs-SEC divergence at anchor level (Layer 5)**: for ~30 of DELL's stored values, FMP disagrees with SEC XBRL's latest-filed value. Usually because FMP didn't propagate a comparative-period restatement from a later filing.
+
+None of these are recoverable via XBRL supersession (the supersession would break Layer 1 or the underlying data is genuinely inconsistent). The response chosen: **soften Layers 2, 3, and 5 to flag-and-continue rather than hard-block**. Layer 1 remains hard (catches genuine per-filing internal math violations). See `docs/reference/verification.md` § 1 for the updated policy.
+
+Outcome on DELL FY23-FY25: 1,335 facts loaded into `financial_facts`; 74 flags written to `data_quality_flags` (24 Layer 3, 17 Layer 2, 30 Layer 5, 3 sanity). All anomalies visible, provenance complete, analyst can filter/resolve as their specific analysis requires.

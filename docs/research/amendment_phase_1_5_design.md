@@ -1,8 +1,12 @@
 # Phase 1.5: Amendment-within-regular-filing handling — design spec
 
-**Status:** Design (approved 2026-04-21)
+**Status:** Implemented (original design approved 2026-04-21, policy refined to soft-flag on 2026-04-22)
+
 **Context:** `docs/research/amendment_handling_analysis.md` identified that FMP picks up formal `10-Q/A` amendments but **not** comparative-period restatements embedded in subsequent regular filings (10-K or later 10-Q). DELL FY24/FY25 and SYM FY25 Q1 both hit this pattern.
-**Purpose:** Specify a deterministic, auditable mechanism that detects these restatements, supersedes FMP's stale values with authoritative SEC XBRL values, and refuses to proceed when the restatement cannot be cleanly resolved.
+
+**Purpose:** Specify a deterministic, auditable mechanism that detects these restatements, supersedes FMP's stale values with authoritative SEC XBRL values when a clean resolution is possible, and **records a `data_quality_flags` row with full provenance for any unresolved anomaly** when it isn't.
+
+**Important policy note (added 2026-04-22):** The original design had the agent raise `UnresolvableAmendment` on any resolution failure, rolling back the entire ingest. Empirical testing on DELL revealed that many real filers have legitimate filing-over-time inconsistencies where even manual human reconciliation doesn't tie — restatements documented at annual level only, vendor-internal inconsistencies that XBRL doesn't arbitrate, cash/restricted-cash classification drift. Blocking ingest on these makes the system unusable for the real filer universe. The agent was converted to write `data_quality_flags` rows rather than raise, so the data loads with visible annotations instead of being withheld. This matches the broader policy change documented in `docs/reference/verification.md`: Layers 2/3/5 are soft gates that flag-and-continue rather than hard gates that block.
 
 ---
 
@@ -53,19 +57,15 @@ A candidate fails admissibility (and is rejected, not applied) if:
 
 If any single candidate fails Rule B → **the entire fiscal-year supersession is rejected** (don't partially trust a source with one sanity-violated value).
 
-### Rule C: Holistic post-supersession verification
+### Rule C: Post-supersession verification (Layer 1 only; savepoint rollback on failure)
 
-After applying all admissible candidates for a fiscal year, **all** of the following must pass within tolerance:
+After applying all admissible candidates for a fiscal year, the agent checks **Layer 1 subtotal ties** on every superseded period (gross_profit, operating_income, continuing_ops_after_tax, net_income, parent-NI, BS balance identity, CF subtotal + cash roll-forward).
 
-- **Layer 1 IS:** every subtotal tie on every superseded period (gross_profit, operating_income, continuing_ops_after_tax, net_income, parent-NI)
-- **Layer 1 BS:** every subtotal tie + balance identity on every superseded period
-- **Layer 1 CF:** every subtotal tie + cash roll-forward on every superseded period
-- **Layer 2 cross-statement:** CF `net_income_start` == IS `net_income`, CF cash_end == BS cash_and_equivalents for every superseded period
-- **Layer 3 period arithmetic:** Q1+Q2+Q3+Q4 == FY for every concept in every fiscal year that had any supersession
+If Layer 1 post-supersession fails → **the savepoint containing the supersessions is rolled back**. FMP's original values remain authoritative, and the agent writes `data_quality_flags` rows (one per Layer 3 failure) documenting what was attempted and why it couldn't be applied. Ingest continues past the amendment phase.
 
-If **any** layer fails post-supersession → **entire supersession transaction rolls back**. Nothing is committed. The system raises `UnresolvableAmendment` with diagnostics. This is the "all the math works" requirement — not just Layer 3.
+If Layer 1 post-supersession passes → savepoint commits. If any Layer 3 residuals remain (concepts where XBRL had no newer value, or where the filer restated annual-only without re-tagging quarters), flags are written for those residuals.
 
-This is the single most important rule: we refuse to accept a partial fix.
+**Policy note:** The original design also required post-supersession Layer 2 and Layer 3 to pass; failures raised `UnresolvableAmendment` and rolled back the entire ingest. Empirical testing (DELL FY24 SG&A where the 10-K restated annual but not quarters; FMP IS-vs-CF vendor-internal inconsistencies that XBRL doesn't arbitrate) showed that many real filers can never satisfy this standard. The policy was relaxed to Layer-1-only post-check — Layer 1 catches genuinely-inconsistent data within a single filing period, while Layer 2/3 residuals are written as flags rather than blocking. See the revised Rule F below.
 
 ### Rule D: Full provenance
 
@@ -84,18 +84,22 @@ Given the same FMP raw_response + same SEC XBRL companyfacts response, the super
 - No time-of-day behavior (the only "time" used is XBRL's `filed` field)
 - Regression tests assert identical JSON output on replay
 
-### Rule F: Categorical outcomes
+### Rule F: Categorical outcomes (REVISED — soft-flag policy)
 
-Ingest has exactly four possible outcomes for any filer-fiscal_year pair:
+The agent returns an `AmendmentResult` with one of four statuses:
 
-| Outcome | Meaning | DB state after |
+| Status | Meaning | DB state after |
 |---|---|---|
-| **Clean** | Layer 1/2/3 pass without amendment intervention | FMP values stored, no supersession |
-| **Amended** | Layer 3 failed, amendment agent found candidates, all rules A-E passed, post-supersession all layers pass | Original + restated rows persisted with full provenance |
-| **UnresolvableAmendment** | Layer 3 failed AND any rule A-C blocks resolution | Nothing persisted for this fiscal year. Analyst sees specific diagnostic and either adds declarative exemption (reclassification) or investigates manually |
-| **Layer 1 failure** | Per-period subtotal ties fail — filer-internal data issue | Nothing persisted. Filer flagged for data problem |
+| **clean** | No Layer 3 failures; agent not invoked or nothing to do | FMP values stored as loaded |
+| **amended** | Agent found candidates, applied all, Layer 1 post-check passed, no Layer 3 residuals | Original + restated rows persisted with full provenance; no flags |
+| **partially_amended** | Supersessions applied and committed, but some Layer 3 residuals remain (XBRL didn't have values for every failing concept) | Supersessions persisted for resolved concepts; flags written for residuals |
+| **unresolved_flagged** | No candidates found, OR supersession would break Layer 1 (savepoint rolled back) | FMP values retained as-is; flags written for every Layer 3 failure |
 
-**At no point does "best effort" data land in the DB.** The refuse-on-ambiguity principle is architecturally enforced by Rule C's atomic rollback.
+The agent **never raises** under this policy. Ingest always continues past the amendment phase. Data loads.
+
+**Layer 1 remains a hard gate** — but it runs inline during `load_fmp_*_rows`, not inside the amendment agent. If FMP's own per-filing subtotal math is broken, that raises during the mapping step before the amendment agent is ever invoked.
+
+**At no point does data get silently corrupted.** Every supersession has full provenance (Rule D). Every unresolved anomaly has a `data_quality_flags` row with the failing values, the expected values, and a human-readable reason. The analyst sees everything.
 
 ## 4. Algorithm
 

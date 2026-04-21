@@ -1,32 +1,43 @@
 # Verification — Correctness Stack
 
-A **bad financial value must fail at least one of five independent checks** to land in `financial_facts`. Each layer is weak alone; together they are hard to fool.
+Arrow runs **five independent checks** on every ingest. Only **Layer 1** is a hard gate — its failure prevents ingest entirely. Layers 2, 3, and 5 are **soft gates**: they still run, they still catch problems, but they record findings to `data_quality_flags` rather than blocking ingest. Layer 4 is formula-level and advisory.
 
-This doc defines the checks, their tolerances, their failure modes, and the 2nd-source choice that backs layer 4.
+This design reflects the empirical reality that financial data has irreducible noise: filers restate prior periods in subsequent filings, vendors normalize inconsistently, and even within a single 10-K manual reconciliation doesn't always tie. The system faithfully represents this messiness instead of forcing it away, and surfaces every inconsistency alongside the data so an analyst can decide what matters for their specific question.
 
 Complements:
 - `concepts.md` — the normalization contract (what the checks enforce)
 - `fmp_mapping.md` — how FMP-sourced values reach the buckets being checked
 - `formulas.md` — the formulas that layer 5 guards
-- `docs/architecture/system.md` § Build Order — step 9.5 is the scheduled version of layer 4
+- `docs/research/amendment_phase_1_5_design.md` — detailed design of Layer 3 amendment handling + flag semantics
+- `docs/architecture/system.md` § Build Order
 
 ---
 
 ## 1. The five layers
 
 ```
-Layer 1 — Subtotal ties        (intra-statement; every ingest; HARD BLOCK)
-Layer 2 — Cross-statement ties (across statements; every ingest; HARD BLOCK)
-Layer 3 — Period arithmetic    (Q1..Q4 = FY; every ingest; HARD BLOCK)
-Layer 4 — Formula component-guards (per formula; SUPPRESS on missing)
-Layer 5 — Cross-source reconciliation (FMP ↔ SEC XBRL; scheduled; FLAG)
+Layer 1 — Subtotal ties                  (intra-statement; HARD GATE)
+Layer 2 — Cross-statement ties           (IS ↔ BS ↔ CF; SOFT — writes flags)
+Layer 3 — Period arithmetic (Q sum = FY) (SOFT — amendment agent + flags)
+Layer 4 — Formula component-guards       (advisory)
+Layer 5 — Cross-source reconciliation    (FMP ↔ SEC XBRL anchors; SOFT — writes flags)
 ```
 
-- **HARD BLOCK** — violation stops the ingest run. Rows are not promoted to "current" (`superseded_at` kept NULL on existing rows, new rows stay `superseded_at = NULL` but `ingest_run.status = 'partial'`). An operator investigates before anything is trusted.
-- **SUPPRESS** — the affected output value is not produced (NULL, with provenance reason). Other values from the same ingest proceed normally.
-- **FLAG** — the row is written as usual but recorded in a divergence view for review; it remains queryable and the current value of its bucket.
+- **HARD GATE (Layer 1 only)** — violation raises and the whole ingest transaction rolls back. Nothing about the failing filer persists. Layer 1 catches genuine internal-math violations (gross_profit ≠ revenue - cogs within a single filing, balance identity broken, cash roll-forward internal to CF broken). These indicate the data itself is internally inconsistent at the source row, not just in relation to other data — so blocking is correct.
 
-Severity ascending: FLAG → SUPPRESS → HARD BLOCK.
+- **SOFT GATE (Layers 2, 3, 5)** — the check still runs, but failures write rows to the `data_quality_flags` table (see `db/schema/011_data_quality_flags.sql`). The data loads into `financial_facts` as the filer reported it. The flag records: what check fired, which concept and period, what values disagreed, by how much, a human-readable reason, and where to look for verification. Analyst queries the flag table to see all known issues; resolved flags retain a provenance record (`resolved_at`, `resolution`, `resolution_value`).
+
+- **ADVISORY (Layer 4)** — formula-component guards. If a required input is missing, the dependent formula returns null rather than producing a misleading value. No flags currently written; may be added if downstream analysis needs them.
+
+Why Layers 2/3/5 are soft: they catch cross-filing, cross-source, and cross-period inconsistencies that frequently reflect **legitimate filer or vendor behavior** rather than data errors:
+
+- **Layer 2** often catches vendor-internal inconsistency (FMP's IS endpoint and CF endpoint reporting different pre-NCI net income for the same period). This is FMP's bug, not data corruption.
+- **Layer 3** catches restatements — when a filer restates prior quarters in a later 10-K (or later 10-Q comparative) but the earlier filings' tagged values don't change. The data isn't wrong; it reflects two different snapshots in time.
+- **Layer 5** catches FMP-vs-SEC XBRL divergence, usually because FMP hasn't picked up a comparative-period restatement. The SEC value is usually authoritative; the FMP value was correct at its filing date.
+
+In all three cases, **blocking ingest would prevent loading legitimate filers**. Flagging preserves the data for use while surfacing the known caveat.
+
+Severity of an individual flag: `informational` (<1% delta), `warning` (1-10% delta), `investigate` (≥10% or sanity-bound violation).
 
 ---
 
@@ -152,7 +163,11 @@ Tie #3 is the one that catches almost every extraction bug — if any CF line is
 
 ### 3.3 Failure
 
-HARD BLOCK. Same mechanism as layer 1.
+**SOFT — writes a `data_quality_flags` row of type `layer2_cross_statement` and continues.**
+
+Layer 2 failures most commonly reflect **FMP's own internal inconsistency** — e.g., for DELL Q2 FY25, FMP's IS endpoint returns `netIncomeFromContinuingOperations = $841M` while FMP's CF endpoint returns `netIncome = $804M` for the same period. Both should be pre-NCI consolidated net income and they should match; FMP's normalization diverges from itself. Or the failure reflects cash/restricted-cash classification drift between the BS snapshot and the CF cash-flow statement for a period with material restricted cash. In either case, the data is loadable as-is; the flag surfaces the inconsistency for analyst review. The analyst can either (a) accept the disagreement if the specific metric isn't central to their analysis, (b) manually supersede with a verified value via the supersession mechanism, or (c) exclude the affected periods from their specific analysis.
+
+The helper `_write_layer2_flags` in `src/arrow/agents/fmp_ingest.py` inserts one flag row per failed tie, with severity scaled by `|delta| / max(|LHS|, |RHS|)`.
 
 ---
 
@@ -212,7 +227,20 @@ Per `periods.md` § 7.1: if later Q's YTD − discrete implies a prior Q1 that d
 
 ### 4.5 Failure
 
-HARD BLOCK. Same mechanism.
+**SOFT — the amendment-detect agent attempts auto-resolution first; anything unresolved writes `data_quality_flags` rows of type `layer3_q_sum_vs_fy`.**
+
+See `docs/research/amendment_phase_1_5_design.md` for the full design of the amendment-detect agent (`src/arrow/agents/amendment_detect.py`). High-level flow on Layer 3 failure:
+
+1. Agent fetches SEC XBRL companyfacts for the filer.
+2. For each failing (concept, fiscal_year), agent looks for latest-filed XBRL values that differ from FMP's stored values (indicating a comparative-period restatement in a later filing).
+3. Agent applies supersessions atomically within a savepoint, then re-verifies Layer 1 holds post-supersession. If Layer 1 would break, savepoint rolls back and flags are written for the unresolved failures.
+4. If supersessions stick, any remaining Layer 3 residuals (e.g., concepts where XBRL has no newer value) are written as flags.
+
+Failure modes captured as flags:
+- `layer3_q_sum_vs_fy` — Q1+Q2+Q3+Q4 ≠ FY for a concept
+- `xbrl_sanity_bound` — an XBRL supersession candidate violated Rule B (sign flip, >50% delta)
+
+Full-period atomicity is preserved: when one concept at a period gets superseded, all mappable concepts at that period are checked so intra-period Layer 1 ties stay intact.
 
 ---
 
@@ -309,15 +337,15 @@ Rationale: per `periods.md` § 7.1, this is the tolerance the legacy pipeline us
 
 ### 6.4 Failure
 
-FLAG. Write a row to `view_fmp_sec_divergence` (a SQL view over `financial_facts` + the XBRL pass). Divergent facts remain queryable in `financial_facts`; `view_fmp_sec_divergence` is where an analyst/operator reviews them.
+**SOFT — writes `data_quality_flags` rows of type `layer5_xbrl_anchor` and continues.**
 
-Persistent divergence (same concept × filer × period divergent for >1 scheduled run) escalates to a GitHub issue / team review.
+The helper `_write_layer5_flags` in `src/arrow/agents/fmp_ingest.py` inserts one flag row per (concept, period) divergence. Each flag captures: FMP's stored value, SEC XBRL's latest-filed value, which XBRL tag matched, accession + filed date of the XBRL source, delta, tolerance, severity, and a human-readable reason. SEC XBRL is generally authoritative when they disagree (since it's the filer's own SEC record), but analyst confirms before overriding.
+
+Persistent divergence on the same concept across many periods is a signal worth promoting to a per-company "data quality status" annotation for dashboard visibility.
 
 ### 6.5 Timing
 
-This is Build Order **step 9.5** — scheduled, not inline with ingest. The mapper code should **emit the data needed for this comparison** (keep raw XBRL value alongside FMP value when both are available) so that step 9.5 can run against already-ingested data without re-fetching.
-
-Until step 9.5 is implemented, the architecture supports it but no job runs. Layers 1–4 remain the active correctness stack.
+Layer 5 runs **inline during every ingest**, alongside Layers 1/2/3. This is a change from the earlier design where Layer 5 was scheduled separately — inline execution means FMP-vs-SEC divergences are flagged at the time data is loaded, giving analysts immediate visibility without waiting for a scheduled reconciliation run.
 
 ---
 
