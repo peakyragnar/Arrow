@@ -375,13 +375,15 @@ Archive has gold for NVDA, LYB, FCX. Starting with NVDA only; LYB/FCX can be wir
 
 | Layer | Failure | What user sees | Where it's recorded |
 |---|---|---|---|
-| 1: subtotal ties | HARD BLOCK | ingest_run = 'partial'; facts for failing statement NOT written | `ingest_runs.error_details.failed_ties` |
-| 2: cross-statement | HARD BLOCK | same | same |
-| 3: period arithmetic | HARD BLOCK | same | same |
-| 4: formula guards | SUPPRESS | formula output NULL with reason | `financial_facts.value = NULL` (though NOT NULL constraint means row is not written for suppressed values; alternative: emit to a separate `suppressed_formula_outputs` log) |
-| 5: cross-source | FLAG | row is written, also appears in divergence view | `view_fmp_sec_divergence` |
+| 1: subtotal ties | HARD GATE | ingest transaction rolls back; no data for the failing filer persists | raised exception, printed by backfill CLI |
+| 2: cross-statement | SOFT (flag) | data loads as-is; one flag row per failed tie | `data_quality_flags` with `flag_type='layer2_cross_statement'` |
+| 3: period arithmetic | SOFT (amendment agent + flags) | data loads as-is; amendment agent resolves what it can via XBRL supersession; residuals become flags | `data_quality_flags` with `flag_type='layer3_q_sum_vs_fy'` (plus `xbrl_sanity_bound` for Rule B violations) |
+| 4: formula guards | SUPPRESS | formula output NULL with reason | formula layer emits nothing — the NOT NULL constraint on `financial_facts.value` means suppressed formulas don't produce a row |
+| 5: cross-source | SOFT (flag) | data loads as-is; one flag row per divergent (concept, period) | `data_quality_flags` with `flag_type='layer5_xbrl_anchor'` |
 
 Note on layer 4: `financial_facts.value` is NOT NULL. Suppressed formulas do not produce a `financial_facts` row. The suppression reason is captured either (a) in ingest_run logs or (b) a separate `formula_suppressions` table if we decide volume warrants it — TBD at step 14 (analyst retrieval tools).
+
+Note on resolved flags: when an analyst manually verifies and corrects a flagged value, the supersession infrastructure in `financial_facts` (via `supersedes_fact_id` + `extraction_version='human-verified-v1'`) records the corrected value with full provenance, and the flag row gets `resolved_at` + `resolution` fields populated. Resolved flags are never deleted — they retain the audit trail of "we looked at this on date D, decided X."
 
 ---
 

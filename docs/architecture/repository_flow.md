@@ -181,9 +181,11 @@ src/arrow/
 ├── db/          ← connection pool, session mgmt, thin query helpers, migration
 │                   glue. Everything that talks to Postgres goes through here.
 │
-├── reconcile/   ← cross-source divergence jobs. First occupant: FMP vs SEC
-│                   financial-facts reconciliation (Build Order 9.5). Later:
-│                   macro vintage reconciliation, vendor-vs-vendor checks.
+├── reconcile/   ← cross-source divergence logic. Currently hosts the FMP vs
+│                   SEC XBRL anchor comparison (Layer 5, run inline during
+│                   every ingest — see verification.md § 6). Writes
+│                   divergences to data_quality_flags. Later: macro vintage
+│                   reconciliation, vendor-vs-vendor checks.
 │
 ├── retrieval/   ← analyst agent's toolbox: search_documents(), list_documents(),
 │                   read_document(), sql_query(), get_financial_fact(asof=...),

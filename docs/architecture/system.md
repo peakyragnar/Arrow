@@ -186,9 +186,9 @@ Rule:
 - prefer FMP later where normalized structure is better
 - keep SEC as first-seen source and provenance anchor
 
-### FMP vs SEC reconciliation is an ongoing job, not a one-time check
+### FMP vs SEC reconciliation is inline, every ingest
 
-When both sources exist for the same filing/period/concept, run a scheduled reconciliation that flags divergences. Trust in FMP is only earned empirically; without this job we're trusting by assertion. See Build Order step 9.5.
+When both sources exist for the same filing/period/concept, Layer 5 of the verification stack compares them during ingest and writes a `data_quality_flags` row for any divergence. Trust in FMP is only earned empirically; without this check we're trusting by assertion. Originally planned as a scheduled job (see Build Order step 9.5); now runs inline so divergences surface at load time instead of requiring a separate reconciliation pass. See `docs/reference/verification.md` § 6 for details.
 
 ### Massive later
 
@@ -800,7 +800,7 @@ Evaluation:
 - gold audit spreadsheet
 - formula checks
 - cross-statement consistency
-- FMP vs SEC/XBRL comparison over time (see Build Order 9.5)
+- FMP vs SEC/XBRL comparison inline during every ingest (Layer 5 — see `docs/reference/verification.md` § 6; divergences surface in `data_quality_flags`)
 
 ### Layer 2: Qualitative Data
 
@@ -1056,7 +1056,7 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 7. ✅ implement `artifacts` (migration 004, with double-hash). `artifact_chunks` was added in 005 and withdrawn in 006 — re-list as a future step below.
 8. ⏳ implement FMP ingest for historical filings and transcripts
 9. ✅ implement `financial_facts` schema with fiscal, calendar, and PIT fields (migration 008). Populating depends on step 8.
-9.5. ⬜ implement FMP ↔ SEC/XBRL reconciliation job + divergence view (validates FMP empirically before trusting)
+9.5. ✅ implement FMP ↔ SEC/XBRL reconciliation (migrations 010 + 011, built 2026-04-21/22). Shipped as inline Layer 5 during every backfill rather than a separate scheduled job — divergences write to `data_quality_flags` at load time. Amendment detection (`src/arrow/agents/amendment_detect.py`) handles the subset where XBRL has later-filed restated values FMP hasn't picked up. Policy documented in `docs/reference/verification.md` § 1 (Layer 1 hard, Layers 2/3/5 soft-flag).
 10. ⬜ implement `series` + `series_observations` (unified macro / industry / commodity substrate, vintage-preserving). Build when first real source lands.
 11. ⬜ implement fiscal, calendar-normalized, and PIT derived views
 12. ⬜ implement `prices_daily`
