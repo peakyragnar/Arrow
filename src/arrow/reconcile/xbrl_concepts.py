@@ -67,7 +67,20 @@ _IS_MAPPINGS: tuple[XBRLConceptMapping, ...] = (
     ),
     XBRLConceptMapping("tax", ("IncomeTaxExpenseBenefit",), "USD"),
     XBRLConceptMapping(
-        "continuing_ops_after_tax", ("IncomeLossFromContinuingOperations",), "USD"
+        "continuing_ops_after_tax",
+        (
+            # Many filers (e.g., DELL with NCI) don't report
+            # us-gaap:IncomeLossFromContinuingOperations separately — they
+            # report us-gaap:ProfitLoss (consolidated pre-NCI) which IS
+            # continuing-ops-after-tax when discontinued_ops is zero. We
+            # fall back to ProfitLoss/NetIncomeLoss to match the filer's
+            # actual reporting. For filers WITH real discontinued_ops,
+            # IncomeLossFromContinuingOperations is the primary tag.
+            "IncomeLossFromContinuingOperations",
+            "ProfitLoss",
+            "NetIncomeLoss",
+        ),
+        "USD",
     ),
     XBRLConceptMapping(
         "discontinued_ops",

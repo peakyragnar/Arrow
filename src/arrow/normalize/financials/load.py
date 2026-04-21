@@ -144,6 +144,7 @@ def load_fmp_is_rows(
     source_raw_response_id: int,
     ingest_run_id: int,
     min_fiscal_year: int | None = None,
+    max_fiscal_year: int | None = None,
 ) -> LoadResult:
     """Load every row in one FMP IS payload. Caller owns transaction.
 
@@ -176,6 +177,8 @@ def load_fmp_is_rows(
             # be in calendar 2020, but it belongs to FY2021 and should come
             # in with the rest of FY2021.
             if min_fiscal_year is not None and fiscal.fiscal_year < min_fiscal_year:
+                continue
+            if max_fiscal_year is not None and fiscal.fiscal_year > max_fiscal_year:
                 continue
 
             calendar = derive_calendar_period(period_end)
@@ -277,6 +280,7 @@ def load_fmp_bs_rows(
     source_raw_response_id: int,
     ingest_run_id: int,
     min_fiscal_year: int | None = None,
+    max_fiscal_year: int | None = None,
 ) -> LoadResult:
     """Mirror of load_fmp_is_rows for the balance sheet.
 
@@ -302,6 +306,8 @@ def load_fmp_bs_rows(
             )
 
             if min_fiscal_year is not None and fiscal.fiscal_year < min_fiscal_year:
+                continue
+            if max_fiscal_year is not None and fiscal.fiscal_year > max_fiscal_year:
                 continue
 
             calendar = derive_calendar_period(period_end)
@@ -398,6 +404,7 @@ def load_fmp_cf_rows(
     source_raw_response_id: int,
     ingest_run_id: int,
     min_fiscal_year: int | None = None,
+    max_fiscal_year: int | None = None,
 ) -> LoadResult:
     """Mirror of load_fmp_is_rows / load_fmp_bs_rows for cash flow.
 
@@ -421,6 +428,8 @@ def load_fmp_cf_rows(
             )
 
             if min_fiscal_year is not None and fiscal.fiscal_year < min_fiscal_year:
+                continue
+            if max_fiscal_year is not None and fiscal.fiscal_year > max_fiscal_year:
                 continue
 
             calendar = derive_calendar_period(period_end)

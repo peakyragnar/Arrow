@@ -147,6 +147,17 @@ def _print_cf_verification_failed(e: CFVerificationFailed) -> None:
 
 def _print_period_arithmetic(e: PeriodArithmeticViolation) -> None:
     _print_failure_header(f"Layer 3 {e.statement.upper()} (Q1+Q2+Q3+Q4 = FY)", str(e))
+    unresolvable = getattr(e, "unresolvable_reason", None)
+    if unresolvable:
+        print()
+        print("Amendment-detect verdict:  UNRESOLVABLE")
+        print(f"Reason: {unresolvable}")
+        diag = getattr(e, "unresolvable_diagnostics", None) or {}
+        if diag:
+            import json
+            print("Diagnostics:")
+            print(json.dumps(diag, indent=2, default=str)[:3000])
+        print()
     for f in e.failures:
         print(f"  - {f.concept} / FY{f.fiscal_year}")
         print(f"    Q1+Q2+Q3+Q4  : {f.quarters_sum}")
@@ -184,14 +195,45 @@ def _print_xbrl_divergence(e: XBRLDivergenceFailed) -> None:
 
 
 def main() -> int:
-    if len(sys.argv) < 2:
-        print("Usage: backfill_fmp.py TICKER [TICKER ...]", file=sys.stderr)
+    from datetime import date as _d
+
+    args = sys.argv[1:]
+    since_date = None
+    until_date = None
+
+    def _pop_date_flag(flag: str):
+        nonlocal args
+        if flag not in args:
+            return None
+        i = args.index(flag)
+        if i + 1 >= len(args):
+            print(f"Usage: backfill_fmp.py [--since YYYY-MM-DD] [--until YYYY-MM-DD] TICKER [TICKER ...]", file=sys.stderr)
+            sys.exit(2)
+        try:
+            y, m, d = args[i + 1].split("-")
+            val = _d(int(y), int(m), int(d))
+        except Exception as e:
+            print(f"Invalid {flag} date: {e}", file=sys.stderr)
+            sys.exit(2)
+        args = args[:i] + args[i + 2:]
+        return val
+
+    since_date = _pop_date_flag("--since")
+    until_date = _pop_date_flag("--until")
+
+    if not args:
+        print("Usage: backfill_fmp.py [--since YYYY-MM-DD] [--until YYYY-MM-DD] TICKER [TICKER ...]", file=sys.stderr)
         return 2
 
-    tickers = sys.argv[1:]
+    tickers = args
+    kwargs: dict = {}
+    if since_date is not None:
+        kwargs["since_date"] = since_date
+    if until_date is not None:
+        kwargs["until_date"] = until_date
     try:
         with get_conn() as conn:
-            counts = backfill_fmp_statements(conn, tickers)
+            counts = backfill_fmp_statements(conn, tickers, **kwargs)
     except VerificationFailed as e:
         _print_is_verification_failed(e)
         return 1

@@ -147,3 +147,30 @@ def min_fiscal_year_for_since_date(
             return fy
     # Fallback: something very unusual with the inputs; return since_date.year.
     return since_date.year
+
+
+def max_fiscal_year_for_until_date(
+    until_date: date,
+    fiscal_year_end_md: str,
+) -> int:
+    """Round a calendar `until_date` backward to the last complete fiscal year.
+
+    Returns the latest fiscal_year whose nominal FY-end date falls on or
+    before `until_date`. Symmetric to `min_fiscal_year_for_since_date` —
+    use this when the ingest window should exclude periods after a
+    specific calendar date (e.g., to skip a filing FMP has known-bad
+    data for, or to bound the ingest to a completed fiscal year).
+
+    Example: DELL (fiscal_year_end_md='01-29'), until_date=2025-06-01.
+    FY2025 nominally ends 2025-01-31 (≤ until_date) — returned.
+    FY2026 nominally ends 2026-01-30 (> until_date) — excluded.
+    """
+    fy_end_month, fy_end_day = parse_fiscal_year_end_md(fiscal_year_end_md)
+    for fy in range(until_date.year + 1, until_date.year - 2, -1):
+        try:
+            fy_end = date(fy, fy_end_month, fy_end_day)
+        except ValueError:
+            continue
+        if fy_end <= until_date:
+            return fy
+    return until_date.year

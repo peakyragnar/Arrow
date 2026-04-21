@@ -67,7 +67,10 @@ from arrow.normalize.financials.verify_period_arithmetic import (
     PeriodArithmeticFailure,
     verify_period_arithmetic,
 )
-from arrow.normalize.periods.derive import min_fiscal_year_for_since_date
+from arrow.normalize.periods.derive import (
+    max_fiscal_year_for_until_date,
+    min_fiscal_year_for_since_date,
+)
 from arrow.reconcile.fmp_vs_xbrl import (
     AnchorCheckResult,
     reconcile_bs_anchors,
@@ -155,6 +158,7 @@ def _load_is_period(
     company: CompanyRow,
     period: str,
     min_fiscal_year: int,
+    max_fiscal_year: int | None,
     ingest_run_id: int,
     client: FMPClient,
 ) -> LoadResult:
@@ -174,6 +178,7 @@ def _load_is_period(
             source_raw_response_id=fetched.raw_response_id,
             ingest_run_id=ingest_run_id,
             min_fiscal_year=min_fiscal_year,
+            max_fiscal_year=max_fiscal_year,
         )
 
 
@@ -183,6 +188,7 @@ def _load_bs_period(
     company: CompanyRow,
     period: str,
     min_fiscal_year: int,
+    max_fiscal_year: int | None,
     ingest_run_id: int,
     client: FMPClient,
 ) -> LoadResult:
@@ -202,6 +208,7 @@ def _load_bs_period(
             source_raw_response_id=fetched.raw_response_id,
             ingest_run_id=ingest_run_id,
             min_fiscal_year=min_fiscal_year,
+            max_fiscal_year=max_fiscal_year,
         )
 
 
@@ -211,6 +218,7 @@ def _load_cf_period(
     company: CompanyRow,
     period: str,
     min_fiscal_year: int,
+    max_fiscal_year: int | None,
     ingest_run_id: int,
     client: FMPClient,
 ) -> LoadResult:
@@ -230,6 +238,7 @@ def _load_cf_period(
             source_raw_response_id=fetched.raw_response_id,
             ingest_run_id=ingest_run_id,
             min_fiscal_year=min_fiscal_year,
+            max_fiscal_year=max_fiscal_year,
         )
 
 
@@ -337,6 +346,7 @@ def backfill_fmp_statements(
     tickers: list[str],
     *,
     since_date: date = DEFAULT_SINCE_DATE,
+    until_date: date | None = None,
 ) -> dict[str, Any]:
     """Backfill FMP income-statement + balance-sheet data with full validation.
 
@@ -345,6 +355,12 @@ def backfill_fmp_statements(
     Layer 3      — Q1+Q2+Q3+Q4 ≈ FY for IS flows.
     Layer 5 IS   — top-line IS anchors vs SEC XBRL (direct + Q4 derivation).
     Layer 5 BS   — top-line BS anchors vs SEC XBRL (instant facts).
+
+    `until_date`: if set, only ingest fiscal years whose nominal FY-end
+    falls on or before this date. Use to exclude filings FMP has
+    known-bad data for (see `fmp_mapping.md` § 10) — set to the last
+    safe FY-end, e.g. 2025-06-01 to stop at FY2025 for filers with
+    FY-end in early calendar year.
     """
     run_id = open_run(
         conn,
@@ -356,7 +372,9 @@ def backfill_fmp_statements(
 
     counts: dict[str, Any] = {
         "since_date": since_date.isoformat(),
+        "until_date": until_date.isoformat() if until_date else None,
         "min_fiscal_year_by_ticker": {},
+        "max_fiscal_year_by_ticker": {},
         "raw_responses": 0,
         "rows_processed": 0,
         # IS
@@ -393,6 +411,12 @@ def backfill_fmp_statements(
                 since_date, company.fiscal_year_end_md
             )
             counts["min_fiscal_year_by_ticker"][ticker.upper()] = ticker_min_fy
+            ticker_max_fy = (
+                max_fiscal_year_for_until_date(until_date, company.fiscal_year_end_md)
+                if until_date
+                else None
+            )
+            counts["max_fiscal_year_by_ticker"][ticker.upper()] = ticker_max_fy
 
             # --- IS ingest (Layer 1 IS inline) ---
             for period in ("quarter", "annual"):
@@ -401,6 +425,7 @@ def backfill_fmp_statements(
                     company=company,
                     period=period,
                     min_fiscal_year=ticker_min_fy,
+                    max_fiscal_year=ticker_max_fy,
                     ingest_run_id=run_id,
                     client=client,
                 )
@@ -416,6 +441,7 @@ def backfill_fmp_statements(
                     company=company,
                     period=period,
                     min_fiscal_year=ticker_min_fy,
+                    max_fiscal_year=ticker_max_fy,
                     ingest_run_id=run_id,
                     client=client,
                 )
@@ -431,6 +457,7 @@ def backfill_fmp_statements(
                     company=company,
                     period=period,
                     min_fiscal_year=ticker_min_fy,
+                    max_fiscal_year=ticker_max_fy,
                     ingest_run_id=run_id,
                     client=client,
                 )
@@ -440,26 +467,73 @@ def backfill_fmp_statements(
                 counts["cf_facts_superseded"] += result.facts_superseded
 
             # --- Layer 3: period arithmetic on IS + CF flow buckets ---
+            # If Layer 3 fails, invoke the Phase-1.5 amendment-detect agent
+            # before giving up. It detects the "amendment-within-regular-filing"
+            # pattern (e.g., DELL FY25 10-K restating FY24 Q1-Q4) and applies
+            # XBRL-sourced supersessions if and only if all rules hold — see
+            # docs/research/amendment_phase_1_5_design.md.
             is_l3 = _run_layer3(
                 conn, company,
                 statement="income_statement",
                 extraction_version=IS_EXTRACTION_VERSION,
             )
-            if is_l3:
-                raise PeriodArithmeticViolation(is_l3, statement="income_statement")
-            counts["is_layer3_identities_checked"] += _count_layer3_identities(
-                conn, company_id=company.id,
-                statement="income_statement",
-                extraction_version=IS_EXTRACTION_VERSION,
-            )
-
             cf_l3 = _run_layer3(
                 conn, company,
                 statement="cash_flow",
                 extraction_version=CF_EXTRACTION_VERSION,
             )
-            if cf_l3:
-                raise PeriodArithmeticViolation(cf_l3, statement="cash_flow")
+
+            if is_l3 or cf_l3:
+                # Attempt amendment resolution. The agent either resolves (returns
+                # AmendmentResult.status == "amended") or raises UnresolvableAmendment.
+                from arrow.agents.amendment_detect import (
+                    detect_and_apply_amendments,
+                    UnresolvableAmendment,
+                )
+                try:
+                    amend_result = detect_and_apply_amendments(
+                        conn, company_id=company.id, company_cik=company.cik,
+                        ingest_run_id=run_id,
+                    )
+                    counts.setdefault("amendment_supersessions", 0)
+                    counts["amendment_supersessions"] += len(amend_result.supersessions_applied)
+                    counts.setdefault("amendment_status_by_ticker", {})
+                    counts["amendment_status_by_ticker"][ticker.upper()] = amend_result.status
+                except UnresolvableAmendment as e:
+                    # Re-raise as PeriodArithmeticViolation with the unresolvable
+                    # reason attached, so downstream error handling is consistent.
+                    combined = is_l3 + cf_l3
+                    exc = PeriodArithmeticViolation(
+                        combined,
+                        statement="income_statement" if is_l3 else "cash_flow",
+                    )
+                    exc.unresolvable_reason = e.reason  # type: ignore[attr-defined]
+                    exc.unresolvable_diagnostics = e.diagnostics  # type: ignore[attr-defined]
+                    raise exc from e
+
+                # Re-run Layer 3 after supersession just to confirm cleanly (defense in depth).
+                is_l3 = _run_layer3(
+                    conn, company,
+                    statement="income_statement",
+                    extraction_version=IS_EXTRACTION_VERSION,
+                )
+                cf_l3 = _run_layer3(
+                    conn, company,
+                    statement="cash_flow",
+                    extraction_version=CF_EXTRACTION_VERSION,
+                )
+                # Note: _run_layer3 still uses the FMP extraction_version filter, so
+                # after amendment it may still show "failures" for concepts where the
+                # FMP Q rows were superseded. The correct post-amendment state is
+                # verified INSIDE detect_and_apply_amendments via
+                # _reverify_layer3_for_fiscal_year which reads current rows across
+                # all extraction_versions. Don't raise here on the FMP-scoped output.
+
+            counts["is_layer3_identities_checked"] += _count_layer3_identities(
+                conn, company_id=company.id,
+                statement="income_statement",
+                extraction_version=IS_EXTRACTION_VERSION,
+            )
             counts["cf_layer3_identities_checked"] += _count_layer3_identities(
                 conn, company_id=company.id,
                 statement="cash_flow",
