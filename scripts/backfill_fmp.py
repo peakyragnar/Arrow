@@ -64,7 +64,7 @@ def _print_success(tickers: list[str], counts: dict[str, Any]) -> None:
     _print_statement_block(
         "Cash flow", counts,
         fw_key="cf_facts_written", fs_key="cf_facts_superseded",
-        extra_l1=" (hard ties: cash roll-forward + top-level aggregation)",
+        extra_l1=" (hard tie: cash roll-forward)",
     )
     cf_flags = counts.get("cf_flags_written", 0)
     if cf_flags:

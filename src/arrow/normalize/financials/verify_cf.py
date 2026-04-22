@@ -63,9 +63,11 @@ def _val(values: dict[str, Decimal], concept: str) -> Decimal:
 # ---------------------------------------------------------------------------
 
 # SOFT ties — vendor-bucketing consistency. These test whether FMP's reported
-# subtotal agrees with the sum of FMP's own component fields. When they
+# subtotal agrees with the sum of FMP's own component fields, or whether the
+# three section subtotals sum to the reported net change in cash. When they
 # disagree, FMP has shipped a self-inconsistent row. The filer's 10-Q is
-# typically fine; the defect is FMP normalization. Write a flag, don't block.
+# typically fine (the cash roll-forward ties); the defect is FMP's
+# decomposition or Q4-derivation. Write a flag, don't block.
 #
 # concepts.md § 6 describes the full CF vocabulary. Several concepts
 # (gain_on_sale_assets_cf, gain_on_sale_investments_cf, asset_writedown,
@@ -130,13 +132,14 @@ _CF_SOFT_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
             ("other_financing", +1),
         ],
     ),
-]
-
-# HARD ties — filer-level integrity. A cash-flow statement that fails
-# either of these is internally broken at the filer level, not a vendor
-# bucketing artifact. Block ingest; the caller rolls back the transaction.
-_CF_HARD_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
     (
+        # This tie is SOFT rather than HARD because the failure mode is
+        # vendor-decomposition/Q4-derivation, not filer integrity. A real
+        # filer-level CF inconsistency would also break the HARD cash
+        # roll-forward tie (cash_end - cash_begin == net_change_in_cash),
+        # which remains HARD. Empirical: AMD FY2017 Q4 and similar Q4
+        # rows that FMP derives as FY − 9M can show a section-sum ≠
+        # net-change mismatch while cash_end - cash_begin ties perfectly.
         "net_change_in_cash == cfo + cfi + cff + fx",
         "net_change_in_cash",
         [
@@ -148,6 +151,12 @@ _CF_HARD_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
             ("fx_effect_on_cash", +1),
         ],
     ),
+]
+
+# HARD ties — filer-level integrity. A cash-flow statement that fails
+# this is literally impossible for the filer to ship: the cash
+# roll-forward is definitional. Block ingest on failure.
+_CF_HARD_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
     (
         "net_change_in_cash == cash_end_of_period - cash_begin_of_period",
         "net_change_in_cash",

@@ -35,9 +35,10 @@ Complements:
 
 ```
 Layer 1 — Subtotal ties                  (intra-statement; inline on every ingest)
-  1-HARD  IS subtotal ties, BS balance identity, CF cash roll-forward,
-          CF top-level aggregation        (HARD GATE)
-  1-SOFT  CF cfo/cfi/cff subtotal ==
+  1-HARD  IS subtotal ties, BS balance identity,
+          CF cash roll-forward            (HARD GATE)
+  1-SOFT  CF top-level aggregation,
+          CF cfo/cfi/cff subtotal ==
           sum of FMP's component fields   (inline flag, non-blocking)
 Layer 2 — Cross-statement ties           (IS ↔ BS ↔ CF; scaffold present, not wired)
 Layer 3 — Period arithmetic (Q sum = FY) (side rail; amendment agent + flags)
@@ -67,8 +68,8 @@ Not every Layer-1 tie tests the same thing. Some test filer integrity: if the fi
 | IS `gross_profit == revenue − cogs` (and the IS chain) | filer's own subtotal arithmetic in the income statement | HARD |
 | BS `total_assets == total_liabilities + total_equity` | filer's balance identity | HARD |
 | BS subtotal ties (`total_current_assets == sum of components`, etc.) | filer subtotals | HARD |
-| CF `net_change_in_cash == cfo + cfi + cff + fx` | filer top-level aggregation | HARD |
-| CF `net_change_in_cash == cash_end − cash_begin` | filer cash roll-forward | HARD |
+| CF `net_change_in_cash == cash_end − cash_begin` | filer cash roll-forward (definitional) | HARD |
+| CF `net_change_in_cash == cfo + cfi + cff + fx` | FMP's section-decomposition (fails on Q4-derivation artifacts) | SOFT |
 | CF `cfo == sum(non-cash + working-capital components)` | **FMP's bundling of filer line-items into FMP buckets** | SOFT |
 | CF `cfi == sum(investing components)` | same | SOFT |
 | CF `cff == sum(financing components)` | same | SOFT |
@@ -79,7 +80,7 @@ When in doubt: if the tie could fail because *FMP* mis-bucketed rather than beca
 
 ### What "HARD GATE", "inline soft-flag", and "side rail" actually mean
 
-- **HARD GATE (Layer 1 hard ties)** — violation raises and the entire ingest transaction for that period rolls back. Nothing about the failing filer's period persists. Catches genuine filer-level integrity violations: IS subtotal ties, BS balance identity, BS subtotal ties, CF cash roll-forward, CF top-level aggregation. The filing itself would have to be internally broken to fail these.
+- **HARD GATE (Layer 1 hard ties)** — violation raises and the entire ingest transaction for that period rolls back. Nothing about the failing filer's period persists. Catches genuine filer-level integrity violations: IS subtotal ties, BS balance identity, BS subtotal ties, CF cash roll-forward. The filing itself would have to be internally broken to fail these.
 
 - **INLINE SOFT-FLAG (Layer 1 soft ties; CF subtotal-component drift, today)** — runs during normal ingest, alongside hard ties. On failure, writes one row per failing tie to `data_quality_flags` with `flag_type = 'cf_subtotal_component_drift'` and severity scaled by `|delta| / max(|filer|, |computed|)` (<1% → informational, 1–10% → warning, ≥10% → investigate). The `financial_facts` row is loaded verbatim — FMP's reported subtotal and FMP's component fields are both stored as shipped. The flag row is the analyst-visible record that they don't agree. Analyst reviews via `scripts/review_flags.py`; accept-as-is leaves the fact unchanged.
 
@@ -216,15 +217,15 @@ net_ppe == gross_ppe + accumulated_depreciation
 
 #### 2.3a HARD ties (filer integrity)
 
-These fail only if the cash-flow statement itself is internally broken. Block ingest.
+The cash roll-forward is the only definitional-integrity tie on the CF: if it fails, the filing is literally broken. Blocks ingest.
 
 ```
-net_change_in_cash == cfo + cfi + cff + fx_effect_on_cash
-                    + misc_cf_adjustments
 net_change_in_cash == cash_end_of_period − cash_begin_of_period
 ```
 
 Implementation: `verify_cf_hard_ties` in `src/arrow/normalize/financials/verify_cf.py`.
+
+(Historically the system also HARD-tied `net_change_in_cash == cfo + cfi + cff + fx`. Empirical cases — AMD FY2017 Q4 — show this tie failing on vendor-derivation artifacts while the cash roll-forward ties perfectly, meaning the underlying filing is internally consistent and FMP's decomposition is where the ~$60M leak lives. That tie was moved to SOFT alongside the cfo/cfi/cff subtotal-component ties.)
 
 #### 2.3b SOFT ties (vendor bucketing consistency; inline flag)
 
