@@ -10,6 +10,8 @@ Start here. Read only the next doc you need.
 - Current architecture: `docs/architecture/system.md`
 - Fast orientation: `docs/architecture/normal_vs_audit.md`
 - Repository flow / folder map: `docs/architecture/repository_flow.md`
+- Metrics platform (view stack; shared by dashboard, screener, analyst agent): `docs/architecture/metrics_platform.md`
+- Dashboard UI surface: `docs/architecture/dashboard.md`
 - Period spec (fiscal ↔ calendar rules): `docs/reference/periods.md`
 - Canonical bucket schema (IS/BS/CF normalization contract): `docs/reference/concepts.md`
 - FMP ↔ canonical mapping: `docs/reference/fmp_mapping.md`

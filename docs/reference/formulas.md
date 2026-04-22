@@ -102,6 +102,9 @@ These guards are layer 4 of the five-layer correctness stack. See [`verification
 
 ### R&D capitalization rules
 
+> **Partial-history policy (Arrow-specific):** the universal "suppress on missing required component" rule does not apply to the 20-quarter R&D window. When fewer than 20 priors exist in `financial_facts` for a ticker, treat missing-prior quarters as `0` and still compute R&D Amortization and R&D Asset. Under-amortization in the first ~19 quarters of a ticker's ingest window is a known and accepted artifact; dashboards surface `coverage: N/20 quarters` so analysts can discount early-window ROIC. This deviation is justified because suppression would leave ROIC, ROIIC, Reinvestment Rate, and Adjusted NOPAT blank for every quarter with < 20 priors, which is the entire early ingest window on any new ticker.
+
+
 - Annual shorthand:
   `R&D Amortization = sum(prior 5 years of R&D expense / 5)`
 - Quarterly implementation:
@@ -126,7 +129,7 @@ These guards are layer 4 of the five-layer correctness stack. See [`verification
 ### Tax rate rule
 
 - `Tax Rate = Income Tax Expense / Income Before Income Taxes`
-- Fallback: `21%` if pretax income is zero or negative.
+- Fallback: `15%` if pretax income is zero or negative. Chosen as a sensible long-run effective rate for post-TCJA US filers; avoids the distortion of a 21% statutory fallback on companies that rarely approach the statutory rate in practice.
 
 ### Metric 17
 
@@ -333,9 +336,9 @@ These guards are layer 4 of the five-layer correctness stack. See [`verification
 - Formula:
   `Revenue per Employee = Revenue TTM / Total Employees`
 - Source:
-  - Total Employees: 10K Item 1 `Business` / `Human Capital`
+  - Total Employees: FMP `historical-employee-count` endpoint — field `employeeCount`, one row per 10-K with `periodOfReport = fiscal year end`. FMP echoes the 10-K `Business` / `Human Capital` disclosure; quarterly 10-Qs do not carry employee counts.
 - Implementation clarification:
-  - Carry the most recent 10K employee count forward until the next 10K.
+  - Employee count is annual-grain only. Quarterly revenue-per-employee joins against the most recent `total_employees` row where `employee_period_end <= quarter_end`. Periods earlier than the first ingested 10-K for a ticker return NULL (universal suppression rule applies; no partial-history override here, unlike R&D).
 
 ### 19. Working Capital Intensity
 

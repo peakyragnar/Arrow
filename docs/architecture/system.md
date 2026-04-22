@@ -1134,6 +1134,7 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 19. 🚧 add SEC fast-path ingest for newly dropped filings (recent submissions + raw filing artifacts; 8-K exhibit/press-release support started)
 20. ⬜ add Massive-backed options ingest later
 21. ⬜ migrate to cloud when durability/reliability justify it
+22. ⬜ metrics platform + analyst surfaces (see `docs/architecture/metrics_platform.md`, `docs/architecture/dashboard.md`). Sub-phases: Phase 0 formulas.md spec tweaks (done) → Phase 1 mapper audit + FMP `historical-employee-count` ingest + migration 014 → Phase 2 10-year history backfill for existing tickers → Phase 3 view stack (`v_ff_current`, `v_company_period_wide`, `v_rd_*`, `v_ttm_*`, `v_metrics_*`, `v_metric_changes`, `v_dashboard_panel`) → Phase 4 dashboard UI → Phase 5 screener CLI.
 
 ✅ also: `companies` schema (migration 007) — implicit prerequisite to step 9, was not in the original numbered list but has to land before any fact references a company.
 
