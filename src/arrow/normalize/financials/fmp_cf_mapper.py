@@ -87,6 +87,13 @@ _CF_BUCKETS: list[tuple[str, list[str], str]] = [
     ("net_change_in_cash",             ["netChangeInCash"],                    "USD"),
     ("cash_begin_of_period",           ["cashAtBeginningOfPeriod"],            "USD"),
     ("cash_end_of_period",             ["cashAtEndOfPeriod"],                  "USD"),
+    # --- Supplemental disclosures (below the CF sections; not in tie formulas) ---
+    # Needed by metric 21 (Unlevered FCF): CFO + interest_paid × (1 − tax_rate) − capex.
+    # FMP's `interestPaid` is the same number filers disclose in the CF
+    # supplemental footnote. Stored as cash-impact sign (FMP returns it as
+    # a positive cash-out value; we preserve FMP's sign since the formula
+    # expects a positive magnitude for interest paid).
+    ("cash_paid_for_interest",         ["interestPaid"],                       "USD"),
 ]
 
 

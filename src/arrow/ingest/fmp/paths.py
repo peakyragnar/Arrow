@@ -18,3 +18,14 @@ def fmp_statement_path(endpoint: str, ticker: str, period: str) -> Path:
     period:   'annual' | 'quarter'
     """
     return cache_path("fmp", endpoint, ticker.upper(), f"{period}.json")
+
+
+def fmp_per_ticker_path(endpoint: str, ticker: str) -> Path:
+    """Build cache path for a per-ticker FMP endpoint with no period slicing.
+
+    Used for endpoints like `historical-employee-count` that return the
+    filer's full history in one pull.
+
+        data/raw/fmp/{endpoint}/{TICKER}.json
+    """
+    return cache_path("fmp", endpoint, f"{ticker.upper()}.json")
