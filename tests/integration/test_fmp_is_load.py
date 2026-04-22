@@ -10,8 +10,7 @@ Asserts:
   - ingest_runs success with counts
   - Idempotency: re-running supersedes old rows + writes new ones, net zero
     change in "current" row count
-  - Verification failure path: broken gross_profit -> ingest_run failed,
-    no facts written from that payload (transaction rolled back)
+    - Soft-flag path: broken IS subtotal -> facts still load and flag writes
 
 Warning: DROPs and recreates the `public` schema in DATABASE_URL. Run
 only against a dev or dedicated test database.
@@ -474,19 +473,27 @@ def test_rerun_supersedes_old_rows_and_writes_new_ones() -> None:
             assert cur.fetchone()[0] == total_current
 
 
-def test_verification_failure_rolls_back_and_marks_run_failed() -> None:
+def test_is_subtotal_drift_loads_and_writes_flag() -> None:
     from arrow.agents.fmp_ingest import backfill_fmp_statements
-    from arrow.normalize.financials.load import VerificationFailed
 
     def _bad_fmp_get(self, endpoint: str, **params) -> Response:  # noqa: ARG001
-        # IS payload with grossProfit broken → Layer 1 IS fires before BS
-        # ingest even starts.
+        # IS payload with grossProfit broken → row still loads, flagged inline.
         if endpoint == "income-statement":
             broken = _q4_row()
             broken["grossProfit"] = broken["grossProfit"] + 5_000_000_000
             rows = [broken if params["period"] == "quarter" else _fy_row()]
         elif endpoint == "balance-sheet-statement":
-            rows = [_bs_q4_row()]
+            bs_row = _bs_q4_row()
+            if params.get("period") == "annual":
+                bs_row = dict(bs_row)
+                bs_row["period"] = "FY"
+            rows = [bs_row]
+        elif endpoint == "cash-flow-statement":
+            cf_row = _cf_q4_row()
+            if params.get("period") == "annual":
+                cf_row = dict(cf_row)
+                cf_row["period"] = "FY"
+            rows = [cf_row]
         else:
             raise AssertionError(f"unexpected endpoint: {endpoint}")
         body = json.dumps(rows).encode()
@@ -501,29 +508,53 @@ def test_verification_failure_rolls_back_and_marks_run_failed() -> None:
         company_id = _seed_nvda(conn)
 
         with patch("arrow.ingest.fmp.client.FMPClient.get", new=_bad_fmp_get):
-            with pytest.raises(VerificationFailed):
-                backfill_fmp_statements(conn, ["NVDA"])
+            counts = backfill_fmp_statements(conn, ["NVDA"])
 
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT count(*) FROM financial_facts WHERE company_id = %s;",
+                """
+                SELECT count(*) FROM financial_facts
+                WHERE company_id = %s
+                  AND statement = 'income_statement'
+                  AND superseded_at IS NULL;
+                """,
                 (company_id,),
             )
-            assert cur.fetchone()[0] == 0  # IS txn rolled back; BS never reached
+            assert cur.fetchone()[0] == 40
 
             cur.execute("SELECT count(*) FROM raw_responses WHERE vendor = 'fmp';")
-            assert cur.fetchone()[0] == 0  # IS raw_response rolled back too
+            assert cur.fetchone()[0] == 6
 
             cur.execute(
-                "SELECT status, error_message, error_details FROM ingest_runs "
-                "ORDER BY id DESC LIMIT 1;"
+                """
+                SELECT flag_type, statement, concept, delta, context->>'tie'
+                FROM data_quality_flags
+                WHERE company_id = %s
+                ORDER BY id;
+                """,
+                (company_id,),
             )
-            status, msg, details = cur.fetchone()
-            assert status == "failed"
-            assert "verification failed" in msg.lower()
-            assert details["kind"] == "is_verification_failed"
-            assert details["period_label"] == "FY2026 Q4"
-            assert len(details["failed_ties"]) >= 1
+            rows = cur.fetchall()
+            assert len(rows) == 2
+            assert rows[0] == (
+                "is_subtotal_tie_drift",
+                "income_statement",
+                "gross_profit",
+                5000000000,
+                "gross_profit == revenue - cogs",
+            )
+            assert rows[1][0] == "is_subtotal_tie_drift"
+            assert rows[1][1] == "income_statement"
+            assert rows[1][2] == "operating_income"
+            assert rows[1][4] == "operating_income == gross_profit - total_opex"
+
+            cur.execute(
+                "SELECT status, counts FROM ingest_runs ORDER BY id DESC LIMIT 1;"
+            )
+            status, run_counts = cur.fetchone()
+            assert status == "succeeded"
+            assert counts["is_flags_written"] == 2
+            assert run_counts["is_flags_written"] == 2
 
 
 def test_company_not_seeded_fails_cleanly() -> None:

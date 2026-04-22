@@ -579,7 +579,7 @@ def index() -> Any:
     if not tickers:
         return HTMLResponse(
             "<html><body><h1>No companies seeded.</h1>"
-            "<p>Run <code>uv run scripts/seed_companies.py TICKER</code> first.</p></body></html>"
+            "<p>Run <code>uv run scripts/ingest_company.py TICKER</code> first.</p></body></html>"
         )
     return RedirectResponse(url=f"/t/{tickers[0]}", status_code=307)
 
@@ -601,7 +601,7 @@ def dashboard(request: Request, ticker: str) -> Any:
     if not quarterly:
         return HTMLResponse(
             f"<html><body><h1>{ticker}: no facts loaded yet.</h1>"
-            f"<p>Run <code>uv run scripts/backfill_fmp.py {ticker}</code> first.</p>"
+            f"<p>Run <code>uv run scripts/ingest_company.py {ticker}</code> first.</p>"
             "</body></html>"
         )
 

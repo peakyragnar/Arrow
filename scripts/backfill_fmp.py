@@ -4,12 +4,12 @@ Usage:
     uv run scripts/backfill_fmp.py NVDA [MSFT ...]
 
 Per ticker, in order:
-  - Layer 1 IS: per-row subtotal ties (inline).
+  - Layer 1 IS: per-row subtotal ties (soft-flag inline).
   - Layer 1 BS: per-row balance identity hard gate; subtotal drift soft-flags.
   - Layer 1 CF: per-row subtotal ties + cash roll-forward (inline).
 
-Companies must be seeded first (scripts/seed_companies.py). Any
-Layer-1 validation failure aborts with a structured error in stdout + the
+Companies must be seeded first (scripts/seed_companies.py). Remaining
+Layer-1 hard failures abort with a structured error in stdout + the
 ingest_runs.error_details JSONB.
 """
 
@@ -35,7 +35,7 @@ def _print_statement_block(
     print(f"{name}:")
     print(f"  facts written:          {counts[fw_key]}")
     print(f"  facts superseded:       {counts[fs_key]}")
-    print(f"  Layer 1{extra_l1}:          enforced inline; all rows passed")
+    print(f"  Layer 1{extra_l1}:          executed inline")
 
 
 def _print_success(tickers: list[str], counts: dict[str, Any]) -> None:
@@ -52,8 +52,16 @@ def _print_success(tickers: list[str], counts: dict[str, Any]) -> None:
     _print_statement_block(
         "Income statement", counts,
         fw_key="is_facts_written", fs_key="is_facts_superseded",
-        extra_l1=" (subtotal ties)",
+        extra_l1=" (soft tie review)",
     )
+    is_flags = counts.get("is_flags_written", 0)
+    if is_flags:
+        print(f"  soft-tie flags written: {is_flags}")
+        print("    IS subtotal drift (FMP-reported subtotal vs mapped FMP components)")
+        print(
+            f"    loaded verbatim; review with: "
+            f"uv run scripts/review_flags.py {' '.join(counts.get('min_fiscal_year_by_ticker', {}).keys())}"
+        )
     print()
     _print_statement_block(
         "Balance sheet", counts,

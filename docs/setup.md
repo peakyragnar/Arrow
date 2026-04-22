@@ -98,6 +98,27 @@ Introspects the live database and writes `arrow_db_schema.html` — a full ER di
 
 Re-run after every migration. The HTML is a pure projection of what's actually in Postgres; if it's not on the page, it's not in the database.
 
+## 8. Run the normal company ingest
+
+One command:
+
+```bash
+uv run scripts/ingest_company.py NVDA
+```
+
+This runs the normal flow:
+
+- seed company from SEC
+- backfill baseline FMP financials
+- ingest FMP employee counts
+- backfill SEC filing/document artifacts
+
+Custom narrower windows still require `--scoped`:
+
+```bash
+uv run scripts/ingest_company.py --since 2022-01-01 --scoped NVDA
+```
+
 ## Notes
 
 - **Why port 5433, not 5432?** Many developer Macs already have a Homebrew pg (often `postgresql@14`) running on 5432. Arrow picks 5433 so it can coexist. Cloud deployment uses whatever port the target provides — just update `DATABASE_URL`.

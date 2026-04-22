@@ -11,9 +11,10 @@ This is the default path. This is what a new contributor should assume.
 - source of truth: FMP
 - destination: `financial_facts`
 - default rule: ingest FMP, store FMP, preserve PIT history
+- normal entrypoint: `uv run scripts/ingest_company.py TICKER`
 - default Layer 1 behavior:
-  - hard: IS subtotal ties, BS balance identity, CF cash roll-forward
-  - soft: BS/CF subtotal-component drift writes `data_quality_flags`
+  - hard: BS balance identity, CF cash roll-forward
+  - soft: IS subtotal drift, BS/CF subtotal-component drift writes `data_quality_flags`
   - soft flags do not change stored fact values
 
 ### SEC
@@ -30,6 +31,7 @@ Destination:
 
 - `raw_responses`
 - `artifacts`
+- part of the same normal company run; not a separate architecture
 
 ### Transcripts
 

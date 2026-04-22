@@ -9,7 +9,7 @@ Per ticker:
   1. Look up the companies row (must be seeded).
   2. Round `since_date` forward to the first fiscal year whose end falls
      on/after it, so complete fiscal years are ingested (not partials).
-  3. Load IS quarter + annual. Layer-1 subtotal ties enforced per row.
+  3. Load IS quarter + annual. Layer-1 subtotal ties soft-flagged per row.
   4. Load BS quarter + annual. Layer-1 BS balance identities enforced
      per row; subtotal-component drift soft-flags and still loads.
   5. Load CF quarter + annual. Layer-1 CF ties + cash roll-forward
@@ -18,8 +18,9 @@ Per ticker:
 Default historical ingest stops there. SEC/XBRL comparison, amendment
 work, and other audit logic run outside this path.
 
-Any Layer-1 HARD failure aborts the ticker's work, rolls back that
-transaction, and marks the ingest_run failed with structured error details.
+Any remaining Layer-1 HARD failure aborts the ticker's work, rolls back
+that transaction, and marks the ingest_run failed with structured error
+details.
 
 `since_date` default 2016-01-01 gives the 10-year baseline window used by
 the dashboard / R&D lookback formulas.
@@ -184,7 +185,7 @@ def backfill_fmp_statements(
 ) -> dict[str, Any]:
     """Backfill baseline FMP income-statement, balance-sheet, and cash-flow data.
 
-    Layer 1 IS   — per-row subtotal ties (inline during IS load).
+    Layer 1 IS   — per-row subtotal ties soft-flagged inline during IS load.
     Layer 1 BS   — per-row balance identity hard gate; subtotal-component drift
                    soft-flags inline during BS load.
     Layer 1 CF   — per-row subtotal ties + cash roll-forward (inline during CF load).
@@ -222,6 +223,7 @@ def backfill_fmp_statements(
         # Soft-tie data_quality_flags.
         # Non-blocking; row is still loaded. Analyst reviews with
         # scripts/review_flags.py.
+        "is_flags_written": 0,
         "bs_flags_written": 0,
         "cf_flags_written": 0,
     }
@@ -255,6 +257,7 @@ def backfill_fmp_statements(
                 counts["rows_processed"] += result.rows_processed
                 counts["is_facts_written"] += result.facts_written
                 counts["is_facts_superseded"] += result.facts_superseded
+                counts["is_flags_written"] += result.flags_written
 
             # --- BS ingest (Layer 1 BS inline) ---
             for period in ("quarter", "annual"):
@@ -290,20 +293,6 @@ def backfill_fmp_statements(
                 counts["cf_facts_superseded"] += result.facts_superseded
                 counts["cf_flags_written"] += result.flags_written
 
-    except VerificationFailed as e:
-        close_failed(
-            conn, run_id, error_message=str(e),
-            error_details={
-                "kind": "is_verification_failed",
-                "period_label": e.period_label,
-                "failed_ties": [
-                    {"tie": f.tie, "filer": str(f.filer), "computed": str(f.computed),
-                     "delta": str(f.delta), "tolerance": str(f.tolerance)}
-                    for f in e.failures
-                ],
-            },
-        )
-        raise
     except BSVerificationFailed as e:
         close_failed(
             conn, run_id, error_message=str(e),

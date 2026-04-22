@@ -1,10 +1,11 @@
 """IS subtotal-tie verification (verification.md Layer 1, § 2.1).
 
-HARD BLOCK. The load aborts the ingest run if any tie fails. Ties where
-at least one component is missing from the mapped data are skipped
-rather than failed — this matches the Layer 1 + component-guard
-interaction in verification.md and lets filer-optional / source-missing
-concepts stay null without turning absence into a false hard failure.
+SOFT FLAG. The load keeps the FMP row, then writes `data_quality_flags`
+if any tie fails. Ties where at least one component is missing from the
+mapped data are skipped rather than failed — this matches the Layer 1 +
+component-guard interaction in verification.md and lets filer-optional /
+source-missing concepts stay null without turning absence into a false
+soft flag.
 
 For FMP-sourced IS, four ties can be checked end-to-end (all components
 are in FMP's verified field set):

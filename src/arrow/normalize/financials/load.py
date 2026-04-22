@@ -1,4 +1,4 @@
-"""Orchestrate FMP IS payload -> financial_facts rows.
+"""Orchestrate FMP statement payloads -> financial_facts rows.
 
 For one (ticker, period_type) raw_responses payload:
   1. For each period row in the payload:
@@ -6,7 +6,7 @@ For one (ticker, period_type) raw_responses payload:
      - Derive fiscal + calendar (two-clocks) columns
      - Cross-check FMP's declared fiscalYear vs the algorithmic value
      - Map FMP fields -> canonical IS buckets
-     - Verify Layer 1 subtotal ties (HARD BLOCK on failure)
+     - Verify Layer 1 IS subtotal ties (soft-flag on failure)
      - Supersede any existing current rows for the same business identity
      - INSERT one financial_facts row per mapped bucket
 
@@ -62,7 +62,7 @@ class LoadResult:
     facts_superseded: int = 0
     rows_processed: int = 0
     period_labels: list[str] = field(default_factory=list)
-    # Soft-tie flags written during this load (CF vendor-bucketing drifts).
+    # Soft-tie flags written during this load.
     # Non-blocking; analyst reviews via scripts/review_flags.py.
     flags_written: int = 0
 
@@ -126,6 +126,7 @@ def _parse_fmp_period(period_str: str) -> str:
 
 # Flag type for CF vendor-bucketing drift (cfo / cfi / cff subtotal !=
 # sum of FMP's own component fields inside the shipped row).
+IS_SUBTOTAL_DRIFT_FLAG_TYPE = "is_subtotal_tie_drift"
 CF_SUBTOTAL_DRIFT_FLAG_TYPE = "cf_subtotal_component_drift"
 BS_SUBTOTAL_DRIFT_FLAG_TYPE = "bs_subtotal_component_drift"
 
@@ -197,6 +198,55 @@ def _write_cf_soft_tie_flag(
             company_id, subtotal_concept,
             fiscal_year, fiscal_quarter, period_end, period_type,
             CF_SUBTOTAL_DRIFT_FLAG_TYPE, severity,
+            failure.filer, failure.computed, failure.delta, failure.tolerance,
+            reason,
+            f'{{"tie": "{failure.tie}"}}',
+            ingest_run_id,
+        ),
+    )
+
+
+def _write_is_soft_tie_flag(
+    cur: psycopg.Cursor,
+    *,
+    company_id: int,
+    fiscal_year: int,
+    fiscal_quarter: int | None,
+    period_end: date,
+    period_type: str,
+    failure: TieFailure,
+    ingest_run_id: int,
+) -> None:
+    """Write one `data_quality_flags` row for a soft IS subtotal drift."""
+    subtotal_concept = failure.tie.split(" ")[0]
+    severity = _severity_for_drift(failure.delta, failure.filer, failure.computed)
+    reason = (
+        f"FMP's reported {subtotal_concept} ({failure.filer}) disagrees with "
+        f"the sum implied by FMP's own mapped income-statement fields "
+        f"({failure.computed}) by {failure.delta} (tolerance {failure.tolerance}). "
+        f"The row was loaded verbatim; this flag records likely vendor "
+        f"normalization drift inside the shipped row."
+    )
+    cur.execute(
+        """
+        INSERT INTO data_quality_flags (
+            company_id, statement, concept,
+            fiscal_year, fiscal_quarter, period_end, period_type,
+            flag_type, severity,
+            expected_value, computed_value, delta, tolerance,
+            reason, context, source_run_id
+        ) VALUES (
+            %s, 'income_statement', %s,
+            %s, %s, %s, %s,
+            %s, %s,
+            %s, %s, %s, %s,
+            %s, %s::jsonb, %s
+        );
+        """,
+        (
+            company_id, subtotal_concept,
+            fiscal_year, fiscal_quarter, period_end, period_type,
+            IS_SUBTOTAL_DRIFT_FLAG_TYPE, severity,
             failure.filer, failure.computed, failure.delta, failure.tolerance,
             reason,
             f'{{"tie": "{failure.tie}"}}',
@@ -290,9 +340,10 @@ def load_fmp_is_rows(
     need. Rows outside the window are counted in rows_processed but not
     written to financial_facts.
 
-    Raises VerificationFailed or FiscalYearMismatch on data integrity issues;
-    the caller's transaction should roll back and the ingest run should be
-    marked failed.
+    IS subtotal drift is non-blocking. Rows load verbatim and unresolved
+    caveats are written to `data_quality_flags`.
+
+    Raises FiscalYearMismatch on data integrity issues.
     """
     result = LoadResult()
 
@@ -330,9 +381,7 @@ def load_fmp_is_rows(
             mapped = map_income_statement_row(row)
             values_by_concept = {m.concept: m.value for m in mapped}
 
-            failures = verify_is_ties(values_by_concept)
-            if failures:
-                raise VerificationFailed(fiscal.fiscal_period_label, failures)
+            soft_failures = verify_is_ties(values_by_concept)
 
             published_at = _parse_published_at(row)
             result.period_labels.append(fiscal.fiscal_period_label)
@@ -403,6 +452,19 @@ def load_fmp_is_rows(
                 )
                 if cur.fetchone() is not None:
                     result.facts_written += 1
+
+            for failure in soft_failures:
+                _write_is_soft_tie_flag(
+                    cur,
+                    company_id=company_id,
+                    fiscal_year=fiscal.fiscal_year,
+                    fiscal_quarter=fiscal.fiscal_quarter,
+                    period_end=period_end,
+                    period_type=fiscal.period_type,
+                    failure=failure,
+                    ingest_run_id=ingest_run_id,
+                )
+                result.flags_written += 1
 
     return result
 

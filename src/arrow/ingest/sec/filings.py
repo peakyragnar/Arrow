@@ -1,4 +1,4 @@
-"""SEC filing/document ingest — recent filings, raw artifacts, no fact loading."""
+"""SEC filing/document ingest — historical backfill + recent filings, raw artifacts, no fact loading."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from typing import Any, Iterable
 
 import psycopg
 
+from arrow.agents.fmp_ingest import DEFAULT_SINCE_DATE
 from arrow.ingest.common.artifacts import write_artifact
 from arrow.ingest.common.cache import RAW_DIR, cache_path
 from arrow.ingest.common.http import HttpClient
@@ -35,6 +36,7 @@ class RecentFiling:
     form_type: str
     filing_date: date
     report_date: date | None
+    acceptance_datetime: datetime | None
     primary_document: str
     primary_doc_description: str | None
     items: list[str]
@@ -67,6 +69,10 @@ def _submissions_endpoint(cik: int) -> str:
     return f"submissions/CIK{_cik10(cik)}.json"
 
 
+def _submissions_file_endpoint(name: str) -> str:
+    return f"submissions/{name}"
+
+
 def _filing_index_endpoint(cik: int, accession_number: str) -> str:
     return f"filings/{_cik10(cik)}/{accession_number}/index.json"
 
@@ -81,6 +87,10 @@ def _filing_cache_path(cik: int, accession_number: str, filename: str) -> Path:
 
 def _submissions_url(cik: int) -> str:
     return SUBMISSIONS_URL_TEMPLATE.format(cik10=_cik10(cik))
+
+
+def _submissions_file_url(name: str) -> str:
+    return f"https://data.sec.gov/submissions/{name}"
 
 
 def _filing_index_url(cik: int, accession_number: str) -> str:
@@ -114,6 +124,21 @@ def _items_list(items: str | None) -> list[str]:
     return [item.strip() for item in items.split(",") if item.strip()]
 
 
+def _is_earnings_8k(items: list[str]) -> bool:
+    return any(item.startswith("2.02") for item in items)
+
+
+def _acceptance_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y%m%d%H%M%S").replace(tzinfo=UTC)
+    except ValueError:
+        if value.endswith("Z"):
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return datetime.fromisoformat(value)
+
+
 def _get_company(conn: psycopg.Connection, ticker: str) -> CompanyRow:
     with conn.cursor() as cur:
         cur.execute(
@@ -130,8 +155,12 @@ def _get_company(conn: psycopg.Connection, ticker: str) -> CompanyRow:
     return CompanyRow(id=row[0], cik=row[1], ticker=row[2], fiscal_year_end_md=row[3])
 
 
-def _iter_recent_filings(payload: dict[str, Any]) -> Iterable[RecentFiling]:
-    recent = payload.get("filings", {}).get("recent", {})
+def _filings_array(payload: dict[str, Any]) -> dict[str, Any]:
+    return payload.get("filings", {}).get("recent", payload)
+
+
+def _iter_filings(payload: dict[str, Any]) -> Iterable[RecentFiling]:
+    recent = _filings_array(payload)
     accessions = recent.get("accessionNumber", [])
     n = len(accessions)
     for i in range(n):
@@ -147,6 +176,9 @@ def _iter_recent_filings(payload: dict[str, Any]) -> Iterable[RecentFiling]:
             form_type=form_type,
             filing_date=date.fromisoformat(filing_date_raw),
             report_date=date.fromisoformat(report_date_raw) if report_date_raw else None,
+            acceptance_datetime=_acceptance_datetime(
+                recent.get("acceptanceDateTime", [None] * n)[i]
+            ),
             primary_document=primary_document,
             primary_doc_description=recent.get("primaryDocDescription", [None] * n)[i],
             items=_items_list(recent.get("items", [None] * n)[i]),
@@ -224,6 +256,39 @@ def _press_release_docs(index_payload: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+def _is_xbrl_package_item(item: dict[str, Any]) -> bool:
+    name = str(item.get("name") or "")
+    item_type = str(item.get("type") or "").upper()
+    if item_type.startswith("EX-101"):
+        return True
+    if name in {"FilingSummary.xml", "MetaLinks.json"}:
+        return True
+    return False
+
+
+def _package_files(filing: RecentFiling, index_payload: dict[str, Any]) -> list[dict[str, Any]]:
+    items = index_payload.get("directory", {}).get("item", [])
+    out: list[dict[str, Any]] = []
+    press_release_names = {
+        str(item.get("name")) for item in _press_release_docs(index_payload) if item.get("name")
+    }
+    for item in items:
+        name = str(item.get("name") or "")
+        if not name:
+            continue
+        if name in {"index.html", "index.json", "index.xml"}:
+            continue
+        if name == filing.primary_document:
+            out.append(item)
+            continue
+        if name in press_release_names:
+            out.append(item)
+            continue
+        if _is_xbrl_package_item(item):
+            out.append(item)
+    return out
+
+
 def _filing_documents(
     filing: RecentFiling,
     *,
@@ -275,12 +340,34 @@ def _filing_documents(
     return docs
 
 
-def ingest_recent_sec_filings(
+def _iter_submission_payloads(
+    company: CompanyRow,
+    http: HttpClient,
+) -> Iterable[tuple[str, Response, dict[str, Any]]]:
+    submissions_url = _submissions_url(company.cik)
+    submissions_resp = http.get(submissions_url)
+    submissions_payload = json.loads(submissions_resp.body)
+    yield _submissions_endpoint(company.cik), submissions_resp, submissions_payload
+
+    for file_info in submissions_payload.get("filings", {}).get("files", []):
+        name = file_info.get("name")
+        if not name:
+            continue
+        shard_url = _submissions_file_url(name)
+        shard_resp = http.get(shard_url)
+        shard_payload = json.loads(shard_resp.body)
+        yield _submissions_file_endpoint(name), shard_resp, shard_payload
+
+
+def ingest_sec_filings(
     conn: psycopg.Connection,
     tickers: list[str],
     *,
     forms: tuple[str, ...] = DEFAULT_FORMS,
-    limit_per_ticker: int = 5,
+    since_date: date | None = DEFAULT_SINCE_DATE,
+    until_date: date | None = None,
+    limit_per_ticker: int | None = None,
+    earnings_8k_only: bool = True,
 ) -> dict[str, Any]:
     run_id = open_run(
         conn,
@@ -292,9 +379,13 @@ def ingest_recent_sec_filings(
     wanted_forms = {form.upper() for form in forms}
     counts: dict[str, Any] = {
         "forms": list(forms),
+        "since_date": since_date.isoformat() if since_date else None,
+        "until_date": until_date.isoformat() if until_date else None,
         "limit_per_ticker": limit_per_ticker,
+        "earnings_8k_only": earnings_8k_only,
         "raw_responses": 0,
         "filings_seen": 0,
+        "files_fetched": 0,
         "artifacts_written": 0,
         "artifacts_existing": 0,
         "artifacts_by_type": {},
@@ -303,111 +394,135 @@ def ingest_recent_sec_filings(
     try:
         for ticker in tickers:
             company = _get_company(conn, ticker)
-            submissions_url = _submissions_url(company.cik)
-            submissions_resp = http.get(submissions_url)
-            submissions_payload = json.loads(submissions_resp.body)
-            with conn.transaction():
-                write_raw_response(
-                    conn,
-                    ingest_run_id=run_id,
-                    vendor="sec",
-                    endpoint=_submissions_endpoint(company.cik),
-                    params={"cik": company.cik},
-                    request_url=submissions_resp.url,
-                    http_status=submissions_resp.status,
-                    content_type=submissions_resp.content_type,
-                    response_headers=submissions_resp.headers,
-                    body=submissions_resp.body,
-                    cache_path=cache_path("sec", _submissions_endpoint(company.cik)),
-                )
-            counts["raw_responses"] += 1
-
+            seen_accessions: set[str] = set()
             matched = 0
-            for filing in _iter_recent_filings(submissions_payload):
-                if filing.form_type.upper() not in wanted_forms:
-                    continue
-                if matched >= limit_per_ticker:
+            for submissions_endpoint, submissions_resp, submissions_payload in _iter_submission_payloads(
+                company, http
+            ):
+                if limit_per_ticker is not None and matched >= limit_per_ticker:
                     break
-                matched += 1
-                counts["filings_seen"] += 1
-
-                index_url = _filing_index_url(company.cik, filing.accession_number)
-                index_resp = http.get(index_url)
-                index_payload = json.loads(index_resp.body)
                 with conn.transaction():
                     write_raw_response(
                         conn,
                         ingest_run_id=run_id,
                         vendor="sec",
-                        endpoint=_filing_index_endpoint(company.cik, filing.accession_number),
-                        params={},
-                        request_url=index_resp.url,
-                        http_status=index_resp.status,
-                        content_type=index_resp.content_type,
-                        response_headers=index_resp.headers,
-                        body=index_resp.body,
-                        cache_path=_filing_cache_path(
-                            company.cik, filing.accession_number, "index.json"
-                        ),
+                        endpoint=submissions_endpoint,
+                        params={"cik": company.cik},
+                        request_url=submissions_resp.url,
+                        http_status=submissions_resp.status,
+                        content_type=submissions_resp.content_type,
+                        response_headers=submissions_resp.headers,
+                        body=submissions_resp.body,
+                        cache_path=cache_path("sec", submissions_endpoint),
                     )
                 counts["raw_responses"] += 1
 
-                period_fields = _period_fields(
-                    company, form_type=filing.form_type, report_date=filing.report_date
-                )
-                published_at = datetime.combine(
-                    filing.filing_date,
-                    datetime.min.time(),
-                    tzinfo=UTC,
-                )
-                for document in _filing_documents(
-                    filing, company=company, index_payload=index_payload
-                ):
-                    document_url = _filing_document_url(
-                        company.cik, filing.accession_number, document.filename
-                    )
-                    doc_resp = http.get(document_url)
+                for filing in _iter_filings(submissions_payload):
+                    if filing.accession_number in seen_accessions:
+                        continue
+                    seen_accessions.add(filing.accession_number)
+                    if filing.form_type.upper() not in wanted_forms:
+                        continue
+                    if earnings_8k_only and filing.form_type.upper().startswith("8-K"):
+                        if not _is_earnings_8k(filing.items):
+                            continue
+                    if since_date and filing.filing_date < since_date:
+                        continue
+                    if until_date and filing.filing_date > until_date:
+                        continue
+                    if limit_per_ticker is not None and matched >= limit_per_ticker:
+                        break
+                    matched += 1
+                    counts["filings_seen"] += 1
+
+                    index_url = _filing_index_url(company.cik, filing.accession_number)
+                    index_resp = http.get(index_url)
+                    index_payload = json.loads(index_resp.body)
                     with conn.transaction():
                         write_raw_response(
                             conn,
                             ingest_run_id=run_id,
                             vendor="sec",
-                            endpoint=_filing_document_endpoint(
-                                company.cik, filing.accession_number, document.filename
-                            ),
+                            endpoint=_filing_index_endpoint(company.cik, filing.accession_number),
                             params={},
-                            request_url=doc_resp.url,
-                            http_status=doc_resp.status,
-                            content_type=doc_resp.content_type,
-                            response_headers=doc_resp.headers,
-                            body=doc_resp.body,
+                            request_url=index_resp.url,
+                            http_status=index_resp.status,
+                            content_type=index_resp.content_type,
+                            response_headers=index_resp.headers,
+                            body=index_resp.body,
                             cache_path=_filing_cache_path(
-                                company.cik, filing.accession_number, document.filename
+                                company.cik, filing.accession_number, "index.json"
                             ),
-                        )
-                        _, created = write_artifact(
-                            conn,
-                            ingest_run_id=run_id,
-                            artifact_type=document.artifact_type,
-                            source="sec",
-                            source_document_id=document.source_document_id,
-                            body=doc_resp.body,
-                            ticker=company.ticker,
-                            title=document.title,
-                            url=document_url,
-                            content_type=doc_resp.content_type,
-                            language="en",
-                            published_at=published_at,
-                            artifact_metadata=document.metadata,
-                            **period_fields,
                         )
                     counts["raw_responses"] += 1
-                    key = document.artifact_type
-                    counts["artifacts_by_type"][key] = counts["artifacts_by_type"].get(key, 0) + 1
-                    if created:
-                        counts["artifacts_written"] += 1
-                    else:
-                        counts["artifacts_existing"] += 1
+
+                    period_fields = _period_fields(
+                        company, form_type=filing.form_type, report_date=filing.report_date
+                    )
+                    published_at = filing.acceptance_datetime or datetime.combine(
+                        filing.filing_date,
+                        datetime.min.time(),
+                        tzinfo=UTC,
+                    )
+                    artifact_docs = {
+                        document.filename: document
+                        for document in _filing_documents(
+                            filing, company=company, index_payload=index_payload
+                        )
+                    }
+                    for item in _package_files(filing, index_payload):
+                        filename = str(item.get("name"))
+                        document_url = _filing_document_url(
+                            company.cik, filing.accession_number, filename
+                        )
+                        doc_resp = http.get(document_url)
+                        with conn.transaction():
+                            write_raw_response(
+                                conn,
+                                ingest_run_id=run_id,
+                                vendor="sec",
+                                endpoint=_filing_document_endpoint(
+                                    company.cik, filing.accession_number, filename
+                                ),
+                                params={},
+                                request_url=doc_resp.url,
+                                http_status=doc_resp.status,
+                                content_type=doc_resp.content_type,
+                                response_headers=doc_resp.headers,
+                                body=doc_resp.body,
+                                cache_path=_filing_cache_path(
+                                    company.cik, filing.accession_number, filename
+                                ),
+                            )
+                            artifact_doc = artifact_docs.get(filename)
+                            created = None
+                            if artifact_doc is not None:
+                                _, created = write_artifact(
+                                    conn,
+                                    ingest_run_id=run_id,
+                                    artifact_type=artifact_doc.artifact_type,
+                                    source="sec",
+                                    source_document_id=artifact_doc.source_document_id,
+                                    body=doc_resp.body,
+                                    ticker=company.ticker,
+                                    title=artifact_doc.title,
+                                    url=document_url,
+                                    content_type=doc_resp.content_type,
+                                    language="en",
+                                    published_at=published_at,
+                                    artifact_metadata=artifact_doc.metadata,
+                                    **period_fields,
+                                )
+                        counts["raw_responses"] += 1
+                        counts["files_fetched"] += 1
+                        if artifact_doc is None:
+                            continue
+                        key = artifact_doc.artifact_type
+                        counts["artifacts_by_type"][key] = counts["artifacts_by_type"].get(key, 0) + 1
+                        if created:
+                            counts["artifacts_written"] += 1
+                        else:
+                            counts["artifacts_existing"] += 1
 
     except Exception as e:
         close_failed(
@@ -421,3 +536,21 @@ def ingest_recent_sec_filings(
     close_succeeded(conn, run_id, counts=counts)
     counts["ingest_run_id"] = run_id
     return counts
+
+
+def ingest_recent_sec_filings(
+    conn: psycopg.Connection,
+    tickers: list[str],
+    *,
+    forms: tuple[str, ...] = DEFAULT_FORMS,
+    limit_per_ticker: int = 5,
+) -> dict[str, Any]:
+    return ingest_sec_filings(
+        conn,
+        tickers,
+        forms=forms,
+        since_date=None,
+        until_date=None,
+        limit_per_ticker=limit_per_ticker,
+        earnings_8k_only=True,
+    )

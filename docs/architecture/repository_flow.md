@@ -113,7 +113,8 @@ Present:
 - `scripts/gen_schema_viz.py` — introspect the live DB and regenerate `arrow_db_schema.html` (the visual source of truth for the schema)
 
 Examples (future):
-- `scripts/backfill_fmp.py NVDA` — pull every FMP endpoint for a ticker, write raw + load DB
+- `scripts/ingest_company.py NVDA` — normal company flow: seed + FMP facts + employees + SEC documents
+- `scripts/backfill_fmp.py NVDA` — FMP-only financial backfill
 - `scripts/fetch_prices.py --tickers NVDA,MSFT --from 2022-01-01`
 - `scripts/reconcile_fmp_sec.py` — run the divergence job
 - `scripts/export_training_set.py --out out.jsonl` — dump qa_log with consent filters

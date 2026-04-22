@@ -1,0 +1,184 @@
+"""Ingest one or more companies through the normal flow.
+
+Usage:
+    uv run scripts/ingest_company.py NVDA [MSFT ...]
+    uv run scripts/ingest_company.py --since 2018-01-01 --scoped NVDA
+    uv run scripts/ingest_company.py --sec-limit 3 NVDA
+
+Normal flow:
+  1. seed company from SEC
+  2. backfill baseline FMP financials
+  3. ingest FMP employee counts
+  4. backfill SEC filing/document artifacts
+"""
+
+from __future__ import annotations
+
+import sys
+from typing import Any
+
+from arrow.agents.fmp_employees import backfill_fmp_employees
+from arrow.agents.fmp_ingest import DEFAULT_SINCE_DATE, backfill_fmp_statements
+from arrow.db.connection import get_conn
+from arrow.ingest.sec.bootstrap import seed_companies
+from arrow.ingest.sec.filings import ingest_sec_filings
+from arrow.normalize.financials.load import (
+    BSVerificationFailed,
+    CFVerificationFailed,
+    VerificationFailed,
+)
+
+
+def _usage() -> str:
+    return (
+        "Usage: ingest_company.py "
+        "[--since YYYY-MM-DD] [--until YYYY-MM-DD] [--scoped] [--sec-limit N] "
+        "TICKER [TICKER ...]"
+    )
+
+
+def _print_section(title: str, counts: dict[str, Any]) -> None:
+    print(title)
+    for key, value in counts.items():
+        print(f"  {key}: {value}")
+    print()
+
+
+def main() -> int:
+    from datetime import date as _d
+
+    args = sys.argv[1:]
+    since_date = None
+    until_date = None
+    scoped = False
+    sec_limit: int | None = None
+
+    def _pop_date_flag(flag: str):
+        nonlocal args
+        if flag not in args:
+            return None
+        i = args.index(flag)
+        if i + 1 >= len(args):
+            print(_usage(), file=sys.stderr)
+            sys.exit(2)
+        try:
+            y, m, d = args[i + 1].split("-")
+            val = _d(int(y), int(m), int(d))
+        except Exception as e:
+            print(f"Invalid {flag} date: {e}", file=sys.stderr)
+            sys.exit(2)
+        args = args[:i] + args[i + 2 :]
+        return val
+
+    since_date = _pop_date_flag("--since")
+    until_date = _pop_date_flag("--until")
+    if "--scoped" in args:
+        scoped = True
+        args = [a for a in args if a != "--scoped"]
+    if "--sec-limit" in args:
+        i = args.index("--sec-limit")
+        if i + 1 >= len(args):
+            print(_usage(), file=sys.stderr)
+            return 2
+        sec_limit = int(args[i + 1])
+        args = args[:i] + args[i + 2 :]
+
+    if not args:
+        print(_usage(), file=sys.stderr)
+        return 2
+
+    is_custom_window = (
+        (since_date is not None and since_date > DEFAULT_SINCE_DATE)
+        or (until_date is not None)
+    )
+    if is_custom_window and not scoped:
+        print(
+            "ERROR: --since / --until request a narrower-than-default window "
+            f"(default since={DEFAULT_SINCE_DATE.isoformat()}, until=None).\n"
+            "       Partial backfills are the wrong default; they silently "
+            "skip fiscal years.\n"
+            "       If this narrower window is intentional (dev/test/bisect), "
+            "re-run with --scoped.",
+            file=sys.stderr,
+        )
+        return 2
+
+    tickers = [t.upper() for t in args]
+    fmp_kwargs: dict[str, Any] = {}
+    sec_kwargs: dict[str, Any] = {}
+    if since_date is not None:
+        fmp_kwargs["since_date"] = since_date
+        sec_kwargs["since_date"] = since_date
+    if until_date is not None:
+        fmp_kwargs["until_date"] = until_date
+        sec_kwargs["until_date"] = until_date
+    if sec_limit is not None:
+        sec_kwargs["limit_per_ticker"] = sec_limit
+
+    try:
+        with get_conn() as conn:
+            seeded = seed_companies(conn, tickers)
+            fmp_counts = backfill_fmp_statements(conn, tickers, **fmp_kwargs)
+            employee_counts = backfill_fmp_employees(conn, tickers)
+            sec_counts = ingest_sec_filings(conn, tickers, **sec_kwargs)
+    except VerificationFailed as e:
+        print(f"FAILED: Layer 1 IS validation — {e}", file=sys.stderr)
+        return 1
+    except BSVerificationFailed as e:
+        print(f"FAILED: Layer 1 BS hard validation — {e}", file=sys.stderr)
+        return 1
+    except CFVerificationFailed as e:
+        print(f"FAILED: Layer 1 CF validation — {e}", file=sys.stderr)
+        return 1
+
+    print(f"Completed normal flow for {', '.join(tickers)}")
+    print()
+    print("Seeded")
+    for company in seeded:
+        print(
+            f"  {company.ticker}: cik={company.cik}, id={company.id}, fye={company.fiscal_year_end_md}"
+        )
+    print()
+    _print_section(
+        "FMP financials",
+        {
+            "ingest_run_id": fmp_counts["ingest_run_id"],
+            "since_date": fmp_counts["since_date"],
+            "rows_processed": fmp_counts["rows_processed"],
+            "raw_responses": fmp_counts["raw_responses"],
+            "facts_written": (
+                fmp_counts["is_facts_written"]
+                + fmp_counts["bs_facts_written"]
+                + fmp_counts["cf_facts_written"]
+            ),
+            "soft_flags_written": fmp_counts.get("bs_flags_written", 0)
+            + fmp_counts.get("cf_flags_written", 0),
+        },
+    )
+    _print_section(
+        "Employees",
+        {
+            "ingest_run_id": employee_counts["ingest_run_id"],
+            "rows_processed": employee_counts["rows_processed"],
+            "raw_responses": employee_counts["raw_responses"],
+            "facts_written": employee_counts["facts_written"],
+        },
+    )
+    _print_section(
+        "SEC filings",
+        {
+            "ingest_run_id": sec_counts["ingest_run_id"],
+            "since_date": sec_counts["since_date"],
+            "filings_seen": sec_counts["filings_seen"],
+            "package_files_fetched": sec_counts["files_fetched"],
+            "raw_responses": sec_counts["raw_responses"],
+            "artifacts_written": sec_counts["artifacts_written"],
+            "artifacts_existing": sec_counts["artifacts_existing"],
+        },
+    )
+    print("Status: PASS — baseline facts + SEC documents stored.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
