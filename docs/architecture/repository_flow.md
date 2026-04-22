@@ -4,6 +4,10 @@ A reference map of every folder in the repo, what it's for, and how data moves t
 
 Use this when you need to answer "where does X live?" or "what depends on what?"
 
+Keep this distinction hard:
+- normal flow = FMP baseline facts + SEC documents + FMP transcripts
+- audit flow = separate reconciliation / flags
+
 ---
 
 ## Top-Level Tree

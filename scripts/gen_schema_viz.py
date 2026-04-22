@@ -528,13 +528,72 @@ def render_html(mermaid_src: str, table_cards: str, table_names: list[str]) -> s
     ul li {{ margin-block: 0.2rem; }}
     .cname {{ font-size: 11px; color: var(--muted); }}
     code.check-def, code.index-def {{ white-space: pre-wrap; word-break: break-word; }}
-    #erd {{ padding: 8px 0; }}
-    #erd svg.erDiagram {{ max-width: 100%; height: auto; }}
+    #erd-shell {{
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--card-bg) 92%, transparent);
+        overflow: hidden;
+    }}
+    .erd-toolbar {{
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 0.9rem;
+        border-bottom: 1px solid var(--line);
+        background: color-mix(in srgb, var(--bg) 82%, var(--card-bg));
+    }}
+    .erd-toolbar button {{
+        appearance: none;
+        border: 1px solid var(--line);
+        background: var(--card-bg);
+        color: var(--fg);
+        border-radius: 6px;
+        padding: 0.3rem 0.55rem;
+        font: inherit;
+        cursor: pointer;
+    }}
+    .erd-toolbar button:hover {{ border-color: var(--accent); color: var(--accent); }}
+    .erd-toolbar .spacer {{ flex: 1; }}
+    .erd-hint {{ color: var(--muted); font-size: 12px; }}
+    #erd-viewport {{
+        position: relative;
+        height: min(78vh, 980px);
+        overflow: hidden;
+        cursor: grab;
+        touch-action: none;
+        background:
+          radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--line) 55%, transparent) 1px, transparent 0);
+        background-size: 18px 18px;
+    }}
+    #erd-viewport.is-dragging {{ cursor: grabbing; }}
+    #erd {{
+        width: 100%;
+        height: 100%;
+        position: relative;
+    }}
+    #erd svg.erDiagram {{
+        display: block;
+        max-width: none;
+        height: auto;
+        will-change: transform;
+        transform-origin: 0 0;
+        user-select: none;
+    }}
     #erd svg.erDiagram .divider path {{ stroke-opacity: 0.5; }}
     #erd svg.erDiagram .row-rect-odd path,
     #erd svg.erDiagram .row-rect-odd rect,
     #erd svg.erDiagram .row-rect-even path,
     #erd svg.erDiagram .row-rect-even rect {{ stroke: none !important; }}
+    #erd svg.erDiagram .node {{ cursor: pointer; }}
+    #erd svg.erDiagram .node.is-active rect,
+    #erd svg.erDiagram .node.is-active path {{
+        stroke: var(--accent) !important;
+        stroke-width: 2.5 !important;
+    }}
+    .table-card.flash {{
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+    }}
     .meta {{ color: var(--muted); font-size: 12px; }}
     footer {{ margin-top: 3rem; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 1rem; }}
 </style>
@@ -551,7 +610,18 @@ def render_html(mermaid_src: str, table_cards: str, table_names: list[str]) -> s
     <span><span class="badge uk">UK</span> unique (single column)</span>
     <span>Cardinality: <code>||--o&#123;</code> = required parent, 0..N children · <code>|o--o&#123;</code> = optional parent (nullable FK), 0..N children</span>
 </div>
-<div id="erd"></div>
+<div id="erd-shell">
+    <div class="erd-toolbar">
+        <button type="button" id="zoom-in">+</button>
+        <button type="button" id="zoom-out">−</button>
+        <button type="button" id="zoom-reset">Reset</button>
+        <div class="spacer"></div>
+        <span class="erd-hint">Wheel to zoom. Drag to pan. Click a table to jump to its detail card.</span>
+    </div>
+    <div id="erd-viewport">
+        <div id="erd"></div>
+    </div>
+</div>
 
 <h2>Per-table detail</h2>
 <nav class="toc">{nav}</nav>
@@ -584,6 +654,10 @@ mermaid.initialize({{
 const src = {mermaid_json_literal(mermaid_src)};
 const {{ svg }} = await mermaid.render('erd-svg', src);
 document.getElementById('erd').innerHTML = svg;
+const tableNames = {mermaid_json_literal(table_names)};
+const viewport = document.getElementById('erd-viewport');
+const svgEl = document.querySelector('#erd svg.erDiagram');
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 // Round entity corners for a friendlier look
 document.querySelectorAll('#erd svg.erDiagram .node').forEach(node => {{
@@ -605,6 +679,108 @@ document.querySelectorAll('#erd svg.erDiagram .node').forEach(node => {{
     }}
     firstPath.replaceWith(rect);
 }});
+
+const baseWidth = Number(svgEl.getAttribute('width')) || svgEl.viewBox.baseVal.width || svgEl.getBBox().width;
+const baseHeight = Number(svgEl.getAttribute('height')) || svgEl.viewBox.baseVal.height || svgEl.getBBox().height;
+let scale = 1;
+let tx = 0;
+let ty = 0;
+let drag = null;
+
+function setActiveNode(activeNode) {{
+    document.querySelectorAll('#erd svg.erDiagram .node.is-active').forEach(node => {{
+        node.classList.remove('is-active');
+    }});
+    if (activeNode) activeNode.classList.add('is-active');
+}}
+
+function flashCard(card) {{
+    card.classList.add('flash');
+    setTimeout(() => card.classList.remove('flash'), 1800);
+}}
+
+function applyTransform() {{
+    svgEl.style.transform = `translate(${{tx}}px, ${{ty}}px) scale(${{scale}})`;
+}}
+
+function fitToViewport() {{
+    const padding = 24;
+    const vw = viewport.clientWidth - padding * 2;
+    const vh = viewport.clientHeight - padding * 2;
+    const fitScale = Math.min(vw / baseWidth, vh / baseHeight);
+    scale = clamp(fitScale, 0.35, 1.1);
+    tx = Math.max((viewport.clientWidth - baseWidth * scale) / 2, padding / 2);
+    ty = Math.max((viewport.clientHeight - baseHeight * scale) / 2, padding / 2);
+    applyTransform();
+}}
+
+function zoomAround(clientX, clientY, nextScale) {{
+    const rect = viewport.getBoundingClientRect();
+    const anchorX = clientX - rect.left;
+    const anchorY = clientY - rect.top;
+    const worldX = (anchorX - tx) / scale;
+    const worldY = (anchorY - ty) / scale;
+    scale = clamp(nextScale, 0.2, 3.5);
+    tx = anchorX - worldX * scale;
+    ty = anchorY - worldY * scale;
+    applyTransform();
+}}
+
+document.getElementById('zoom-in').addEventListener('click', () => {{
+    const rect = viewport.getBoundingClientRect();
+    zoomAround(rect.left + rect.width / 2, rect.top + rect.height / 2, scale * 1.15);
+}});
+document.getElementById('zoom-out').addEventListener('click', () => {{
+    const rect = viewport.getBoundingClientRect();
+    zoomAround(rect.left + rect.width / 2, rect.top + rect.height / 2, scale / 1.15);
+}});
+document.getElementById('zoom-reset').addEventListener('click', fitToViewport);
+
+viewport.addEventListener('wheel', event => {{
+    event.preventDefault();
+    const factor = event.deltaY < 0 ? 1.08 : 1 / 1.08;
+    zoomAround(event.clientX, event.clientY, scale * factor);
+}}, {{ passive: false }});
+
+viewport.addEventListener('pointerdown', event => {{
+    if (event.target.closest('.node')) return;
+    drag = {{ x: event.clientX, y: event.clientY, tx, ty }};
+    viewport.classList.add('is-dragging');
+}});
+window.addEventListener('pointermove', event => {{
+    if (!drag) return;
+    tx = drag.tx + (event.clientX - drag.x);
+    ty = drag.ty + (event.clientY - drag.y);
+    applyTransform();
+}});
+window.addEventListener('pointerup', () => {{
+    drag = null;
+    viewport.classList.remove('is-dragging');
+}});
+
+const normalizedTableNames = new Map(tableNames.map(name => [name.toUpperCase(), name]));
+document.querySelectorAll('#erd svg.erDiagram .node').forEach(node => {{
+    const labels = Array.from(node.querySelectorAll('text, tspan'))
+        .map(el => el.textContent?.trim())
+        .filter(Boolean);
+    const table = labels.find(label => normalizedTableNames.has(label.toUpperCase()));
+    if (!table) return;
+    node.dataset.table = normalizedTableNames.get(table.toUpperCase());
+    node.addEventListener('click', event => {{
+        event.preventDefault();
+        event.stopPropagation();
+        const tableName = node.dataset.table;
+        const card = document.getElementById(`tbl-${{tableName}}`);
+        if (!card) return;
+        setActiveNode(node);
+        card.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
+        flashCard(card);
+        history.replaceState(null, '', `#tbl-${{tableName}}`);
+    }});
+}});
+
+window.addEventListener('resize', fitToViewport);
+fitToViewport();
 </script>
 
 </body>

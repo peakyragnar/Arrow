@@ -8,11 +8,12 @@ Start here. Read only the next doc you need.
 ## Current Source Of Truth
 
 - Current architecture: `docs/architecture/system.md`
+- Fast orientation: `docs/architecture/normal_vs_audit.md`
 - Repository flow / folder map: `docs/architecture/repository_flow.md`
 - Period spec (fiscal ↔ calendar rules): `docs/reference/periods.md`
 - Canonical bucket schema (IS/BS/CF normalization contract): `docs/reference/concepts.md`
 - FMP ↔ canonical mapping: `docs/reference/fmp_mapping.md`
-- Verification stack (subtotal ties, cross-statement invariants, tolerances): `docs/reference/verification.md`
+- Audit reference (optional side rail, not default ingest): `docs/reference/verification.md`
 - Metric definitions (formulas + component guards): `docs/reference/formulas.md`
 - R&D capitalization reference: `docs/reference/rd_capitalization_reference.md`
 - Artifact metadata key conventions: `docs/reference/artifact_metadata.md`
@@ -26,9 +27,10 @@ Start here. Read only the next doc you need.
 
 1. `AGENTS.md`
 2. `docs/architecture/system.md`
-3. task-specific doc in `docs/`
-4. live code in `src/` / `db/` / `scripts/`
-5. `archive/` only if you need legacy reference
+3. `docs/architecture/normal_vs_audit.md`
+4. task-specific doc in `docs/`
+5. live code in `src/` / `db/` / `scripts/`
+6. `archive/` only if you need legacy reference
 
 ## Live Layout
 

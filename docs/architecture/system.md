@@ -17,6 +17,21 @@ It remains valuable as archived reference and benchmark context, but it is no lo
 
 Build Arrow into a searchable, replayable, time-aware company-intelligence system.
 
+## Read This First
+
+If you are new to the repo, keep this distinction hard:
+
+- **normal flow** = FMP baseline facts + SEC documents + FMP transcripts
+- **audit flow** = optional comparison/reconciliation; flags only
+
+Short version:
+- baseline financial source of truth: FMP
+- SEC role: `8-K` / `10-Q` / `10-K` documents, freshness, filing text
+- audit role: separate side rail; does not block or rewrite baseline facts
+
+For the shortest version, read:
+- `docs/architecture/normal_vs_audit.md`
+
 Core outcome:
 - baseline financial history from FMP, with provenance and PIT semantics
 - trusted company documents
@@ -50,6 +65,34 @@ Do:
 - facts derived from artifacts
 - ingestion agent and analyst agent separate
 - point-in-time correctness is universal, not macro-only — applies to financials (restatements) and to any data a vendor may revise
+
+## Two Flows
+
+### 1. Normal product flow
+
+This is the mainline.
+
+- FMP historical financial ingest -> `financial_facts`
+- SEC filing/document ingest -> `artifacts`
+- FMP transcript ingest -> `artifacts`
+- later: news/events/retrieval/synthesis
+
+This is the path to optimize first.
+
+### 2. Audit flow
+
+This is separate.
+
+- FMP vs SEC/XBRL comparison
+- amendment detection
+- divergence review
+- benchmark support
+- `data_quality_flags`
+
+Important:
+- audit is kept
+- audit is useful
+- audit is **not** the default ingest path
 
 ## Foundational Schema Rule: Two Clocks Always
 

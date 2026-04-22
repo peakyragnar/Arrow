@@ -1,4 +1,15 @@
-# Verification — Adjudication Stack
+# Verification — Audit Reference
+
+This document describes Arrow's audit/reconciliation framework.
+
+Important:
+- this is **not** the default baseline ingest path
+- baseline `financial_facts` come from FMP without inline audit adjudication
+- use this doc when working on the audit side rail, not when orienting to normal ingest
+
+For normal operation first, read:
+- `docs/architecture/normal_vs_audit.md`
+- `docs/architecture/system.md`
 
 Arrow runs **five independent checks** on every ingest. Only **Layer 1** is a hard gate — its failure prevents ingest entirely. Layers 2, 3, and 5 are **soft gates**: they still run, they still catch problems, but they record findings to `data_quality_flags` rather than blocking ingest. Layer 4 is formula-level and advisory.
 
