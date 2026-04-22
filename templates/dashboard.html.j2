@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Arrow · {{ ticker }}</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">Arrow</div>
+  <form class="ticker-select" method="get" action="/">
+    <label for="ticker-dropdown">Ticker:</label>
+    <select id="ticker-dropdown" onchange="window.location.href = '/t/' + this.value;">
+      {% for t in tickers %}
+        <option value="{{ t }}" {% if t == ticker %}selected{% endif %}>{{ t }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  <div class="meta">
+    <span class="period">Latest: {{ latest_period }}</span>
+    <span class="flags">
+      flags:
+      <span class="flag-unresolved">{{ flag_counts.unresolved }} unresolved</span> ·
+      <span class="flag-accepted">{{ flag_counts.accepted }} accepted</span>
+    </span>
+  </div>
+</header>
+
+<main>
+  <table class="dashboard">
+    <thead>
+      <tr>
+        <th class="metric-name">Metric</th>
+        {% for h in headers %}
+          {% set is_last_cy = loop.index0 == (n_cy - 1) %}
+          {% set is_ttm     = loop.index0 == n_cy %}
+          {% set is_first_q = loop.index0 == n_cy + 1 %}
+          <th class="
+            {% if is_ttm %}ttm-col{% endif %}
+            {% if is_first_q %}first-q{% endif %}
+            {% if is_last_cy %}last-cy{% endif %}
+          ">{{ h }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr class="{% if row.is_change %}change-row{% endif %}">
+          <td class="metric-name" {% if row.tooltip %}title="{{ row.tooltip }}"{% endif %}>{{ row.name }}</td>
+          {% for cell in row.cells %}
+            {% set is_ttm     = loop.index0 == n_cy %}
+            {% set is_first_q = loop.index0 == n_cy + 1 %}
+            {% set is_last_cy = loop.index0 == (n_cy - 1) %}
+            <td class="cell {{ cell[1] }}
+              {% if is_ttm %}ttm-col{% endif %}
+              {% if is_first_q %}first-q{% endif %}
+              {% if is_last_cy %}last-cy{% endif %}
+            ">{{ cell[0] }}</td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</main>
+
+<footer class="bottom">
+  <a href="/t/{{ ticker }}/raw">raw JSON</a>
+  &middot;
+  <a href="/health">health</a>
+</footer>
+
+</body>
+</html>
