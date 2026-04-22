@@ -163,8 +163,8 @@ Per-share and share-count buckets use their own units:
 | canonical | xbrl_concept | fmp_field | status | notes |
 |---|---|---|---|---|
 | `revenue` | `us-gaap:Revenues` OR `us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax` | `revenue` | verified | match in all 12 NVDA periods |
-| `cogs` | `us-gaap:CostOfRevenue` | `costOfRevenue` | verified | |
-| `gross_profit` | `us-gaap:GrossProfit` | `grossProfit` | verified | subtotal; tie to `revenue - cogs` |
+| `cogs` | `us-gaap:CostOfRevenue` | `costOfRevenue` | verified | VRT annual filings FY2023-FY2025 suggest FMP classifies `amortization of intangibles` inside `costOfRevenue`, while the filing presents it below gross profit in operating expenses. Treat as filer-specific FMP normalization quirk, not a universal rule. |
+| `gross_profit` | `us-gaap:GrossProfit` | `grossProfit` | verified | subtotal; tie to `revenue - cogs`. For VRT annuals, this means FMP `grossProfit` is lower than the filing face-line gross profit by the amortization-of-intangibles amount. |
 | `rd` | `us-gaap:ResearchAndDevelopmentExpense` | `researchAndDevelopmentExpenses` | verified | |
 | `general_and_admin_expense` | `us-gaap:GeneralAndAdministrativeExpense` | `generalAndAdministrativeExpenses` | verified | detail line; zero for filers who only report combined SG&A (e.g., NVDA, DELL); populated for MSFT, GOOGL, PANW, PLTR, TDG, OKLO, S, UNP, VLO, DELL, ET, SYM-like mixes |
 | `selling_and_marketing_expense` | `us-gaap:SellingAndMarketingExpense` | `sellingAndMarketingExpenses` | verified | detail line; same pattern. Empirically `sga == gna + sme` for split-reporting filers; `gna = sme = 0` and `sga` = filer-reported combined for non-split filers. |
@@ -463,6 +463,10 @@ Resolution path: wait for FMP to republish corrected data, or skip this specific
 **VRT — FY2023 Q4 (period_end 2023-12-31).**  
 FMP reports `cashAndCashEquivalents = $788.6M`, `otherCurrentAssets = $151.6M`, and `totalCurrentAssets = $4,001.5M`. Summing the mapped current-asset components yields $4,009.7M — an $8.2M overage. SEC filing evidence shows cash and cash equivalents are $780.4M and restricted cash is $8.2M, with total cash + cash equivalents + restricted cash = $788.6M. Likely FMP behavior: fold restricted cash into `cashAndCashEquivalents` while also leaving it inside `otherCurrentAssets`.  
 Resolution path: soft-flag as `bs_subtotal_component_drift`; keep the row loaded verbatim.
+
+**VRT — annual IS presentation (FY2023-FY2025 observed).**  
+FMP annual `costOfRevenue` / `grossProfit` does not match the 10-K face presentation. In the filing, `amortization of intangibles` is shown below gross profit inside operating expenses. In FMP's annual IS payload, the delta between filing gross profit and FMP gross profit matches that amortization line almost exactly (`$181.3M`, `$184.2M`, `$200.4M` across FY2023-FY2025). Practical effect: Arrow stores FMP's lower `gross_profit` and higher `cogs` because baseline `financial_facts` follow FMP as shipped.  
+Resolution path: document as filer-specific normalization; do not override baseline facts inline.
 
 **VLO — FY2025 annual (period_end 2025-12-31).**  
 FMP dumped ALL $23.7B of VLO's stockholders' equity into `otherTotalStockholdersEquity` with all other equity buckets (commonStock, retainedEarnings, APIC, treasuryStock, AOCI) at zero. FY2021-FY2024 are correctly decomposed.  
