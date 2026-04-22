@@ -18,7 +18,7 @@ It remains valuable as archived reference and benchmark context, but it is no lo
 Build Arrow into a searchable, replayable, time-aware company-intelligence system.
 
 Core outcome:
-- adjudicated financial history: trust, supersede, or flag with provenance
+- baseline financial history from FMP, with provenance and PIT semantics
 - trusted company documents
 - trusted market data
 - trusted macroeconomic data
@@ -187,16 +187,29 @@ Rule:
 - prefer FMP later where normalized structure is better
 - keep SEC as first-seen source and provenance anchor
 
-### FMP vs SEC reconciliation is inline, every ingest
+### FMP baseline ingest; SEC audit side rail
 
-When both sources exist for the same filing/period/concept, Layer 5 of the verification stack compares them during ingest and adjudicates the result:
-- keep FMP when it remains the best usable normalized value
-- supersede with SEC/XBRL when SEC is clearly better
-- keep FMP and write a `data_quality_flags` row when the mismatch is real but not safe to auto-resolve
+Historical `financial_facts` are FMP-first.
 
-This is a deliberate design choice. Arrow is not trying to pretend every mismatch has a single auto-fixable "correct" answer. It is trying to make the right trust decision with provenance.
+Default historical ingest:
+- fetch FMP
+- normalize into `financial_facts`
+- enforce Layer 1 load-time statement sanity
+- preserve PIT/vendor revision history
 
-Trust in FMP is only earned empirically; without this check we're trusting by assertion. Originally planned as a scheduled job (see Build Order step 9.5); now runs inline so divergences surface at load time instead of requiring a separate reconciliation pass. See `docs/reference/verification.md` § 1 and § 6 for the decision contract and Layer 5 details.
+Default historical ingest does **not**:
+- reconcile against SEC/XBRL inline
+- adjudicate amendments inline
+- rewrite baseline facts from audit results
+
+SEC remains active for:
+- fresh filing arrival
+- raw `8-K` earnings releases
+- raw `10-Q` / `10-K` documents
+- filing-text extraction later
+- optional audit/reconciliation later
+
+Audit stays in-repo, but as a side rail. It can compare FMP against SEC/XBRL and write `data_quality_flags`, but it does not own the baseline financial ingest path.
 
 ### Massive later
 
@@ -793,7 +806,7 @@ Fast path for new filings only:
 - SEC direct filing/XBRL ingest on filing drop
 
 Important:
-- existing SEC/XBRL pipeline remains core benchmark and asset
+- existing SEC/XBRL pipeline remains a benchmark/audit asset
 - preserve ability to compare FMP-derived data against direct SEC/XBRL outputs
 - always store both fiscal truth and calendar normalization
 - always store PIT columns (`published_at`, `superseded_at`)
@@ -807,8 +820,8 @@ Outputs:
 Evaluation:
 - gold audit spreadsheet
 - formula checks
-- cross-statement consistency
-- FMP vs SEC/XBRL comparison inline during every ingest (Layer 5 — see `docs/reference/verification.md` § 6; divergences surface in `data_quality_flags`)
+- optional cross-source and cross-statement audit passes
+- optional FMP vs SEC/XBRL comparison as a separate audit pass (Layer 5 — see `docs/reference/verification.md` § 6; divergences surface in `data_quality_flags`)
 
 ### Layer 2: Qualitative Data
 
@@ -820,6 +833,7 @@ Fresh filing fast path: SEC direct ingest for newly dropped 10-Q / 10-K / materi
 
 Output:
 - `artifacts`
+- `press_release` artifacts from 8-K exhibits where present
 - chunks (table reintroduced when chunking is real — see v1 Tables status)
 - filing-derived `company_events`
 
@@ -1064,7 +1078,7 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 7. ✅ implement `artifacts` (migration 004, with double-hash). `artifact_chunks` was added in 005 and withdrawn in 006 — re-list as a future step below.
 8. ⏳ implement FMP ingest for historical filings and transcripts
 9. ✅ implement `financial_facts` schema with fiscal, calendar, and PIT fields (migration 008). Populating depends on step 8.
-9.5. ✅ implement FMP ↔ SEC/XBRL reconciliation (migrations 010 + 011, built 2026-04-21/22). Shipped as inline Layer 5 during every backfill rather than a separate scheduled job — divergences write to `data_quality_flags` at load time. Amendment detection (`src/arrow/agents/amendment_detect.py`) handles the subset where XBRL has later-filed restated values FMP hasn't picked up. Policy documented in `docs/reference/verification.md` § 1 (Layer 1 hard, Layers 2/3/5 soft-flag).
+9.5. ✅ implement FMP ↔ SEC/XBRL audit rail (migrations 010 + 011, built 2026-04-21/22). Preserved for separate audit/reconciliation passes. No longer part of default baseline FMP backfill. Divergences write to `data_quality_flags` when audit is run; amendment-detect remains preserved as later audit functionality rather than default ingest behavior.
 10. ⬜ implement `series` + `series_observations` (unified macro / industry / commodity substrate, vintage-preserving). Build when first real source lands.
 11. ⬜ implement fiscal, calendar-normalized, and PIT derived views
 12. ⬜ implement `prices_daily`
@@ -1074,7 +1088,7 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 16. ⬜ reintroduce chunking table + chunker (driven by step 8 producing real text to chunk)
 17. ⬜ add section-over-time comparison support
 18. ⬜ add `signals` + `alerts`
-19. ⬜ add SEC fast-path ingest for newly dropped filings
+19. 🚧 add SEC fast-path ingest for newly dropped filings (recent submissions + raw filing artifacts; 8-K exhibit/press-release support started)
 20. ⬜ add Massive-backed options ingest later
 21. ⬜ migrate to cloud when durability/reliability justify it
 

@@ -60,8 +60,9 @@ Important:
 ## Working Rules
 
 - System of record: PostgreSQL
-- Primary historical source: FMP
-- Low-latency fresh filing path: SEC direct
+- `financial_facts` baseline truth: FMP
+- SEC active role: raw `8-K` / `10-Q` / `10-K` documents + low-latency fresh filing path
+- Audit/reconciliation: side rail only; does not block or rewrite baseline facts
 - Retrieval: search-first, SQL + FTS, not naive RAG
 - Preserve fiscal truth and calendar normalization
 - Preserve point-in-time semantics where revisions/restatements exist

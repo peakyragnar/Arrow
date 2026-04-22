@@ -42,9 +42,11 @@ These are the starting conventions. Add a row when you introduce a new type; ext
 | `form_type` | string | Literal form, e.g. `"10-K/A"` for amendments |
 | `amended` | bool | Present and `true` on amendments (`10-K/A`, `10-Q/A`) |
 | `filing_date` | string (ISO date) | Form filing date from SEC header; may differ from `published_at` if we received it late |
+| `primary_document` | string | SEC primary document filename, e.g. `"nvda-20251026x10q.htm"` |
 | `reporting_period_end` | string (ISO date) | Redundant with `period_end` column — do NOT store here |
 | `items` | array of strings | 8-K Item codes, e.g. `["2.02", "9.01"]` |
 | `xbrl_available` | bool | Whether XBRL instance was present |
+| `is_inline_xbrl` | bool | Whether Inline XBRL was present |
 
 ### `transcript`
 
@@ -61,6 +63,12 @@ These are the starting conventions. Add a row when you introduce a new type; ext
 |---|---|---|
 | `headline` | string | If different from `title` |
 | `distribution_channel` | string | `"pr_newswire"` / `"business_wire"` / `"company_ir"` / ... |
+| `accession_number` | string | SEC accession when release came via an 8-K exhibit |
+| `filer_cik` | string | CIK when release came via an SEC filing |
+| `form_type` | string | Usually `"8-K"` / `"8-K/A"` when sourced from SEC |
+| `filing_date` | string (ISO date) | Parent filing date when sourced from SEC |
+| `document_name` | string | Exhibit filename, e.g. `"ex99-1.htm"` |
+| `document_type` | string | SEC exhibit type, e.g. `"EX-99.1"` |
 | `tags` | array of strings | Company-supplied topic tags |
 
 ### `news_article`

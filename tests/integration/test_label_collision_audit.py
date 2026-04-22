@@ -25,27 +25,7 @@ import psycopg
 from arrow.db.connection import get_conn
 from arrow.db.migrations import apply
 from arrow.ingest.common.http import Response
-from arrow.ingest.common.raw_responses import write_raw_response
-from arrow.ingest.sec.company_facts import (
-    CompanyFactsFetch,
-    COMPANY_FACTS_ENDPOINT_TEMPLATE,
-)
 from arrow.normalize.financials.verify_is import verify_is_ties
-
-
-def _empty_xbrl_fetch(conn, *, cik, ingest_run_id, http):  # noqa: ARG001
-    import json as _json
-    payload = {"cik": cik, "entityName": "NVDA", "facts": {"us-gaap": {}}}
-    body = _json.dumps(payload).encode()
-    endpoint = COMPANY_FACTS_ENDPOINT_TEMPLATE.format(cik10=f"{cik:010d}")
-    raw_id = write_raw_response(
-        conn, ingest_run_id=ingest_run_id, vendor="sec", endpoint=endpoint,
-        params={"cik": cik}, request_url=f"https://data.sec.gov/{endpoint}",
-        http_status=200, content_type="application/json",
-        response_headers={"content-type": "application/json"},
-        body=body, cache_path=None,
-    )
-    return CompanyFactsFetch(raw_response_id=raw_id, payload=payload)
 
 
 def _reset(conn: psycopg.Connection) -> None:
@@ -134,9 +114,7 @@ def test_no_two_periods_share_a_fiscal_period_label() -> None:
     with get_conn() as conn:
         _reset(conn)
         _seed_nvda(conn)
-        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_fake_get), patch(
-            "arrow.agents.fmp_ingest.fetch_company_facts", new=_empty_xbrl_fetch
-        ):
+        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_fake_get):
             # since_date override to admit the pre-2021 drift fixtures.
             backfill_fmp_is(conn, ["NVDA"], since_date=date(1999, 1, 1))
 
@@ -178,9 +156,7 @@ def test_stored_facts_still_tie_after_ingest() -> None:
     with get_conn() as conn:
         _reset(conn)
         _seed_nvda(conn)
-        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_fake_get), patch(
-            "arrow.agents.fmp_ingest.fetch_company_facts", new=_empty_xbrl_fetch
-        ):
+        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_fake_get):
             # since_date override to admit the pre-2021 drift fixtures.
             backfill_fmp_is(conn, ["NVDA"], since_date=date(1999, 1, 1))
 
