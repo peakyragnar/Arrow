@@ -1,6 +1,6 @@
 """Review and act on data_quality_flags rows.
 
-Data-quality flags come from soft-validation layers (Layer 1 CF
+Data-quality flags come from soft-validation layers (Layer 1 BS/CF
 subtotal-component drift today; Layer 3 period arithmetic and Layer 5
 cross-source reconciliation when those audit rails run). A flag records
 an arithmetic disagreement Arrow noticed while loading a row. The row

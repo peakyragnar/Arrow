@@ -1,7 +1,12 @@
-"""Balance-sheet subtotal-tie verification (verification.md Layer 1, § 2.2)
-plus the load-bearing BS invariant: total_assets == total_liabilities + total_equity.
+"""Balance-sheet Layer 1 verification.
 
-HARD BLOCK. The load aborts the ingest run if any tie fails.
+Two classes:
+
+- SOFT subtotal-component drift: FMP's reported subtotal disagrees with the
+  sum of FMP's own normalized component fields inside the same shipped row.
+  Load the row verbatim; write a flag for analyst review.
+- HARD balance identity: liabilities/equity identities that a valid balance
+  sheet cannot violate. Abort ingest if these fail.
 
 Absent-component handling differs from IS. On the balance sheet many
 canonical buckets are legitimately absent for a given filer (e.g., no
@@ -66,7 +71,7 @@ def _val(values: dict[str, Decimal], concept: str) -> Decimal:
 # The ties below reflect what's actually verifiable against FMP's data
 # model. When SEC XBRL direct ingest lands (Build Order step 19), a
 # parallel set of ties with the full concept set becomes appropriate.
-_BS_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
+_BS_SOFT_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
     (
         "total_current_assets == cash + sti + AR + other_receivables + inventory + prepaid + other_current_assets",
         "total_current_assets",
@@ -157,6 +162,9 @@ _BS_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
             ("noncontrolling_interest", +1),
         ],
     ),
+]
+
+_BS_HARD_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
     (
         "total_liabilities_and_equity == total_liabilities + total_equity",
         "total_liabilities_and_equity",
@@ -174,16 +182,12 @@ _BS_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
 ]
 
 
-def verify_bs_ties(values_by_concept: dict[str, Decimal]) -> list[TieFailure]:
-    """Return the list of ties that failed (empty = all passed).
-
-    If the filer-reported subtotal itself is absent, the tie is skipped —
-    there's nothing reported to validate. Component buckets absent from the
-    FMP mapping contribute zero, because FMP legitimately bundles a number of
-    concepts into broader aggregates (see fmp_mapping.md § 5.4).
-    """
+def _verify_ties(
+    ties: list[tuple[str, str, list[tuple[str, int]]]],
+    values_by_concept: dict[str, Decimal],
+) -> list[TieFailure]:
     failures: list[TieFailure] = []
-    for name, subtotal, components in _BS_TIES:
+    for name, subtotal, components in ties:
         if subtotal not in values_by_concept:
             continue
         filer = values_by_concept[subtotal]
@@ -203,3 +207,27 @@ def verify_bs_ties(values_by_concept: dict[str, Decimal]) -> list[TieFailure]:
                 )
             )
     return failures
+
+
+def verify_bs_ties(values_by_concept: dict[str, Decimal]) -> list[TieFailure]:
+    """Return every failing BS tie, hard + soft.
+
+    Retained for audit callers and tests that want the full picture.
+    """
+    return verify_bs_soft_ties(values_by_concept) + verify_bs_hard_ties(values_by_concept)
+
+
+def verify_bs_soft_ties(values_by_concept: dict[str, Decimal]) -> list[TieFailure]:
+    """Return failing BS subtotal-component ties.
+
+    If the filer-reported subtotal itself is absent, the tie is skipped —
+    there's nothing reported to validate. Component buckets absent from the
+    FMP mapping contribute zero, because FMP legitimately bundles a number of
+    concepts into broader aggregates (see fmp_mapping.md § 5.4).
+    """
+    return _verify_ties(_BS_SOFT_TIES, values_by_concept)
+
+
+def verify_bs_hard_ties(values_by_concept: dict[str, Decimal]) -> list[TieFailure]:
+    """Return failing BS balance-identity ties."""
+    return _verify_ties(_BS_HARD_TIES, values_by_concept)

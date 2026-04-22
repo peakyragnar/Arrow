@@ -238,6 +238,8 @@ Default historical ingest:
 - fetch FMP
 - normalize into `financial_facts`
 - enforce Layer 1 load-time statement sanity
+  - hard: IS subtotal ties, BS balance identity, CF cash roll-forward
+  - soft: BS/CF subtotal-component drift -> `data_quality_flags`
 - preserve PIT/vendor revision history
 
 Default historical ingest does **not**:

@@ -11,6 +11,10 @@ This is the default path. This is what a new contributor should assume.
 - source of truth: FMP
 - destination: `financial_facts`
 - default rule: ingest FMP, store FMP, preserve PIT history
+- default Layer 1 behavior:
+  - hard: IS subtotal ties, BS balance identity, CF cash roll-forward
+  - soft: BS/CF subtotal-component drift writes `data_quality_flags`
+  - soft flags do not change stored fact values
 
 ### SEC
 

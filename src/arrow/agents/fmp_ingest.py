@@ -10,16 +10,16 @@ Per ticker:
   2. Round `since_date` forward to the first fiscal year whose end falls
      on/after it, so complete fiscal years are ingested (not partials).
   3. Load IS quarter + annual. Layer-1 subtotal ties enforced per row.
-  4. Load BS quarter + annual. Layer-1 BS ties + balance identity
-     (total_assets == total_liab + total_equity) enforced per row.
+  4. Load BS quarter + annual. Layer-1 BS balance identities enforced
+     per row; subtotal-component drift soft-flags and still loads.
   5. Load CF quarter + annual. Layer-1 CF ties + cash roll-forward
      enforced per row.
 
 Default historical ingest stops there. SEC/XBRL comparison, amendment
 work, and other audit logic run outside this path.
 
-Any Layer-1 failure aborts the ticker's work, rolls back that transaction,
-and marks the ingest_run failed with structured error details.
+Any Layer-1 HARD failure aborts the ticker's work, rolls back that
+transaction, and marks the ingest_run failed with structured error details.
 
 `since_date` default 2021-01-01 limits the validated window. Older
 history is out-of-scope until the baseline FMP window expands.
@@ -185,7 +185,8 @@ def backfill_fmp_statements(
     """Backfill baseline FMP income-statement, balance-sheet, and cash-flow data.
 
     Layer 1 IS   — per-row subtotal ties (inline during IS load).
-    Layer 1 BS   — per-row subtotal ties + balance identity (inline during BS load).
+    Layer 1 BS   — per-row balance identity hard gate; subtotal-component drift
+                   soft-flags inline during BS load.
     Layer 1 CF   — per-row subtotal ties + cash roll-forward (inline during CF load).
 
     `until_date`: if set, only ingest fiscal years whose nominal FY-end
@@ -218,9 +219,10 @@ def backfill_fmp_statements(
         # CF
         "cf_facts_written": 0,
         "cf_facts_superseded": 0,
-        # Soft-tie data_quality_flags (CF subtotal-component drift).
+        # Soft-tie data_quality_flags.
         # Non-blocking; row is still loaded. Analyst reviews with
         # scripts/review_flags.py.
+        "bs_flags_written": 0,
         "cf_flags_written": 0,
     }
 
@@ -269,6 +271,7 @@ def backfill_fmp_statements(
                 counts["rows_processed"] += result.rows_processed
                 counts["bs_facts_written"] += result.facts_written
                 counts["bs_facts_superseded"] += result.facts_superseded
+                counts["bs_flags_written"] += result.flags_written
 
             # --- CF ingest (Layer 1 CF inline) ---
             for period in ("quarter", "annual"):

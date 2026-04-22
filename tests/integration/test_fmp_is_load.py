@@ -216,6 +216,58 @@ def _cf_q4_row() -> dict:
     }
 
 
+def _vrt_like_bs_q4_row() -> dict:
+    """VRT-style BS row with restricted-cash double-count in current assets.
+
+    totalCurrentAssets is 8.2M lower than the sum of cash + other current assets
+    because FMP appears to fold restricted cash into cash while also leaving it
+    inside otherCurrentAssets.
+    """
+    return {
+        "date": "2026-01-25", "period": "Q4", "fiscalYear": "2026",
+        "symbol": "NVDA", "filingDate": "2026-02-23",
+        "acceptedDate": "2026-02-23 16:42:19",
+        "cashAndCashEquivalents": 788600000,
+        "shortTermInvestments": 0,
+        "accountsReceivables": 2185200000,
+        "otherReceivables": 0,
+        "inventory": 884300000,
+        "prepaids": 0,
+        "otherCurrentAssets": 151600000,
+        "totalCurrentAssets": 4001500000,
+        "propertyPlantEquipmentNet": 950000000,
+        "longTermInvestments": 0,
+        "goodwill": 1200000000,
+        "intangibleAssets": 300000000,
+        "taxAssets": 50000000,
+        "otherNonCurrentAssets": 498500000,
+        "totalAssets": 7000000000,
+        "accountPayables": 950000000,
+        "otherPayables": 250000000,
+        "accruedExpenses": 500000000,
+        "shortTermDebt": 300000000,
+        "capitalLeaseObligationsCurrent": 100000000,
+        "deferredRevenue": 150000000,
+        "otherCurrentLiabilities": 750000000,
+        "totalCurrentLiabilities": 3000000000,
+        "longTermDebt": 900000000,
+        "capitalLeaseObligationsNonCurrent": 200000000,
+        "deferredRevenueNonCurrent": 0,
+        "deferredTaxLiabilitiesNonCurrent": 150000000,
+        "otherNonCurrentLiabilities": 250000000,
+        "totalLiabilities": 4500000000,
+        "preferredStock": 0,
+        "commonStock": 50000000,
+        "additionalPaidInCapital": 400000000,
+        "retainedEarnings": 1900000000,
+        "treasuryStock": 0,
+        "accumulatedOtherComprehensiveIncomeLoss": 100000000,
+        "minorityInterest": 50000000,
+        "totalEquity": 2500000000,
+        "totalLiabilitiesAndTotalEquity": 7000000000,
+    }
+
+
 def _fake_fmp_get(self, endpoint: str, **params) -> Response:  # noqa: ARG001
     """Mocked FMPClient.get — routes by endpoint + period.
 
@@ -494,3 +546,82 @@ def test_company_not_seeded_fails_cleanly() -> None:
             status, msg = cur.fetchone()
             assert status == "failed"
             assert "NVDA" in msg
+
+
+def test_bs_subtotal_drift_loads_and_writes_flag() -> None:
+    from arrow.agents.fmp_ingest import backfill_fmp_statements
+
+    def _bs_soft_drift_fmp_get(self, endpoint: str, **params) -> Response:  # noqa: ARG001
+        if endpoint == "income-statement":
+            is_row = _q4_row()
+            if params.get("period") == "annual":
+                is_row = dict(is_row)
+                is_row["period"] = "FY"
+            rows = [is_row]
+        elif endpoint == "balance-sheet-statement":
+            if params.get("period") == "quarter":
+                rows = [_vrt_like_bs_q4_row()]
+            else:
+                annual = _bs_q4_row()
+                annual = dict(annual)
+                annual["period"] = "FY"
+                rows = [annual]
+        elif endpoint == "cash-flow-statement":
+            cf_row = _cf_q4_row()
+            if params.get("period") == "annual":
+                cf_row = dict(cf_row)
+                cf_row["period"] = "FY"
+            rows = [cf_row]
+        else:
+            raise AssertionError(f"unexpected endpoint: {endpoint}")
+        body = json.dumps(rows).encode()
+        return Response(
+            status=200,
+            body=body,
+            content_type="application/json",
+            headers={"content-type": "application/json"},
+            url="https://example/x",
+        )
+
+    with get_conn() as conn:
+        _reset(conn)
+        company_id = _seed_nvda(conn)
+
+        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_bs_soft_drift_fmp_get):
+            counts = backfill_fmp_statements(conn, ["NVDA"])
+
+        assert counts["bs_flags_written"] == 1
+
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT count(*) FROM financial_facts
+                WHERE company_id = %s
+                  AND statement = 'balance_sheet'
+                  AND period_end = DATE '2026-01-25';
+                """,
+                (company_id,),
+            )
+            assert cur.fetchone()[0] > 0
+
+            cur.execute(
+                """
+                SELECT flag_type, statement, concept, delta, context->>'tie'
+                FROM data_quality_flags
+                WHERE company_id = %s;
+                """,
+                (company_id,),
+            )
+            flag_type, statement, concept, delta, tie = cur.fetchone()
+            assert flag_type == "bs_subtotal_component_drift"
+            assert statement == "balance_sheet"
+            assert concept == "total_current_assets"
+            assert delta == 8200000
+            assert "total_current_assets" in tie
+
+            cur.execute(
+                "SELECT status, counts FROM ingest_runs ORDER BY id DESC LIMIT 1;"
+            )
+            status, run_counts = cur.fetchone()
+            assert status == "succeeded"
+            assert run_counts["bs_flags_written"] == 1

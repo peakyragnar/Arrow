@@ -13,7 +13,7 @@ For normal operation first, read:
 - `docs/architecture/system.md`
 - ADR-0010 (`docs/decisions/0010-fmp-baseline-truth-sec-documents-audit-side-rail.md`)
 
-Arrow's validation stack has five conceptual layers. **Only Layer 1 runs during default FMP backfill and is a hard gate.** The remaining layers exist as audit side-rail tooling (Layers 3, 5) or as scaffold/planned work (Layers 2, 4). When the side-rail audit pass runs, it can write to `data_quality_flags` and, under strict rules, supersede FMP facts via the amendment-detect agent. It does not run on every ingest.
+Arrow's validation stack has five conceptual layers. **Only Layer 1 runs during default FMP backfill; inside Layer 1, some checks are hard gates and some are inline soft flags.** The remaining layers exist as audit side-rail tooling (Layers 3, 5) or as scaffold/planned work (Layers 2, 4). When the side-rail audit pass runs, it can write to `data_quality_flags` and, under strict rules, supersede FMP facts via the amendment-detect agent. It does not run on every ingest.
 
 This design reflects the ADR-0010 split: trust FMP as baseline; keep audit callable but off the critical path. Layer definitions below still describe the adjudication intent so that the side rail has a spec to implement and so analysts reading flag rows know what each `flag_type` means.
 
@@ -37,7 +37,8 @@ Complements:
 Layer 1 — Subtotal ties                  (intra-statement; inline on every ingest)
   1-HARD  IS subtotal ties, BS balance identity,
           CF cash roll-forward            (HARD GATE)
-  1-SOFT  CF top-level aggregation,
+  1-SOFT  BS subtotal-component drift,
+          CF top-level aggregation,
           CF cfo/cfi/cff subtotal ==
           sum of FMP's component fields   (inline flag, non-blocking)
 Layer 2 — Cross-statement ties           (IS ↔ BS ↔ CF; scaffold present, not wired)
@@ -51,7 +52,7 @@ Layer 5 — Cross-source reconciliation    (FMP ↔ SEC XBRL anchors; side rail;
 | Layer | Status | Invocation | Failure behavior |
 |---|---|---|---|
 | 1-HARD | **live / mainline** | inline during `backfill_fmp_statements` | **HARD BLOCK** — transaction rolls back, no facts persist |
-| 1-SOFT | **live / mainline** | inline during `backfill_fmp_statements` (CF only, today) | soft — writes `data_quality_flags` rows of type `cf_subtotal_component_drift`; row is loaded verbatim |
+| 1-SOFT | **live / mainline** | inline during `backfill_fmp_statements` | soft — writes `data_quality_flags` rows of type `bs_subtotal_component_drift` / `cf_subtotal_component_drift`; row is loaded verbatim |
 | 2 | **scaffold, not wired** | function exists (`verify_cross_statement_ties`) but no caller in mainline or side rail | n/a yet — when wired, will be side-rail soft-flag |
 | 3 | **side rail** | `amendment_detect.detect_and_apply_amendments`, invoked from audit tooling, not default backfill | soft — attempts XBRL supersession; unresolved becomes `data_quality_flags` row |
 | 4 | **planned** | formula layer not yet implemented; `formulas.py` does not exist | when built, will suppress formula output on missing components |
@@ -67,22 +68,22 @@ Not every Layer-1 tie tests the same thing. Some test filer integrity: if the fi
 |---|---|---|
 | IS `gross_profit == revenue − cogs` (and the IS chain) | filer's own subtotal arithmetic in the income statement | HARD |
 | BS `total_assets == total_liabilities + total_equity` | filer's balance identity | HARD |
-| BS subtotal ties (`total_current_assets == sum of components`, etc.) | filer subtotals | HARD |
+| BS subtotal ties (`total_current_assets == sum of components`, etc.) | FMP's bucketing of filer components into canonical BS buckets | SOFT |
 | CF `net_change_in_cash == cash_end − cash_begin` | filer cash roll-forward (definitional) | HARD |
 | CF `net_change_in_cash == cfo + cfi + cff + fx` | FMP's section-decomposition (fails on Q4-derivation artifacts) | SOFT |
 | CF `cfo == sum(non-cash + working-capital components)` | **FMP's bundling of filer line-items into FMP buckets** | SOFT |
 | CF `cfi == sum(investing components)` | same | SOFT |
 | CF `cff == sum(financing components)` | same | SOFT |
 
-The DELL FY2026 Q2 and AMD FY2022 Q1/Q3 cases are all SOFT failures — FMP's normalization dropped (DELL: restricted cash, operating-lease-current; AMD: an unknown ~$6M financing item) inside an otherwise well-formed 10-Q. Hard-blocking in those cases loses the entire ticker's history over a vendor bundling leak. Soft-flagging loads the row verbatim and makes the caveat queryable.
+The DELL FY2026 Q2, AMD FY2022 Q1/Q3, and VRT FY2023 Q4 cases are all SOFT failures — FMP's normalization leaked a bucket boundary (DELL: restricted cash / operating-lease-current; AMD: unknown ~$6M financing item; VRT: restricted cash double-count inside cash plus other-current-assets) inside an otherwise well-formed filing. Hard-blocking in those cases loses the entire ticker's history over a vendor bundling leak. Soft-flagging loads the row verbatim and makes the caveat queryable.
 
 When in doubt: if the tie could fail because *FMP* mis-bucketed rather than because the *filer* reported inconsistent numbers, the tie is SOFT. If the filer genuinely can't have shipped a 10-Q in that state, the tie is HARD.
 
 ### What "HARD GATE", "inline soft-flag", and "side rail" actually mean
 
-- **HARD GATE (Layer 1 hard ties)** — violation raises and the entire ingest transaction for that period rolls back. Nothing about the failing filer's period persists. Catches genuine filer-level integrity violations: IS subtotal ties, BS balance identity, BS subtotal ties, CF cash roll-forward. The filing itself would have to be internally broken to fail these.
+- **HARD GATE (Layer 1 hard ties)** — violation raises and the entire ingest transaction for that period rolls back. Nothing about the failing filer's period persists. Catches genuine filer-level integrity violations: IS subtotal ties, BS balance identity, CF cash roll-forward. The filing itself would have to be internally broken to fail these.
 
-- **INLINE SOFT-FLAG (Layer 1 soft ties; CF subtotal-component drift, today)** — runs during normal ingest, alongside hard ties. On failure, writes one row per failing tie to `data_quality_flags` with `flag_type = 'cf_subtotal_component_drift'` and severity scaled by `|delta| / max(|filer|, |computed|)` (<1% → informational, 1–10% → warning, ≥10% → investigate). The `financial_facts` row is loaded verbatim — FMP's reported subtotal and FMP's component fields are both stored as shipped. The flag row is the analyst-visible record that they don't agree. Analyst reviews via `scripts/review_flags.py`; accept-as-is leaves the fact unchanged.
+- **INLINE SOFT-FLAG (Layer 1 soft ties; BS/CF subtotal-component drift, today)** — runs during normal ingest, alongside hard ties. On failure, writes one row per failing tie to `data_quality_flags` with `flag_type = 'bs_subtotal_component_drift'` or `flag_type = 'cf_subtotal_component_drift'` and severity scaled by `|delta| / max(|filer|, |computed|)` (<1% → informational, 1–10% → warning, ≥10% → investigate). The `financial_facts` row is loaded verbatim — FMP's reported subtotal and FMP's component fields are both stored as shipped. The flag row is the analyst-visible record that they don't agree. Analyst reviews via `scripts/review_flags.py`; accept-as-is leaves the fact unchanged.
 
 - **SIDE RAIL (Layers 3, 5)** — the check does not run on every ingest. It runs when an operator explicitly invokes the audit tooling (for Layer 5, `scripts/reconcile_fmp_vs_xbrl.py`; for Layer 3, the amendment-detect agent invoked via audit scripts). When it runs, failures write rows to `data_quality_flags` (see `db/schema/011_data_quality_flags.sql` + migration 012). Layer 3's amendment-detect agent may also supersede FMP facts via savepointed XBRL replacement, but only under the atomicity rules in `docs/research/amendment_phase_1_5_design.md` — never as a by-product of mainline ingest.
 
@@ -229,7 +230,7 @@ Implementation: `verify_cf_hard_ties` in `src/arrow/normalize/financials/verify_
 
 #### 2.3b SOFT ties (vendor bucketing consistency; inline flag)
 
-These fail when FMP's reported subtotal and FMP's own component fields inside the single shipped row disagree. The filer's 10-Q is typically internally consistent; the defect is FMP's normalization dropping or misbucketing an item (DELL FY26 Q2 restricted cash, AMD FY22 Q1/Q3 unknown ~$6M financing item). Load the row verbatim; write one `data_quality_flags` row per failing tie.
+These fail when FMP's reported subtotal and FMP's own component fields inside the single shipped row disagree. The filer's 10-Q is typically internally consistent; the defect is FMP's normalization dropping or misbucketing an item (DELL FY26 Q2 restricted cash, AMD FY22 Q1/Q3 unknown ~$6M financing item, VRT FY23 Q4 restricted cash double-count). Load the row verbatim; write one `data_quality_flags` row per failing tie.
 
 ```
 cfo == net_income_start + dna_cf + sbc + deferred_income_tax + other_noncash
@@ -582,7 +583,11 @@ Note on resolved flags: when an analyst manually verifies and corrects a flagged
 ```
 src/arrow/normalize/financials/
   verify_is.py                  — Layer 1 IS ties (HARD; called by load_fmp_is_rows)
-  verify_bs.py                  — Layer 1 BS ties (HARD; called by load_fmp_bs_rows)
+  verify_bs.py                  — Layer 1 BS ties: split functions
+                                    verify_bs_hard_ties (HARD)
+                                    verify_bs_soft_ties (SOFT / inline flag)
+                                    verify_bs_ties       (combined; used by
+                                                          audit callers/tests)
   verify_cf.py                  — Layer 1 CF ties: split functions
                                     verify_cf_hard_ties (HARD)
                                     verify_cf_soft_ties (SOFT / inline flag)
@@ -592,6 +597,12 @@ src/arrow/normalize/financials/
   verify_period_arithmetic.py   — Layer 3 core; called by amendment_detect
 
 src/arrow/normalize/financials/load.py
+  load_fmp_bs_rows              — calls verify_bs_hard_ties (raise)
+                                  then verify_bs_soft_ties (collect),
+                                  inserts facts, then _write_bs_soft_tie_flag
+                                  for each soft failure
+  _write_bs_soft_tie_flag       — writes one data_quality_flags row per
+                                  soft failure; severity auto-assigned
   load_fmp_cf_rows              — calls verify_cf_hard_ties (raise)
                                   then verify_cf_soft_ties (collect),
                                   inserts facts, then _write_cf_soft_tie_flag

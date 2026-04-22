@@ -345,6 +345,11 @@ The tie formulas in `verify_bs.py` and `verify_cf.py` have been narrowed to matc
 - **CF `cff` tie**: omits `short_term_debt_repayment`, `long_term_debt_repayment`, `special_dividends_paid` (FMP uses net debt fields; no split)
 - **CF `net_change_in_cash` tie**: omits `misc_cf_adjustments` (no FMP equivalent)
 
+Operationally:
+
+- **BS subtotal-component drift** is now treated as a soft-flag, not a hard block.
+- **BS balance identity** (`total_assets == total_liabilities_and_equity`, plus `total_liabilities_and_equity == total_liabilities + total_equity`) remains hard-blocking.
+
 When a future SEC XBRL direct ingest path is added (Build Order step 19), a parallel set of ties with the full granularity becomes appropriate — XBRL exposes every concept separately.
 
 ---
@@ -454,6 +459,10 @@ FMP returned inconsistent component totals for this specific filing only.
 - `total_current_assets` tie fails by $146M — which exactly equals `RestrictedCashCurrent` in XBRL. FMP bundled restricted cash into `cashAndCashEquivalents` correctly but then reported `totalCurrentAssets` without including it. Other DELL periods tie cleanly.
 - `total_current_liabilities` tie fails by $241M — which exactly equals `OperatingLeaseLiabilityCurrent` in XBRL. FMP omitted this from its Q2 FY26 return (normally populates `capitalLeaseObligationsCurrent`). Other DELL periods include it correctly.  
 Resolution path: wait for FMP to republish corrected data, or skip this specific filing from ingest.
+
+**VRT — FY2023 Q4 (period_end 2023-12-31).**  
+FMP reports `cashAndCashEquivalents = $788.6M`, `otherCurrentAssets = $151.6M`, and `totalCurrentAssets = $4,001.5M`. Summing the mapped current-asset components yields $4,009.7M — an $8.2M overage. SEC filing evidence shows cash and cash equivalents are $780.4M and restricted cash is $8.2M, with total cash + cash equivalents + restricted cash = $788.6M. Likely FMP behavior: fold restricted cash into `cashAndCashEquivalents` while also leaving it inside `otherCurrentAssets`.  
+Resolution path: soft-flag as `bs_subtotal_component_drift`; keep the row loaded verbatim.
 
 **VLO — FY2025 annual (period_end 2025-12-31).**  
 FMP dumped ALL $23.7B of VLO's stockholders' equity into `otherTotalStockholdersEquity` with all other equity buckets (commonStock, retainedEarnings, APIC, treasuryStock, AOCI) at zero. FY2021-FY2024 are correctly decomposed.  

@@ -5,7 +5,7 @@ Usage:
 
 Per ticker, in order:
   - Layer 1 IS: per-row subtotal ties (inline).
-  - Layer 1 BS: per-row subtotal ties + balance identity (inline).
+  - Layer 1 BS: per-row balance identity hard gate; subtotal drift soft-flags.
   - Layer 1 CF: per-row subtotal ties + cash roll-forward (inline).
 
 Companies must be seeded first (scripts/seed_companies.py). Any
@@ -58,8 +58,18 @@ def _print_success(tickers: list[str], counts: dict[str, Any]) -> None:
     _print_statement_block(
         "Balance sheet", counts,
         fw_key="bs_facts_written", fs_key="bs_facts_superseded",
-        extra_l1=" (subtotal ties + balance identity)",
+        extra_l1=" (hard tie: balance identity)",
     )
+    bs_flags = counts.get("bs_flags_written", 0)
+    if bs_flags:
+        print(f"  soft-tie flags written: {bs_flags}")
+        print(
+            "    BS subtotal-component drift (subtotal vs sum of FMP components)"
+        )
+        print(
+            f"    loaded verbatim; review with: "
+            f"uv run scripts/review_flags.py {' '.join(counts.get('min_fiscal_year_by_ticker', {}).keys())}"
+        )
     print()
     _print_statement_block(
         "Cash flow", counts,
@@ -100,7 +110,7 @@ def _print_is_verification_failed(e: VerificationFailed) -> None:
 
 
 def _print_bs_verification_failed(e: BSVerificationFailed) -> None:
-    _print_failure_header("Layer 1 BS (subtotal tie / balance identity)", str(e))
+    _print_failure_header("Layer 1 BS (hard balance identity)", str(e))
     print(f"Period: {e.period_label}")
     for f in e.failures:
         print(f"  - {f.tie}")

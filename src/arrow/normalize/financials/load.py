@@ -36,7 +36,8 @@ from arrow.normalize.financials.fmp_cf_mapper import map_cash_flow_row
 from arrow.normalize.financials.fmp_is_mapper import map_income_statement_row
 from arrow.normalize.financials.verify_bs import (
     TieFailure as BSTieFailure,
-    verify_bs_ties,
+    verify_bs_hard_ties,
+    verify_bs_soft_ties,
 )
 from arrow.normalize.financials.verify_cf import (
     TieFailure as CFTieFailure,
@@ -126,6 +127,7 @@ def _parse_fmp_period(period_str: str) -> str:
 # Flag type for CF vendor-bucketing drift (cfo / cfi / cff subtotal !=
 # sum of FMP's own component fields inside the shipped row).
 CF_SUBTOTAL_DRIFT_FLAG_TYPE = "cf_subtotal_component_drift"
+BS_SUBTOTAL_DRIFT_FLAG_TYPE = "bs_subtotal_component_drift"
 
 
 def _severity_for_drift(delta: Decimal, filer: Decimal, computed: Decimal) -> str:
@@ -195,6 +197,56 @@ def _write_cf_soft_tie_flag(
             company_id, subtotal_concept,
             fiscal_year, fiscal_quarter, period_end, period_type,
             CF_SUBTOTAL_DRIFT_FLAG_TYPE, severity,
+            failure.filer, failure.computed, failure.delta, failure.tolerance,
+            reason,
+            f'{{"tie": "{failure.tie}"}}',
+            ingest_run_id,
+        ),
+    )
+
+
+def _write_bs_soft_tie_flag(
+    cur: psycopg.Cursor,
+    *,
+    company_id: int,
+    fiscal_year: int,
+    fiscal_quarter: int | None,
+    period_end: date,
+    period_type: str,
+    failure: BSTieFailure,
+    ingest_run_id: int,
+) -> None:
+    """Write one `data_quality_flags` row for a soft BS subtotal drift."""
+    subtotal_concept = failure.tie.split(" ")[0]
+    severity = _severity_for_drift(failure.delta, failure.filer, failure.computed)
+    reason = (
+        f"FMP's reported {subtotal_concept} ({failure.filer}) disagrees with "
+        f"the sum of FMP's own component fields ({failure.computed}) by "
+        f"{failure.delta} (tolerance {failure.tolerance}). The balance-sheet "
+        f"row was loaded verbatim; this flag records likely FMP bucketing "
+        f"drift inside the shipped row (common cases: restricted cash, "
+        f"lease buckets, or other-current/noncurrent classification drift)."
+    )
+    cur.execute(
+        """
+        INSERT INTO data_quality_flags (
+            company_id, statement, concept,
+            fiscal_year, fiscal_quarter, period_end, period_type,
+            flag_type, severity,
+            expected_value, computed_value, delta, tolerance,
+            reason, context, source_run_id
+        ) VALUES (
+            %s, 'balance_sheet', %s,
+            %s, %s, %s, %s,
+            %s, %s,
+            %s, %s, %s, %s,
+            %s, %s::jsonb, %s
+        );
+        """,
+        (
+            company_id, subtotal_concept,
+            fiscal_year, fiscal_quarter, period_end, period_type,
+            BS_SUBTOTAL_DRIFT_FLAG_TYPE, severity,
             failure.filer, failure.computed, failure.delta, failure.tolerance,
             reason,
             f'{{"tie": "{failure.tie}"}}',
@@ -373,8 +425,11 @@ def load_fmp_bs_rows(
     as IS). Layer 3 period arithmetic doesn't apply (stocks don't sum
     across quarters).
 
-    Raises BSVerificationFailed (Layer 1 tie miss) or FiscalYearMismatch;
-    caller rolls back and marks ingest_run failed.
+    HARD BS balance-identity failures still abort the transaction.
+    SOFT BS subtotal-component drift loads the row verbatim and writes one
+    `data_quality_flags` row per failing subtotal.
+
+    Raises BSVerificationFailed (hard BS identity miss) or FiscalYearMismatch.
     """
     result = LoadResult()
 
@@ -407,9 +462,11 @@ def load_fmp_bs_rows(
             mapped = map_balance_sheet_row(row)
             values_by_concept = {m.concept: m.value for m in mapped}
 
-            failures = verify_bs_ties(values_by_concept)
-            if failures:
-                raise BSVerificationFailed(fiscal.fiscal_period_label, failures)
+            hard_failures = verify_bs_hard_ties(values_by_concept)
+            if hard_failures:
+                raise BSVerificationFailed(fiscal.fiscal_period_label, hard_failures)
+
+            soft_failures = verify_bs_soft_ties(values_by_concept)
 
             published_at = _parse_published_at(row)
             result.period_labels.append(fiscal.fiscal_period_label)
@@ -475,6 +532,19 @@ def load_fmp_bs_rows(
                 )
                 if cur.fetchone() is not None:
                     result.facts_written += 1
+
+            for failure in soft_failures:
+                _write_bs_soft_tie_flag(
+                    cur,
+                    company_id=company_id,
+                    fiscal_year=fiscal.fiscal_year,
+                    fiscal_quarter=fiscal.fiscal_quarter,
+                    period_end=period_end,
+                    period_type=fiscal.period_type,
+                    failure=failure,
+                    ingest_run_id=ingest_run_id,
+                )
+                result.flags_written += 1
 
     return result
 

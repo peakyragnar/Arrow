@@ -188,8 +188,10 @@ src/arrow/
 ├── reconcile/   ← cross-source divergence logic. Hosts the FMP vs SEC XBRL
 │                   audit rail (Layer 5, separate from default ingest — see
 │                   verification.md § 6). Writes divergences to
-│                   data_quality_flags when audit is run. Later: macro
-│                   vintage reconciliation, vendor-vs-vendor checks.
+│                   data_quality_flags when audit is run. Default ingest also
+│                   writes inline BS/CF subtotal-component soft flags via
+│                   normalize/financials/load.py. Later: macro vintage
+│                   reconciliation, vendor-vs-vendor checks.
 │
 ├── retrieval/   ← analyst agent's toolbox: search_documents(), list_documents(),
 │                   read_document(), sql_query(), get_financial_fact(asof=...),

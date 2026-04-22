@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from arrow.normalize.financials.verify_bs import TieFailure, verify_bs_ties
+from arrow.normalize.financials.verify_bs import (
+    TieFailure,
+    verify_bs_hard_ties,
+    verify_bs_soft_ties,
+    verify_bs_ties,
+)
 
 
 def _nvda_fy26_q4_values() -> dict[str, Decimal]:
@@ -132,3 +137,19 @@ def test_tie_failure_records_filer_computed_and_delta() -> None:
     tc = next(f for f in failures if "total_current_liabilities" in f.tie)
     assert isinstance(tc, TieFailure)
     assert tc.delta == Decimal("10000000000")
+
+
+def test_subtotal_component_drift_is_soft_not_hard() -> None:
+    values = _nvda_fy26_q4_values()
+    values["total_current_assets"] = values["total_current_assets"] + Decimal("200000000")
+    soft = verify_bs_soft_ties(values)
+    hard = verify_bs_hard_ties(values)
+    assert any("total_current_assets" in f.tie for f in soft)
+    assert hard == []
+
+
+def test_balance_identity_failure_is_hard() -> None:
+    values = _nvda_fy26_q4_values()
+    values["total_assets"] = values["total_assets"] + Decimal("10000000000")
+    hard = verify_bs_hard_ties(values)
+    assert any("total_assets == total_liabilities_and_equity" in f.tie for f in hard)

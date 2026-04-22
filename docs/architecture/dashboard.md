@@ -177,7 +177,7 @@ For metric 18 (Revenue per Employee): cells before the ticker's first ingested 1
 
 ## Data quality flags in the UI
 
-Facts underlying a cell may have one or more `data_quality_flags` rows (e.g. CF subtotal-component drift from Layer 1 SOFT). The hover tooltip surfaces:
+Facts underlying a cell may have one or more `data_quality_flags` rows (e.g. BS/CF subtotal-component drift from Layer 1 SOFT). The hover tooltip surfaces:
 
 - a small icon if the cell's period has any unresolved flags
 - the flag summaries, their severity, and the resolution status (unresolved / accepted / overridden)
