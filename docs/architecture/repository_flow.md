@@ -329,7 +329,7 @@ archive/     ←  isolated; never imported
 | A tool the analyst agent calls | `src/arrow/retrieval/` | `retrieval/tools/search_documents.py` |
 | Industry / product / macro primer pipeline | `src/arrow/research/` | `research/primer_loader.py` |
 | Orchestration: "when filing drops, do X, Y, Z" | `src/arrow/agents/` | `agents/ingestion/on_filing_drop.py` |
-| A command a human or cron runs | `scripts/` | `scripts/backfill_fmp.py` |
+| A command a human or cron runs | `scripts/` | `scripts/ingest_company.py` |
 | A test for one module, no DB | `tests/unit/` | `tests/unit/test_paths.py` |
 | A test that hits Postgres | `tests/integration/` | `tests/integration/test_fmp_load.py` |
 | A fixed-input reproducibility check | `tests/regression/` | `tests/regression/test_nvda_is_fy26q4.py` |

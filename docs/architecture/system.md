@@ -72,6 +72,18 @@ Do:
 
 This is the mainline.
 
+Operational default:
+
+```bash
+uv run scripts/ingest_company.py TICKER
+```
+
+This one command runs the normal company flow:
+- seed company from SEC bootstrap
+- backfill baseline FMP financial facts
+- ingest FMP employee counts
+- backfill SEC filing/document artifacts
+
 - FMP historical financial ingest -> `financial_facts`
 - SEC filing/document ingest -> `artifacts`
 - FMP transcript ingest -> `artifacts`
@@ -93,6 +105,14 @@ Important:
 - audit is kept
 - audit is useful
 - audit is **not** the default ingest path
+
+### Script roles
+
+- `scripts/ingest_company.py` — default company run; normal flow end-to-end
+- `scripts/backfill_fmp.py` — FMP-only financial backfill
+- `scripts/ingest_employees.py` — employee metric refresh only
+- `scripts/fetch_sec_filings.py` — SEC filing/document backfill only
+- `scripts/reconcile_fmp_vs_xbrl.py` — audit side rail only
 
 ## Foundational Schema Rule: Two Clocks Always
 

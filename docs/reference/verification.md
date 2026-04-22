@@ -621,7 +621,10 @@ src/arrow/reconcile/
   xbrl_concepts.py              — FMP bucket ↔ XBRL tag mapping
 
 scripts/
-  backfill_fmp.py               — invokes mainline ingest (Layer 1 hard+soft)
+  ingest_company.py             — default normal company flow
+  backfill_fmp.py               — FMP-only financial ingest (Layer 1 hard+soft)
+  fetch_sec_filings.py          — SEC filing/document backfill only
+  ingest_employees.py           — employee metric ingest only
   review_flags.py               — list / show / accept-as-is flag workflow
   reconcile_fmp_vs_xbrl.py      — invokes Layer 5 audit side rail
   review_restatements.py        — audit tooling around amendment review
