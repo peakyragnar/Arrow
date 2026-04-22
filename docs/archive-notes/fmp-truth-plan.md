@@ -1,5 +1,11 @@
 # FMP Truth Plan
 
+> **Status: implemented. Archived for historical context.**
+>
+> This is the plan that drove the FMP-baseline-truth pivot. The decision itself is encoded in [ADR-0010](../decisions/0010-fmp-baseline-truth-sec-documents-audit-side-rail.md); the architectural consequences are in [docs/architecture/system.md](../architecture/system.md) and [docs/architecture/normal_vs_audit.md](../architecture/normal_vs_audit.md). This document is retained as the longer narrative that preceded the ADR.
+>
+> Do not treat the imperative-present phrasing below as live work. All eight workstreams have landed (migrations 008–012, `backfill_fmp_statements`, `scripts/reconcile_fmp_vs_xbrl.py`, ADR-0010, updated architecture docs).
+
 ## Goal
 
 Keep the existing Arrow database structure.

@@ -1,4 +1,8 @@
-"""Amendment detection + XBRL supersession — Build Order step 1.5.
+"""Amendment detection + XBRL supersession — audit side rail (Build Order step 9.5).
+
+SIDE RAIL per ADR-0010. Not called from `backfill_fmp_statements`;
+invoked from audit tooling when an operator wants to reconcile
+comparative-period restatements that FMP's pipeline hasn't yet picked up.
 
 Handles the "amendment-within-regular-filing" pattern: when a filer
 restates a prior period's value in a later filing that is NOT a formal
@@ -7,17 +11,22 @@ restatement of prior-year comparatives), FMP's pipeline does NOT pick up
 the restated value — it continues to serve the original.
 
 This agent detects the discrepancy via Layer 3 failure (Q1+Q2+Q3+Q4 ≠ FY
-for a fiscal year), finds authoritative restated values in SEC XBRL
-companyfacts, applies them via supersession, and re-verifies that all
-Layer 1, Layer 2, and Layer 3 ties hold holistically.
+for a fiscal year), finds the restated values in SEC XBRL companyfacts,
+applies them via supersession under strict atomicity rules, and
+re-verifies that Layer 1 ties hold holistically on the post-supersession
+period package. Anything it cannot safely resolve is written as a
+`data_quality_flags` row; it never raises.
 
-Follows the rules in docs/research/amendment_phase_1_5_design.md:
-  A. XBRL provenance is explicit and authoritative (no invention).
+Follows the rules in docs/research/amendment_phase_1_5_design.md
+(soft-flag policy refined 2026-04-22):
+  A. XBRL provenance is explicit (no invention). XBRL is authoritative
+     only for the audit-time supersession decision, not for baseline
+     `financial_facts` — baseline stays FMP per ADR-0010.
   B. Sanity bounds (no sign flips, ≤50% delta).
-  C. Holistic post-supersession verification — ALL layers must pass.
+  C. Holistic post-supersession verification — Layer 1 must pass.
   D. Full provenance on every supersession row.
   E. Deterministic reproducibility.
-  F. Categorical outcomes: Clean / Amended / UnresolvableAmendment / Layer1Fail.
+  F. Categorical outcomes: clean / amended / unresolved_flagged / layer1_fail.
 
 Refuse-on-ambiguity is architecturally enforced: Rule C's holistic
 re-verification is atomic. If any post-supersession tie fails, the
@@ -463,11 +472,12 @@ def _derive_identity_candidates(
         xbrl_cand_vals[(c.statement, c.period_end, c.period_type, c.concept)] = c
 
     def _anchor_value(period_end: date, period_type: str, concept: str) -> Decimal | None:
-        """Find the current-authoritative value for an anchor concept at this
-        period. Preferred: XBRL candidate (if it exists in our supersession
-        plan). Fallback: XBRL latest fact directly (for concepts where FMP
-        already matches XBRL — no candidate was created but XBRL IS the truth).
-        Returns None if XBRL has no value for this concept at this period."""
+        """Find the value to use as anchor for this period's post-supersession
+        Layer 1 re-verify. Preferred: XBRL candidate (if it exists in our
+        supersession plan). Fallback: XBRL latest fact directly (for concepts
+        where FMP already matches XBRL — no candidate was created, but XBRL
+        is the reference value at audit-time for this check). Returns None if
+        XBRL has no value for this concept at this period."""
         key = ("income_statement", period_end, period_type, concept)
         if key in xbrl_cand_vals:
             return xbrl_cand_vals[key].xbrl_value
@@ -958,13 +968,18 @@ def detect_and_apply_amendments(
 ) -> AmendmentResult:
     """Orchestrate Phase 1.5 amendment detection + supersession.
 
-    Call this AFTER FMP ingest has completed and Layer 3 has failed. This
-    function operates within the caller's outer transaction — a SAVEPOINT
-    is used to implement Rule C's atomic rollback semantics.
+    SIDE RAIL — not called from `backfill_fmp_statements`. Invoked
+    separately from audit tooling (per ADR-0010). Operates within the
+    caller's outer transaction; a SAVEPOINT implements Rule C's atomic
+    rollback semantics so refusal rolls back the supersession attempt
+    without touching the outer transaction.
 
-    Returns AmendmentResult with status and supersession details.
-    Raises UnresolvableAmendment when refused (Rule A/B/C violation)
-    because the caller (backfill agent) needs to propagate the failure.
+    Never raises. Returns `AmendmentResult` with one of the categorical
+    statuses declared on the dataclass (`clean`, `amended`,
+    `unresolved_flagged`, `layer1_fail`) per the soft-flag refinement of
+    2026-04-22 in `docs/research/amendment_phase_1_5_design.md`. Rule A/B/C
+    violations produce an `unresolved_flagged` outcome (savepoint rolled
+    back, `data_quality_flags` written), not an exception.
     """
     # Step 1: identify failures
     layer3_failures = _all_layer3_failures(conn, company_id=company_id)

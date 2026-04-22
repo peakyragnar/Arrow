@@ -1,5 +1,12 @@
 """Layer 3 verification — period arithmetic.
 
+SIDE RAIL — not wired into default FMP ingest.
+
+Called only by `arrow.agents.amendment_detect.detect_and_apply_amendments`
+(the audit/amendment side rail) and its tests. `backfill_fmp_statements`
+runs Layer 1 only; period-arithmetic checking happens when the amendment
+agent is invoked separately, per ADR-0010.
+
 For every fiscal year where we have all four quarters plus an annual
 row, check that `Q1 + Q2 + Q3 + Q4 ≈ FY` for each flow bucket.
 
@@ -15,8 +22,13 @@ Balance-sheet stocks are NOT checked (snapshot semantics — never summed).
 Per-share and share-count buckets are NOT checked (not additive across
 quarters). Only USD-magnitude flow buckets get the identity check.
 
-Same tolerance as Layer 1 (verify_is): max($1M, 0.1% of larger abs).
-HARD BLOCK on failure.
+Tolerance: max($2.5M, 0.1% of larger abs) — wider than Layer 1 because
+the identity compounds five independently-rounded values.
+
+Failure behavior: this function RETURNS a list of failures; it does not
+raise. The amendment agent decides whether to resolve (via XBRL
+supersession inside a savepoint) or to write a `data_quality_flags` row
+of type `layer3_q_sum_vs_fy`. Never hard-blocks.
 """
 
 from __future__ import annotations

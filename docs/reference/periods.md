@@ -166,19 +166,23 @@ For filers that report each quarter as a discrete 10-Q quantity, this is the dir
 Q4_flow = FY_flow (from 10-K)  −  9M_YTD_flow (from Q3 10-Q)
 ```
 
-### 6.2 Restatement handling
+### 6.2 Restatement handling (audit side rail)
 
-When a 10-K restates one or more of Q1–Q3, naively subtracting the pre-restatement 9M YTD produces an inconsistent Q4. Rule:
+> **Scope:** the rule below describes what the audit side rail does when it supersedes restated Q1–Q3 values via the amendment-detect agent. Default `backfill_fmp_statements` does **not** perform this rewrite — it consumes FMP's reported values as-is. Per ADR-0010 and `docs/reference/verification.md` § 4, runtime supersession happens only when audit tooling is explicitly invoked.
+
+When a 10-K restates one or more of Q1–Q3, naively subtracting the pre-restatement 9M YTD produces an inconsistent Q4. Rule applied at audit time:
 
 ```text
 if the 10-K carries DocumentFinStmtErrorCorrectionFlag = true
-   OR any Q1..Q3 row has been superseded:
+   OR any Q1..Q3 row has been superseded by the amendment agent:
     Q4_flow = restated_FY  −  restated_Q1  −  restated_Q2  −  restated_Q3
 else:
     Q4_flow = FY  −  9M_YTD
 ```
 
 The restated Q1/Q2/Q3 values come from the restating filing itself (10-K amendment or subsequent 10-K comparatives). Earlier superseded rows remain in `financial_facts` with `superseded_at` set — they are not deleted, just deprioritized by the PIT query.
+
+Until the audit side rail runs, FMP's stored values are what baseline queries see; any residual Q1+Q2+Q3+Q4 vs FY mismatch surfaces as a `data_quality_flags` row of type `layer3_q_sum_vs_fy`.
 
 ### 6.3 Balance-sheet Q4
 
@@ -197,15 +201,17 @@ Q3_discrete = 9M_YTD  − H1_YTD    (9M_YTD from Q3 10-Q, H1_YTD from Q2 10-Q)
 Q4_discrete = FY      − 9M_YTD    (see § 6)
 ```
 
-### 7.1 Reclassification detection
+### 7.1 Reclassification detection (audit side rail)
 
-If a later filing silently recasts prior-quarter CF presentation (moving items between lines without changing totals), naive subtraction produces wrong discrete values. Rule:
+> **Scope:** same as § 6.2 — this is an audit-time procedure, not part of default `backfill_fmp_statements`. Mainline ingest consumes FMP's reported discrete values; reclassification detection and any resulting supersession happen only when audit tooling runs.
+
+If a later filing silently recasts prior-quarter CF presentation (moving items between lines without changing totals), naive subtraction produces wrong discrete values. Audit-time rule:
 
 1. Compute both: the original Q1 (from Q1 10-Q) and the implied Q1 (from Q2's H1 YTD − Q2 discrete).
 2. If they differ by more than **0.5%** of the larger absolute value, treat as a reclassification candidate.
 3. Confirm by comparing prior-year comparatives in the later filing — the comparatives also get recast.
-4. If confirmed, override: use the later filing's values. Supersede the older row with `superseded_at` set; preserve the original in `financial_facts` for audit.
-5. If not confirmed (only the current period changed, prior-year stayed), treat as a data error in one of the filings, emit a `reconcile` flag, and leave both rows for manual review.
+4. If confirmed, the audit side rail may supersede: use the later filing's values, and stamp `superseded_at` on the older row (under the amendment-detect agent's atomicity rules). The original row stays in `financial_facts` for audit.
+5. If not confirmed (only the current period changed, prior-year stayed), write a `data_quality_flags` row and leave both rows for manual review. Baseline `financial_facts` is never silently rewritten.
 
 ### 7.2 Required upstream rows
 

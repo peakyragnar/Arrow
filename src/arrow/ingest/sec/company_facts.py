@@ -3,8 +3,10 @@
 Endpoint: https://data.sec.gov/api/xbrl/companyfacts/CIK{cik10}.json
 
 Returns every numeric fact ever filed by the company, grouped by taxonomy
-(us-gaap, dei, invest, srt) and concept. This is the authoritative
-secondary source for verifying FMP-derived financial_facts.
+(us-gaap, dei, invest, srt) and concept. Used by the audit side rail
+(Layer 5 reconciliation, amendment-detect) as the cross-source reference
+against FMP-derived `financial_facts`. Per ADR-0010, FMP remains the
+baseline source of truth; XBRL is the audit input, not a second baseline.
 
 Written as one raw_responses row per fetch. Must be called inside an open
 transaction; follows the same pattern as ingest/sec/bootstrap.py.

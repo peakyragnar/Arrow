@@ -1,5 +1,12 @@
 """Layer 2 — cross-statement tie verification.
 
+SCAFFOLD — currently has no caller in mainline ingest or the audit side
+rail. Per ADR-0010, default `backfill_fmp_statements` runs Layer 1 only.
+This module exists as the spec/implementation to be re-wired if Layer 2
+is reactivated as a side-rail audit layer; when it is, failures should
+soft-flag (write `data_quality_flags` of type `layer2_cross_statement`),
+not hard-block.
+
 Once IS, BS, and CF are all loaded for the same (company, period_end,
 period_type), these invariants must hold. Per verification.md § 3.1,
 with restricted-cash sourced from SEC XBRL to make ASC 230 work:
@@ -21,11 +28,12 @@ with restricted-cash sourced from SEC XBRL to make ASC 230 work:
 ASC 230 restricted-cash handling: the CF's "cash, cash equivalents, and
 restricted cash" definition (post-2018 amendments) differs from BS's
 cash_and_equivalents. FMP doesn't expose restricted cash on its
-balance-sheet endpoint, so we pull it from SEC XBRL at Layer-2 time via
-the companyfacts payload we already fetch for Layer 5. Tags consulted,
-in order: RestrictedCashCurrent + RestrictedCashNoncurrent (sum), then
-RestrictedCashAndCashEquivalentsAtCarryingValue (combined), then 0
-(filer doesn't report any restricted cash).
+balance-sheet endpoint. When Layer 2 runs as a side rail, it relies on
+the SEC XBRL companyfacts payload the Layer 5 audit fetches — this
+module does not fetch anything itself; the caller passes `companyfacts`.
+Tags consulted, in order: RestrictedCashCurrent + RestrictedCashNoncurrent
+(sum), then RestrictedCashAndCashEquivalentsAtCarryingValue (combined),
+then 0 (filer doesn't report any restricted cash).
 
 "Prior period" lookup: for a given (company, period_end), find the
 largest period_end strictly less than it in the same company's BS rows.
@@ -36,7 +44,9 @@ Tolerance: ±$1M absolute or 0.1% of larger, same as Layer 1 —
 two-independently-rounded-reports-of-the-same-filer-number can drift
 that much in practice even on "same stored number" ties.
 
-HARD BLOCK on any failure.
+Failure behavior: this function RETURNS a list of failures; it does not
+raise. When this layer is re-wired, the caller should write
+`data_quality_flags` rows, not roll back ingest.
 """
 
 from __future__ import annotations
