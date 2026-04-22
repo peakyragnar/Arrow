@@ -28,6 +28,8 @@ WITH q AS (
         w.gross_profit,
         w.operating_income,
         w.net_income,
+        w.cfo,
+        w.capital_expenditures,
         w.interest_expense,
         w.accounts_receivable,
         w.inventory,
@@ -63,6 +65,8 @@ SELECT
     gross_profit,
     operating_income,
     net_income,
+    cfo,
+    capital_expenditures,
 
     -- ===== Margins (quarter) =====
     CASE WHEN revenue IS NULL OR revenue = 0 THEN NULL ELSE gross_profit / revenue END AS gross_margin,

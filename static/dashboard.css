@@ -137,9 +137,11 @@ tr.change-row td.metric-name {
     color: var(--text-dim);
 }
 
-/* Color-coded deltas */
-td.pos { color: var(--pos); }
-td.neg { color: var(--neg); }
+/* Color-coded deltas — specificity must exceed `tr.change-row td` */
+tr.change-row td.pos,
+td.pos { color: var(--pos) !important; }
+tr.change-row td.neg,
+td.neg { color: var(--neg) !important; }
 td.null { color: #3c4452; }
 
 /* TTM column accent */

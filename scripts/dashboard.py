@@ -100,6 +100,59 @@ def fetch_calendar_years(
     return {r["calendar_year"]: r for r in rows}
 
 
+def fetch_cy_ttm_metrics(
+    conn: psycopg.Connection, ticker: str, years: list[int]
+) -> dict[int, dict]:
+    """For each calendar year, return TTM metrics at the ticker's latest
+    quarter ending in calendar Q4 of that year. Used for CY columns on
+    TTM-grain rows (ROIC, NOPAT Margin, CFO/NOPAT, etc.).
+    """
+    if not years:
+        return {}
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            WITH anchor AS (
+                SELECT
+                    q.ticker, q.company_id, q.calendar_year, q.period_end,
+                    ROW_NUMBER() OVER (PARTITION BY q.ticker, q.calendar_year
+                                       ORDER BY q.period_end DESC) AS rn
+                FROM v_metrics_q q
+                WHERE q.ticker = %s
+                  AND q.calendar_year = ANY(%s)
+                  AND q.calendar_quarter = 4
+            )
+            SELECT
+                a.calendar_year,
+                a.period_end AS anchor_period_end,
+                ttm.nopat_margin,
+                ttm.cfo_to_nopat,
+                ttm.fcf_to_nopat,
+                ttm.accruals_ratio,
+                ttm.sbc_pct_revenue,
+                ttm.interest_coverage_ttm,
+                ttm.revenue_per_employee,
+                ttm.unlevered_fcf_ttm,
+                ttm.reinvestment_rate,
+                roic.roic,
+                roic.roiic,
+                yoy.diluted_share_count_growth
+            FROM anchor a
+            LEFT JOIN v_metrics_ttm ttm
+              ON ttm.company_id = a.company_id AND ttm.period_end = a.period_end
+            LEFT JOIN v_metrics_roic roic
+              ON roic.company_id = a.company_id AND roic.period_end = a.period_end
+            LEFT JOIN v_metrics_ttm_yoy yoy
+              ON yoy.company_id = a.company_id AND yoy.period_end = a.period_end
+            WHERE a.rn = 1
+            ORDER BY a.calendar_year;
+            """,
+            (ticker, years),
+        )
+        rows = _rows_as_dicts(cur)
+    return {r["calendar_year"]: r for r in rows}
+
+
 def fetch_latest_ttm(conn: psycopg.Connection, ticker: str) -> dict | None:
     with conn.cursor() as cur:
         cur.execute(
@@ -186,13 +239,24 @@ def _safe_div(n: Any, d: Any) -> float | None:
 class _Columns:
     """Column accessors for the 5 CY + 1 TTM + N quarters layout."""
 
-    def __init__(self, cy_by_year: dict[int, dict], ttm: dict | None, quarterly: list[dict]):
+    def __init__(
+        self,
+        cy_by_year: dict[int, dict],
+        ttm: dict | None,
+        quarterly: list[dict],
+        cy_ttm_by_year: dict[int, dict] | None = None,
+    ):
         self.cy = cy_by_year
+        self.cy_ttm = cy_ttm_by_year or {}
         self.ttm = ttm or {}
         self.q = quarterly
 
     def cy_series(self, key: str) -> list[Any]:
         return [self.cy.get(y, {}).get(key) for y in CY_YEARS]
+
+    def cy_ttm_series(self, key: str) -> list[Any]:
+        """CY values for TTM-grain metrics (TTM at each year's calendar Q4)."""
+        return [self.cy_ttm.get(y, {}).get(key) for y in CY_YEARS]
 
     def ttm_value(self, key: str) -> Any:
         return self.ttm.get(key)
@@ -248,10 +312,26 @@ def _margin_row_with_bps(
 
 
 def _ttm_only_row(name: str, fmt: str, c: _Columns, ttm_key: str, q_key: str | None = None, tooltip: str | None = None) -> PanelRow:
-    """Row where only TTM + quarterly columns are populated; CY columns blank."""
+    """Row for a TTM-grain metric.
+
+    CY columns: populated from c.cy_ttm_series (TTM metric at each year's
+    calendar Q4 anchor).
+    TTM column: latest TTM value.
+    Quarter columns: rolling TTM at each quarter-end (from q_series).
+    """
+    cy_vals = c.cy_ttm_series(ttm_key) if ttm_key in _CY_TTM_KEYS else [None] * len(CY_YEARS)
     q_vals = c.q_series(q_key) if q_key else c.all_null_q()
-    values = [None] * len(CY_YEARS) + [c.ttm_value(ttm_key)] + q_vals
+    values = cy_vals + [c.ttm_value(ttm_key)] + q_vals
     return PanelRow(name=name, format=fmt, values=values, tooltip=tooltip)
+
+
+# Keys that exist in cy_ttm_by_year (from fetch_cy_ttm_metrics).
+_CY_TTM_KEYS = {
+    "nopat_margin", "cfo_to_nopat", "fcf_to_nopat", "accruals_ratio",
+    "sbc_pct_revenue", "interest_coverage_ttm", "revenue_per_employee",
+    "unlevered_fcf_ttm", "reinvestment_rate",
+    "roic", "roiic", "diluted_share_count_growth",
+}
 
 
 def _quarter_only_row(name: str, fmt: str, c: _Columns, q_key: str) -> PanelRow:
@@ -260,9 +340,12 @@ def _quarter_only_row(name: str, fmt: str, c: _Columns, q_key: str) -> PanelRow:
 
 
 def build_panel(
-    quarterly: list[dict], cy_by_year: dict[int, dict], ttm: dict | None
+    quarterly: list[dict],
+    cy_by_year: dict[int, dict],
+    ttm: dict | None,
+    cy_ttm_by_year: dict[int, dict] | None = None,
 ) -> tuple[list[str], list[PanelRow]]:
-    c = _Columns(cy_by_year, ttm, quarterly)
+    c = _Columns(cy_by_year, ttm, quarterly, cy_ttm_by_year)
 
     # Column headers
     cy_headers = [f"CY{y}" for y in CY_YEARS]
@@ -291,23 +374,24 @@ def build_panel(
     # ----- Return-on-capital metrics (TTM grain) -----
     coverage = (ttm or {}).get("rd_coverage_quarters")
     coverage_note = f"R&D coverage: {coverage}/20 quarters" if coverage else None
-    # NOPAT Margin is TTM-grain only (no per-quarter equivalent). CY columns blank.
+    # All TTM-grain metrics — populate CY cells from cy_ttm_by_year,
+    # quarterly cells from the TTM series joined on each quarter's period_end.
     rows.append(PanelRow(
         name="NOPAT Margin",
         format="pct",
-        values=[None] * len(CY_YEARS) + [c.ttm_value("nopat_margin")] + c.all_null_q(),
+        values=c.cy_ttm_series("nopat_margin") + [c.ttm_value("nopat_margin")] + c.q_series("nopat_margin"),
         tooltip=coverage_note,
     ))
     rows.append(PanelRow(
         name="Adjusted ROIC",
         format="pct",
-        values=[None] * len(CY_YEARS) + [c.ttm_value("roic")] + c.q_series("roic"),
+        values=c.cy_ttm_series("roic") + [c.ttm_value("roic")] + c.q_series("roic"),
         tooltip=coverage_note,
     ))
     rows.append(PanelRow(
         name="ROIIC",
         format="pct",
-        values=[None] * len(CY_YEARS) + [c.ttm_value("roiic")] + c.q_series("roiic"),
+        values=c.cy_ttm_series("roiic") + [c.ttm_value("roiic")] + c.q_series("roiic"),
         tooltip=coverage_note,
     ))
     rows.append(_ttm_only_row("Reinvestment Rate", "pct", c, "reinvestment_rate", "reinvestment_rate"))
@@ -344,7 +428,9 @@ def build_panel(
     rows.append(PanelRow(
         name="Diluted Shares YoY",
         format="pct",
-        values=[None] * len(CY_YEARS) + [c.ttm_value("diluted_share_count_growth")] + c.q_series("diluted_share_count_growth"),
+        values=c.cy_ttm_series("diluted_share_count_growth")
+              + [c.ttm_value("diluted_share_count_growth")]
+              + c.q_series("diluted_share_count_growth"),
     ))
 
     return headers, rows
@@ -410,6 +496,7 @@ def dashboard(request: Request, ticker: str) -> Any:
             raise HTTPException(404, f"{ticker} not in companies")
         quarterly = fetch_quarterly(conn, ticker, n=Q_COUNT)
         cy_by_year = fetch_calendar_years(conn, ticker, CY_YEARS)
+        cy_ttm_by_year = fetch_cy_ttm_metrics(conn, ticker, CY_YEARS)
         ttm = fetch_latest_ttm(conn, ticker)
         flag_counts = fetch_flag_counts(conn, ticker)
 
@@ -420,7 +507,7 @@ def dashboard(request: Request, ticker: str) -> Any:
             "</body></html>"
         )
 
-    headers, rows = build_panel(quarterly, cy_by_year, ttm)
+    headers, rows = build_panel(quarterly, cy_by_year, ttm, cy_ttm_by_year)
 
     rendered_rows = []
     for row in rows:
