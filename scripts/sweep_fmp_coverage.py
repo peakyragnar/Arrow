@@ -58,10 +58,8 @@ GOLDEN_EVAL_TICKERS = [
     "KOP", "HWKN",
 ]
 
-# Match ingest default `since_date` — only evaluate filings whose period_end
-# falls on or after this date. Older periods are pre-validation-era and not
-# relevant to the current ingest scope.
-SWEEP_SINCE_DATE = "2021-01-01"
+# Match ingest default `since_date` — evaluate the 10-year baseline window.
+SWEEP_SINCE_DATE = "2016-01-01"
 
 
 # ----- helpers --------------------------------------------------------------

@@ -21,8 +21,8 @@ work, and other audit logic run outside this path.
 Any Layer-1 HARD failure aborts the ticker's work, rolls back that
 transaction, and marks the ingest_run failed with structured error details.
 
-`since_date` default 2021-01-01 limits the validated window. Older
-history is out-of-scope until the baseline FMP window expands.
+`since_date` default 2016-01-01 gives the 10-year baseline window used by
+the dashboard / R&D lookback formulas.
 
 backfill_fmp_is is retained as an alias for the old IS-only caller path;
 new callers should use backfill_fmp_statements.
@@ -56,7 +56,7 @@ from arrow.normalize.periods.derive import (
     min_fiscal_year_for_since_date,
 )
 
-DEFAULT_SINCE_DATE = date(2021, 1, 1)
+DEFAULT_SINCE_DATE = date(2016, 1, 1)
 
 
 @dataclass(frozen=True)

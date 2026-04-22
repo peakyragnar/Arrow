@@ -171,23 +171,23 @@ def main() -> int:
         print(usage, file=sys.stderr)
         return 2
 
-    # Guard: a non-default window must be explicitly opted into. The default
-    # window (since_date=DEFAULT_SINCE_DATE, until_date=None) is what loads
-    # the complete ~5-year validated horizon every formula and dashboard
-    # downstream assumes. Silent partial backfills caused real data gaps
-    # once (DELL loaded as FY2023–FY2025 only) — forcing --scoped for
-    # anything narrower makes that accident impossible to repeat.
+    # Guard: a narrower-than-default window must be explicitly opted into.
+    # The default window (since_date=DEFAULT_SINCE_DATE, until_date=None)
+    # is the 10-year baseline horizon every formula and dashboard downstream
+    # assumes. Silent partial backfills caused real data gaps once (DELL
+    # loaded as FY2023–FY2025 only) — forcing --scoped for anything narrower
+    # makes that accident impossible to repeat.
     is_custom_window = (
-        (since_date is not None and since_date != DEFAULT_SINCE_DATE)
+        (since_date is not None and since_date > DEFAULT_SINCE_DATE)
         or (until_date is not None)
     )
     if is_custom_window and not scoped:
         print(
-            "ERROR: --since / --until differ from defaults "
+            "ERROR: --since / --until request a narrower-than-default window "
             f"(default since={DEFAULT_SINCE_DATE.isoformat()}, until=None).\n"
             "       Partial backfills are the wrong default; they silently "
             "skip fiscal years.\n"
-            "       If this narrow window is intentional (dev/test/bisect), "
+            "       If this narrower window is intentional (dev/test/bisect), "
             "re-run with --scoped.",
             file=sys.stderr,
         )
