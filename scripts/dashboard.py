@@ -32,8 +32,11 @@ TEMPLATES = Jinja2Templates(directory=BASE_DIR / "templates")
 app = FastAPI(title="Arrow Dashboard")
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
-# Calendar-annual columns to display.
-CY_YEARS = [2021, 2022, 2023, 2024, 2025]
+# Annual columns: the ticker's 5 most recent fiscal years (one per 10-K).
+# Per-ticker because AMD's FY2025 ends Dec 2025 while NVDA's FY2026 ends
+# Jan 2026. The fiscal-year axis is audit-aligned: each FY column ties
+# to a single 10-K filing.
+FY_COUNT = 5
 Q_COUNT = 8  # rolling fiscal quarters
 
 
@@ -86,45 +89,40 @@ def fetch_quarterly(conn: psycopg.Connection, ticker: str, n: int = Q_COUNT) -> 
     return rows
 
 
-def fetch_calendar_years(
-    conn: psycopg.Connection, ticker: str, years: list[int]
-) -> dict[int, dict]:
-    if not years:
-        return {}
+def fetch_fiscal_years(
+    conn: psycopg.Connection, ticker: str, n: int = FY_COUNT
+) -> list[dict]:
+    """Return the ticker's `n` most recent fiscal-year annual rows
+    (period_type = 'annual'). Oldest → newest."""
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT * FROM v_metrics_cy WHERE ticker = %s AND calendar_year = ANY(%s) ORDER BY calendar_year;",
-            (ticker, years),
+            """
+            SELECT * FROM v_metrics_fy
+            WHERE ticker = %s
+            ORDER BY fy_end DESC
+            LIMIT %s;
+            """,
+            (ticker, n),
         )
         rows = _rows_as_dicts(cur)
-    return {r["calendar_year"]: r for r in rows}
+    rows.reverse()
+    return rows
 
 
-def fetch_cy_ttm_metrics(
-    conn: psycopg.Connection, ticker: str, years: list[int]
-) -> dict[int, dict]:
-    """For each calendar year, return TTM metrics at the ticker's latest
-    quarter ending in calendar Q4 of that year. Used for CY columns on
-    TTM-grain rows (ROIC, NOPAT Margin, CFO/NOPAT, etc.).
+def fetch_fy_ttm_metrics(
+    conn: psycopg.Connection, ticker: str, fy_end_dates: list[Any]
+) -> dict[Any, dict]:
+    """For each fiscal year-end date, return TTM / ROIC / DSO/DIO/DPO / etc.
+    anchored at that fiscal_quarter=4 period_end. Each FY-end corresponds
+    to the Q4 quarterly row with the same period_end.
     """
-    if not years:
+    if not fy_end_dates:
         return {}
     with conn.cursor() as cur:
         cur.execute(
             """
-            WITH anchor AS (
-                SELECT
-                    q.ticker, q.company_id, q.calendar_year, q.period_end,
-                    ROW_NUMBER() OVER (PARTITION BY q.ticker, q.calendar_year
-                                       ORDER BY q.period_end DESC) AS rn
-                FROM v_metrics_q q
-                WHERE q.ticker = %s
-                  AND q.calendar_year = ANY(%s)
-                  AND q.calendar_quarter = 4
-            )
             SELECT
-                a.calendar_year,
-                a.period_end AS anchor_period_end,
+                q.period_end AS anchor_period_end,
                 ttm.nopat_margin,
                 ttm.cfo_to_nopat,
                 ttm.fcf_to_nopat,
@@ -137,7 +135,10 @@ def fetch_cy_ttm_metrics(
                 roic.roic,
                 roic.roiic,
                 yoy.diluted_share_count_growth,
-                -- quarter-end stock / TTM flow metrics from v_metrics_q
+                yoy.revenue_yoy_ttm,
+                yoy.gross_profit_yoy_ttm,
+                yoy.incremental_gross_margin,
+                yoy.incremental_operating_margin,
                 qm.dso,
                 qm.dio,
                 qm.dpo,
@@ -145,22 +146,23 @@ def fetch_cy_ttm_metrics(
                 qm.net_debt_to_ebitda,
                 qm.working_capital_intensity,
                 qm.interest_coverage_q
-            FROM anchor a
+            FROM v_metrics_q q
             LEFT JOIN v_metrics_ttm ttm
-              ON ttm.company_id = a.company_id AND ttm.period_end = a.period_end
+              ON ttm.company_id = q.company_id AND ttm.period_end = q.period_end
             LEFT JOIN v_metrics_roic roic
-              ON roic.company_id = a.company_id AND roic.period_end = a.period_end
+              ON roic.company_id = q.company_id AND roic.period_end = q.period_end
             LEFT JOIN v_metrics_ttm_yoy yoy
-              ON yoy.company_id = a.company_id AND yoy.period_end = a.period_end
+              ON yoy.company_id = q.company_id AND yoy.period_end = q.period_end
             LEFT JOIN v_metrics_q qm
-              ON qm.company_id = a.company_id AND qm.period_end = a.period_end
-            WHERE a.rn = 1
-            ORDER BY a.calendar_year;
+              ON qm.company_id = q.company_id AND qm.period_end = q.period_end
+            WHERE q.ticker = %s
+              AND q.period_end = ANY(%s)
+              AND q.fiscal_quarter = 4;
             """,
-            (ticker, years),
+            (ticker, fy_end_dates),
         )
         rows = _rows_as_dicts(cur)
-    return {r["calendar_year"]: r for r in rows}
+    return {r["anchor_period_end"]: r for r in rows}
 
 
 def fetch_latest_ttm(conn: psycopg.Connection, ticker: str) -> dict | None:
@@ -247,26 +249,39 @@ def _safe_div(n: Any, d: Any) -> float | None:
 
 
 class _Columns:
-    """Column accessors for the 5 CY + 1 TTM + N quarters layout."""
+    """Column accessors for the FY + TTM + Q layout.
+
+    The FY columns are the ticker's N most recent fiscal-year annual rows
+    (one per 10-K). Each FY maps 1:1 to a single filing for audit.
+    """
 
     def __init__(
         self,
-        cy_by_year: dict[int, dict],
+        fy_rows: list[dict],
         ttm: dict | None,
         quarterly: list[dict],
-        cy_ttm_by_year: dict[int, dict] | None = None,
+        fy_ttm_by_anchor: dict[Any, dict] | None = None,
     ):
-        self.cy = cy_by_year
-        self.cy_ttm = cy_ttm_by_year or {}
+        self.fy = fy_rows  # oldest → newest
+        self.fy_ttm = fy_ttm_by_anchor or {}
         self.ttm = ttm or {}
         self.q = quarterly
 
-    def cy_series(self, key: str) -> list[Any]:
-        return [self.cy.get(y, {}).get(key) for y in CY_YEARS]
+    @property
+    def n_fy(self) -> int:
+        return len(self.fy)
 
-    def cy_ttm_series(self, key: str) -> list[Any]:
-        """CY values for TTM-grain metrics (TTM at each year's calendar Q4)."""
-        return [self.cy_ttm.get(y, {}).get(key) for y in CY_YEARS]
+    def fy_series(self, key: str) -> list[Any]:
+        return [row.get(key) for row in self.fy]
+
+    def fy_ttm_series(self, key: str) -> list[Any]:
+        """FY values for TTM-grain / quarter-end metrics, anchored at the
+        FY-end period_end."""
+        out = []
+        for row in self.fy:
+            anchor = row.get("fy_end")
+            out.append(self.fy_ttm.get(anchor, {}).get(key))
+        return out
 
     def ttm_value(self, key: str) -> Any:
         return self.ttm.get(key)
@@ -274,21 +289,24 @@ class _Columns:
     def q_series(self, key: str) -> list[Any]:
         return [row.get(key) for row in self.q]
 
+    def all_null_fy(self) -> list[Any]:
+        return [None] * len(self.fy)
+
     def all_null_q(self) -> list[Any]:
         return [None] * len(self.q)
 
 
-def _abs_row_with_yoy(name: str, c: _Columns, cy_key: str, ttm_key: str, q_key: str) -> list[PanelRow]:
-    cy_vals = c.cy_series(cy_key)
+def _abs_row_with_yoy(name: str, c: _Columns, fy_key: str, ttm_key: str, q_key: str) -> list[PanelRow]:
+    fy_vals = c.fy_series(fy_key)
     ttm_val = c.ttm_value(ttm_key)
     q_vals = c.q_series(q_key)
-    values = cy_vals + [ttm_val] + q_vals
+    values = fy_vals + [ttm_val] + q_vals
 
-    # Deltas: CY-over-CY, TTM-over-last-CY, Q-over-prior-Q
-    cy_deltas = [None] + [_pct_change(cy_vals[i], cy_vals[i - 1]) for i in range(1, len(cy_vals))]
-    ttm_delta = _pct_change(ttm_val, cy_vals[-1])
+    # Deltas: FY-over-FY, TTM-over-last-FY, Q-over-prior-Q
+    fy_deltas = [None] + [_pct_change(fy_vals[i], fy_vals[i - 1]) for i in range(1, len(fy_vals))]
+    ttm_delta = _pct_change(ttm_val, fy_vals[-1]) if fy_vals else None
     q_deltas = [None] + [_pct_change(q_vals[i], q_vals[i - 1]) for i in range(1, len(q_vals))]
-    deltas = cy_deltas + [ttm_delta] + q_deltas
+    deltas = fy_deltas + [ttm_delta] + q_deltas
 
     return [
         PanelRow(name=name, format="money", values=values),
@@ -299,21 +317,20 @@ def _abs_row_with_yoy(name: str, c: _Columns, cy_key: str, ttm_key: str, q_key: 
 def _margin_row_with_bps(
     name: str,
     c: _Columns,
-    cy_key: str,
+    fy_key: str,
     ttm_num_key: str,
     ttm_denom_key: str,
     q_key: str,
 ) -> list[PanelRow]:
-    """Margin row + BPS delta row. TTM value computed as ttm_num / ttm_denom."""
-    cy_vals = c.cy_series(cy_key)
+    fy_vals = c.fy_series(fy_key)
     ttm_val = _safe_div(c.ttm_value(ttm_num_key), c.ttm_value(ttm_denom_key))
     q_vals = c.q_series(q_key)
-    values = cy_vals + [ttm_val] + q_vals
+    values = fy_vals + [ttm_val] + q_vals
 
-    cy_bps = [None] + [_bps_change(cy_vals[i], cy_vals[i - 1]) for i in range(1, len(cy_vals))]
-    ttm_bps = _bps_change(ttm_val, cy_vals[-1])
+    fy_bps = [None] + [_bps_change(fy_vals[i], fy_vals[i - 1]) for i in range(1, len(fy_vals))]
+    ttm_bps = _bps_change(ttm_val, fy_vals[-1]) if fy_vals else None
     q_bps = [None] + [_bps_change(q_vals[i], q_vals[i - 1]) for i in range(1, len(q_vals))]
-    bps = cy_bps + [ttm_bps] + q_bps
+    bps = fy_bps + [ttm_bps] + q_bps
 
     return [
         PanelRow(name=name, format="pct", values=values),
@@ -324,87 +341,103 @@ def _margin_row_with_bps(
 def _ttm_only_row(name: str, fmt: str, c: _Columns, ttm_key: str, q_key: str | None = None, tooltip: str | None = None) -> PanelRow:
     """Row for a TTM-grain metric.
 
-    CY columns: populated from c.cy_ttm_series (TTM metric at each year's
-    calendar Q4 anchor).
+    FY columns: populated from c.fy_ttm_series (TTM at each FY-end anchor).
     TTM column: latest TTM value.
-    Quarter columns: rolling TTM at each quarter-end (from q_series).
+    Quarter columns: rolling TTM at each quarter-end.
     """
-    cy_vals = c.cy_ttm_series(ttm_key) if ttm_key in _CY_TTM_KEYS else [None] * len(CY_YEARS)
+    fy_vals = c.fy_ttm_series(ttm_key) if ttm_key in _FY_TTM_KEYS else c.all_null_fy()
     q_vals = c.q_series(q_key) if q_key else c.all_null_q()
-    values = cy_vals + [c.ttm_value(ttm_key)] + q_vals
+    values = fy_vals + [c.ttm_value(ttm_key)] + q_vals
     return PanelRow(name=name, format=fmt, values=values, tooltip=tooltip)
 
 
-# Keys that exist in cy_ttm_by_year (from fetch_cy_ttm_metrics).
-_CY_TTM_KEYS = {
+# Keys returned by fetch_fy_ttm_metrics (TTM / ROIC / quarter-end metrics
+# anchored at each FY-end).
+_FY_TTM_KEYS = {
     "nopat_margin", "cfo_to_nopat", "fcf_to_nopat", "accruals_ratio",
     "sbc_pct_revenue", "interest_coverage_ttm", "revenue_per_employee",
     "unlevered_fcf_ttm", "reinvestment_rate",
     "roic", "roiic", "diluted_share_count_growth",
-    # quarter-end stock / TTM flow metrics anchored at CY Q4
+    "revenue_yoy_ttm", "gross_profit_yoy_ttm",
+    "incremental_gross_margin", "incremental_operating_margin",
     "dso", "dio", "dpo", "ccc",
     "net_debt_to_ebitda", "working_capital_intensity", "interest_coverage_q",
 }
 
 
 def _quarter_only_row(name: str, fmt: str, c: _Columns, q_key: str) -> PanelRow:
-    values = [None] * (len(CY_YEARS) + 1) + c.q_series(q_key)
+    values = c.all_null_fy() + [None] + c.q_series(q_key)
     return PanelRow(name=name, format=fmt, values=values)
 
 
 def build_panel(
     quarterly: list[dict],
-    cy_by_year: dict[int, dict],
+    fy_rows: list[dict],
     ttm: dict | None,
-    cy_ttm_by_year: dict[int, dict] | None = None,
+    fy_ttm_by_anchor: dict[Any, dict] | None = None,
 ) -> tuple[list[str], list[PanelRow]]:
-    c = _Columns(cy_by_year, ttm, quarterly, cy_ttm_by_year)
+    """Compose metric rows aligned with (FY + TTM + Q) columns.
 
-    # Column headers
-    cy_headers = [f"CY{y}" for y in CY_YEARS]
+    Returns (headers, rows, col_period_ends). col_period_ends gives the
+    period_end date (or None) for each column — used for cell-level
+    audit tooltips.
+    """
+    c = _Columns(fy_rows, ttm, quarterly, fy_ttm_by_anchor)
+
+    # FY column headers: "FY2024\n2024-01-28"
+    fy_headers: list[str] = []
+    for row in fy_rows:
+        fye = row.get("fy_end")
+        fye_str = fye.isoformat() if fye else ""
+        fy_headers.append(f"FY{row['fiscal_year']}\n{fye_str}")
+
+    # Quarter column headers: "Last Q\nFY2026 Q4\n2026-01-25"
     q_headers: list[str] = []
     n = len(quarterly)
     for i in range(n):
         rank = n - i  # 1 = most recent
         label = "Last Q" if rank == 1 else f"Q-{rank - 1}"
-        q_headers.append(f"{label} · {quarterly[i]['fiscal_period_label']}")
-    headers = cy_headers + ["TTM"] + q_headers
+        pe = quarterly[i].get("period_end")
+        pe_str = pe.isoformat() if pe else ""
+        q_headers.append(f"{label}\n{quarterly[i]['fiscal_period_label']}\n{pe_str}")
+
+    # TTM header carries the latest quarter's period_end
+    ttm_pe = quarterly[-1].get("period_end") if quarterly else None
+    ttm_pe_str = ttm_pe.isoformat() if ttm_pe else ""
+    ttm_header = f"TTM\nending {ttm_pe_str}"
+
+    headers = fy_headers + [ttm_header] + q_headers
 
     rows: list[PanelRow] = []
 
     # ----- Absolute levels + YoY% -----
-    rows.extend(_abs_row_with_yoy("Revenue", c, "revenue_cy", "revenue_ttm", "revenue"))
-    rows.extend(_abs_row_with_yoy("Gross Profit", c, "gross_profit_cy", "gross_profit_ttm", "gross_profit"))
-    rows.extend(_abs_row_with_yoy("Operating Income", c, "operating_income_cy", "operating_income_ttm", "operating_income"))
-    rows.extend(_abs_row_with_yoy("Net Income", c, "net_income_cy", "net_income_ttm", "net_income"))
-    rows.extend(_abs_row_with_yoy("CFO", c, "cfo_cy", "cfo_ttm", "cfo"))
+    rows.extend(_abs_row_with_yoy("Revenue", c, "revenue_fy", "revenue_ttm", "revenue"))
+    rows.extend(_abs_row_with_yoy("Gross Profit", c, "gross_profit_fy", "gross_profit_ttm", "gross_profit"))
+    rows.extend(_abs_row_with_yoy("Operating Income", c, "operating_income_fy", "operating_income_ttm", "operating_income"))
+    rows.extend(_abs_row_with_yoy("Net Income", c, "net_income_fy", "net_income_ttm", "net_income"))
+    rows.extend(_abs_row_with_yoy("CFO", c, "cfo_fy", "cfo_ttm", "cfo"))
 
     # ----- Margins + BPS deltas -----
-    rows.extend(_margin_row_with_bps("Gross Margin", c, "gross_margin_cy", "gross_profit_ttm", "revenue_ttm", "gross_margin"))
-    rows.extend(_margin_row_with_bps("Operating Margin", c, "operating_margin_cy", "operating_income_ttm", "revenue_ttm", "operating_margin"))
-    rows.extend(_margin_row_with_bps("Net Margin", c, "net_margin_cy", "net_income_ttm", "revenue_ttm", "net_margin"))
+    rows.extend(_margin_row_with_bps("Gross Margin", c, "gross_margin_fy", "gross_profit_ttm", "revenue_ttm", "gross_margin"))
+    rows.extend(_margin_row_with_bps("Operating Margin", c, "operating_margin_fy", "operating_income_ttm", "revenue_ttm", "operating_margin"))
+    rows.extend(_margin_row_with_bps("Net Margin", c, "net_margin_fy", "net_income_ttm", "revenue_ttm", "net_margin"))
 
-    # ----- Return-on-capital metrics (TTM grain) -----
+    # ----- Return-on-capital metrics (TTM grain, anchored at FY-end) -----
     coverage = (ttm or {}).get("rd_coverage_quarters")
     coverage_note = f"R&D coverage: {coverage}/20 quarters" if coverage else None
-    # All TTM-grain metrics — populate CY cells from cy_ttm_by_year,
-    # quarterly cells from the TTM series joined on each quarter's period_end.
     rows.append(PanelRow(
-        name="NOPAT Margin",
-        format="pct",
-        values=c.cy_ttm_series("nopat_margin") + [c.ttm_value("nopat_margin")] + c.q_series("nopat_margin"),
+        name="NOPAT Margin", format="pct",
+        values=c.fy_ttm_series("nopat_margin") + [c.ttm_value("nopat_margin")] + c.q_series("nopat_margin"),
         tooltip=coverage_note,
     ))
     rows.append(PanelRow(
-        name="Adjusted ROIC",
-        format="pct",
-        values=c.cy_ttm_series("roic") + [c.ttm_value("roic")] + c.q_series("roic"),
+        name="Adjusted ROIC", format="pct",
+        values=c.fy_ttm_series("roic") + [c.ttm_value("roic")] + c.q_series("roic"),
         tooltip=coverage_note,
     ))
     rows.append(PanelRow(
-        name="ROIIC",
-        format="pct",
-        values=c.cy_ttm_series("roiic") + [c.ttm_value("roiic")] + c.q_series("roiic"),
+        name="ROIIC", format="pct",
+        values=c.fy_ttm_series("roiic") + [c.ttm_value("roiic")] + c.q_series("roiic"),
         tooltip=coverage_note,
     ))
     rows.append(_ttm_only_row("Reinvestment Rate", "pct", c, "reinvestment_rate", "reinvestment_rate"))
@@ -417,49 +450,35 @@ def build_panel(
 
     # ----- SBC / Revenue per Employee -----
     rows.append(PanelRow(
-        name="SBC % Revenue",
-        format="pct",
-        values=c.cy_series("sbc_pct_revenue_cy") + [c.ttm_value("sbc_pct_revenue")] + c.q_series("sbc_pct_revenue"),
+        name="SBC % Revenue", format="pct",
+        values=c.fy_series("sbc_pct_revenue_fy") + [c.ttm_value("sbc_pct_revenue")] + c.q_series("sbc_pct_revenue"),
     ))
     rows.append(_ttm_only_row("Rev / Employee", "money", c, "revenue_per_employee", "revenue_per_employee"))
 
-    # ----- Working capital days -----
-    # CY values are quarter-end ratios anchored at each year's calendar Q4
-    # (per fetch_cy_ttm_metrics). TTM column blank (not a TTM metric; the
-    # latest quarter's value is the analyst-meaningful "today" number).
-    rows.append(PanelRow(
-        name="CCC", format="days",
-        values=c.cy_ttm_series("ccc") + [None] + c.q_series("ccc"),
-    ))
-    rows.append(PanelRow(
-        name="DSO", format="days",
-        values=c.cy_ttm_series("dso") + [None] + c.q_series("dso"),
-    ))
-    rows.append(PanelRow(
-        name="DIO", format="days",
-        values=c.cy_ttm_series("dio") + [None] + c.q_series("dio"),
-    ))
-    rows.append(PanelRow(
-        name="DPO", format="days",
-        values=c.cy_ttm_series("dpo") + [None] + c.q_series("dpo"),
-    ))
+    # ----- Working capital days (FY cells = quarter-end at FY-end) -----
+    rows.append(PanelRow(name="CCC", format="days",
+        values=c.fy_ttm_series("ccc") + [None] + c.q_series("ccc")))
+    rows.append(PanelRow(name="DSO", format="days",
+        values=c.fy_ttm_series("dso") + [None] + c.q_series("dso")))
+    rows.append(PanelRow(name="DIO", format="days",
+        values=c.fy_ttm_series("dio") + [None] + c.q_series("dio")))
+    rows.append(PanelRow(name="DPO", format="days",
+        values=c.fy_ttm_series("dpo") + [None] + c.q_series("dpo")))
 
-    # ----- Balance-sheet stocks -----
+    # ----- Balance-sheet stocks (FY-end snapshots) -----
     rows.append(PanelRow(
-        name="Net Debt",
-        format="money",
-        values=c.cy_series("net_debt_cy_end") + [None] + c.q_series("net_debt"),
+        name="Net Debt", format="money",
+        values=c.fy_series("net_debt_fy_end") + [None] + c.q_series("net_debt"),
     ))
     rows.append(PanelRow(
         name="Net Debt / EBITDA", format="x",
-        values=c.cy_ttm_series("net_debt_to_ebitda") + [None] + c.q_series("net_debt_to_ebitda"),
+        values=c.fy_ttm_series("net_debt_to_ebitda") + [None] + c.q_series("net_debt_to_ebitda"),
     ))
 
     # ----- Share count growth -----
     rows.append(PanelRow(
-        name="Diluted Shares YoY",
-        format="pct",
-        values=c.cy_ttm_series("diluted_share_count_growth")
+        name="Diluted Shares YoY", format="pct",
+        values=c.fy_ttm_series("diluted_share_count_growth")
               + [c.ttm_value("diluted_share_count_growth")]
               + c.q_series("diluted_share_count_growth"),
     ))
@@ -526,8 +545,9 @@ def dashboard(request: Request, ticker: str) -> Any:
         if ticker not in tickers:
             raise HTTPException(404, f"{ticker} not in companies")
         quarterly = fetch_quarterly(conn, ticker, n=Q_COUNT)
-        cy_by_year = fetch_calendar_years(conn, ticker, CY_YEARS)
-        cy_ttm_by_year = fetch_cy_ttm_metrics(conn, ticker, CY_YEARS)
+        fy_rows = fetch_fiscal_years(conn, ticker, n=FY_COUNT)
+        fy_end_dates = [r["fy_end"] for r in fy_rows]
+        fy_ttm_by_anchor = fetch_fy_ttm_metrics(conn, ticker, fy_end_dates)
         ttm = fetch_latest_ttm(conn, ticker)
         flag_counts = fetch_flag_counts(conn, ticker)
 
@@ -538,11 +558,38 @@ def dashboard(request: Request, ticker: str) -> Any:
             "</body></html>"
         )
 
-    headers, rows = build_panel(quarterly, cy_by_year, ttm, cy_ttm_by_year)
+    headers, rows = build_panel(quarterly, fy_rows, ttm, fy_ttm_by_anchor)
+
+    # Column period-ends for cell-level audit tooltips:
+    #   FY columns → fy_rows[i].fy_end
+    #   TTM column → quarterly[-1].period_end
+    #   Q columns  → quarterly[i].period_end
+    col_period_ends: list[str] = []
+    col_labels: list[str] = []  # human label used in tooltips ("FY2024", "TTM", "FY2026 Q3")
+    for fr in fy_rows:
+        col_period_ends.append(fr["fy_end"].isoformat() if fr.get("fy_end") else "")
+        col_labels.append(f"FY{fr['fiscal_year']}")
+    col_period_ends.append(
+        quarterly[-1]["period_end"].isoformat() if quarterly else ""
+    )
+    col_labels.append("TTM")
+    for q in quarterly:
+        col_period_ends.append(q["period_end"].isoformat() if q.get("period_end") else "")
+        col_labels.append(q["fiscal_period_label"])
 
     rendered_rows = []
     for row in rows:
-        cells = [fmt_cell(v, row.format, row.is_change_row) for v in row.values]
+        cells = []
+        for i, v in enumerate(row.values):
+            text, cls = fmt_cell(v, row.format, row.is_change_row)
+            cell_tooltip = (
+                f"{row.name} · {col_labels[i]} · {col_period_ends[i]}"
+                if col_period_ends[i]
+                else row.name
+            )
+            if row.tooltip:
+                cell_tooltip += f" · {row.tooltip}"
+            cells.append((text, cls, cell_tooltip))
         rendered_rows.append(
             {"name": row.name, "cells": cells, "is_change": row.is_change_row, "tooltip": row.tooltip}
         )
@@ -557,7 +604,7 @@ def dashboard(request: Request, ticker: str) -> Any:
             "rows": rendered_rows,
             "flag_counts": flag_counts,
             "latest_period": quarterly[-1]["fiscal_period_label"] if quarterly else "",
-            "n_cy": len(CY_YEARS),
+            "n_fy": len(fy_rows),
             "n_q": len(quarterly),
         },
     )
@@ -568,13 +615,13 @@ def dashboard_raw(ticker: str) -> Any:
     ticker = ticker.upper()
     with get_conn() as conn:
         quarterly = fetch_quarterly(conn, ticker, n=Q_COUNT)
-        cy_by_year = fetch_calendar_years(conn, ticker, CY_YEARS)
+        fy_rows = fetch_fiscal_years(conn, ticker, n=FY_COUNT)
         ttm = fetch_latest_ttm(conn, ticker)
     return JSONResponse(
         {
             "ticker": ticker,
             "quarterly": [_serialize_row(r) for r in quarterly],
-            "calendar_years": {str(y): _serialize_row(r) for y, r in cy_by_year.items()},
+            "fiscal_years": [_serialize_row(r) for r in fy_rows],
             "ttm_latest": _serialize_row(ttm) if ttm else None,
         }
     )

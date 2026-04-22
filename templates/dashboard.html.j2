@@ -33,13 +33,13 @@
       <tr>
         <th class="metric-name">Metric</th>
         {% for h in headers %}
-          {% set is_last_cy = loop.index0 == (n_cy - 1) %}
-          {% set is_ttm     = loop.index0 == n_cy %}
-          {% set is_first_q = loop.index0 == n_cy + 1 %}
+          {% set is_last_fy = loop.index0 == (n_fy - 1) %}
+          {% set is_ttm     = loop.index0 == n_fy %}
+          {% set is_first_q = loop.index0 == n_fy + 1 %}
           <th class="
             {% if is_ttm %}ttm-col{% endif %}
             {% if is_first_q %}first-q{% endif %}
-            {% if is_last_cy %}last-cy{% endif %}
+            {% if is_last_fy %}last-fy{% endif %}
           ">{{ h }}</th>
         {% endfor %}
       </tr>
@@ -49,14 +49,14 @@
         <tr class="{% if row.is_change %}change-row{% endif %}">
           <td class="metric-name" {% if row.tooltip %}title="{{ row.tooltip }}"{% endif %}>{{ row.name }}</td>
           {% for cell in row.cells %}
-            {% set is_ttm     = loop.index0 == n_cy %}
-            {% set is_first_q = loop.index0 == n_cy + 1 %}
-            {% set is_last_cy = loop.index0 == (n_cy - 1) %}
+            {% set is_ttm     = loop.index0 == n_fy %}
+            {% set is_first_q = loop.index0 == n_fy + 1 %}
+            {% set is_last_fy = loop.index0 == (n_fy - 1) %}
             <td class="cell {{ cell[1] }}
               {% if is_ttm %}ttm-col{% endif %}
               {% if is_first_q %}first-q{% endif %}
-              {% if is_last_cy %}last-cy{% endif %}
-            ">{{ cell[0] }}</td>
+              {% if is_last_fy %}last-fy{% endif %}
+            " title="{{ cell[2] }}">{{ cell[0] }}</td>
           {% endfor %}
         </tr>
       {% endfor %}
@@ -68,6 +68,8 @@
   <a href="/t/{{ ticker }}/raw">raw JSON</a>
   &middot;
   <a href="/health">health</a>
+  &middot;
+  <span class="audit-note">Hover any cell for metric · period · period_end date</span>
 </footer>
 
 </body>

@@ -152,13 +152,15 @@ tr.change-row td.ttm-col {
     background: #151c26;
 }
 
-/* Visual separation between CY and quarter blocks */
+/* Visual separation between FY and quarter blocks */
 th.first-q, td.first-q {
     border-left: 2px solid var(--border);
 }
-th.last-cy, td.last-cy {
+th.last-fy, td.last-fy {
     border-right: 1px solid var(--border);
 }
+
+.audit-note { color: var(--text-dim); }
 
 footer.bottom {
     padding: 10px 18px;
