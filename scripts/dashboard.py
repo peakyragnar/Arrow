@@ -136,7 +136,15 @@ def fetch_cy_ttm_metrics(
                 ttm.reinvestment_rate,
                 roic.roic,
                 roic.roiic,
-                yoy.diluted_share_count_growth
+                yoy.diluted_share_count_growth,
+                -- quarter-end stock / TTM flow metrics from v_metrics_q
+                qm.dso,
+                qm.dio,
+                qm.dpo,
+                qm.ccc,
+                qm.net_debt_to_ebitda,
+                qm.working_capital_intensity,
+                qm.interest_coverage_q
             FROM anchor a
             LEFT JOIN v_metrics_ttm ttm
               ON ttm.company_id = a.company_id AND ttm.period_end = a.period_end
@@ -144,6 +152,8 @@ def fetch_cy_ttm_metrics(
               ON roic.company_id = a.company_id AND roic.period_end = a.period_end
             LEFT JOIN v_metrics_ttm_yoy yoy
               ON yoy.company_id = a.company_id AND yoy.period_end = a.period_end
+            LEFT JOIN v_metrics_q qm
+              ON qm.company_id = a.company_id AND qm.period_end = a.period_end
             WHERE a.rn = 1
             ORDER BY a.calendar_year;
             """,
@@ -331,6 +341,9 @@ _CY_TTM_KEYS = {
     "sbc_pct_revenue", "interest_coverage_ttm", "revenue_per_employee",
     "unlevered_fcf_ttm", "reinvestment_rate",
     "roic", "roiic", "diluted_share_count_growth",
+    # quarter-end stock / TTM flow metrics anchored at CY Q4
+    "dso", "dio", "dpo", "ccc",
+    "net_debt_to_ebitda", "working_capital_intensity", "interest_coverage_q",
 }
 
 
@@ -410,11 +423,26 @@ def build_panel(
     ))
     rows.append(_ttm_only_row("Rev / Employee", "money", c, "revenue_per_employee", "revenue_per_employee"))
 
-    # ----- Working capital days (quarter-only) -----
-    rows.append(_quarter_only_row("CCC", "days", c, "ccc"))
-    rows.append(_quarter_only_row("DSO", "days", c, "dso"))
-    rows.append(_quarter_only_row("DIO", "days", c, "dio"))
-    rows.append(_quarter_only_row("DPO", "days", c, "dpo"))
+    # ----- Working capital days -----
+    # CY values are quarter-end ratios anchored at each year's calendar Q4
+    # (per fetch_cy_ttm_metrics). TTM column blank (not a TTM metric; the
+    # latest quarter's value is the analyst-meaningful "today" number).
+    rows.append(PanelRow(
+        name="CCC", format="days",
+        values=c.cy_ttm_series("ccc") + [None] + c.q_series("ccc"),
+    ))
+    rows.append(PanelRow(
+        name="DSO", format="days",
+        values=c.cy_ttm_series("dso") + [None] + c.q_series("dso"),
+    ))
+    rows.append(PanelRow(
+        name="DIO", format="days",
+        values=c.cy_ttm_series("dio") + [None] + c.q_series("dio"),
+    ))
+    rows.append(PanelRow(
+        name="DPO", format="days",
+        values=c.cy_ttm_series("dpo") + [None] + c.q_series("dpo"),
+    ))
 
     # ----- Balance-sheet stocks -----
     rows.append(PanelRow(
@@ -422,7 +450,10 @@ def build_panel(
         format="money",
         values=c.cy_series("net_debt_cy_end") + [None] + c.q_series("net_debt"),
     ))
-    rows.append(_quarter_only_row("Net Debt / EBITDA", "x", c, "net_debt_to_ebitda"))
+    rows.append(PanelRow(
+        name="Net Debt / EBITDA", format="x",
+        values=c.cy_ttm_series("net_debt_to_ebitda") + [None] + c.q_series("net_debt_to_ebitda"),
+    ))
 
     # ----- Share count growth -----
     rows.append(PanelRow(
