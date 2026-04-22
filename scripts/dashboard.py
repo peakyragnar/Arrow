@@ -12,6 +12,8 @@ Writes: nothing.
 
 from __future__ import annotations
 
+import logging
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
@@ -29,7 +31,41 @@ from arrow.db.connection import get_conn
 BASE_DIR = Path(__file__).resolve().parents[1]
 TEMPLATES = Jinja2Templates(directory=BASE_DIR / "templates")
 
-app = FastAPI(title="Arrow Dashboard")
+logger = logging.getLogger("arrow.dashboard")
+
+
+def _ensure_views() -> None:
+    """Apply the metrics-platform view stack idempotently on startup.
+
+    The test suite's schema teardown DROPs tables CASCADE, which takes
+    views with them. Without this hook, the first dashboard request
+    after `uv run pytest` would 500 with `relation "v_metrics_q" does
+    not exist`. Reapplying is fast (one DROP VIEW IF EXISTS + CREATE
+    per view, subsecond) and harmless when views are already current.
+    """
+    # Import here to keep the top-level import light and to avoid a
+    # cycle if apply_views ever grows to import from this module.
+    from scripts.apply_views import main as apply_views_main
+
+    try:
+        rc = apply_views_main()
+        if rc == 0:
+            logger.info("dashboard: view stack applied on startup")
+        else:
+            logger.warning("dashboard: apply_views returned %s on startup", rc)
+    except Exception:
+        # Don't block the dashboard from starting if something is wrong;
+        # the first request will surface a clearer error.
+        logger.exception("dashboard: apply_views failed on startup")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _ensure_views()
+    yield
+
+
+app = FastAPI(title="Arrow Dashboard", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 # Annual columns: the ticker's 5 most recent fiscal years (one per 10-K).
