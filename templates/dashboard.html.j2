@@ -40,7 +40,13 @@
             {% if is_ttm %}ttm-col{% endif %}
             {% if is_first_q %}first-q{% endif %}
             {% if is_last_fy %}last-fy{% endif %}
-          ">{{ h }}</th>
+          ">
+            <div class="hdr">
+              {% if h.date %}<div class="hdr-date">{{ h.date }}</div>{% endif %}
+              <div class="hdr-main">{{ h.main }}</div>
+              {% if h.sub %}<div class="hdr-sub">{{ h.sub }}</div>{% endif %}
+            </div>
+          </th>
         {% endfor %}
       </tr>
     </thead>

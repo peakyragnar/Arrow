@@ -384,27 +384,38 @@ def build_panel(
     """
     c = _Columns(fy_rows, ttm, quarterly, fy_ttm_by_anchor)
 
-    # FY column headers: "FY2024\n2024-01-28"
-    fy_headers: list[str] = []
-    for row in fy_rows:
-        fye = row.get("fy_end")
-        fye_str = fye.isoformat() if fye else ""
-        fy_headers.append(f"FY{row['fiscal_year']}\n{fye_str}")
+    # Column headers are structured as {date, main, sub?} so the
+    # template can style each piece. date goes on top (dim, small),
+    # main is the primary label, sub (optional) is a small position
+    # indicator below on quarterly columns.
+    def month_year(pe) -> str:
+        return pe.strftime("%b %Y") if pe else ""
 
-    # Quarter column headers: "Last Q\nFY2026 Q4\n2026-01-25"
-    q_headers: list[str] = []
+    fy_headers: list[dict[str, str]] = []
+    for row in fy_rows:
+        fy_headers.append({
+            "date": month_year(row.get("fy_end")),
+            "main": f"FY{row['fiscal_year']}",
+            "sub": "",
+        })
+
+    q_headers: list[dict[str, str]] = []
     n = len(quarterly)
     for i in range(n):
         rank = n - i  # 1 = most recent
-        label = "Last Q" if rank == 1 else f"Q-{rank - 1}"
-        pe = quarterly[i].get("period_end")
-        pe_str = pe.isoformat() if pe else ""
-        q_headers.append(f"{label}\n{quarterly[i]['fiscal_period_label']}\n{pe_str}")
+        position = "Last Q" if rank == 1 else f"Q-{rank - 1}"
+        q_headers.append({
+            "date": month_year(quarterly[i].get("period_end")),
+            "main": quarterly[i]["fiscal_period_label"],
+            "sub": position,
+        })
 
-    # TTM header carries the latest quarter's period_end
     ttm_pe = quarterly[-1].get("period_end") if quarterly else None
-    ttm_pe_str = ttm_pe.isoformat() if ttm_pe else ""
-    ttm_header = f"TTM\nending {ttm_pe_str}"
+    ttm_header = {
+        "date": f"ending {month_year(ttm_pe)}" if ttm_pe else "",
+        "main": "TTM",
+        "sub": "",
+    }
 
     headers = fy_headers + [ttm_header] + q_headers
 

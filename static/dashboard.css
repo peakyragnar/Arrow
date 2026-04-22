@@ -85,17 +85,48 @@ table.dashboard thead th {
     position: sticky;
     top: 0;
     background: var(--bg-alt);
-    color: var(--text-dim);
-    font-weight: 600;
-    font-size: 11px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    padding: 10px 12px 8px;
+    padding: 12px 14px 10px;
     border-bottom: 2px solid var(--border);
     text-align: right;
     vertical-align: bottom;
-    white-space: pre-line;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+}
+
+table.dashboard thead th .hdr {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
     line-height: 1.2;
+}
+
+/* Date (top): small, dim, mixed case */
+table.dashboard thead th .hdr-date {
+    font-size: 10.5px;
+    font-weight: 400;
+    color: var(--text-dim);
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+/* Main label: FY2026 / TTM / FY2026 Q3 */
+table.dashboard thead th .hdr-main {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Sub (position indicator on quarterly cols): small, dim */
+table.dashboard thead th .hdr-sub {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 table.dashboard th.metric-name {
@@ -105,6 +136,11 @@ table.dashboard th.metric-name {
     left: 0;
     z-index: 2;
     background: var(--bg-alt);
+    color: var(--text-dim);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
 }
 
 table.dashboard td {
