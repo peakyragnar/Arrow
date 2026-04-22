@@ -71,7 +71,24 @@ uv run scripts/apply_schema.py
 
 Runs every pending migration under `db/schema/` in numeric order. Idempotent — re-running after no changes prints `No pending migrations.`
 
-## 6. Generate the live schema view
+## 6. Test database (isolated from dev)
+
+Integration tests TRUNCATE / DROP tables in their teardown, so they run against a separate `arrow_test` database to avoid clobbering dev data. One-time setup:
+
+```bash
+/opt/homebrew/opt/postgresql@16/bin/psql -h localhost -p 5433 -d postgres \
+    -c "CREATE DATABASE arrow_test OWNER arrow;"
+echo 'TEST_DATABASE_URL=postgresql://arrow:arrow@localhost:5433/arrow_test' >> .env
+```
+
+Then `uv run pytest` automatically:
+- points `DATABASE_URL` at `arrow_test` for the session (via `tests/conftest.py`)
+- applies migrations + views to the test DB on first run
+- runs tests without touching the dev database
+
+If `TEST_DATABASE_URL` isn't set, pytest fails fast with instructions.
+
+## 7. Generate the live schema view
 
 ```bash
 uv run scripts/gen_schema_viz.py
