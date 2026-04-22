@@ -1,41 +1,20 @@
--- Data quality flags: soft-validation anomalies from the audit side rail.
+-- Data quality flags: soft-validation anomalies from Layer 3/4.
 --
 -- These do NOT block ingest. They record discrepancies for analyst
--- visibility while allowing the data to load. Only Layer 1 (intra-statement
--- subtotal ties) hard-blocks; it raises and rolls back the transaction
--- before any facts persist for the failing period. All other layers are
--- either side-rail (Layer 3 via amendment_detect, Layer 5 via
--- scripts/reconcile_fmp_vs_xbrl.py) or scaffold/planned (Layer 2, Layer 4).
+-- visibility while allowing the data to load. Contrast with hard-gate
+-- layers (1, 2, 5): those raise on failure and prevent persistence.
 --
 -- Workflow:
---   1. Mainline ingest runs Layer 1 inline. If it raises, the transaction
---      rolls back and no facts persist. If it passes, facts land.
---   2. Audit side rail (Layer 3 and/or Layer 5) may be invoked separately.
---      When it runs:
---      - amendment_detect attempts to resolve Layer 3 period-arithmetic
---        violations via SEC XBRL supersession, atomically, under the
---        savepoint protocol in docs/research/amendment_phase_1_5_design.md.
---      - Anything the agent can't safely resolve, plus Layer 5
---        cross-source divergences, land as rows in this table.
---   3. Operator review: approve suggestion, override, or accept as-is.
---   4. Approved corrections apply via supersession with
---      extraction_version='human-verified-v1', and the flag row gets
---      resolved_at + resolution populated.
---
--- Re-ingest auto-closes dependent flags (migration 012): when
--- backfill_fmp_statements supersedes the facts a flag points at, the flag
--- is resolved with resolution='superseded_by_reingest' before the fresh
--- verification pass runs. This keeps "unresolved flags" pointing at
--- current data.
+--   1. Ingest → Layer 1/2/5 block on failure. If they pass, data loads.
+--   2. Amendment agent resolves what it can via XBRL supersession.
+--   3. Remaining Layer 3/4 anomalies → one row per anomaly in this table.
+--   4. Backfill emits a review file listing flags with context + SEC links.
+--   5. Analyst edits review file: approve suggestion, override, or accept as-is.
+--   6. fix-flags script applies approved corrections via supersession (using
+--      extraction_version='human-verified-v1') and marks flags resolved.
 --
 -- Flags are NEVER deleted — resolved flags stay with `resolved_at` set so
 -- the audit trail is queryable forever.
---
--- NOTE: This file is an applied migration. Its SQL DDL is append-only and
--- must not be re-edited. The -- header comments above are documentation
--- and were rewritten in-place when the FMP-baseline pivot (ADR-0010)
--- changed which layers are mainline vs side rail. They do not affect DB
--- state.
 
 CREATE TABLE data_quality_flags (
     id              BIGSERIAL PRIMARY KEY,

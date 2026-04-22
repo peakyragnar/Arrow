@@ -34,7 +34,11 @@ Complements:
 ## 1. The five layers
 
 ```
-Layer 1 — Subtotal ties                  (intra-statement; HARD GATE; inline on every ingest)
+Layer 1 — Subtotal ties                  (intra-statement; inline on every ingest)
+  1-HARD  IS subtotal ties, BS balance identity, CF cash roll-forward,
+          CF top-level aggregation        (HARD GATE)
+  1-SOFT  CF cfo/cfi/cff subtotal ==
+          sum of FMP's component fields   (inline flag, non-blocking)
 Layer 2 — Cross-statement ties           (IS ↔ BS ↔ CF; scaffold present, not wired)
 Layer 3 — Period arithmetic (Q sum = FY) (side rail; amendment agent + flags)
 Layer 4 — Formula component-guards       (planned; not yet implemented)
@@ -45,17 +49,39 @@ Layer 5 — Cross-source reconciliation    (FMP ↔ SEC XBRL anchors; side rail;
 
 | Layer | Status | Invocation | Failure behavior |
 |---|---|---|---|
-| 1 | **live / mainline** | inline during `backfill_fmp_statements` | **HARD BLOCK** — transaction rolls back, no facts persist |
+| 1-HARD | **live / mainline** | inline during `backfill_fmp_statements` | **HARD BLOCK** — transaction rolls back, no facts persist |
+| 1-SOFT | **live / mainline** | inline during `backfill_fmp_statements` (CF only, today) | soft — writes `data_quality_flags` rows of type `cf_subtotal_component_drift`; row is loaded verbatim |
 | 2 | **scaffold, not wired** | function exists (`verify_cross_statement_ties`) but no caller in mainline or side rail | n/a yet — when wired, will be side-rail soft-flag |
 | 3 | **side rail** | `amendment_detect.detect_and_apply_amendments`, invoked from audit tooling, not default backfill | soft — attempts XBRL supersession; unresolved becomes `data_quality_flags` row |
 | 4 | **planned** | formula layer not yet implemented; `formulas.py` does not exist | when built, will suppress formula output on missing components |
 | 5 | **side rail** | `scripts/reconcile_fmp_vs_xbrl.py` → `arrow.agents.fmp_reconcile` → `arrow.reconcile.fmp_vs_xbrl` | soft — writes `data_quality_flags` rows |
 
-Default `backfill_fmp_statements` runs Layer 1 only. No other layer mutates `financial_facts` during default ingest.
+Default `backfill_fmp_statements` runs Layer 1 (hard + soft) only. No other layer mutates `financial_facts` during default ingest. Soft-tie flags written during ingest do not change the stored fact values — they annotate them.
 
-### What "HARD GATE" and "side rail" actually mean
+### Why Layer 1 has a soft class
 
-- **HARD GATE (Layer 1 only)** — violation raises and the entire ingest transaction for that period rolls back. Nothing about the failing filer's period persists. Layer 1 catches genuine internal-math violations (gross_profit ≠ revenue − cogs within a single filing, balance identity broken, cash roll-forward internal to CF broken). These indicate the data is internally inconsistent at the source row, so blocking is correct.
+Not every Layer-1 tie tests the same thing. Some test filer integrity: if the filer-reported value doesn't satisfy the tie, the filing itself is internally broken. Some test vendor bucketing consistency: the tie formula sums canonical buckets that FMP populated from their own normalization of the filing. When FMP's bucketing drops or misbuckets an item, the sum doesn't tie to FMP's own reported subtotal even though the filer's actual 10-Q is fine. These are different failure modes and should have different gates.
+
+| Tie | Tests | Hard / Soft |
+|---|---|---|
+| IS `gross_profit == revenue − cogs` (and the IS chain) | filer's own subtotal arithmetic in the income statement | HARD |
+| BS `total_assets == total_liabilities + total_equity` | filer's balance identity | HARD |
+| BS subtotal ties (`total_current_assets == sum of components`, etc.) | filer subtotals | HARD |
+| CF `net_change_in_cash == cfo + cfi + cff + fx` | filer top-level aggregation | HARD |
+| CF `net_change_in_cash == cash_end − cash_begin` | filer cash roll-forward | HARD |
+| CF `cfo == sum(non-cash + working-capital components)` | **FMP's bundling of filer line-items into FMP buckets** | SOFT |
+| CF `cfi == sum(investing components)` | same | SOFT |
+| CF `cff == sum(financing components)` | same | SOFT |
+
+The DELL FY2026 Q2 and AMD FY2022 Q1/Q3 cases are all SOFT failures — FMP's normalization dropped (DELL: restricted cash, operating-lease-current; AMD: an unknown ~$6M financing item) inside an otherwise well-formed 10-Q. Hard-blocking in those cases loses the entire ticker's history over a vendor bundling leak. Soft-flagging loads the row verbatim and makes the caveat queryable.
+
+When in doubt: if the tie could fail because *FMP* mis-bucketed rather than because the *filer* reported inconsistent numbers, the tie is SOFT. If the filer genuinely can't have shipped a 10-Q in that state, the tie is HARD.
+
+### What "HARD GATE", "inline soft-flag", and "side rail" actually mean
+
+- **HARD GATE (Layer 1 hard ties)** — violation raises and the entire ingest transaction for that period rolls back. Nothing about the failing filer's period persists. Catches genuine filer-level integrity violations: IS subtotal ties, BS balance identity, BS subtotal ties, CF cash roll-forward, CF top-level aggregation. The filing itself would have to be internally broken to fail these.
+
+- **INLINE SOFT-FLAG (Layer 1 soft ties; CF subtotal-component drift, today)** — runs during normal ingest, alongside hard ties. On failure, writes one row per failing tie to `data_quality_flags` with `flag_type = 'cf_subtotal_component_drift'` and severity scaled by `|delta| / max(|filer|, |computed|)` (<1% → informational, 1–10% → warning, ≥10% → investigate). The `financial_facts` row is loaded verbatim — FMP's reported subtotal and FMP's component fields are both stored as shipped. The flag row is the analyst-visible record that they don't agree. Analyst reviews via `scripts/review_flags.py`; accept-as-is leaves the fact unchanged.
 
 - **SIDE RAIL (Layers 3, 5)** — the check does not run on every ingest. It runs when an operator explicitly invokes the audit tooling (for Layer 5, `scripts/reconcile_fmp_vs_xbrl.py`; for Layer 3, the amendment-detect agent invoked via audit scripts). When it runs, failures write rows to `data_quality_flags` (see `db/schema/011_data_quality_flags.sql` + migration 012). Layer 3's amendment-detect agent may also supersede FMP facts via savepointed XBRL replacement, but only under the atomicity rules in `docs/research/amendment_phase_1_5_design.md` — never as a by-product of mainline ingest.
 
@@ -133,7 +159,14 @@ To make "same economic meaning" operational, Arrow should reason about concepts 
 
 ## 2. Layer 1 — Subtotal Ties (live / mainline)
 
-Every reported subtotal must equal our computed subtotal, per filing, within tolerance. Enforced inline during `backfill_fmp_statements` by `verify_is_ties` / `verify_bs_ties` / `verify_cf_ties` in `src/arrow/normalize/financials/`.
+Every reported subtotal must equal our computed subtotal, per filing, within tolerance. Enforced inline during `backfill_fmp_statements`:
+
+- `verify_is_ties` — all IS ties are **HARD**.
+- `verify_bs_ties` — all BS ties are **HARD**.
+- `verify_cf_hard_ties` — the two filer-integrity CF ties (net_change_in_cash = cfo+cfi+cff+fx, cash roll-forward). **HARD**.
+- `verify_cf_soft_ties` — the three vendor-bucketing CF ties (cfo/cfi/cff = sum of components). **SOFT / inline flag** (see § 2.3b).
+
+All live in `src/arrow/normalize/financials/`.
 
 ### 2.1 IS ties
 
@@ -181,26 +214,42 @@ net_ppe == gross_ppe + accumulated_depreciation
 
 ### 2.3 CF ties (cash-impact sign throughout)
 
+#### 2.3a HARD ties (filer integrity)
+
+These fail only if the cash-flow statement itself is internally broken. Block ingest.
+
 ```
-cfo == net_income_start + dna_cf + sbc + deferred_income_tax
-       + gain_on_sale_assets_cf + gain_on_sale_investments_cf + asset_writedown + other_noncash
-       + change_accounts_receivable + change_inventory + change_accounts_payable
-       + change_deferred_revenue + change_income_taxes + change_other_working_capital
+net_change_in_cash == cfo + cfi + cff + fx_effect_on_cash
+                    + misc_cf_adjustments
+net_change_in_cash == cash_end_of_period − cash_begin_of_period
+```
 
-cfi == capital_expenditures + acquisitions + divestitures
-       + purchases_of_investments + sales_of_investments
-       + loans_originated + loans_collected + other_investing
+Implementation: `verify_cf_hard_ties` in `src/arrow/normalize/financials/verify_cf.py`.
 
-cff == short_term_debt_issuance + short_term_debt_repayment
-       + long_term_debt_issuance + long_term_debt_repayment
+#### 2.3b SOFT ties (vendor bucketing consistency; inline flag)
+
+These fail when FMP's reported subtotal and FMP's own component fields inside the single shipped row disagree. The filer's 10-Q is typically internally consistent; the defect is FMP's normalization dropping or misbucketing an item (DELL FY26 Q2 restricted cash, AMD FY22 Q1/Q3 unknown ~$6M financing item). Load the row verbatim; write one `data_quality_flags` row per failing tie.
+
+```
+cfo == net_income_start + dna_cf + sbc + deferred_income_tax + other_noncash
+       + change_accounts_receivable + change_inventory
+       + change_accounts_payable + change_other_working_capital
+
+cfi == capital_expenditures + acquisitions
+       + purchases_of_investments + sales_of_investments + other_investing
+
+cff == short_term_debt_issuance + long_term_debt_issuance
        + stock_issuance + stock_repurchase
-       + common_dividends_paid + preferred_dividends_paid + special_dividends_paid
-       + other_financing
-
-net_change_in_cash == cfo + cfi + cff + fx_effect_on_cash + misc_cf_adjustments
+       + common_dividends_paid + preferred_dividends_paid + other_financing
 ```
 
-Plus filer-tie: our `cfo` must equal FMP's `netCashProvidedByOperatingActivities`; `cfi` vs FMP's `netCashProvidedByInvestingActivities`; `cff` vs `netCashProvidedByFinancingActivities`; `net_change_in_cash` vs FMP's `netChangeInCash`.
+(Several concepts — gain_on_sale_*, asset_writedown, divestitures, loans_originated/collected, special_dividends_paid, misc_cf_adjustments, short_term/long_term debt repayments — are bundled by FMP into `otherNonCashItems`, `otherWorkingCapital`, `otherInvestingActivities`, or the net debt issuance figures. They therefore do not appear as separate addends above. The ties reflect FMP's data model.)
+
+Implementation: `verify_cf_soft_ties` in `src/arrow/normalize/financials/verify_cf.py`. Flag write: `_write_cf_soft_tie_flag` in `src/arrow/normalize/financials/load.py`.
+
+#### Filer-tie (via mapper, both hard and soft classes)
+
+Our canonical subtotals (`cfo`, `cfi`, `cff`, `net_change_in_cash`) are mapped straight from FMP's reported fields (`netCashProvidedByOperatingActivities`, `netCashProvidedByInvestingActivities`, `netCashProvidedByFinancingActivities`, `netChangeInCash`). The ties above therefore reconstruct each subtotal from components and compare to FMP's reported subtotal.
 
 ### 2.4 Tolerance
 
@@ -213,7 +262,7 @@ Shares: ±500K absolute (share-count rounding).
 
 ### 2.5 Failure
 
-HARD BLOCK. `backfill_fmp_statements` raises one of `VerificationFailed` / `BSVerificationFailed` / `CFVerificationFailed`, the caller's `with conn.transaction()` rolls back, and the ingest run is marked failed:
+**Hard-tie failure → HARD BLOCK.** `backfill_fmp_statements` raises one of `VerificationFailed` / `BSVerificationFailed` / `CFVerificationFailed`, the caller's `with conn.transaction()` rolls back, and the ingest run is marked failed:
 
 ```
 ingest_runs.status = 'failed'
@@ -226,7 +275,31 @@ ingest_runs.error_details = {
 }
 ```
 
-No facts from the failing statement are written for that filing. Operator fixes the mapper or documents a known-delta case (e.g., filer has a line we don't bucket yet). The DELL FY2026 Q2 payload documented in `fmp_bug_report_dell_fy26_q2.md` is a real example — Layer 1 correctly hard-blocked because FMP's own components didn't tie.
+No facts from the failing statement are written for that filing.
+
+**Soft-tie failure → inline flag.** The `financial_facts` row is still loaded verbatim. In the same transaction, one `data_quality_flags` row is written per failing tie with:
+
+- `flag_type = 'cf_subtotal_component_drift'`
+- `severity` auto-assigned by drift pct (<1% informational, 1–10% warning, ≥10% investigate)
+- `expected_value` = FMP's reported subtotal, `computed_value` = sum of FMP's components, plus `delta` and `tolerance`
+- `reason` = human-readable explanation noting the row was loaded verbatim
+- `context` = structured metadata including which tie fired
+
+The analyst reviews pending flags and decides. Default resolution is `accept_as_is` — meaning "keep FMP's row as loaded; the disagreement is within my tolerance for this analysis." Other resolutions (`override`, `approve_suggestion`) apply only when the audit side rail proposes a replacement value via the amendment-detect agent.
+
+Review workflow:
+
+```
+uv run scripts/review_flags.py               # list all unresolved
+uv run scripts/review_flags.py NVDA AMD      # filter by ticker
+uv run scripts/review_flags.py --show 42     # inspect one flag's detail
+uv run scripts/review_flags.py --accept 42 --note "vendor rounding, within noise"
+uv run scripts/review_flags.py --accept-all AMD --note "FY22 Q1/Q3 FMP drift"
+```
+
+Accepted flags stay in the DB forever with `resolved_at`, `resolution='accept_as_is'`, `resolution_note` populated — full audit trail.
+
+The DELL FY2026 Q2 (`fmp_bug_report_dell_fy26_q2.md`) and AMD FY2022 Q1/Q3 cases are real SOFT-tie failures. Under this policy they would each produce one flag and load the row. Under the prior all-hard-ties policy they blocked the ticker entirely.
 
 ---
 
@@ -474,7 +547,8 @@ Archive has gold for NVDA, LYB, FCX. NVDA is the first candidate when wiring reg
 
 | Layer | Status | Failure | What user sees | Where it's recorded |
 |---|---|---|---|---|
-| 1: subtotal ties | live / mainline | HARD GATE | ingest transaction rolls back; no data for the failing period persists | raised exception, `ingest_runs.error_details` |
+| 1-HARD: IS/BS subtotal ties, BS balance identity, CF aggregation + roll-forward | live / mainline | HARD GATE | ingest transaction rolls back; no data for the failing period persists | raised exception, `ingest_runs.error_details` |
+| 1-SOFT: CF cfo/cfi/cff subtotal == sum of components | live / mainline | soft (inline flag) | row loaded verbatim; one flag row per failing tie | `data_quality_flags` with `flag_type='cf_subtotal_component_drift'` |
 | 2: cross-statement | scaffold, not wired | n/a | nothing runs yet | — |
 | 3: period arithmetic | side rail | soft (amendment agent + flags) | audit run: data stays loaded; agent resolves what it can via XBRL supersession; residuals become flags | `data_quality_flags` with `flag_type='layer3_q_sum_vs_fy'` (plus `xbrl_sanity_bound` for Rule B violations) |
 | 4: formula guards | planned | — | not implemented | — |
@@ -506,11 +580,23 @@ Note on resolved flags: when an analyst manually verifies and corrects a flagged
 
 ```
 src/arrow/normalize/financials/
-  verify_is.py                  — Layer 1 IS ties (called by load_fmp_is_rows)
-  verify_bs.py                  — Layer 1 BS ties (called by load_fmp_bs_rows)
-  verify_cf.py                  — Layer 1 CF ties (called by load_fmp_cf_rows)
+  verify_is.py                  — Layer 1 IS ties (HARD; called by load_fmp_is_rows)
+  verify_bs.py                  — Layer 1 BS ties (HARD; called by load_fmp_bs_rows)
+  verify_cf.py                  — Layer 1 CF ties: split functions
+                                    verify_cf_hard_ties (HARD)
+                                    verify_cf_soft_ties (SOFT / inline flag)
+                                    verify_cf_ties       (combined; used by
+                                                          audit side rail)
   verify_cross_statement.py     — Layer 2 scaffold; not called by anything live
   verify_period_arithmetic.py   — Layer 3 core; called by amendment_detect
+
+src/arrow/normalize/financials/load.py
+  load_fmp_cf_rows              — calls verify_cf_hard_ties (raise)
+                                  then verify_cf_soft_ties (collect),
+                                  inserts facts, then _write_cf_soft_tie_flag
+                                  for each soft failure
+  _write_cf_soft_tie_flag       — writes one data_quality_flags row per
+                                  soft failure; severity auto-assigned
 
 src/arrow/agents/
   fmp_ingest.py                 — mainline orchestrator (Layer 1 only)
@@ -522,7 +608,8 @@ src/arrow/reconcile/
   xbrl_concepts.py              — FMP bucket ↔ XBRL tag mapping
 
 scripts/
-  backfill_fmp.py               — invokes mainline ingest (Layer 1 inline)
+  backfill_fmp.py               — invokes mainline ingest (Layer 1 hard+soft)
+  review_flags.py               — list / show / accept-as-is flag workflow
   reconcile_fmp_vs_xbrl.py      — invokes Layer 5 audit side rail
   review_restatements.py        — audit tooling around amendment review
 ```

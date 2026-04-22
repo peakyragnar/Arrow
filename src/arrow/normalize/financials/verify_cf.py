@@ -1,19 +1,25 @@
 """Cash-flow subtotal-tie verification (verification.md § 2.3).
 
-HARD BLOCK. Ingest aborts on mismatch.
+The CF ties split into two classes by what they actually prove:
+
+HARD ties — filer-level integrity. Failure means the cash-flow statement
+itself is broken. Block ingest.
+  - net_change_in_cash == cfo + cfi + cff + fx
+  - net_change_in_cash == cash_end_of_period - cash_begin_of_period
+
+SOFT ties — vendor bucketing consistency. Failure means FMP's reported
+subtotal and FMP's reported components disagree inside a single row
+(FMP's own normalization dropped or misbucketed some item). The filer's
+own 10-Q is typically internally consistent; the defect lives in FMP.
+Do not block — write a `data_quality_flags` row so the analyst can
+review and `accept_as_is`, and keep loading.
+  - cfo == sum of non-cash adjustments + working capital changes
+  - cfi == sum of investing components
+  - cff == sum of financing components
 
 All CF buckets are stored with CASH-IMPACT SIGN per concepts.md § 2.2.
 Subtotals are straight sums of their detail components (no per-item sign
 inversion in formulas).
-
-Ties checked:
-    cfo  == net_income_start + all non-cash adjustments + all working-capital changes
-    cfi  == sum of all investing components
-    cff  == sum of all financing components
-    net_change_in_cash == cfo + cfi + cff + fx + misc
-
-Plus the cash roll-forward inside the CF itself:
-    net_change_in_cash == cash_end_of_period - cash_begin_of_period
 
 Absent-component handling: treat mapped-but-absent buckets as 0 (same as
 Layer 1 BS). The CF has many optional buckets — most filers don't report
@@ -52,7 +58,15 @@ def _val(values: dict[str, Decimal], concept: str) -> Decimal:
     return values.get(concept, Decimal("0"))
 
 
-# FMP-SOURCED TIES (see verify_bs.py header comment for rationale).
+# ---------------------------------------------------------------------------
+# Tie definitions. Tuple: (name, subtotal concept, list of (component, sign)).
+# ---------------------------------------------------------------------------
+
+# SOFT ties — vendor-bucketing consistency. These test whether FMP's reported
+# subtotal agrees with the sum of FMP's own component fields. When they
+# disagree, FMP has shipped a self-inconsistent row. The filer's 10-Q is
+# typically fine; the defect is FMP normalization. Write a flag, don't block.
+#
 # concepts.md § 6 describes the full CF vocabulary. Several concepts
 # (gain_on_sale_assets_cf, gain_on_sale_investments_cf, asset_writedown,
 # change_deferred_revenue, change_income_taxes, divestitures,
@@ -63,7 +77,7 @@ def _val(values: dict[str, Decimal], concept: str) -> Decimal:
 # net debt issuance figures, or commonDividendsPaid. The ties below
 # reflect FMP's data model. SEC XBRL direct ingest (future) would use
 # ties with the full component set.
-_CF_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
+_CF_SOFT_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
     (
         "cfo == net_income_start + non-cash adjustments + working capital changes",
         "cfo",
@@ -116,6 +130,12 @@ _CF_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
             ("other_financing", +1),
         ],
     ),
+]
+
+# HARD ties — filer-level integrity. A cash-flow statement that fails
+# either of these is internally broken at the filer level, not a vendor
+# bucketing artifact. Block ingest; the caller rolls back the transaction.
+_CF_HARD_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
     (
         "net_change_in_cash == cfo + cfi + cff + fx",
         "net_change_in_cash",
@@ -139,16 +159,12 @@ _CF_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
 ]
 
 
-def verify_cf_ties(values_by_concept: dict[str, Decimal]) -> list[TieFailure]:
-    """Return the list of ties that failed (empty = all passed).
-
-    If the filer-reported subtotal itself is absent, the tie is skipped.
-    Component buckets absent from the FMP mapping contribute zero — many CF
-    concepts are legitimately bundled into umbrella fields such as
-    `other_noncash`, `other_investing`, or net debt issuance.
-    """
+def _check_ties(
+    ties: list[tuple[str, str, list[tuple[str, int]]]],
+    values_by_concept: dict[str, Decimal],
+) -> list[TieFailure]:
     failures: list[TieFailure] = []
-    for name, subtotal, components in _CF_TIES:
+    for name, subtotal, components in ties:
         if subtotal not in values_by_concept:
             continue
         filer = values_by_concept[subtotal]
@@ -168,3 +184,38 @@ def verify_cf_ties(values_by_concept: dict[str, Decimal]) -> list[TieFailure]:
                 )
             )
     return failures
+
+
+def verify_cf_hard_ties(values_by_concept: dict[str, Decimal]) -> list[TieFailure]:
+    """Return failures among HARD ties (filer integrity). Empty = all passed.
+
+    Hard-tie failure should hard-block the caller's transaction.
+    """
+    return _check_ties(_CF_HARD_TIES, values_by_concept)
+
+
+def verify_cf_soft_ties(values_by_concept: dict[str, Decimal]) -> list[TieFailure]:
+    """Return failures among SOFT ties (vendor bucketing). Empty = all passed.
+
+    Soft-tie failure should NOT hard-block. Caller should write a
+    `data_quality_flags` row per failing tie and keep loading the row.
+    The fact values are loaded verbatim from FMP; the flag records that
+    FMP's subtotal and FMP's component fields disagree inside the shipped
+    row. Analyst reviews via `scripts/review_flags.py` and accepts/rejects.
+    """
+    return _check_ties(_CF_SOFT_TIES, values_by_concept)
+
+
+def verify_cf_ties(values_by_concept: dict[str, Decimal]) -> list[TieFailure]:
+    """Return ALL tie failures (hard + soft) as a combined list.
+
+    Preserved for callers that want the complete diagnostic set regardless
+    of hard/soft distinction — notably `arrow.agents.amendment_detect`
+    (post-supersession re-verify) and `scripts/sweep_fmp_coverage.py`.
+    Mainline ingest does NOT use this; it calls verify_cf_hard_ties and
+    verify_cf_soft_ties separately so it can branch on hard vs soft.
+    """
+    return (
+        _check_ties(_CF_HARD_TIES, values_by_concept)
+        + _check_ties(_CF_SOFT_TIES, values_by_concept)
+    )

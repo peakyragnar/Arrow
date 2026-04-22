@@ -40,7 +40,8 @@ from arrow.normalize.financials.verify_bs import (
 )
 from arrow.normalize.financials.verify_cf import (
     TieFailure as CFTieFailure,
-    verify_cf_ties,
+    verify_cf_hard_ties,
+    verify_cf_soft_ties,
 )
 from arrow.normalize.financials.verify_is import TieFailure, verify_is_ties
 from arrow.normalize.periods.derive import derive_calendar_period, derive_fiscal_period
@@ -60,6 +61,9 @@ class LoadResult:
     facts_superseded: int = 0
     rows_processed: int = 0
     period_labels: list[str] = field(default_factory=list)
+    # Soft-tie flags written during this load (CF vendor-bucketing drifts).
+    # Non-blocking; analyst reviews via scripts/review_flags.py.
+    flags_written: int = 0
 
 
 class VerificationFailed(RuntimeError):
@@ -117,6 +121,86 @@ def _parse_fmp_period(period_str: str) -> str:
     if period_str in ("Q1", "Q2", "Q3", "Q4"):
         return "quarter"
     raise ValueError(f"unexpected FMP 'period': {period_str!r}")
+
+
+# Flag type for CF vendor-bucketing drift (cfo / cfi / cff subtotal !=
+# sum of FMP's own component fields inside the shipped row).
+CF_SUBTOTAL_DRIFT_FLAG_TYPE = "cf_subtotal_component_drift"
+
+
+def _severity_for_drift(delta: Decimal, filer: Decimal, computed: Decimal) -> str:
+    """Scale severity by |delta| / max(|filer|, |computed|).
+
+    <1%  → 'informational' (vendor rounding / minor misbucket)
+    1-10% → 'warning'
+    ≥10% → 'investigate'
+    """
+    scale = max(abs(filer), abs(computed))
+    if scale == 0:
+        return "investigate"
+    pct = abs(delta) / scale
+    if pct < Decimal("0.01"):
+        return "informational"
+    if pct < Decimal("0.10"):
+        return "warning"
+    return "investigate"
+
+
+def _write_cf_soft_tie_flag(
+    cur: psycopg.Cursor,
+    *,
+    company_id: int,
+    fiscal_year: int,
+    fiscal_quarter: int | None,
+    period_end: date,
+    period_type: str,
+    failure: CFTieFailure,
+    ingest_run_id: int,
+) -> None:
+    """Write one `data_quality_flags` row for a soft-tie CF failure.
+
+    The fact rows for this period are loaded verbatim from FMP; this flag
+    records that FMP's subtotal and FMP's component fields disagree inside
+    the single row FMP shipped. The flag's `concept` is the subtotal that
+    disagreed (cfo / cfi / cff), so analysts who query that concept can
+    join to this flag row and see the caveat.
+    """
+    subtotal_concept = failure.tie.split(" ")[0]  # 'cfo' / 'cfi' / 'cff'
+    severity = _severity_for_drift(failure.delta, failure.filer, failure.computed)
+    reason = (
+        f"FMP's reported {subtotal_concept} ({failure.filer}) disagrees with "
+        f"the sum of FMP's own component fields ({failure.computed}) by "
+        f"{failure.delta} (tolerance {failure.tolerance}). The row was "
+        f"loaded verbatim; this flag records that FMP shipped a "
+        f"self-inconsistent row. Typical cause: FMP's normalization "
+        f"bucketed or dropped an item that SEC XBRL carries separately."
+    )
+    cur.execute(
+        """
+        INSERT INTO data_quality_flags (
+            company_id, statement, concept,
+            fiscal_year, fiscal_quarter, period_end, period_type,
+            flag_type, severity,
+            expected_value, computed_value, delta, tolerance,
+            reason, context, source_run_id
+        ) VALUES (
+            %s, 'cash_flow', %s,
+            %s, %s, %s, %s,
+            %s, %s,
+            %s, %s, %s, %s,
+            %s, %s::jsonb, %s
+        );
+        """,
+        (
+            company_id, subtotal_concept,
+            fiscal_year, fiscal_quarter, period_end, period_type,
+            CF_SUBTOTAL_DRIFT_FLAG_TYPE, severity,
+            failure.filer, failure.computed, failure.delta, failure.tolerance,
+            reason,
+            f'{{"tie": "{failure.tie}"}}',
+            ingest_run_id,
+        ),
+    )
 
 
 def _parse_published_at(row: dict[str, Any]) -> datetime:
@@ -412,7 +496,19 @@ def load_fmp_cf_rows(
     No YTD→discrete conversion needed. Signs are cash-impact per concepts.md
     § 2.2; FMP's convention matches, no transform.
 
-    Raises CFVerificationFailed (Layer 1 CF tie miss) or FiscalYearMismatch.
+    Layer 1 CF ties are split two ways:
+
+      HARD (filer integrity) — net_change_in_cash == cfo+cfi+cff+fx, and
+      cash roll-forward. Raises CFVerificationFailed on failure; caller
+      rolls back the transaction. A real CF statement can't violate these.
+
+      SOFT (vendor bucketing) — cfo/cfi/cff subtotal == sum of FMP's own
+      component fields. Failure here means FMP shipped a self-inconsistent
+      row (their bucketing dropped/misbucketed an item). The row is
+      loaded verbatim and one `data_quality_flags` row is written per
+      failing subtotal. The analyst reviews via `scripts/review_flags.py`.
+
+    Raises CFVerificationFailed (HARD CF tie miss) or FiscalYearMismatch.
     """
     result = LoadResult()
 
@@ -445,9 +541,13 @@ def load_fmp_cf_rows(
             mapped = map_cash_flow_row(row)
             values_by_concept = {m.concept: m.value for m in mapped}
 
-            failures = verify_cf_ties(values_by_concept)
-            if failures:
-                raise CFVerificationFailed(fiscal.fiscal_period_label, failures)
+            # HARD ties first: any failure aborts the whole transaction.
+            hard_failures = verify_cf_hard_ties(values_by_concept)
+            if hard_failures:
+                raise CFVerificationFailed(fiscal.fiscal_period_label, hard_failures)
+
+            # SOFT ties: collect, write flags after fact insert.
+            soft_failures = verify_cf_soft_ties(values_by_concept)
 
             published_at = _parse_published_at(row)
             result.period_labels.append(fiscal.fiscal_period_label)
@@ -513,5 +613,23 @@ def load_fmp_cf_rows(
                 )
                 if cur.fetchone() is not None:
                     result.facts_written += 1
+
+            # Soft-tie failures: one `data_quality_flags` row per failing
+            # subtotal, tied to this period. Written after the facts so
+            # the flag lives in the same transaction as the facts it
+            # annotates (re-ingest auto-closes dependent flags via
+            # migration 012's `superseded_by_reingest` resolution).
+            for sf in soft_failures:
+                _write_cf_soft_tie_flag(
+                    cur,
+                    company_id=company_id,
+                    fiscal_year=fiscal.fiscal_year,
+                    fiscal_quarter=fiscal.fiscal_quarter,
+                    period_end=period_end,
+                    period_type=fiscal.period_type,
+                    failure=sf,
+                    ingest_run_id=ingest_run_id,
+                )
+                result.flags_written += 1
 
     return result

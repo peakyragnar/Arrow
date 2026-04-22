@@ -218,6 +218,10 @@ def backfill_fmp_statements(
         # CF
         "cf_facts_written": 0,
         "cf_facts_superseded": 0,
+        # Soft-tie data_quality_flags (CF subtotal-component drift).
+        # Non-blocking; row is still loaded. Analyst reviews with
+        # scripts/review_flags.py.
+        "cf_flags_written": 0,
     }
 
     try:
@@ -281,6 +285,7 @@ def backfill_fmp_statements(
                 counts["rows_processed"] += result.rows_processed
                 counts["cf_facts_written"] += result.facts_written
                 counts["cf_facts_superseded"] += result.facts_superseded
+                counts["cf_flags_written"] += result.flags_written
 
     except VerificationFailed as e:
         close_failed(

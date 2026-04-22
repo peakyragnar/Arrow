@@ -64,8 +64,18 @@ def _print_success(tickers: list[str], counts: dict[str, Any]) -> None:
     _print_statement_block(
         "Cash flow", counts,
         fw_key="cf_facts_written", fs_key="cf_facts_superseded",
-        extra_l1=" (subtotal ties + cash roll-forward)",
+        extra_l1=" (hard ties: cash roll-forward + top-level aggregation)",
     )
+    cf_flags = counts.get("cf_flags_written", 0)
+    if cf_flags:
+        print(f"  soft-tie flags written: {cf_flags}")
+        print(
+            f"    CF subtotal-component drifts (cfo/cfi/cff vs sum of components)"
+        )
+        print(
+            f"    loaded verbatim; review with: "
+            f"uv run scripts/review_flags.py {' '.join(counts.get('min_fiscal_year_by_ticker', {}).keys())}"
+        )
     print()
     print("Status: PASS — baseline FMP facts stored; SEC/audit runs separately.")
 
