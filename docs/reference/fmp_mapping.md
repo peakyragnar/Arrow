@@ -452,6 +452,11 @@ Economics: ET (an MLP) classifies its marketable securities as part of cash and 
 Pattern: for every FCX period 2022-2023 (7 observed), FMP exposes `longTermInvestments = $133-134M` as non-zero AND `otherNonCurrentAssets` is NEGATIVE (e.g., -$1,301M), which suggests FMP's `otherNonCurrentAssets` is already net of long-term investments. Sum-of-components exceeds filer `totalNonCurrentAssets` by exactly `longTermInvestments`.  
 Economics: FCX has specific equity-method investments (Indonesian mining JVs etc.). FMP's classification of these as `longTermInvestments` double-counts against their residual bucket logic.
 
+**GEV — GE Vernova. `otherAssets` is an unreliable residual bucket.**  
+Pattern: on multiple periods (`FY2023`, `FY2024`, `FY2026 Q1` observed), FMP exposes a large `otherAssets` value while `otherCurrentAssets` and `otherNonCurrentAssets` do not line up with the SEC filing's split between `OtherAssetsCurrent` and `OtherAssetsNoncurrent`. Example: for `2026-03-31`, the SEC 10-Q reports `All other current assets = $1.701B` and `All other assets = $4.066B`, while FMP reports `otherCurrentAssets = 0`, `otherNonCurrentAssets = -$2.9B`, and `otherAssets = $12.807B`.  
+Economics: the filing structure is explicit that current and non-current other assets are separate buckets. FMP's `otherAssets` appears to be a residual / mis-bucketed catch-all, not a trustworthy canonical current or non-current asset field.  
+Resolution path: leave `otherAssets` unmapped for now, accept the resulting `total_assets` subtotal drift when the SEC filing supports the company totals, and do not fold `otherAssets` into `other_noncurrent_assets` globally without a broader cross-filer study.
+
 ### 10.2 One-off filing data bugs
 
 **DELL — Q2 FY26 (period_end 2025-08-01).**  
