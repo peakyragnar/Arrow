@@ -197,7 +197,9 @@ The agent's retrieval tools `get_financial_fact(ticker, concept, period, asof)` 
 ## Build sequencing
 
 1. Build Tier 1 views, unit-test against a known ticker.
-2. Build Tier 2 views (metrics), spot-check against benchmark values in `docs/benchmarks/golden_eval.xlsx`.
+2. Build Tier 2 views (metrics), check against both:
+   - bounded benchmark fixtures in `docs/benchmarks/golden_eval.xlsx`
+   - full-history integration tests over the live SQL/view stack
 3. Build Tier 3 views (changes, dashboard_panel).
 4. Ship dashboard (separate doc). Ship screener.
 

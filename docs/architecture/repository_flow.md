@@ -24,7 +24,7 @@ Arrow/
 │   ├── architecture/   ← how the system is designed (north star)
 │   ├── strategy/       ← plan, postmortems (direction + history)
 │   ├── reference/      ← formulas, R&D capitalization rules (stable specs)
-│   ├── benchmarks/     ← golden_eval.xlsx (manual truth for validation)
+│   ├── benchmarks/     ← golden_eval.xlsx (bounded manual fixtures / audit sheets)
 │   └── archive-notes/  ← notes on what was retired and why
 │
 ├── db/                 ← SQL artifacts (not Python)
@@ -82,7 +82,7 @@ No runtime, no data, no secrets. Pure Markdown (plus the benchmark XLSX). Change
 | `docs/architecture/` | `system.md` (north star), `repository_flow.md` (this file) | When the design changes |
 | `docs/strategy/` | `plan.md` (older snapshot), `postmortems/` | When direction changes, or after a major failure |
 | `docs/reference/` | `formulas.md` (metric definitions), `rd_capitalization_reference.md` | When a canonical formula changes |
-| `docs/benchmarks/` | `golden_eval.xlsx` (manual source-of-truth values) | When a benchmark ticker is verified |
+| `docs/benchmarks/` | `golden_eval.xlsx` (bounded manual fixtures / audit sheets) | When a benchmark fixture is updated |
 | `docs/archive-notes/` | Notes on retired systems | When something gets archived |
 
 **Rule:** if a doc in `archive/` conflicts with one in `docs/architecture/`, the architecture doc wins.
@@ -349,5 +349,5 @@ archive/     ←  isolated; never imported
 - **Repo entry point:** `AGENTS.md`
 - **Raw cache filesystem layout:** `docs/architecture/system.md` § Raw Cache Layout
 - **Metric definitions:** `docs/reference/formulas.md`
-- **Benchmark truth:** `docs/benchmarks/golden_eval.xlsx`
+- **Benchmark fixtures:** `docs/benchmarks/golden_eval.xlsx` for bounded manual examples; live production truth comes from the SQL/view stack over `financial_facts`
 - **Retired systems:** `archive/` (do not extend)
