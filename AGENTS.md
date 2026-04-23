@@ -13,6 +13,7 @@ Start here. Read only the next doc you need.
 - Metrics platform (view stack; shared by dashboard, screener, analyst agent): `docs/architecture/metrics_platform.md`
 - Dashboard UI surface: `docs/architecture/dashboard.md`
 - SEC qualitative layer (filings → sections → chunks, amendments, FTS): `docs/architecture/sec_qualitative_layer.md`
+- How to review SEC qualitative extraction quality: `docs/reference/sec_qualitative_review.md`
 - Period spec (fiscal ↔ calendar rules): `docs/reference/periods.md`
 - Canonical bucket schema (IS/BS/CF normalization contract): `docs/reference/concepts.md`
 - FMP ↔ canonical mapping: `docs/reference/fmp_mapping.md`

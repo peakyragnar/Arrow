@@ -4,6 +4,7 @@ Usage:
     uv run scripts/audit_sec_qualitative.py NVDA
     uv run scripts/audit_sec_qualitative.py --db-only NVDA
     uv run scripts/audit_sec_qualitative.py --query "data center revenue" NVDA
+    uv run scripts/audit_sec_qualitative.py --html outputs/nvda_qual_audit.html NVDA
 
 Default mode compares stored artifacts against live SEC submissions metadata.
 Use --db-only when offline or when you only want to inspect already-stored
@@ -13,8 +14,10 @@ rows.
 from __future__ import annotations
 
 import argparse
+import html
 from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
 from typing import Any
 
 from arrow.db.connection import get_conn
@@ -174,6 +177,267 @@ def _print_table(headers: list[str], rows: list[tuple[Any, ...]]) -> None:
     print("  " + "  ".join("-" * width for width in widths))
     for row in formatted:
         print("  " + "  ".join(value.ljust(widths[idx]) for idx, value in enumerate(row)))
+
+
+def _dict_rows(cur) -> list[dict[str, Any]]:
+    cols = [d.name for d in cur.description]
+    return [dict(zip(cols, row)) for row in cur.fetchall()]
+
+
+def _escape(value: Any) -> str:
+    if value is None:
+        return ""
+    return html.escape(str(value))
+
+
+def _expected_section_keys(artifact_type: str) -> list[str]:
+    return TEN_K_KEYS if artifact_type == "10k" else TEN_Q_KEYS
+
+
+def _section_label(section_key: str) -> str:
+    labels = {
+        "item_1_business": "Item 1",
+        "item_1a_risk_factors": "Item 1A",
+        "item_1c_cybersecurity": "Item 1C",
+        "item_3_legal_proceedings": "Item 3",
+        "item_7_mda": "Item 7",
+        "item_7a_market_risk": "Item 7A",
+        "item_9a_controls": "Item 9A",
+        "item_9b_other_information": "Item 9B",
+        "part1_item2_mda": "P1 I2",
+        "part1_item3_market_risk": "P1 I3",
+        "part1_item4_controls": "P1 I4",
+        "part2_item1_legal_proceedings": "P2 I1",
+        "part2_item1a_risk_factors": "P2 I1A",
+        "part2_item5_other_information": "P2 I5",
+    }
+    return labels.get(section_key, section_key)
+
+
+def _collect_report(
+    conn,
+    ticker: str,
+    *,
+    expected: list[ExpectedFiling] | None,
+    since_date: date | None,
+    until_date: date | None,
+    min_fy: int | None,
+    max_fy: int | None,
+    queries: list[str],
+) -> dict[str, Any]:
+    stored = _stored_artifacts(conn, ticker)
+    stored_keys = {(row["artifact_type"], row["accession_number"]) for row in stored}
+    expected_keys = (
+        {(row.artifact_type, row.accession_number) for row in expected}
+        if expected is not None
+        else set()
+    )
+    missing = sorted(expected_keys - stored_keys)
+    unexpected = sorted(stored_keys - expected_keys) if expected is not None else []
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT artifact_type, count(*) AS stored, min(fiscal_year) AS min_fy,
+                   max(fiscal_year) AS max_fy, min(published_at)::date AS first_file,
+                   max(published_at)::date AS last_file
+            FROM artifacts
+            WHERE ticker = %s AND source = 'sec'
+              AND artifact_type IN ('10k', '10q', '8k')
+            GROUP BY artifact_type
+            ORDER BY artifact_type;
+            """,
+            (ticker.upper(),),
+        )
+        coverage = _dict_rows(cur)
+
+        cur.execute(
+            """
+            SELECT a.artifact_type,
+                   count(DISTINCT a.id) AS artifacts,
+                   count(DISTINCT s.artifact_id) AS with_sections,
+                   count(DISTINCT s.id) AS sections,
+                   count(ch.id) AS chunks,
+                   min(s.confidence) AS min_confidence,
+                   count(*) FILTER (WHERE s.extraction_method = 'repair') AS repairs,
+                   count(*) FILTER (WHERE s.extraction_method = 'unparsed_fallback') AS fallbacks
+            FROM artifacts a
+            LEFT JOIN artifact_sections s ON s.artifact_id = a.id
+            LEFT JOIN artifact_section_chunks ch ON ch.section_id = s.id
+            WHERE a.ticker = %s AND a.source = 'sec'
+              AND a.artifact_type IN ('10k', '10q', '8k')
+            GROUP BY a.artifact_type
+            ORDER BY a.artifact_type;
+            """,
+            (ticker.upper(),),
+        )
+        section_health = _dict_rows(cur)
+
+        cur.execute(
+            """
+            SELECT s.form_family, s.section_key, s.extraction_method,
+                   count(*) AS filings_with_section,
+                   min(s.confidence) AS min_confidence
+            FROM artifact_sections s
+            JOIN artifacts a ON a.id = s.artifact_id
+            WHERE a.ticker = %s
+            GROUP BY s.form_family, s.section_key, s.extraction_method
+            ORDER BY s.form_family, s.section_key, s.extraction_method;
+            """,
+            (ticker.upper(),),
+        )
+        section_inventory = _dict_rows(cur)
+
+        cur.execute(
+            """
+            SELECT a.id, a.artifact_type, a.fiscal_period_key, a.accession_number,
+                   a.published_at::date AS filed,
+                   count(DISTINCT s.id) AS sections,
+                   count(ch.id) AS chunks,
+                   min(s.confidence) AS min_confidence,
+                   count(*) FILTER (WHERE s.extraction_method = 'repair') AS repairs,
+                   count(*) FILTER (WHERE s.extraction_method = 'unparsed_fallback') AS fallbacks
+            FROM artifacts a
+            LEFT JOIN artifact_sections s ON s.artifact_id = a.id
+            LEFT JOIN artifact_section_chunks ch ON ch.section_id = s.id
+            WHERE a.ticker = %s AND a.source = 'sec'
+              AND a.artifact_type IN ('10k', '10q')
+            GROUP BY a.id, a.artifact_type, a.fiscal_period_key, a.accession_number, a.published_at
+            ORDER BY a.published_at;
+            """,
+            (ticker.upper(),),
+        )
+        filings = _dict_rows(cur)
+
+        cur.execute(
+            """
+            SELECT a.id AS artifact_id, s.section_key, s.extraction_method,
+                   s.confidence, count(ch.id) AS chunks,
+                   length(s.text) AS section_chars
+            FROM artifacts a
+            JOIN artifact_sections s ON s.artifact_id = a.id
+            LEFT JOIN artifact_section_chunks ch ON ch.section_id = s.id
+            WHERE a.ticker = %s AND a.source = 'sec'
+            GROUP BY a.id, s.id, s.section_key, s.extraction_method, s.confidence, s.text
+            ORDER BY a.published_at, s.section_key;
+            """,
+            (ticker.upper(),),
+        )
+        section_rows = _dict_rows(cur)
+
+        cur.execute(
+            """
+            SELECT percentile_disc(0.05) WITHIN GROUP (ORDER BY length(ch.text)) AS p05_chars,
+                   percentile_disc(0.50) WITHIN GROUP (ORDER BY length(ch.text)) AS p50_chars,
+                   percentile_disc(0.95) WITHIN GROUP (ORDER BY length(ch.text)) AS p95_chars,
+                   max(length(ch.text)) AS max_chars,
+                   min(length(ch.text)) AS min_chars,
+                   count(*) AS chunks
+            FROM artifact_section_chunks ch
+            JOIN artifact_sections s ON s.id = ch.section_id
+            JOIN artifacts a ON a.id = s.artifact_id
+            WHERE a.ticker = %s;
+            """,
+            (ticker.upper(),),
+        )
+        chunk_stats = _dict_rows(cur)[0]
+
+        cur.execute(
+            """
+            SELECT a.fiscal_period_key, s.section_key, ch.chunk_ordinal,
+                   length(ch.text) AS chars,
+                   left(ch.text, 220) AS starts_with,
+                   right(ch.text, 220) AS ends_with
+            FROM artifact_section_chunks ch
+            JOIN artifact_sections s ON s.id = ch.section_id
+            JOIN artifacts a ON a.id = s.artifact_id
+            WHERE a.ticker = %s
+              AND (length(ch.text) < 500 OR length(ch.text) > 12000)
+            ORDER BY length(ch.text) DESC
+            LIMIT 30;
+            """,
+            (ticker.upper(),),
+        )
+        chunk_outliers = _dict_rows(cur)
+
+    sections_by_artifact: dict[int, dict[str, dict[str, Any]]] = {}
+    for row in section_rows:
+        sections_by_artifact.setdefault(row["artifact_id"], {})[row["section_key"]] = row
+
+    missing_sections = []
+    weak = []
+    for filing in filings:
+        section_map = sections_by_artifact.get(filing["id"], {})
+        expected_keys_for_type = _expected_section_keys(filing["artifact_type"])
+        missing_for_filing = [key for key in expected_keys_for_type if key not in section_map]
+        if missing_for_filing:
+            missing_sections.append({**filing, "missing_sections": missing_for_filing})
+        if (
+            filing["sections"] == 0
+            or (filing["min_confidence"] is not None and filing["min_confidence"] < 0.85)
+            or filing["fallbacks"] > 0
+        ):
+            weak.append(filing)
+
+    retrieval: dict[str, list[dict[str, Any]]] = {}
+    for query in queries:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT a.fiscal_period_key, s.section_key, ch.chunk_ordinal,
+                       left(ch.search_text, 320) AS snippet
+                FROM artifact_section_chunks ch
+                JOIN artifact_sections s ON s.id = ch.section_id
+                JOIN artifacts a ON a.id = s.artifact_id
+                WHERE a.ticker = %s
+                  AND ch.tsv @@ websearch_to_tsquery('english', %s)
+                ORDER BY a.published_at DESC, ch.chunk_ordinal
+                LIMIT 5;
+                """,
+                (ticker.upper(), query),
+            )
+            retrieval[query] = _dict_rows(cur)
+
+    expected_counts = []
+    for artifact_type in ("10k", "10q", "8k"):
+        expected_counts.append(
+            {
+                "artifact_type": artifact_type,
+                "expected": (
+                    sum(1 for item in expected if item.artifact_type == artifact_type)
+                    if expected is not None
+                    else None
+                ),
+                "stored": sum(1 for item in stored if item["artifact_type"] == artifact_type),
+            }
+        )
+
+    hard_issues = len(missing) + len(unexpected) + len(weak)
+    warnings = len(missing_sections) + len(chunk_outliers)
+    status = "FAIL" if hard_issues else "PASS_WITH_WARNINGS" if warnings else "PASS"
+    return {
+        "ticker": ticker.upper(),
+        "since_date": since_date,
+        "until_date": until_date,
+        "min_fy": min_fy,
+        "max_fy": max_fy,
+        "coverage": coverage,
+        "expected_counts": expected_counts,
+        "missing": missing,
+        "unexpected": unexpected,
+        "section_health": section_health,
+        "section_inventory": section_inventory,
+        "filings": filings,
+        "sections_by_artifact": sections_by_artifact,
+        "missing_sections": missing_sections,
+        "weak": weak,
+        "chunk_stats": chunk_stats,
+        "chunk_outliers": chunk_outliers,
+        "retrieval": retrieval,
+        "status": status,
+        "hard_issues": hard_issues,
+        "warnings": warnings,
+    }
 
 
 def _coverage(conn, ticker: str, expected: list[ExpectedFiling] | None) -> tuple[int, int]:
@@ -418,6 +682,370 @@ def _period_listing(conn, ticker: str) -> None:
         _print_table(["type", "period", "accession", "filed"], cur.fetchall())
 
 
+def _metric_card(label: str, value: Any, note: str, tone: str = "neutral") -> str:
+    return (
+        f'<div class="metric {tone}">'
+        f'<div class="metric-label">{_escape(label)}</div>'
+        f'<div class="metric-value">{_escape(value)}</div>'
+        f'<div class="metric-note">{_escape(note)}</div>'
+        "</div>"
+    )
+
+
+def _coverage_html(report: dict[str, Any]) -> str:
+    rows = []
+    for row in report["coverage"]:
+        rows.append(
+            "<tr>"
+            f"<td>{_escape(row['artifact_type'])}</td>"
+            f"<td>{_escape(row['stored'])}</td>"
+            f"<td>{_escape(row['min_fy'])}</td>"
+            f"<td>{_escape(row['max_fy'])}</td>"
+            f"<td>{_escape(row['first_file'])}</td>"
+            f"<td>{_escape(row['last_file'])}</td>"
+            "</tr>"
+        )
+    expected_rows = []
+    for row in report["expected_counts"]:
+        match = row["expected"] is None or row["expected"] == row["stored"]
+        expected_rows.append(
+            f'<tr class="{"ok-row" if match else "bad-row"}">'
+            f"<td>{_escape(row['artifact_type'])}</td>"
+            f"<td>{_escape(row['expected']) if row['expected'] is not None else 'skipped'}</td>"
+            f"<td>{_escape(row['stored'])}</td>"
+            "</tr>"
+        )
+    return f"""
+        <section>
+          <h2>Filing Coverage</h2>
+          <div class="two-col">
+            <div>
+              <h3>Stored Corpus</h3>
+              <table>
+                <thead><tr><th>Type</th><th>Stored</th><th>Min FY</th><th>Max FY</th><th>First Filed</th><th>Last Filed</th></tr></thead>
+                <tbody>{''.join(rows)}</tbody>
+              </table>
+            </div>
+            <div>
+              <h3>Live SEC Comparison</h3>
+              <table>
+                <thead><tr><th>Type</th><th>Expected</th><th>Stored</th></tr></thead>
+                <tbody>{''.join(expected_rows)}</tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+    """
+
+
+def _section_health_html(report: dict[str, Any]) -> str:
+    rows = []
+    for row in report["section_health"]:
+        tone = "warn-row" if row["artifact_type"] == "8k" else "ok-row"
+        rows.append(
+            f'<tr class="{tone}">'
+            f"<td>{_escape(row['artifact_type'])}</td>"
+            f"<td>{_escape(row['artifacts'])}</td>"
+            f"<td>{_escape(row['with_sections'])}</td>"
+            f"<td>{_escape(row['sections'])}</td>"
+            f"<td>{_escape(row['chunks'])}</td>"
+            f"<td>{_escape(row['min_confidence'])}</td>"
+            f"<td>{_escape(row['repairs'])}</td>"
+            f"<td>{_escape(row['fallbacks'])}</td>"
+            "</tr>"
+        )
+    inv_rows = []
+    for row in report["section_inventory"]:
+        inv_rows.append(
+            "<tr>"
+            f"<td>{_escape(row['form_family'])}</td>"
+            f"<td>{_escape(row['section_key'])}</td>"
+            f"<td>{_escape(row['extraction_method'])}</td>"
+            f"<td>{_escape(row['filings_with_section'])}</td>"
+            f"<td>{_escape(row['min_confidence'])}</td>"
+            "</tr>"
+        )
+    return f"""
+        <section>
+          <h2>Extraction Health</h2>
+          <table>
+            <thead><tr><th>Type</th><th>Artifacts</th><th>With Sections</th><th>Sections</th><th>Chunks</th><th>Min Conf</th><th>Repairs</th><th>Fallbacks</th></tr></thead>
+            <tbody>{''.join(rows)}</tbody>
+          </table>
+          <h3>Section Inventory</h3>
+          <table>
+            <thead><tr><th>Family</th><th>Section Key</th><th>Method</th><th>Filings</th><th>Min Conf</th></tr></thead>
+            <tbody>{''.join(inv_rows)}</tbody>
+          </table>
+        </section>
+    """
+
+
+def _section_matrix_html(report: dict[str, Any], artifact_type: str) -> str:
+    keys = _expected_section_keys(artifact_type)
+    filings = [row for row in report["filings"] if row["artifact_type"] == artifact_type]
+    body = []
+    for filing in filings:
+        sections = report["sections_by_artifact"].get(filing["id"], {})
+        cells = []
+        for key in keys:
+            section = sections.get(key)
+            if section is None:
+                cells.append(f'<td class="section-cell missing" title="{_escape(key)}">-</td>')
+            else:
+                method = section["extraction_method"]
+                conf = section["confidence"]
+                chunks = section["chunks"]
+                tone = "ok" if method == "deterministic" and conf >= 0.85 else "warn"
+                cells.append(
+                    f'<td class="section-cell {tone}" title="{_escape(key)}; method={_escape(method)}; confidence={_escape(conf)}; chunks={_escape(chunks)}">✓</td>'
+                )
+        body.append(
+            "<tr>"
+            f"<td>{_escape(filing['artifact_type'])}</td>"
+            f"<td>{_escape(filing['fiscal_period_key'])}</td>"
+            f"<td>{_escape(filing['filed'])}</td>"
+            f"<td class=\"mono\">{_escape(filing['accession_number'])}</td>"
+            f"<td>{_escape(filing['sections'])}</td>"
+            f"<td>{_escape(filing['chunks'])}</td>"
+            + "".join(cells)
+            + "</tr>"
+        )
+    headers = "".join(f"<th>{_escape(_section_label(key))}</th>" for key in keys)
+    title = "10-K Section Matrix" if artifact_type == "10k" else "10-Q Section Matrix"
+    return f"""
+        <section>
+          <h2>{title}</h2>
+          <div class="matrix-wrap">
+            <table class="matrix">
+              <thead><tr><th>Type</th><th>Period</th><th>Filed</th><th>Accession</th><th>Sections</th><th>Chunks</th>{headers}</tr></thead>
+              <tbody>{''.join(body)}</tbody>
+            </table>
+          </div>
+        </section>
+    """
+
+
+def _warnings_html(report: dict[str, Any]) -> str:
+    missing_rows = []
+    for row in report["missing_sections"]:
+        missing_rows.append(
+            "<tr>"
+            f"<td>{_escape(row['artifact_type'])}</td>"
+            f"<td>{_escape(row['fiscal_period_key'])}</td>"
+            f"<td class=\"mono\">{_escape(row['accession_number'])}</td>"
+            f"<td>{_escape(', '.join(row['missing_sections']))}</td>"
+            "</tr>"
+        )
+    if not missing_rows:
+        missing_rows.append('<tr><td colspan="4">No missing standard section warnings.</td></tr>')
+
+    outlier_cards = []
+    for row in report["chunk_outliers"]:
+        outlier_cards.append(
+            "<article class=\"chunk-card\">"
+            f"<div><strong>{_escape(row['fiscal_period_key'])}</strong> · {_escape(row['section_key'])} · chunk {_escape(row['chunk_ordinal'])} · {_escape(row['chars'])} chars</div>"
+            f"<p><span>Starts:</span> {_escape(row['starts_with'])}</p>"
+            f"<p><span>Ends:</span> {_escape(row['ends_with'])}</p>"
+            "</article>"
+        )
+    if not outlier_cards:
+        outlier_cards.append("<p>No chunk size outliers.</p>")
+
+    return f"""
+        <section>
+          <h2>Warnings To Review</h2>
+          <h3>Missing Standard Sections</h3>
+          <table>
+            <thead><tr><th>Type</th><th>Period</th><th>Accession</th><th>Missing Sections</th></tr></thead>
+            <tbody>{''.join(missing_rows)}</tbody>
+          </table>
+          <h3>Chunk Outliers</h3>
+          <div class="chunk-grid">{''.join(outlier_cards)}</div>
+        </section>
+    """
+
+
+def _retrieval_html(report: dict[str, Any]) -> str:
+    groups = []
+    for query, rows in report["retrieval"].items():
+        cards = []
+        for row in rows:
+            cards.append(
+                "<article class=\"result-card\">"
+                f"<div class=\"result-meta\">{_escape(row['fiscal_period_key'])} · {_escape(row['section_key'])} · chunk {_escape(row['chunk_ordinal'])}</div>"
+                f"<p>{_escape(row['snippet'])}</p>"
+                "</article>"
+            )
+        if not cards:
+            cards.append("<p>No matches.</p>")
+        groups.append(
+            f"<div class=\"retrieval-group\"><h3>{_escape(query)}</h3>{''.join(cards)}</div>"
+        )
+    return f"""
+        <section>
+          <h2>Retrieval Smoke Tests</h2>
+          <p class="section-note">These are FTS sanity checks, not final ranking quality. Use them to see whether searches are finding plausible evidence.</p>
+          <div class="retrieval-grid">{''.join(groups)}</div>
+        </section>
+    """
+
+
+def _render_html_report(reports: list[dict[str, Any]]) -> str:
+    sections = []
+    for report in reports:
+        status_tone = "bad" if report["status"] == "FAIL" else "warn" if report["status"] == "PASS_WITH_WARNINGS" else "ok"
+        total_expected = sum(row["expected"] or 0 for row in report["expected_counts"])
+        total_stored = sum(row["stored"] for row in report["expected_counts"])
+        total_chunks = report["chunk_stats"]["chunks"]
+        section = f"""
+          <div class="report">
+            <header class="hero">
+              <div>
+                <p class="eyebrow">SEC Qualitative Audit</p>
+                <h1>{_escape(report['ticker'])}</h1>
+                <p>Since {_escape(report['since_date'])}; 10-K/Q window starts FY{_escape(report['min_fy'])}</p>
+              </div>
+              <span class="status {status_tone}">{_escape(report['status'])}</span>
+            </header>
+            <div class="metrics">
+              {_metric_card('Filing Coverage', f'{total_stored}/{total_expected}' if total_expected else total_stored, 'stored vs expected', 'ok' if report['hard_issues'] == 0 else 'bad')}
+              {_metric_card('Weak Extractions', len(report['weak']), 'low confidence, fallback, or missing', 'ok' if not report['weak'] else 'bad')}
+              {_metric_card('Chunks', total_chunks, 'retrieval units', 'neutral')}
+              {_metric_card('Warnings', report['warnings'], 'optional sections + chunk outliers', 'warn' if report['warnings'] else 'ok')}
+            </div>
+            {_coverage_html(report)}
+            {_section_health_html(report)}
+            {_section_matrix_html(report, '10k')}
+            {_section_matrix_html(report, '10q')}
+            {_warnings_html(report)}
+            {_retrieval_html(report)}
+          </div>
+        """
+        sections.append(section)
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SEC Qualitative Audit</title>
+  <style>
+    :root {{
+      --ink: #172026;
+      --muted: #65717a;
+      --line: #d8e0e5;
+      --bg: #f5f7f8;
+      --panel: #ffffff;
+      --ok: #147a4b;
+      --ok-bg: #e7f5ee;
+      --warn: #9a6500;
+      --warn-bg: #fff3d8;
+      --bad: #b42318;
+      --bad-bg: #ffe7e3;
+      --blue: #1f5f99;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }}
+    body {{ margin: 0; }}
+    .report {{ max-width: 1440px; margin: 0 auto; padding: 28px; }}
+    .hero {{ display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 20px; }}
+    .eyebrow {{ margin: 0 0 4px; color: var(--blue); font-weight: 700; text-transform: uppercase; font-size: 12px; }}
+    h1 {{ margin: 0; font-size: 40px; letter-spacing: 0; }}
+    h2 {{ margin: 0 0 14px; font-size: 22px; letter-spacing: 0; }}
+    h3 {{ margin: 18px 0 10px; font-size: 16px; letter-spacing: 0; }}
+    p {{ color: var(--muted); }}
+    section, .metric {{ background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }}
+    section {{ padding: 18px; margin: 16px 0; overflow-x: auto; }}
+    .metrics {{ display: grid; grid-template-columns: repeat(4, minmax(180px, 1fr)); gap: 12px; }}
+    .metric {{ padding: 14px; }}
+    .metric-label {{ color: var(--muted); font-size: 12px; text-transform: uppercase; font-weight: 700; }}
+    .metric-value {{ font-size: 30px; font-weight: 760; margin-top: 6px; }}
+    .metric-note {{ color: var(--muted); font-size: 13px; margin-top: 4px; }}
+    .status {{ padding: 8px 12px; border-radius: 999px; font-weight: 800; border: 1px solid; white-space: nowrap; }}
+    .status.ok, .metric.ok {{ background: var(--ok-bg); border-color: #91d4b4; color: var(--ok); }}
+    .status.warn, .metric.warn {{ background: var(--warn-bg); border-color: #ecc15a; color: var(--warn); }}
+    .status.bad, .metric.bad {{ background: var(--bad-bg); border-color: #f4a096; color: var(--bad); }}
+    table {{ border-collapse: collapse; width: 100%; font-size: 13px; }}
+    th, td {{ border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }}
+    th {{ color: #31414a; background: #edf2f5; position: sticky; top: 0; z-index: 1; }}
+    tr.ok-row td {{ background: #fbfffd; }}
+    tr.warn-row td {{ background: #fffaf0; }}
+    tr.bad-row td {{ background: #fff1ef; }}
+    .two-col {{ display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }}
+    .matrix-wrap {{ overflow-x: auto; }}
+    .matrix th, .matrix td {{ white-space: nowrap; }}
+    .mono {{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }}
+    .section-cell {{ text-align: center; font-weight: 800; min-width: 44px; }}
+    .section-cell.ok {{ background: var(--ok-bg); color: var(--ok); }}
+    .section-cell.warn {{ background: var(--warn-bg); color: var(--warn); }}
+    .section-cell.missing {{ background: #eef1f3; color: #7a858c; }}
+    .chunk-grid, .retrieval-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }}
+    .chunk-card, .result-card {{ border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: #fbfcfd; }}
+    .chunk-card p, .result-card p {{ margin: 8px 0 0; color: var(--ink); line-height: 1.45; }}
+    .chunk-card span, .result-meta {{ color: var(--muted); font-weight: 700; font-size: 12px; }}
+    .section-note {{ margin-top: -4px; }}
+    @media (max-width: 900px) {{
+      .metrics, .two-col {{ grid-template-columns: 1fr; }}
+      .report {{ padding: 16px; }}
+      h1 {{ font-size: 32px; }}
+    }}
+  </style>
+</head>
+<body>
+  {''.join(sections)}
+</body>
+</html>
+"""
+
+
+def _write_html_report(args: argparse.Namespace) -> int:
+    since_date = _parse_date(args.since) if args.since else DEFAULT_QUAL_SINCE_DATE
+    until_date = _parse_date(args.until)
+    queries = args.query or DEFAULT_QUERIES
+    reports = []
+    exit_code = 0
+    with get_conn() as conn:
+        for ticker in args.tickers:
+            expected = None
+            min_fy = None
+            max_fy = None
+            if not args.db_only:
+                expected, min_fy, max_fy = _expected_filings(
+                    conn,
+                    ticker,
+                    since_date=since_date,
+                    until_date=until_date,
+                )
+            else:
+                company = _get_company(conn, ticker)
+                min_fy = min_fiscal_year_for_since_date(since_date, company.fiscal_year_end_md)
+                max_fy = max_fiscal_year_for_until_date(until_date, company.fiscal_year_end_md) if until_date else None
+            report = _collect_report(
+                conn,
+                ticker,
+                expected=expected,
+                since_date=since_date,
+                until_date=until_date,
+                min_fy=min_fy,
+                max_fy=max_fy,
+                queries=queries,
+            )
+            reports.append(report)
+            if report["hard_issues"]:
+                exit_code = 1
+            print(
+                f"{report['ticker']}: {report['status']} "
+                f"(missing={len(report['missing'])}, unexpected={len(report['unexpected'])}, weak={len(report['weak'])})"
+            )
+    out_path = Path(args.html)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(_render_html_report(reports), encoding="utf-8")
+    print(f"Wrote HTML report: {out_path}")
+    return exit_code
+
+
 def _audit_ticker(args: argparse.Namespace, ticker: str) -> int:
     since_date = _parse_date(args.since) if args.since else DEFAULT_QUAL_SINCE_DATE
     until_date = _parse_date(args.until)
@@ -479,8 +1107,12 @@ def main() -> int:
     parser.add_argument("--until", help="optional calendar upper-bound date, YYYY-MM-DD")
     parser.add_argument("--query", action="append", help="retrieval smoke-test query; repeatable")
     parser.add_argument("--list-filings", action="store_true", help="print kept 10-K/10-Q filing inventory")
+    parser.add_argument("--html", help="write a visual HTML audit report to this path")
     parser.add_argument("tickers", nargs="+")
     args = parser.parse_args()
+
+    if args.html:
+        return _write_html_report(args)
 
     exit_code = 0
     for idx, ticker in enumerate(args.tickers):
