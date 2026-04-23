@@ -144,6 +144,8 @@ def _insert_fact(
     fiscal_year: int,
     period_type: str,
     fiscal_quarter: int | None = None,
+    extraction_version: str = "test-metrics-v1",
+    published_at: datetime | None = None,
 ) -> None:
     if period_type == "quarter":
         assert fiscal_quarter is not None
@@ -168,7 +170,7 @@ def _insert_fact(
                 %s, %s, %s,
                 %s, %s,
                 %s, %s, %s,
-                %s, %s, 'test-metrics-v1',
+                %s, %s, %s,
                 %s
             );
             """,
@@ -185,8 +187,10 @@ def _insert_fact(
                 period_end.year,
                 calendar_quarter,
                 f"CY{period_end.year} Q{calendar_quarter}",
-                datetime(period_end.year, period_end.month, min(period_end.day, 28), tzinfo=timezone.utc),
+                published_at
+                or datetime(period_end.year, period_end.month, min(period_end.day, 28), tzinfo=timezone.utc),
                 raw_response_id,
+                extraction_version,
                 ingest_run_id,
             ),
         )
@@ -207,6 +211,54 @@ def _assert_close(actual: Decimal | None, expected: Decimal | None, tol: str = "
         return
     assert actual is not None
     assert abs(actual - expected) <= Decimal(tol)
+
+
+def test_wide_view_prefers_amendment_over_larger_fmp_current_value() -> None:
+    with get_conn() as conn:
+        _reset(conn)
+        company_id = _seed_company(conn, cik=2999, ticker="DUP")
+        run_id, raw_id = _seed_run_and_raw(conn)
+
+        _insert_fact(
+            conn,
+            company_id=company_id,
+            ingest_run_id=run_id,
+            raw_response_id=raw_id,
+            concept="revenue",
+            value=Decimal("999"),
+            fiscal_year=2024,
+            fiscal_quarter=1,
+            period_type="quarter",
+            extraction_version="fmp-is-v2",
+            published_at=datetime(2024, 4, 1, tzinfo=timezone.utc),
+        )
+        _insert_fact(
+            conn,
+            company_id=company_id,
+            ingest_run_id=run_id,
+            raw_response_id=raw_id,
+            concept="revenue",
+            value=Decimal("100"),
+            fiscal_year=2024,
+            fiscal_quarter=1,
+            period_type="quarter",
+            extraction_version="xbrl-amendment-is-v1",
+            published_at=datetime(2024, 11, 1, tzinfo=timezone.utc),
+        )
+
+        row = _fetch_one(
+            conn,
+            """
+            SELECT revenue
+            FROM v_company_period_wide
+            WHERE ticker = 'DUP'
+              AND period_end = %s
+              AND period_type = 'quarter';
+            """,
+            (date(2024, 3, 31),),
+        )
+
+    assert row["revenue"] == Decimal("100.0000")
 
 
 def _weighted_rd_asset(values: list[Decimal]) -> Decimal:

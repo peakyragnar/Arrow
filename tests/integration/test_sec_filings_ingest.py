@@ -97,11 +97,11 @@ def test_ingest_recent_10q_writes_raw_and_artifact() -> None:
             url=url,
         )
 
-        with get_conn() as conn:
-            _reset(conn)
-            _seed_nvda(conn)
-            with patch("arrow.ingest.common.http.HttpClient.get", new=_fake_get):
-                counts = ingest_recent_sec_filings(conn, ["NVDA"])
+    with get_conn() as conn:
+        _reset(conn)
+        _seed_nvda(conn)
+        with patch("arrow.ingest.common.http.HttpClient.get", new=_fake_get):
+            counts = ingest_recent_sec_filings(conn, ["NVDA"])
 
         assert counts["raw_responses"] == 3
         assert counts["filings_seen"] == 1
@@ -213,12 +213,12 @@ def test_ingest_recent_8k_writes_primary_and_press_release_and_dedupes() -> None
             url=url,
         )
 
-        with get_conn() as conn:
-            _reset(conn)
-            _seed_nvda(conn)
-            with patch("arrow.ingest.common.http.HttpClient.get", new=_fake_get):
-                first = ingest_recent_sec_filings(conn, ["NVDA"], forms=("8-K", "8-K/A"))
-                second = ingest_recent_sec_filings(conn, ["NVDA"], forms=("8-K", "8-K/A"))
+    with get_conn() as conn:
+        _reset(conn)
+        _seed_nvda(conn)
+        with patch("arrow.ingest.common.http.HttpClient.get", new=_fake_get):
+            first = ingest_recent_sec_filings(conn, ["NVDA"])
+            second = ingest_recent_sec_filings(conn, ["NVDA"])
 
         assert first["raw_responses"] == 4
         assert first["artifacts_written"] == 2

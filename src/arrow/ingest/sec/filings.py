@@ -24,7 +24,7 @@ from arrow.ingest.sec.qualitative import (
 from arrow.ingest.sec.bootstrap import SEC_RATE_LIMIT, SEC_USER_AGENT, SUBMISSIONS_URL_TEMPLATE
 from arrow.normalize.periods.derive import derive_calendar_period, derive_fiscal_period
 
-DEFAULT_FORMS = ("10-K", "10-K/A", "10-Q", "10-Q/A")
+DEFAULT_FORMS = ("10-K", "10-K/A", "10-Q", "10-Q/A", "8-K", "8-K/A")
 
 
 def _years_ago(today: date, years: int) -> date:

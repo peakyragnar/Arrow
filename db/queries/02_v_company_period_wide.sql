@@ -9,6 +9,28 @@
 -- given row means that concept wasn't reported for that period.
 
 CREATE OR REPLACE VIEW v_company_period_wide AS
+WITH ranked_current_facts AS (
+    SELECT
+        f.*,
+        ROW_NUMBER() OVER (
+            PARTITION BY f.company_id, f.concept, f.period_end, f.period_type
+            ORDER BY
+                CASE
+                    WHEN f.extraction_version LIKE 'human-verified%' THEN 1
+                    WHEN f.extraction_version LIKE 'xbrl-amendment-%' THEN 2
+                    WHEN f.extraction_version LIKE 'fmp-%' THEN 3
+                    ELSE 9
+                END,
+                f.published_at DESC NULLS LAST,
+                f.id DESC
+        ) AS source_rank
+    FROM v_ff_current f
+),
+preferred_current_facts AS (
+    SELECT *
+    FROM ranked_current_facts
+    WHERE source_rank = 1
+)
 SELECT
     c.ticker,
     c.id AS company_id,
@@ -120,7 +142,7 @@ SELECT
     -- ====== Metrics (non-statement) ======
     MAX(f.value) FILTER (WHERE f.concept = 'total_employees')             AS total_employees
 
-FROM v_ff_current f
+FROM preferred_current_facts f
 JOIN companies c ON c.id = f.company_id
 GROUP BY
     c.ticker, c.id,
@@ -129,4 +151,4 @@ GROUP BY
     f.calendar_year, f.calendar_quarter, f.calendar_period_label;
 
 COMMENT ON VIEW v_company_period_wide IS
-    'Long-to-wide pivot of v_ff_current. One row per (ticker, period_end, period_type); columns are canonical buckets. NULL means concept not reported for that period.';
+    'Long-to-wide pivot of v_ff_current. One row per (ticker, period_end, period_type); columns are canonical buckets. If multiple current extraction versions coexist, prefers human-verified, then XBRL amendment, then FMP. NULL means concept not reported for that period.';

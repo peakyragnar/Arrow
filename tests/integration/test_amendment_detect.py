@@ -411,3 +411,38 @@ def test_is_restatement_also_supersedes_balance_sheet_instants(monkeypatch) -> N
             ("income_statement", "revenue"): (Decimal("110000000.0000"), IS_AMENDMENT_VERSION),
         }
         assert all(supersedes_id is not None for *_prefix, supersedes_id in rows)
+
+        expected_published_at = datetime(2024, 11, 1, tzinfo=timezone.utc)
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT published_at
+                FROM financial_facts
+                WHERE company_id = %s
+                  AND extraction_version IN (%s, %s)
+                ORDER BY statement, concept;
+                """,
+                (company_id, BS_AMENDMENT_VERSION, IS_AMENDMENT_VERSION),
+            )
+            amendment_published_at = [row[0] for row in cur.fetchall()]
+            cur.execute(
+                """
+                SELECT superseded_at
+                FROM financial_facts
+                WHERE company_id = %s
+                  AND period_end = %s
+                  AND extraction_version IN (%s, %s)
+                  AND concept IN ('revenue', 'cash_and_equivalents', 'total_current_assets',
+                                  'total_assets', 'accounts_payable',
+                                  'total_current_liabilities', 'total_liabilities',
+                                  'common_stock', 'total_equity',
+                                  'total_liabilities_and_equity')
+                ORDER BY statement, concept;
+                """,
+                (company_id, date(2023, 12, 30), BS_EXTRACTION_VERSION, IS_EXTRACTION_VERSION),
+            )
+            superseded_at = [row[0] for row in cur.fetchall()]
+
+        assert len(amendment_published_at) == 10
+        assert amendment_published_at == [expected_published_at] * 10
+        assert superseded_at == [expected_published_at] * 10

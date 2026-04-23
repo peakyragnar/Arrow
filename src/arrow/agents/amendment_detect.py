@@ -627,6 +627,29 @@ def _single_fmp_fact(
 # ---------------------------------------------------------------------------
 
 
+def _xbrl_published_at(candidate: SupersessionCandidate) -> datetime:
+    """Return the public timestamp for the XBRL fact in UTC."""
+    raw = (candidate.xbrl_filed or "").strip()
+    if raw:
+        try:
+            if raw.endswith("Z"):
+                parsed = datetime.fromisoformat(raw[:-1] + "+00:00")
+            elif "T" in raw or " " in raw:
+                parsed = datetime.fromisoformat(raw)
+            else:
+                parsed = datetime.combine(date.fromisoformat(raw), datetime.min.time())
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.astimezone(timezone.utc)
+        except ValueError:
+            pass
+
+    fallback = candidate.fmp_published_at
+    if fallback.tzinfo is None:
+        fallback = fallback.replace(tzinfo=timezone.utc)
+    return fallback.astimezone(timezone.utc)
+
+
 def _apply_supersession(
     conn: psycopg.Connection,
     candidate: SupersessionCandidate,
@@ -637,7 +660,7 @@ def _apply_supersession(
 ) -> int:
     """Insert the XBRL-amendment row; mark the FMP row superseded. Return new row id."""
     amendment_version = _STATEMENT_TO_AMENDMENT_VERSION[candidate.statement]
-    now_utc = datetime.now(timezone.utc)
+    published_at = _xbrl_published_at(candidate)
     reason = (
         f"XBRL fact (concept {candidate.xbrl_tag}) from accn {candidate.xbrl_accn} "
         f"form {candidate.xbrl_form} filed {candidate.xbrl_filed} reports "
@@ -668,7 +691,7 @@ def _apply_supersession(
             SET superseded_at = %s
             WHERE id = %s AND superseded_at IS NULL;
             """,
-            (now_utc, candidate.fmp_fact_id),
+            (published_at, candidate.fmp_fact_id),
         )
 
         # Insert the XBRL-amendment row.
@@ -699,7 +722,7 @@ def _apply_supersession(
                 candidate.fiscal_year, candidate.fiscal_quarter, fiscal_period_label,
                 candidate.period_end, candidate.period_type,
                 cy, cq, cy_label,
-                now_utc, xbrl_raw_response_id, amendment_version,
+                published_at, xbrl_raw_response_id, amendment_version,
                 ingest_run_id,
                 candidate.fmp_fact_id, reason,
             ),
