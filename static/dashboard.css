@@ -15,6 +15,10 @@
 
 * { box-sizing: border-box; }
 
+html, body {
+    height: 100%;
+}
+
 body {
     background: var(--bg);
     color: var(--text);
@@ -22,6 +26,12 @@ body {
     font-size: 12.5px;
     margin: 0;
     padding: 0;
+    /* Viewport-anchored layout so the table area scrolls internally in
+       BOTH axes. Without this, horizontal scroll is only reachable at
+       the bottom of the page, forcing scroll-down-then-scroll-right. */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .topbar {
@@ -31,6 +41,7 @@ body {
     padding: 10px 18px;
     border-bottom: 1px solid var(--border);
     background: var(--bg-alt);
+    flex-shrink: 0;
 }
 
 .brand {
@@ -69,8 +80,11 @@ body {
 .flag-accepted   { color: var(--text-dim); }
 
 main {
-    padding: 16px 18px 40px;
-    overflow-x: auto;
+    flex: 1;
+    min-height: 0;          /* required for flex child to actually scroll */
+    padding: 16px 18px;
+    overflow: auto;         /* BOTH axes scroll inside <main> */
+    scrollbar-gutter: stable;
 }
 
 table.dashboard {
@@ -203,6 +217,8 @@ footer.bottom {
     border-top: 1px solid var(--border);
     color: var(--text-dim);
     font-size: 11px;
+    flex-shrink: 0;
+    background: var(--bg-alt);
 }
 footer.bottom a { color: var(--accent); text-decoration: none; }
 footer.bottom a:hover { text-decoration: underline; }

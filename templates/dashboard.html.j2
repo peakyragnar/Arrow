@@ -75,8 +75,38 @@
   &middot;
   <a href="/health">health</a>
   &middot;
-  <span class="audit-note">Hover any cell for metric · period · period_end date</span>
+  <span class="audit-note">Hover cell → period details · ← / → arrows scroll horizontally (Shift+arrow = faster)</span>
 </footer>
+
+<script>
+  // Keyboard navigation: arrow keys scroll the table horizontally and
+  // vertically so you don't need to reach for the scrollbar. Shift
+  // multiplies the step. Esc focuses the table (useful after clicking
+  // the ticker dropdown).
+  (function() {
+    const m = document.querySelector('main');
+    if (!m) return;
+    const STEP_X = 120;
+    const STEP_Y = 60;
+    document.addEventListener('keydown', function(e) {
+      // Ignore when focus is in a form control (dropdown, etc.)
+      const t = e.target;
+      if (t && (t.tagName === 'SELECT' || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+      const mult = e.shiftKey ? 3 : 1;
+      let handled = true;
+      switch (e.key) {
+        case 'ArrowLeft':  m.scrollLeft -= STEP_X * mult; break;
+        case 'ArrowRight': m.scrollLeft += STEP_X * mult; break;
+        case 'ArrowUp':    m.scrollTop  -= STEP_Y * mult; break;
+        case 'ArrowDown':  m.scrollTop  += STEP_Y * mult; break;
+        case 'Home':       m.scrollLeft = 0; break;
+        case 'End':        m.scrollLeft = m.scrollWidth; break;
+        default: handled = false;
+      }
+      if (handled) e.preventDefault();
+    });
+  })();
+</script>
 
 </body>
 </html>
