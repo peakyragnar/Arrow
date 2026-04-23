@@ -370,10 +370,10 @@ Stated explicitly so future-us doesn't drift:
 
 - `artifacts` are source truth — never regenerated, only superseded.
 - `financial_facts` are regeneratable from artifacts + raw_responses — if extraction logic changes, bump `extraction_version` and re-derive; preserve prior row with `superseded_at`.
-- Chunks (when reintroduced) are regeneratable from artifacts — if chunking strategy changes, truncate and re-derive. Cheap under FTS-only.
-- If embeddings are ever added: they are regeneratable from chunks. Chunks do not depend on embeddings.
+- `artifact_sections` and `artifact_section_chunks` are regeneratable from artifacts — if extraction or chunking strategy changes, truncate and re-derive. Cheap under FTS-only.
+- If embeddings are ever added: they are regeneratable from section chunks. Chunks do not depend on embeddings.
 
-Direction of dependency: `raw_responses → artifacts → chunks → (optional) embeddings`; `raw_responses/artifacts → facts`. Never the reverse.
+Direction of dependency: `raw_responses → artifacts → artifact_sections → artifact_section_chunks → (optional) embeddings`; `raw_responses/artifacts → facts`. Never the reverse.
 
 ## Training-Ready By Design
 
@@ -445,9 +445,11 @@ Status legend:
 |---|---|---|
 | `ingest_runs` | built | migration 002 |
 | `raw_responses` | built | migration 003 |
-| `artifacts` | built | migration 004 |
+| `artifacts` | built | migration 004; SEC filing identity fields extended in migration 014 |
 | `companies` | built | migration 007 |
 | `financial_facts` | built | migration 008 |
+| `artifact_sections` | built | migration 014; canonical extracted filing sections (`10-K`, `10-Q`) |
+| `artifact_section_chunks` | built | migration 014; standardized retrieval chunks derived from `artifact_sections` |
 | `artifact_chunks` | withdrawn | migration 005 added it; migration 006 dropped it. Re-add when chunking has real documents to operate on. ADR-0008 captures the prior design. |
 | `prices_daily` | deferred | — |
 | `prices_intraday` | deferred | reserved for event-reaction workflows |
@@ -503,6 +505,7 @@ Stores:
 - source
 - source document id
 - artifact type
+- SEC filing identity where relevant: `company_id`, `fiscal_period_key`, `form_family`, `cik`, `accession_number`, `raw_primary_doc_path`
 - title
 - date
 - `published_at`
@@ -523,8 +526,46 @@ Research-corpus rows (industry primers, product explainers, macro primers) carry
 
 Rationale: domain context rots. Analyst agent must be able to down-weight stale primers.
 
+### `artifact_sections`
+Canonical extracted narrative units for SEC qualitative retrieval.
+
+Stores:
+- parent `artifact_id`
+- `company_id`
+- `fiscal_period_key`
+- `form_family`
+- `section_key`
+- section title / part / item labels
+- full extracted section `text`
+- extraction offsets
+- `extractor_version`
+- `confidence`
+- `extraction_method`
+
+Rules:
+- amendments are additive — original filing sections stay intact
+- section composition key is `(company_id, fiscal_period_key, form_family, section_key)`
+- fallback `unparsed_body` keeps the retrieval contract uniform when a filing cannot be sectioned cleanly
+
+### `artifact_section_chunks`
+Standardized retrieval chunks derived from `artifact_sections`.
+
+Stores:
+- parent `section_id`
+- `chunk_ordinal`
+- faithful `text`
+- normalized `search_text`
+- `heading_path`
+- offsets
+- `chunker_version`
+
+Use:
+- chunk-level FTS
+- passage ranking
+- citation-ready model context packets
+
 ### `artifact_chunks` *(withdrawn from v1)*
-Built in migration 005, dropped in 006 before any chunking happened. Re-design the table when chunking is reintroduced against actual ingested documents (filings, transcripts). The prior design — `chunk_type` enum, `text` + `search_text` + generated `tsv`, GIN index, fiscal/calendar denormalization, `chunker_version` — is preserved in [ADR-0008](../decisions/0008-chunks-tsvector-generated-from-search-text.md) and remains a reasonable starting point when the time comes.
+Built in migration 005, dropped in 006 before any chunking happened. Superseded by the section-first `artifact_sections` / `artifact_section_chunks` design that landed in migration 014 for SEC filings. ADR-0008 remains useful background for generated `tsvector` design.
 
 ### `financial_facts`
 Canonical long/skinny financial store.
@@ -898,8 +939,9 @@ Fresh filing fast path: SEC direct ingest for newly dropped 10-Q / 10-K / materi
 
 Output:
 - `artifacts`
+- `artifact_sections`
+- `artifact_section_chunks`
 - `press_release` artifacts from 8-K exhibits where present
-- chunks (table reintroduced when chunking is real — see v1 Tables status)
 - filing-derived `company_events`
 
 Preserve:
@@ -1140,7 +1182,7 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 4. ✅ define macro-series model and mapping rules clearly (this doc, § Macro)
 5. ✅ define training-trace requirements clearly (this doc, § qa_log + § Training-Ready By Design)
 6. ✅ implement `raw_responses` + `ingest_runs` (migrations 002, 003)
-7. ✅ implement `artifacts` (migration 004, with double-hash). `artifact_chunks` was added in 005 and withdrawn in 006 — re-list as a future step below.
+7. ✅ implement `artifacts` (migration 004, with double-hash). SEC qualitative filing identity extensions landed in migration 014.
 8. ⏳ implement FMP ingest for historical filings and transcripts
 9. ✅ implement `financial_facts` schema with fiscal, calendar, and PIT fields (migration 008). Populating depends on step 8.
 9.5. ✅ implement FMP ↔ SEC/XBRL audit rail (migrations 010 + 011, built 2026-04-21/22). Preserved for separate audit/reconciliation passes. No longer part of default baseline FMP backfill. Divergences write to `data_quality_flags` when audit is run; amendment-detect remains preserved as later audit functionality rather than default ingest behavior.
@@ -1150,13 +1192,13 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 13. ⬜ implement `company_events`
 14. ⬜ implement analyst retrieval tools (PIT-aware)
 15. ⬜ implement `qa_log` as part of normal analyst flow (with consent flags)
-16. ⬜ reintroduce chunking table + chunker (driven by step 8 producing real text to chunk)
+16. ✅ implement SEC qualitative section + chunk layer (`artifact_sections`, `artifact_section_chunks`) for filing text in migration 014. Transcript-specific chunking remains future work.
 17. ⬜ add section-over-time comparison support
 18. ⬜ add `signals` + `alerts`
 19. 🚧 add SEC fast-path ingest for newly dropped filings (recent submissions + raw filing artifacts; 8-K exhibit/press-release support started)
 20. ⬜ add Massive-backed options ingest later
 21. ⬜ migrate to cloud when durability/reliability justify it
-22. ⬜ metrics platform + analyst surfaces (see `docs/architecture/metrics_platform.md`, `docs/architecture/dashboard.md`). Sub-phases: Phase 0 formulas.md spec tweaks (done) → Phase 1 mapper audit + FMP `historical-employee-count` ingest + migration 014 → Phase 2 10-year history backfill for existing tickers → Phase 3 view stack (`v_ff_current`, `v_company_period_wide`, `v_rd_*`, `v_ttm_*`, `v_metrics_*`, `v_metric_changes`, `v_dashboard_panel`) → Phase 4 dashboard UI → Phase 5 screener CLI.
+22. ⬜ metrics platform + analyst surfaces (see `docs/architecture/metrics_platform.md`, `docs/architecture/dashboard.md`). Sub-phases: Phase 0 formulas.md spec tweaks (done) → Phase 1 mapper audit + FMP `historical-employee-count` ingest + next metrics migration → Phase 2 10-year history backfill for existing tickers → Phase 3 view stack (`v_ff_current`, `v_company_period_wide`, `v_rd_*`, `v_ttm_*`, `v_metrics_*`, `v_metric_changes`, `v_dashboard_panel`) → Phase 4 dashboard UI → Phase 5 screener CLI.
 
 ✅ also: `companies` schema (migration 007) — implicit prerequisite to step 9, was not in the original numbered list but has to land before any fact references a company.
 

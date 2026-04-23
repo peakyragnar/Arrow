@@ -62,7 +62,20 @@ def test_ingest_recent_10q_writes_raw_and_artifact() -> None:
             ]
         }
     }
-    ten_q_html = b"<html><body>NVDA 10-Q</body></html>"
+    ten_q_html = b"""
+    <html><body>
+      <div>TABLE OF CONTENTS</div>
+      <div>Item 2. Management's Discussion and Analysis ........ 11</div>
+      <div>Part I</div>
+      <h2>Item 2. Management's Discussion and Analysis of Financial Condition and Results of Operations</h2>
+      <p>Revenue accelerated materially in the quarter.</p>
+      <h2>Item 3. Quantitative and Qualitative Disclosures About Market Risk</h2>
+      <p>Market risk disclosure text.</p>
+      <div>Part II</div>
+      <h2>Item 1A. Risk Factors</h2>
+      <p>Risk factor disclosure text.</p>
+    </body></html>
+    """
 
     def _fake_get(self, url: str, params=None) -> Response:  # noqa: ARG001
         if "submissions/CIK0001045810.json" in url:
@@ -100,13 +113,14 @@ def test_ingest_recent_10q_writes_raw_and_artifact() -> None:
             assert cur.fetchone()[0] == 3
             cur.execute(
                 """
-                SELECT artifact_type, source_document_id, ticker,
+                SELECT artifact_type, source_document_id, ticker, company_id,
+                       form_family, fiscal_period_key, cik, accession_number,
+                       raw_primary_doc_path, effective_at = published_at,
                        fiscal_year, fiscal_quarter, fiscal_period_label,
                        period_end, period_type,
                        calendar_year, calendar_quarter, calendar_period_label,
-                       artifact_metadata->>'accession_number',
                        artifact_metadata->>'form_type',
-                       artifact_metadata->>'filer_cik'
+                       artifact_metadata->>'primary_document'
                 FROM artifacts;
                 """
             )
@@ -115,6 +129,13 @@ def test_ingest_recent_10q_writes_raw_and_artifact() -> None:
                 "10q",
                 "0001045810-26-000111",
                 "NVDA",
+                1,
+                "10-Q",
+                "FY2026 Q3",
+                "0001045810",
+                "0001045810-26-000111",
+                "data/raw/sec/filings/0001045810/0001045810-26-000111/nvda-20251026x10q.htm",
+                True,
                 2026,
                 3,
                 "FY2026 Q3",
@@ -123,10 +144,23 @@ def test_ingest_recent_10q_writes_raw_and_artifact() -> None:
                 2025,
                 4,
                 "CY2025 Q4",
-                "0001045810-26-000111",
                 "10-Q",
-                "0001045810",
+                "nvda-20251026x10q.htm",
             )
+            cur.execute(
+                """
+                SELECT section_key, extraction_method
+                FROM artifact_sections
+                ORDER BY section_key;
+                """
+            )
+            assert cur.fetchall() == [
+                ("part1_item2_mda", "deterministic"),
+                ("part1_item3_market_risk", "deterministic"),
+                ("part2_item1a_risk_factors", "deterministic"),
+            ]
+            cur.execute("SELECT count(*) FROM artifact_section_chunks;")
+            assert cur.fetchone()[0] >= 3
 
 
 def test_ingest_recent_8k_writes_primary_and_press_release_and_dedupes() -> None:
@@ -314,8 +348,124 @@ def test_ingest_historical_shard_fetches_full_package_files() -> None:
             assert cur.fetchone()[0] == 8  # index.json + 7 package files
             cur.execute(
                 """
-                SELECT artifact_type, source_document_id, fiscal_year, fiscal_quarter
+                SELECT artifact_type, source_document_id, fiscal_year, fiscal_quarter, form_family
                 FROM artifacts;
                 """
             )
-            assert cur.fetchone() == ("10k", "0001045810-18-000001", 2018, None)
+            assert cur.fetchone() == ("10k", "0001045810-18-000001", 2018, None, "10-K")
+
+
+def test_ingest_amendment_links_to_base_filing_without_superseding_sections() -> None:
+    submissions = {
+        "filings": {
+            "recent": {
+                "accessionNumber": ["0001045810-26-000111", "0001045810-26-000222"],
+                "form": ["10-Q", "10-Q/A"],
+                "filingDate": ["2025-11-19", "2025-12-01"],
+                "reportDate": ["2025-10-26", "2025-10-26"],
+                "acceptanceDateTime": ["20251119120000", "20251201120000"],
+                "primaryDocument": ["nvda-20251026x10q.htm", "nvda-20251026x10qa.htm"],
+                "primaryDocDescription": ["Form 10-Q", "Form 10-Q/A"],
+                "items": ["", ""],
+                "isXBRL": [1, 1],
+                "isInlineXBRL": [1, 1],
+            }
+        }
+    }
+    index_payloads = {
+        "0001045810-26-000111": {
+            "directory": {
+                "item": [
+                    {"name": "nvda-20251026x10q.htm", "type": "10-Q", "description": "Form 10-Q"}
+                ]
+            }
+        },
+        "0001045810-26-000222": {
+            "directory": {
+                "item": [
+                    {"name": "nvda-20251026x10qa.htm", "type": "10-Q/A", "description": "Form 10-Q/A"}
+                ]
+            }
+        },
+    }
+    documents = {
+        "nvda-20251026x10q.htm": b"""
+        <html><body>
+          <div>Part I</div>
+          <h2>Item 2. Management's Discussion and Analysis of Financial Condition and Results of Operations</h2>
+          <p>Base MD&A text.</p>
+          <div>Part II</div>
+          <h2>Item 1A. Risk Factors</h2>
+          <p>Base risk text.</p>
+        </body></html>
+        """,
+        "nvda-20251026x10qa.htm": b"""
+        <html><body>
+          <div>Part I</div>
+          <h2>Item 2. Management's Discussion and Analysis of Financial Condition and Results of Operations</h2>
+          <p>Amended MD&A text.</p>
+        </body></html>
+        """,
+    }
+
+    def _fake_get(self, url: str, params=None) -> Response:  # noqa: ARG001
+        if "submissions/CIK0001045810.json" in url:
+            body = json.dumps(submissions).encode()
+            content_type = "application/json"
+        elif url.endswith("/index.json"):
+            compact = url.split("/")[-2]
+            accession = (
+                f"{compact[:10]}-{compact[10:12]}-{compact[12:]}"
+                if "-" not in compact
+                else compact
+            )
+            body = json.dumps(index_payloads[accession]).encode()
+            content_type = "application/json"
+        else:
+            filename = url.rsplit("/", 1)[-1]
+            if filename not in documents:
+                raise AssertionError(f"unexpected URL: {url}")
+            body = documents[filename]
+            content_type = "text/html"
+        return Response(
+            status=200,
+            body=body,
+            content_type=content_type,
+            headers={"content-type": content_type},
+            url=url,
+        )
+
+    with get_conn() as conn:
+        _reset(conn)
+        _seed_nvda(conn)
+        with patch("arrow.ingest.common.http.HttpClient.get", new=_fake_get):
+            counts = ingest_recent_sec_filings(conn, ["NVDA"], forms=("10-Q", "10-Q/A"), limit_per_ticker=10)
+
+        assert counts["artifacts_written"] == 2
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT accession_number, amends_artifact_id, supersedes
+                FROM artifacts
+                ORDER BY published_at;
+                """
+            )
+            rows = cur.fetchall()
+            assert rows[0] == ("0001045810-26-000111", None, None)
+            assert rows[1][0] == "0001045810-26-000222"
+            assert rows[1][1] is not None
+            assert rows[1][2] is None
+
+            cur.execute(
+                """
+                SELECT a.accession_number, s.section_key, s.text
+                FROM artifact_sections s
+                JOIN artifacts a ON a.id = s.artifact_id
+                WHERE s.section_key = 'part1_item2_mda'
+                ORDER BY a.published_at;
+                """
+            )
+            assert cur.fetchall() == [
+                ("0001045810-26-000111", "part1_item2_mda", "Item 2. Management's Discussion and Analysis of Financial Condition and Results of Operations\n\nBase MD&A text."),
+                ("0001045810-26-000222", "part1_item2_mda", "Item 2. Management's Discussion and Analysis of Financial Condition and Results of Operations\n\nAmended MD&A text."),
+            ]

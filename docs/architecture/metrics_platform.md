@@ -228,7 +228,7 @@ No code outside the view stack needs to change for most metric additions.
 ## Status
 
 - Phase 0 — formula spec tweaks (15% fallback, R&D partial-history rule, metric 18 source): **done** in this commit.
-- Phase 1 — mapper audit + employee ingest endpoint + migration 014: **next**.
+- Phase 1 — mapper audit + employee ingest endpoint + next metrics migration: **next**.
 - Phase 2 — 10-year history backfill for existing tickers: after Phase 1.
 - Phase 3 — view stack (this doc's subject): after Phase 2.
 - Phase 4 — dashboard (see `dashboard.md`): after Phase 3.

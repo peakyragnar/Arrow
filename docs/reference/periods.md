@@ -21,7 +21,7 @@ Reason: filings, transcripts, guidance, and management commentary are expressed 
 
 ## 2. Canonical Fields
 
-All fiscal-period-bearing tables (`financial_facts`, `artifacts` where period-relevant, `company_events`, and any chunking table when reintroduced) use these column names with these types.
+All fiscal-period-bearing tables (`financial_facts`, `artifacts` where period-relevant, `company_events`, `artifact_sections`, `artifact_section_chunks`, and any future chunking table) use these column names with these types.
 
 ### 2.1 Fiscal truth
 
@@ -32,6 +32,22 @@ All fiscal-period-bearing tables (`financial_facts`, `artifacts` where period-re
 | `fiscal_period_label` | `text` | No | See § 9 | `FY2025 Q4` |
 | `period_end` | `date` | No | Last day of the fiscal period | `2025-01-26` |
 | `period_type` | `text` | No | `quarter` or `annual` | `quarter` |
+
+### 2.1A Filing-period identity
+
+The SEC qualitative layer also stores:
+
+| Column | Type | Nullable | Format / constraint | Example |
+|---|---|---|---|---|
+| `fiscal_period_key` | `text` | Yes | Filing join key; for current filing artifacts/sections this equals `fiscal_period_label` | `FY2025 Q4` |
+
+Use:
+- join base and amendment filing sections for the same company-period narrative
+- avoid recomputing period identity inside retrieval code
+
+Rule:
+- for current filing artifacts, `fiscal_period_key = fiscal_period_label`
+- it is stored explicitly because the qualitative layer composes filings/amendments on `(company_id, fiscal_period_key, form_family, section_key)`
 
 **Invariant:** `period_type = 'quarter' ↔ fiscal_quarter IS NOT NULL`.
 **Invariant:** `fiscal_period_label` is derived deterministically from `fiscal_year`, `fiscal_quarter`, `period_type` — see § 9.

@@ -11,7 +11,7 @@ Date: 2026-04-19
 Hybrid shape:
 
 1. **Common columns** for things most or all artifact types carry — `artifact_type`, `source`, `source_document_id`, `ticker`, `title`, `url`, `content_type`, `language`, `published_at`, `effective_at`, `raw_hash`, `canonical_hash`, period fields (fiscal + calendar + `period_end`), lineage (`supersedes`, `superseded_at`), research freshness (`authored_by`, `last_reviewed_at`, `asserted_valid_through`).
-2. **Type-specific fields in `artifact_metadata jsonb`** (`NOT NULL DEFAULT '{}'::jsonb`) — `accession_number` for filings, `speakers[]` for transcripts, `publisher` for news, etc.
+2. **Type-specific fields in `artifact_metadata jsonb`** (`NOT NULL DEFAULT '{}'::jsonb`) — e.g. `primary_document` / `form_type` for filings, `speakers[]` for transcripts, `publisher` for news. Filing identity fields later promoted to columns in migration 014.
 3. **A metadata key conventions doc** (`docs/reference/artifact_metadata.md`) defines what keys are expected per artifact type. The conventions doc is the guardrail — every key in `artifact_metadata` is either listed there or being added in the same commit that introduces it.
 4. **Sidecar tables** (e.g. a dedicated `filings` table) are deferred and considered case-by-case. Introduce one only when a specific artifact type accumulates enough operational weight — indexable fields, frequent joins, specific CHECK constraints — that a sidecar justifies its coordination cost.
 
@@ -20,7 +20,7 @@ Hybrid shape:
 **Positive**
 - Common analyst queries (`WHERE ticker = X AND artifact_type = '10k' ORDER BY published_at DESC`) hit indexed columns directly — no JSON-path traversal
 - New artifact types integrate without schema changes to the base table; only the type-list CHECK extends + the conventions doc updates
-- `artifact_metadata` stays queryable via JSONB operators when needed (e.g. `WHERE artifact_metadata->>'accession_number' = X`)
+- `artifact_metadata` stays queryable via JSONB operators when needed (e.g. `WHERE artifact_metadata->>'primary_document' = X`)
 - Clear decision rule for "column vs metadata": ≥ 3 artifact types share it → promote to column; otherwise metadata
 
 **Negative**

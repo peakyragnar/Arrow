@@ -34,8 +34,11 @@ class Artifact:
     raw_hash: bytes
     canonical_hash: bytes
 
+    company_id: int | None
     ticker: str | None
 
+    fiscal_period_key: str | None
+    form_family: str | None
     fiscal_year: int | None
     fiscal_quarter: int | None
     fiscal_period_label: str | None
@@ -55,7 +58,11 @@ class Artifact:
     effective_at: datetime | None
     ingested_at: datetime
 
+    cik: str | None
+    accession_number: str | None
+    raw_primary_doc_path: str | None
     supersedes: int | None
+    amends_artifact_id: int | None
     superseded_at: datetime | None
 
     authored_by: str | None

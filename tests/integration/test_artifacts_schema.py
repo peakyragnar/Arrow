@@ -226,6 +226,57 @@ def test_write_artifact_uses_replacing_publication_time_for_supersession() -> No
         ]
 
 
+def test_write_artifact_reingesting_same_sec_accession_is_noop() -> None:
+    with get_conn() as conn:
+        _reset(conn)
+
+        first_id, created = write_artifact(
+            conn,
+            ingest_run_id=None,
+            artifact_type="10q",
+            source="sec",
+            source_document_id="0001045810-24-000001",
+            body=b"first body",
+            company_id=None,
+            ticker="NVDA",
+            fiscal_period_key="FY2024 Q3",
+            form_family="10-Q",
+            content_type="text/html",
+            published_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            effective_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            cik="0001045810",
+            accession_number="0001045810-24-000001",
+            raw_primary_doc_path="data/raw/sec/filings/0001045810/0001045810-24-000001/a.htm",
+        )
+        assert created is True
+
+        second_id, created = write_artifact(
+            conn,
+            ingest_run_id=None,
+            artifact_type="10q",
+            source="sec",
+            source_document_id="0001045810-24-000001",
+            body=b"second body with changed formatting",
+            company_id=None,
+            ticker="NVDA",
+            fiscal_period_key="FY2024 Q3",
+            form_family="10-Q",
+            content_type="text/html",
+            published_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            effective_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            cik="0001045810",
+            accession_number="0001045810-24-000001",
+            raw_primary_doc_path="data/raw/sec/filings/0001045810/0001045810-24-000001/a.htm",
+        )
+
+        assert second_id == first_id
+        assert created is False
+
+        with conn.cursor() as cur:
+            cur.execute("SELECT count(*) FROM artifacts;")
+            assert cur.fetchone()[0] == 1
+
+
 def test_supersedes_fk_blocks_delete_of_referenced_row() -> None:
     """ON DELETE RESTRICT: deleting a row that is referenced by supersedes fails."""
     with get_conn() as conn:
