@@ -9,6 +9,13 @@ Build the SEC qualitative layer so Arrow can:
 - handle amendments correctly without overwriting source truth
 - stay consistent with Arrow's search-first, PIT-aware, training-ready architecture
 
+Operational default retention:
+
+- SEC qualitative full layer: last 5 years of `10-K` / `10-Q`
+- stored raw files: `index.json` + primary filing document only
+- do not default-retain package sidecars (`EX-101`, `.xsd`, `.zip`, images, css/js, etc.)
+- FMP remains the 10-year numeric history source of truth
+
 ## Core Structure
 
 The qualitative hierarchy is:

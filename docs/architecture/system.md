@@ -82,10 +82,10 @@ This one command runs the normal company flow:
 - seed company from SEC bootstrap
 - backfill baseline FMP financial facts
 - ingest FMP employee counts
-- backfill SEC filing/document artifacts
+- backfill SEC `10-K` / `10-Q` qualitative filings (default 5-year window, `index.json` + primary filing doc only)
 
 - FMP historical financial ingest -> `financial_facts`
-- SEC filing/document ingest -> `artifacts`
+- SEC qualitative filing ingest -> `artifacts` + `artifact_sections` + `artifact_section_chunks`
 - FMP transcript ingest -> `artifacts`
 - later: news/events/retrieval/synthesis
 
@@ -111,7 +111,7 @@ Important:
 - `scripts/ingest_company.py` — default company run; normal flow end-to-end
 - `scripts/backfill_fmp.py` — FMP-only financial backfill
 - `scripts/ingest_employees.py` — employee metric refresh only
-- `scripts/fetch_sec_filings.py` — SEC filing/document backfill only
+- `scripts/fetch_sec_filings.py` — SEC `10-K` / `10-Q` qualitative backfill only (default 5-year window, primary docs only)
 - `scripts/reconcile_fmp_vs_xbrl.py` — audit side rail only
 
 ## Foundational Schema Rule: Two Clocks Always

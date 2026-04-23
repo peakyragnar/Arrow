@@ -1,4 +1,4 @@
-"""SEC filing/document ingest — historical backfill + recent filings, raw artifacts, no fact loading."""
+"""SEC filing/document ingest — qualitative filing backfill, primary docs only."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ from typing import Any, Iterable
 
 import psycopg
 
-from arrow.agents.fmp_ingest import DEFAULT_SINCE_DATE
 from arrow.ingest.common.artifacts import write_artifact
 from arrow.ingest.common.cache import RAW_DIR, cache_path
 from arrow.ingest.common.http import HttpClient
@@ -25,7 +24,18 @@ from arrow.ingest.sec.qualitative import (
 from arrow.ingest.sec.bootstrap import SEC_RATE_LIMIT, SEC_USER_AGENT, SUBMISSIONS_URL_TEMPLATE
 from arrow.normalize.periods.derive import derive_calendar_period, derive_fiscal_period
 
-DEFAULT_FORMS = ("10-K", "10-K/A", "10-Q", "10-Q/A", "8-K", "8-K/A")
+DEFAULT_FORMS = ("10-K", "10-K/A", "10-Q", "10-Q/A")
+
+
+def _years_ago(today: date, years: int) -> date:
+    try:
+        return today.replace(year=today.year - years)
+    except ValueError:
+        # February 29 -> February 28 on non-leap years.
+        return today.replace(month=2, day=28, year=today.year - years)
+
+
+DEFAULT_QUAL_SINCE_DATE = _years_ago(date.today(), 5)
 
 
 @dataclass(frozen=True)
@@ -262,37 +272,11 @@ def _press_release_docs(index_payload: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
-def _is_xbrl_package_item(item: dict[str, Any]) -> bool:
-    name = str(item.get("name") or "")
-    item_type = str(item.get("type") or "").upper()
-    if item_type.startswith("EX-101"):
-        return True
-    if name in {"FilingSummary.xml", "MetaLinks.json"}:
-        return True
-    return False
-
-
-def _package_files(filing: RecentFiling, index_payload: dict[str, Any]) -> list[dict[str, Any]]:
+def _retained_files(filing: RecentFiling, index_payload: dict[str, Any]) -> list[dict[str, Any]]:
     items = index_payload.get("directory", {}).get("item", [])
-    out: list[dict[str, Any]] = []
-    press_release_names = {
-        str(item.get("name")) for item in _press_release_docs(index_payload) if item.get("name")
-    }
-    for item in items:
-        name = str(item.get("name") or "")
-        if not name:
-            continue
-        if name in {"index.html", "index.json", "index.xml"}:
-            continue
-        if name == filing.primary_document:
-            out.append(item)
-            continue
-        if name in press_release_names:
-            out.append(item)
-            continue
-        if _is_xbrl_package_item(item):
-            out.append(item)
-    return out
+    docs = {filing.primary_document}
+    docs.update(str(item.get("name")) for item in _press_release_docs(index_payload) if item.get("name"))
+    return [item for item in items if str(item.get("name") or "") in docs]
 
 
 def _filing_documents(
@@ -381,7 +365,7 @@ def ingest_sec_filings(
     tickers: list[str],
     *,
     forms: tuple[str, ...] = DEFAULT_FORMS,
-    since_date: date | None = DEFAULT_SINCE_DATE,
+    since_date: date | None = DEFAULT_QUAL_SINCE_DATE,
     until_date: date | None = None,
     limit_per_ticker: int | None = None,
     earnings_8k_only: bool = True,
@@ -402,6 +386,7 @@ def ingest_sec_filings(
         "earnings_8k_only": earnings_8k_only,
         "raw_responses": 0,
         "filings_seen": 0,
+        "documents_fetched": 0,
         "files_fetched": 0,
         "artifacts_written": 0,
         "artifacts_existing": 0,
@@ -503,7 +488,7 @@ def ingest_sec_filings(
                             filing, company=company, index_payload=index_payload
                         )
                     }
-                    for item in _package_files(filing, index_payload):
+                    for item in _retained_files(filing, index_payload):
                         filename = str(item.get("name"))
                         document_url = _filing_document_url(
                             company.cik, filing.accession_number, filename
@@ -586,6 +571,7 @@ def ingest_sec_filings(
                                         sections=extract_sections(form_family, normalized_body),
                                     )
                         counts["raw_responses"] += 1
+                        counts["documents_fetched"] += 1
                         counts["files_fetched"] += 1
                         if artifact_doc is None:
                             continue

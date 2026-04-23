@@ -9,7 +9,7 @@ Normal flow:
   1. seed company from SEC
   2. backfill baseline FMP financials
   3. ingest FMP employee counts
-  4. backfill SEC filing/document artifacts
+  4. backfill SEC `10-K` / `10-Q` qualitative filings (5-year window, primary docs only)
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from arrow.agents.fmp_employees import backfill_fmp_employees
 from arrow.agents.fmp_ingest import DEFAULT_SINCE_DATE, backfill_fmp_statements
 from arrow.db.connection import get_conn
 from arrow.ingest.sec.bootstrap import seed_companies
-from arrow.ingest.sec.filings import ingest_sec_filings
+from arrow.ingest.sec.filings import DEFAULT_QUAL_SINCE_DATE, ingest_sec_filings
 from arrow.normalize.financials.load import (
     BSVerificationFailed,
     CFVerificationFailed,
@@ -109,6 +109,8 @@ def main() -> int:
     if since_date is not None:
         fmp_kwargs["since_date"] = since_date
         sec_kwargs["since_date"] = since_date
+    else:
+        sec_kwargs["since_date"] = DEFAULT_QUAL_SINCE_DATE
     if until_date is not None:
         fmp_kwargs["until_date"] = until_date
         sec_kwargs["until_date"] = until_date
@@ -170,13 +172,13 @@ def main() -> int:
             "ingest_run_id": sec_counts["ingest_run_id"],
             "since_date": sec_counts["since_date"],
             "filings_seen": sec_counts["filings_seen"],
-            "package_files_fetched": sec_counts["files_fetched"],
+            "filing_docs_fetched": sec_counts["documents_fetched"],
             "raw_responses": sec_counts["raw_responses"],
             "artifacts_written": sec_counts["artifacts_written"],
             "artifacts_existing": sec_counts["artifacts_existing"],
         },
     )
-    print("Status: PASS — baseline facts + SEC documents stored.")
+    print("Status: PASS — baseline facts + SEC qualitative filings stored.")
     return 0
 
 
