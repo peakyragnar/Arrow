@@ -749,8 +749,8 @@ def load_fmp_cf_rows(
             # Soft-tie failures: one `data_quality_flags` row per failing
             # subtotal, tied to this period. Written after the facts so
             # the flag lives in the same transaction as the facts it
-            # annotates (re-ingest auto-closes dependent flags via
-            # migration 012's `superseded_by_reingest` resolution).
+            # annotates. Mainline re-ingest closes stale flags at the
+            # ticker-transaction boundary before new facts are written.
             for sf in soft_failures:
                 _write_cf_soft_tie_flag(
                     cur,
