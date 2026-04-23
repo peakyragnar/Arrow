@@ -22,7 +22,12 @@ from arrow.ingest.sec.qualitative import (
     replace_sections_and_chunks,
 )
 from arrow.ingest.sec.bootstrap import SEC_RATE_LIMIT, SEC_USER_AGENT, SUBMISSIONS_URL_TEMPLATE
-from arrow.normalize.periods.derive import derive_calendar_period, derive_fiscal_period
+from arrow.normalize.periods.derive import (
+    derive_calendar_period,
+    derive_fiscal_period,
+    max_fiscal_year_for_until_date,
+    min_fiscal_year_for_since_date,
+)
 
 DEFAULT_FORMS = ("10-K", "10-K/A", "10-Q", "10-Q/A", "8-K", "8-K/A")
 
@@ -341,6 +346,42 @@ def _fiscal_period_key(period_fields: dict[str, Any]) -> str | None:
     return period_fields.get("fiscal_period_label")
 
 
+def _is_in_qualitative_window(
+    filing: RecentFiling,
+    *,
+    form_family: str | None,
+    period_fields: dict[str, Any],
+    min_fiscal_year: int | None,
+    max_fiscal_year: int | None,
+    since_date: date | None,
+    until_date: date | None,
+) -> bool:
+    if form_family is None:
+        if since_date and filing.filing_date < since_date:
+            return False
+        if until_date and filing.filing_date > until_date:
+            return False
+        return True
+
+    fiscal_year = period_fields.get("fiscal_year")
+    if fiscal_year is None:
+        return False
+    if min_fiscal_year is not None and fiscal_year < min_fiscal_year:
+        return False
+    if max_fiscal_year is not None and fiscal_year > max_fiscal_year:
+        return False
+    return True
+
+
+def _artifact_has_sections(conn: psycopg.Connection, artifact_id: int) -> bool:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT EXISTS (SELECT 1 FROM artifact_sections WHERE artifact_id = %s);",
+            (artifact_id,),
+        )
+        return bool(cur.fetchone()[0])
+
+
 def _iter_submission_payloads(
     company: CompanyRow,
     http: HttpClient,
@@ -390,12 +431,27 @@ def ingest_sec_filings(
         "files_fetched": 0,
         "artifacts_written": 0,
         "artifacts_existing": 0,
+        "sections_written": 0,
         "artifacts_by_type": {},
     }
 
     try:
         for ticker in tickers:
             company = _get_company(conn, ticker)
+            min_fiscal_year = (
+                min_fiscal_year_for_since_date(since_date, company.fiscal_year_end_md)
+                if since_date is not None
+                else None
+            )
+            max_fiscal_year = (
+                max_fiscal_year_for_until_date(until_date, company.fiscal_year_end_md)
+                if until_date is not None
+                else None
+            )
+            if min_fiscal_year is not None:
+                counts.setdefault("min_fiscal_year_by_ticker", {})[company.ticker] = min_fiscal_year
+            if max_fiscal_year is not None:
+                counts.setdefault("max_fiscal_year_by_ticker", {})[company.ticker] = max_fiscal_year
             seen_accessions: set[str] = set()
             matched = 0
             for submissions_endpoint, submissions_resp, submissions_payload in _iter_submission_payloads(
@@ -428,9 +484,19 @@ def ingest_sec_filings(
                     if earnings_8k_only and filing.form_type.upper().startswith("8-K"):
                         if not _is_earnings_8k(filing.items):
                             continue
-                    if since_date and filing.filing_date < since_date:
-                        continue
-                    if until_date and filing.filing_date > until_date:
+                    period_fields = _period_fields(
+                        company, form_type=filing.form_type, report_date=filing.report_date
+                    )
+                    form_family = _form_family_for_form(filing.form_type)
+                    if not _is_in_qualitative_window(
+                        filing,
+                        form_family=form_family,
+                        period_fields=period_fields,
+                        min_fiscal_year=min_fiscal_year,
+                        max_fiscal_year=max_fiscal_year,
+                        since_date=since_date,
+                        until_date=until_date,
+                    ):
                         continue
                     if limit_per_ticker is not None and matched >= limit_per_ticker:
                         break
@@ -458,15 +524,11 @@ def ingest_sec_filings(
                         )
                     counts["raw_responses"] += 1
 
-                    period_fields = _period_fields(
-                        company, form_type=filing.form_type, report_date=filing.report_date
-                    )
                     published_at = filing.acceptance_datetime or datetime.combine(
                         filing.filing_date,
                         datetime.min.time(),
                         tzinfo=UTC,
                     )
-                    form_family = _form_family_for_form(filing.form_type)
                     fiscal_period_key = _fiscal_period_key(period_fields)
                     if form_family is not None and fiscal_period_key is None:
                         raise ValueError(
@@ -561,7 +623,12 @@ def ingest_sec_filings(
                                     artifact_metadata=artifact_doc.metadata,
                                     **period_fields,
                                 )
-                                if created and normalized_body is not None and form_family is not None:
+                                should_write_sections = (
+                                    normalized_body is not None
+                                    and form_family is not None
+                                    and (created or not _artifact_has_sections(conn, artifact_id))
+                                )
+                                if should_write_sections:
                                     replace_sections_and_chunks(
                                         conn,
                                         artifact_id=artifact_id,
@@ -570,6 +637,7 @@ def ingest_sec_filings(
                                         form_family=form_family,
                                         sections=extract_sections(form_family, normalized_body),
                                     )
+                                    counts["sections_written"] += 1
                         counts["raw_responses"] += 1
                         counts["documents_fetched"] += 1
                         counts["files_fetched"] += 1

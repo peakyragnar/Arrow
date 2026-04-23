@@ -161,6 +161,30 @@ def test_ingest_recent_10q_writes_raw_and_artifact() -> None:
             ]
             cur.execute("SELECT count(*) FROM artifact_section_chunks;")
             assert cur.fetchone()[0] >= 3
+            cur.execute("SELECT id FROM artifacts;")
+            artifact_id = cur.fetchone()[0]
+            cur.execute("DELETE FROM artifact_sections WHERE artifact_id = %s;", (artifact_id,))
+            conn.commit()
+
+        with patch("arrow.ingest.common.http.HttpClient.get", new=_fake_get):
+            second = ingest_recent_sec_filings(conn, ["NVDA"])
+
+        assert second["artifacts_written"] == 0
+        assert second["artifacts_existing"] == 1
+        assert second["sections_written"] == 1
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT section_key, extraction_method
+                FROM artifact_sections
+                ORDER BY section_key;
+                """
+            )
+            assert cur.fetchall() == [
+                ("part1_item2_mda", "deterministic"),
+                ("part1_item3_market_risk", "deterministic"),
+                ("part2_item1a_risk_factors", "deterministic"),
+            ]
 
 
 def test_ingest_recent_8k_writes_primary_and_press_release_and_dedupes() -> None:
@@ -246,6 +270,92 @@ def test_ingest_recent_8k_writes_primary_and_press_release_and_dedupes() -> None
                 "sec_exhibit",
             ),
         ]
+
+
+def test_sec_qualitative_window_includes_pre_since_quarters_to_complete_fiscal_year() -> None:
+    submissions = {
+        "filings": {
+            "recent": {
+                "accessionNumber": [
+                    "0001045810-20-000065",
+                    "0001045810-20-000147",
+                    "0001045810-20-000189",
+                    "0001045810-21-000010",
+                ],
+                "form": ["10-Q", "10-Q", "10-Q", "10-K"],
+                "filingDate": ["2020-05-21", "2020-08-19", "2020-11-18", "2021-02-26"],
+                "reportDate": ["2020-04-26", "2020-07-26", "2020-10-25", "2021-01-31"],
+                "primaryDocument": ["q1.htm", "q2.htm", "q3.htm", "k.htm"],
+                "primaryDocDescription": ["Form 10-Q", "Form 10-Q", "Form 10-Q", "Form 10-K"],
+                "items": ["", "", "", ""],
+                "isXBRL": [1, 1, 1, 1],
+                "isInlineXBRL": [1, 1, 1, 1],
+            }
+        }
+    }
+    index_payloads = {
+        "0001045810-20-000065": "q1.htm",
+        "0001045810-20-000147": "q2.htm",
+        "0001045810-20-000189": "q3.htm",
+        "0001045810-21-000010": "k.htm",
+    }
+    filing_html = b"""
+    <html><body>
+      <h2>Item 2. Management's Discussion and Analysis</h2>
+      <p>Quarterly operating discussion.</p>
+      <h2>Item 3. Quantitative and Qualitative Disclosures About Market Risk</h2>
+      <p>Market risk text.</p>
+    </body></html>
+    """
+
+    def _fake_get(self, url: str, params=None) -> Response:  # noqa: ARG001
+        if "submissions/CIK0001045810.json" in url:
+            body = json.dumps(submissions).encode()
+            content_type = "application/json"
+        elif url.endswith("/index.json"):
+            compact = url.split("/")[-2]
+            accession = f"{compact[:10]}-{compact[10:12]}-{compact[12:]}"
+            filename = index_payloads[accession]
+            body = json.dumps(
+                {"directory": {"item": [{"name": filename, "type": "10-Q", "description": "Filing"}]}}
+            ).encode()
+            content_type = "application/json"
+        elif url.endswith(".htm"):
+            body = filing_html
+            content_type = "text/html"
+        else:
+            raise AssertionError(f"unexpected URL: {url}")
+        return Response(
+            status=200,
+            body=body,
+            content_type=content_type,
+            headers={"content-type": content_type},
+            url=url,
+        )
+
+    with get_conn() as conn:
+        _reset(conn)
+        _seed_nvda(conn)
+        with patch("arrow.ingest.common.http.HttpClient.get", new=_fake_get):
+            counts = ingest_sec_filings(conn, ["NVDA"], since_date=date(2021, 1, 1))
+
+        assert counts["filings_seen"] == 4
+        assert counts["artifacts_by_type"] == {"10q": 3, "10k": 1}
+        assert counts["min_fiscal_year_by_ticker"] == {"NVDA": 2021}
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT artifact_type, fiscal_period_key
+                FROM artifacts
+                ORDER BY published_at;
+                """
+            )
+            assert cur.fetchall() == [
+                ("10q", "FY2021 Q1"),
+                ("10q", "FY2021 Q2"),
+                ("10q", "FY2021 Q3"),
+                ("10k", "FY2021"),
+            ]
 
 
 def test_ingest_historical_shard_fetches_full_package_files() -> None:

@@ -82,7 +82,9 @@ This one command runs the normal company flow:
 - seed company from SEC bootstrap
 - backfill baseline FMP financial facts
 - ingest FMP employee counts
-- backfill SEC `10-K` / `10-Q` qualitative filings (default 5-year window, `index.json` + primary filing doc only)
+- backfill SEC `10-K` / `10-Q` qualitative filings (default 5 fiscal years,
+  rounded to complete fiscal years from each company's `fiscal_year_end_md`;
+  `index.json` + primary filing doc only)
 
 - FMP historical financial ingest -> `financial_facts`
 - SEC qualitative filing ingest -> `artifacts` + `artifact_sections` + `artifact_section_chunks`

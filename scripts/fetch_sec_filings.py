@@ -4,6 +4,10 @@ Usage:
     uv run scripts/fetch_sec_filings.py NVDA [MSFT ...]
     uv run scripts/fetch_sec_filings.py --since 2019-01-01 NVDA
     uv run scripts/fetch_sec_filings.py --limit 3 NVDA
+
+For 10-K / 10-Q filings, the default calendar cutoff is rounded by fiscal
+year so the first included fiscal year is complete. Earnings 8-Ks stay on
+the calendar filing-date cutoff.
 """
 
 from __future__ import annotations
@@ -28,7 +32,7 @@ def main() -> int:
         if i + 1 >= len(args):
             print(
                 "Usage: fetch_sec_filings.py [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--limit N] TICKER [TICKER ...]\n"
-                "Default SEC window is the last 5 years of 10-K / 10-Q primary filings.",
+                "Default SEC window is 5 fiscal years of 10-K / 10-Q primary filings.",
                 file=sys.stderr,
             )
             return 2
@@ -60,7 +64,7 @@ def main() -> int:
         if i + 1 >= len(args):
             print(
                 "Usage: fetch_sec_filings.py [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--limit N] TICKER [TICKER ...]\n"
-                "Default SEC window is the last 5 years of 10-K / 10-Q primary filings.",
+                "Default SEC window is 5 fiscal years of 10-K / 10-Q primary filings.",
                 file=sys.stderr,
             )
             return 2
@@ -70,7 +74,7 @@ def main() -> int:
     if not args:
         print(
             "Usage: fetch_sec_filings.py [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--limit N] TICKER [TICKER ...]\n"
-            "Default SEC window is the last 5 years of 10-K / 10-Q primary filings.",
+            "Default SEC window is 5 fiscal years of 10-K / 10-Q primary filings.",
             file=sys.stderr,
         )
         return 2
@@ -88,12 +92,25 @@ def main() -> int:
     print(f"  ingest_run_id:          {counts['ingest_run_id']}")
     print(f"  since_date:             {counts['since_date']}")
     print(f"  until_date:             {counts['until_date']}")
+    if counts.get("min_fiscal_year_by_ticker"):
+        fy = ", ".join(
+            f"{ticker}=FY{year}"
+            for ticker, year in sorted(counts["min_fiscal_year_by_ticker"].items())
+        )
+        print(f"  10-K/Q window start:    {fy}")
+    if counts.get("max_fiscal_year_by_ticker"):
+        fy = ", ".join(
+            f"{ticker}=FY{year}"
+            for ticker, year in sorted(counts["max_fiscal_year_by_ticker"].items())
+        )
+        print(f"  10-K/Q window end:      {fy}")
     print(f"  earnings_8k_only:       {counts['earnings_8k_only']}")
     print(f"  raw_responses written:  {counts['raw_responses']}")
     print(f"  filings seen:           {counts['filings_seen']}")
     print(f"  filing docs fetched:    {counts['documents_fetched']}")
     print(f"  artifacts written:      {counts['artifacts_written']}")
     print(f"  artifacts existing:     {counts['artifacts_existing']}")
+    print(f"  sections written:       {counts['sections_written']}")
     for artifact_type, n in sorted(counts["artifacts_by_type"].items()):
         print(f"  {artifact_type}:                {n}")
     return 0

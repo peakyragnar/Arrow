@@ -11,7 +11,16 @@ Build the SEC qualitative layer so Arrow can:
 
 Operational default retention:
 
-- SEC qualitative full layer: last 5 years of `10-K` / `10-Q`
+- SEC qualitative full layer: last 5 fiscal years of `10-K` / `10-Q`, plus
+  any pre-window quarters needed to complete the first included fiscal year.
+  The boundary is computed from `companies.fiscal_year_end_md`; it is not a
+  naive filing-date cutoff. Example: if the calendar cutoff is January 1 and
+  a company's annual 10-K for that fiscal year is filed after the cutoff,
+  include that fiscal year's Q1-Q3 10-Qs even if those 10-Qs were filed before
+  January 1.
+- Earnings `8-K` retention is filing-date based over the same calendar window;
+  8-Ks are filing artifacts but are not sectionized into the 10-K/10-Q
+  qualitative section hierarchy.
 - stored raw files: `index.json` + primary filing document only
 - do not default-retain package sidecars (`EX-101`, `.xsd`, `.zip`, images, css/js, etc.)
 - FMP remains the 10-year numeric history source of truth

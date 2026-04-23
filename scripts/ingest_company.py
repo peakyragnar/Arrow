@@ -9,7 +9,8 @@ Normal flow:
   1. seed company from SEC
   2. backfill baseline FMP financials
   3. ingest FMP employee counts
-  4. backfill SEC `10-K` / `10-Q` qualitative filings (5-year window, primary docs only)
+  4. backfill SEC `10-K` / `10-Q` qualitative filings
+     (5 fiscal years, complete first FY, primary docs only)
 """
 
 from __future__ import annotations
@@ -171,11 +172,14 @@ def main() -> int:
         {
             "ingest_run_id": sec_counts["ingest_run_id"],
             "since_date": sec_counts["since_date"],
+            "min_fiscal_year_by_ticker": sec_counts.get("min_fiscal_year_by_ticker", {}),
+            "max_fiscal_year_by_ticker": sec_counts.get("max_fiscal_year_by_ticker", {}),
             "filings_seen": sec_counts["filings_seen"],
             "filing_docs_fetched": sec_counts["documents_fetched"],
             "raw_responses": sec_counts["raw_responses"],
             "artifacts_written": sec_counts["artifacts_written"],
             "artifacts_existing": sec_counts["artifacts_existing"],
+            "sections_written": sec_counts["sections_written"],
         },
     )
     print("Status: PASS — baseline facts + SEC qualitative filings stored.")
