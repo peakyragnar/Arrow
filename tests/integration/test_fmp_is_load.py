@@ -656,3 +656,169 @@ def test_bs_subtotal_drift_loads_and_writes_flag() -> None:
             status, run_counts = cur.fetchone()
             assert status == "succeeded"
             assert run_counts["bs_flags_written"] == 1
+
+
+def test_hard_failure_rolls_back_entire_ticker() -> None:
+    from arrow.agents.fmp_ingest import backfill_fmp_statements
+    from arrow.normalize.financials.load import CFVerificationFailed
+
+    def _cf_hard_failure_get(self, endpoint: str, **params) -> Response:  # noqa: ARG001
+        if endpoint == "income-statement":
+            rows = [_q4_row() if params.get("period") == "quarter" else _fy_row()]
+        elif endpoint == "balance-sheet-statement":
+            row = _bs_q4_row()
+            if params.get("period") == "annual":
+                row = dict(row)
+                row["period"] = "FY"
+            rows = [row]
+        elif endpoint == "cash-flow-statement":
+            row = dict(_cf_q4_row())
+            row["netChangeInCash"] += 20_000_000
+            if params.get("period") == "annual":
+                row["period"] = "FY"
+            rows = [row]
+        else:
+            raise AssertionError(f"unexpected endpoint: {endpoint}")
+        body = json.dumps(rows).encode()
+        return Response(
+            status=200,
+            body=body,
+            content_type="application/json",
+            headers={"content-type": "application/json"},
+            url="https://example/x",
+        )
+
+    with get_conn() as conn:
+        _reset(conn)
+        company_id = _seed_nvda(conn)
+
+        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_cf_hard_failure_get):
+            with pytest.raises(CFVerificationFailed):
+                backfill_fmp_statements(conn, ["NVDA"])
+
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT count(*) FROM financial_facts
+                WHERE company_id = %s;
+                """,
+                (company_id,),
+            )
+            assert cur.fetchone()[0] == 0
+
+            cur.execute("SELECT count(*) FROM data_quality_flags WHERE company_id = %s;", (company_id,))
+            assert cur.fetchone()[0] == 0
+
+            cur.execute(
+                "SELECT status, error_message FROM ingest_runs ORDER BY id DESC LIMIT 1;"
+            )
+            status, error_message = cur.fetchone()
+            assert status == "failed"
+            assert "CF verification failed" in error_message
+
+
+def test_reingest_auto_resolves_stale_soft_flags() -> None:
+    from arrow.agents.fmp_ingest import backfill_fmp_statements
+
+    def _bad_is_get(self, endpoint: str, **params) -> Response:  # noqa: ARG001
+        if endpoint == "income-statement":
+            row = dict(_q4_row() if params.get("period") == "quarter" else _fy_row())
+            row["grossProfit"] -= 5_000_000_000
+            rows = [row]
+        elif endpoint == "balance-sheet-statement":
+            row = _bs_q4_row()
+            if params.get("period") == "annual":
+                row = dict(row)
+                row["period"] = "FY"
+            rows = [row]
+        elif endpoint == "cash-flow-statement":
+            row = _cf_q4_row()
+            if params.get("period") == "annual":
+                row = dict(row)
+                row["period"] = "FY"
+            rows = [row]
+        else:
+            raise AssertionError(f"unexpected endpoint: {endpoint}")
+        body = json.dumps(rows).encode()
+        return Response(
+            status=200,
+            body=body,
+            content_type="application/json",
+            headers={"content-type": "application/json"},
+            url="https://example/x",
+        )
+
+    def _good_get(self, endpoint: str, **params) -> Response:  # noqa: ARG001
+        if endpoint == "income-statement":
+            rows = [_q4_row() if params.get("period") == "quarter" else _fy_row()]
+        elif endpoint == "balance-sheet-statement":
+            row = _bs_q4_row()
+            if params.get("period") == "annual":
+                row = dict(row)
+                row["period"] = "FY"
+            rows = [row]
+        elif endpoint == "cash-flow-statement":
+            row = _cf_q4_row()
+            if params.get("period") == "annual":
+                row = dict(row)
+                row["period"] = "FY"
+            rows = [row]
+        else:
+            raise AssertionError(f"unexpected endpoint: {endpoint}")
+        body = json.dumps(rows).encode()
+        return Response(
+            status=200,
+            body=body,
+            content_type="application/json",
+            headers={"content-type": "application/json"},
+            url="https://example/x",
+        )
+
+    with get_conn() as conn:
+        _reset(conn)
+        company_id = _seed_nvda(conn)
+
+        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_bad_is_get):
+            first_counts = backfill_fmp_statements(conn, ["NVDA"])
+
+        assert first_counts["is_flags_written"] == 4
+
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT count(*) FROM data_quality_flags
+                WHERE company_id = %s
+                  AND resolved_at IS NULL;
+                """,
+                (company_id,),
+            )
+            assert cur.fetchone()[0] == 4
+
+        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_good_get):
+            second_counts = backfill_fmp_statements(conn, ["NVDA"])
+
+        assert second_counts["flags_auto_resolved"] == 4
+        assert second_counts["is_flags_written"] == 0
+
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT count(*) FROM data_quality_flags
+                WHERE company_id = %s
+                  AND resolved_at IS NULL;
+                """,
+                (company_id,),
+            )
+            assert cur.fetchone()[0] == 0
+
+            cur.execute(
+                """
+                SELECT resolution, count(*)
+                FROM data_quality_flags
+                WHERE company_id = %s
+                GROUP BY resolution
+                ORDER BY resolution;
+                """,
+                (company_id,),
+            )
+            assert cur.fetchall() == [("superseded_by_reingest", 4)]

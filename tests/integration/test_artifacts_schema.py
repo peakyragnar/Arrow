@@ -7,11 +7,14 @@ database — never production.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import psycopg
 import pytest
 
 from arrow.db.connection import get_conn
 from arrow.db.migrations import apply
+from arrow.ingest.common.artifacts import write_artifact
 
 H32_A = b"\x01" * 32
 H32_B = b"\x02" * 32
@@ -172,6 +175,55 @@ def test_supersession_chain_and_current_query() -> None:
             # Chain traversal: A' -> A
             cur.execute("SELECT supersedes FROM artifacts WHERE id = %s;", (a_prime,))
             assert cur.fetchone()[0] == a
+
+
+def test_write_artifact_uses_replacing_publication_time_for_supersession() -> None:
+    with get_conn() as conn:
+        _reset(conn)
+        first_published = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        second_published = datetime(2024, 2, 1, tzinfo=timezone.utc)
+
+        first_id, created = write_artifact(
+            conn,
+            ingest_run_id=None,
+            artifact_type="10k",
+            source="sec",
+            source_document_id="0001045810-24-000001",
+            body=b"old body",
+            ticker="NVDA",
+            content_type="text/html",
+            published_at=first_published,
+        )
+        assert created is True
+
+        second_id, created = write_artifact(
+            conn,
+            ingest_run_id=None,
+            artifact_type="10k",
+            source="sec",
+            source_document_id="0001045810-24-000001",
+            body=b"new body",
+            ticker="NVDA",
+            content_type="text/html",
+            published_at=second_published,
+        )
+        assert created is True
+        assert second_id != first_id
+
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, supersedes, superseded_at
+                FROM artifacts
+                ORDER BY id;
+                """
+            )
+            rows = cur.fetchall()
+
+        assert rows == [
+            (first_id, None, second_published),
+            (second_id, first_id, None),
+        ]
 
 
 def test_supersedes_fk_blocks_delete_of_referenced_row() -> None:

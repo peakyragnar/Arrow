@@ -96,24 +96,23 @@ def _load_is_period(
     ingest_run_id: int,
     client: FMPClient,
 ) -> LoadResult:
-    with conn.transaction():
-        fetched = fetch_income_statement(
-            conn,
-            ticker=company.ticker,
-            period=period,
-            ingest_run_id=ingest_run_id,
-            client=client,
-        )
-        return load_fmp_is_rows(
-            conn,
-            company_id=company.id,
-            company_fiscal_year_end_md=company.fiscal_year_end_md,
-            rows=fetched.rows,
-            source_raw_response_id=fetched.raw_response_id,
-            ingest_run_id=ingest_run_id,
-            min_fiscal_year=min_fiscal_year,
-            max_fiscal_year=max_fiscal_year,
-        )
+    fetched = fetch_income_statement(
+        conn,
+        ticker=company.ticker,
+        period=period,
+        ingest_run_id=ingest_run_id,
+        client=client,
+    )
+    return load_fmp_is_rows(
+        conn,
+        company_id=company.id,
+        company_fiscal_year_end_md=company.fiscal_year_end_md,
+        rows=fetched.rows,
+        source_raw_response_id=fetched.raw_response_id,
+        ingest_run_id=ingest_run_id,
+        min_fiscal_year=min_fiscal_year,
+        max_fiscal_year=max_fiscal_year,
+    )
 
 
 def _load_bs_period(
@@ -126,24 +125,23 @@ def _load_bs_period(
     ingest_run_id: int,
     client: FMPClient,
 ) -> LoadResult:
-    with conn.transaction():
-        fetched = fetch_balance_sheet(
-            conn,
-            ticker=company.ticker,
-            period=period,
-            ingest_run_id=ingest_run_id,
-            client=client,
-        )
-        return load_fmp_bs_rows(
-            conn,
-            company_id=company.id,
-            company_fiscal_year_end_md=company.fiscal_year_end_md,
-            rows=fetched.rows,
-            source_raw_response_id=fetched.raw_response_id,
-            ingest_run_id=ingest_run_id,
-            min_fiscal_year=min_fiscal_year,
-            max_fiscal_year=max_fiscal_year,
-        )
+    fetched = fetch_balance_sheet(
+        conn,
+        ticker=company.ticker,
+        period=period,
+        ingest_run_id=ingest_run_id,
+        client=client,
+    )
+    return load_fmp_bs_rows(
+        conn,
+        company_id=company.id,
+        company_fiscal_year_end_md=company.fiscal_year_end_md,
+        rows=fetched.rows,
+        source_raw_response_id=fetched.raw_response_id,
+        ingest_run_id=ingest_run_id,
+        min_fiscal_year=min_fiscal_year,
+        max_fiscal_year=max_fiscal_year,
+    )
 
 
 def _load_cf_period(
@@ -156,24 +154,60 @@ def _load_cf_period(
     ingest_run_id: int,
     client: FMPClient,
 ) -> LoadResult:
-    with conn.transaction():
-        fetched = fetch_cash_flow(
-            conn,
-            ticker=company.ticker,
-            period=period,
-            ingest_run_id=ingest_run_id,
-            client=client,
+    fetched = fetch_cash_flow(
+        conn,
+        ticker=company.ticker,
+        period=period,
+        ingest_run_id=ingest_run_id,
+        client=client,
+    )
+    return load_fmp_cf_rows(
+        conn,
+        company_id=company.id,
+        company_fiscal_year_end_md=company.fiscal_year_end_md,
+        rows=fetched.rows,
+        source_raw_response_id=fetched.raw_response_id,
+        ingest_run_id=ingest_run_id,
+        min_fiscal_year=min_fiscal_year,
+        max_fiscal_year=max_fiscal_year,
+    )
+
+
+def _resolve_flags_superseded_by_reingest(
+    conn: psycopg.Connection,
+    *,
+    company_id: int,
+    min_fiscal_year: int,
+    max_fiscal_year: int | None,
+    ingest_run_id: int,
+) -> int:
+    """Auto-close unresolved FY-scoped flags covered by the re-ingest window.
+
+    This runs inside the same ticker transaction as the new fact writes, so a
+    later hard failure rolls both the fresh facts and the auto-resolutions back.
+    """
+    with conn.cursor() as cur:
+        params: tuple[Any, ...]
+        sql = """
+            UPDATE data_quality_flags
+            SET resolved_at = now(),
+                resolution = 'superseded_by_reingest',
+                resolution_note = %s
+            WHERE company_id = %s
+              AND resolved_at IS NULL
+              AND fiscal_year IS NOT NULL
+              AND fiscal_year >= %s
+        """
+        params = (
+            f"Auto-resolved by mainline re-ingest run {ingest_run_id}.",
+            company_id,
+            min_fiscal_year,
         )
-        return load_fmp_cf_rows(
-            conn,
-            company_id=company.id,
-            company_fiscal_year_end_md=company.fiscal_year_end_md,
-            rows=fetched.rows,
-            source_raw_response_id=fetched.raw_response_id,
-            ingest_run_id=ingest_run_id,
-            min_fiscal_year=min_fiscal_year,
-            max_fiscal_year=max_fiscal_year,
-        )
+        if max_fiscal_year is not None:
+            sql += " AND fiscal_year <= %s"
+            params += (max_fiscal_year,)
+        cur.execute(sql, params)
+        return cur.rowcount
 
 
 def backfill_fmp_statements(
@@ -226,6 +260,7 @@ def backfill_fmp_statements(
         "is_flags_written": 0,
         "bs_flags_written": 0,
         "cf_flags_written": 0,
+        "flags_auto_resolved": 0,
     }
 
     try:
@@ -242,56 +277,83 @@ def backfill_fmp_statements(
             )
             counts["max_fiscal_year_by_ticker"][ticker.upper()] = ticker_max_fy
 
-            # --- IS ingest (Layer 1 IS inline) ---
-            for period in ("quarter", "annual"):
-                result = _load_is_period(
-                    conn,
-                    company=company,
-                    period=period,
-                    min_fiscal_year=ticker_min_fy,
-                    max_fiscal_year=ticker_max_fy,
-                    ingest_run_id=run_id,
-                    client=client,
-                )
-                counts["raw_responses"] += 1
-                counts["rows_processed"] += result.rows_processed
-                counts["is_facts_written"] += result.facts_written
-                counts["is_facts_superseded"] += result.facts_superseded
-                counts["is_flags_written"] += result.flags_written
+            ticker_counts: dict[str, int] = {
+                "raw_responses": 0,
+                "rows_processed": 0,
+                "is_facts_written": 0,
+                "is_facts_superseded": 0,
+                "is_flags_written": 0,
+                "bs_facts_written": 0,
+                "bs_facts_superseded": 0,
+                "bs_flags_written": 0,
+                "cf_facts_written": 0,
+                "cf_facts_superseded": 0,
+                "cf_flags_written": 0,
+                "flags_auto_resolved": 0,
+            }
 
-            # --- BS ingest (Layer 1 BS inline) ---
-            for period in ("quarter", "annual"):
-                result = _load_bs_period(
+            with conn.transaction():
+                ticker_counts["flags_auto_resolved"] += _resolve_flags_superseded_by_reingest(
                     conn,
-                    company=company,
-                    period=period,
+                    company_id=company.id,
                     min_fiscal_year=ticker_min_fy,
                     max_fiscal_year=ticker_max_fy,
                     ingest_run_id=run_id,
-                    client=client,
                 )
-                counts["raw_responses"] += 1
-                counts["rows_processed"] += result.rows_processed
-                counts["bs_facts_written"] += result.facts_written
-                counts["bs_facts_superseded"] += result.facts_superseded
-                counts["bs_flags_written"] += result.flags_written
 
-            # --- CF ingest (Layer 1 CF inline) ---
-            for period in ("quarter", "annual"):
-                result = _load_cf_period(
-                    conn,
-                    company=company,
-                    period=period,
-                    min_fiscal_year=ticker_min_fy,
-                    max_fiscal_year=ticker_max_fy,
-                    ingest_run_id=run_id,
-                    client=client,
-                )
-                counts["raw_responses"] += 1
-                counts["rows_processed"] += result.rows_processed
-                counts["cf_facts_written"] += result.facts_written
-                counts["cf_facts_superseded"] += result.facts_superseded
-                counts["cf_flags_written"] += result.flags_written
+                # --- IS ingest (Layer 1 IS inline) ---
+                for period in ("quarter", "annual"):
+                    result = _load_is_period(
+                        conn,
+                        company=company,
+                        period=period,
+                        min_fiscal_year=ticker_min_fy,
+                        max_fiscal_year=ticker_max_fy,
+                        ingest_run_id=run_id,
+                        client=client,
+                    )
+                    ticker_counts["raw_responses"] += 1
+                    ticker_counts["rows_processed"] += result.rows_processed
+                    ticker_counts["is_facts_written"] += result.facts_written
+                    ticker_counts["is_facts_superseded"] += result.facts_superseded
+                    ticker_counts["is_flags_written"] += result.flags_written
+
+                # --- BS ingest (Layer 1 BS inline) ---
+                for period in ("quarter", "annual"):
+                    result = _load_bs_period(
+                        conn,
+                        company=company,
+                        period=period,
+                        min_fiscal_year=ticker_min_fy,
+                        max_fiscal_year=ticker_max_fy,
+                        ingest_run_id=run_id,
+                        client=client,
+                    )
+                    ticker_counts["raw_responses"] += 1
+                    ticker_counts["rows_processed"] += result.rows_processed
+                    ticker_counts["bs_facts_written"] += result.facts_written
+                    ticker_counts["bs_facts_superseded"] += result.facts_superseded
+                    ticker_counts["bs_flags_written"] += result.flags_written
+
+                # --- CF ingest (Layer 1 CF inline) ---
+                for period in ("quarter", "annual"):
+                    result = _load_cf_period(
+                        conn,
+                        company=company,
+                        period=period,
+                        min_fiscal_year=ticker_min_fy,
+                        max_fiscal_year=ticker_max_fy,
+                        ingest_run_id=run_id,
+                        client=client,
+                    )
+                    ticker_counts["raw_responses"] += 1
+                    ticker_counts["rows_processed"] += result.rows_processed
+                    ticker_counts["cf_facts_written"] += result.facts_written
+                    ticker_counts["cf_facts_superseded"] += result.facts_superseded
+                    ticker_counts["cf_flags_written"] += result.flags_written
+
+            for key, value in ticker_counts.items():
+                counts[key] += value
 
     except BSVerificationFailed as e:
         close_failed(

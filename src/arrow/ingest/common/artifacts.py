@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 import psycopg
@@ -61,6 +61,7 @@ def write_artifact(
     raw_hash = _sha256(body)
     canonical_hash = _sha256(_canonical_bytes(body, content_type))
     supersedes: int | None = None
+    superseded_at = published_at or datetime.now(timezone.utc)
 
     if source_document_id is not None:
         with conn.cursor() as cur:
@@ -144,10 +145,10 @@ def write_artifact(
             cur.execute(
                 """
                 UPDATE artifacts
-                SET superseded_at = now()
+                SET superseded_at = %s
                 WHERE id = %s AND superseded_at IS NULL;
                 """,
-                (supersedes,),
+                (superseded_at, supersedes),
             )
 
     return artifact_id, True
