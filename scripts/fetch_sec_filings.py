@@ -2,7 +2,7 @@
 
 Usage:
     uv run scripts/fetch_sec_filings.py NVDA [MSFT ...]
-    uv run scripts/fetch_sec_filings.py --since 2016-01-01 NVDA
+    uv run scripts/fetch_sec_filings.py --since 2019-01-01 NVDA
     uv run scripts/fetch_sec_filings.py --limit 3 NVDA
 """
 
@@ -10,15 +10,14 @@ from __future__ import annotations
 
 import sys
 
-from arrow.agents.fmp_ingest import DEFAULT_SINCE_DATE
 from arrow.db.connection import get_conn
-from arrow.ingest.sec.filings import ingest_sec_filings
+from arrow.ingest.sec.filings import DEFAULT_QUAL_SINCE_DATE, ingest_sec_filings
 
 
 def main() -> int:
     args = sys.argv[1:]
     limit: int | None = None
-    since_date = DEFAULT_SINCE_DATE
+    since_date = DEFAULT_QUAL_SINCE_DATE
     until_date = None
 
     def _pop_date_flag(flag: str):
@@ -28,7 +27,8 @@ def main() -> int:
         i = args.index(flag)
         if i + 1 >= len(args):
             print(
-                "Usage: fetch_sec_filings.py [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--limit N] TICKER [TICKER ...]",
+                "Usage: fetch_sec_filings.py [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--limit N] TICKER [TICKER ...]\n"
+                "Default SEC window is the last 5 years of 10-K / 10-Q primary filings.",
                 file=sys.stderr,
             )
             return 2
@@ -59,7 +59,8 @@ def main() -> int:
         i = args.index("--limit")
         if i + 1 >= len(args):
             print(
-                "Usage: fetch_sec_filings.py [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--limit N] TICKER [TICKER ...]",
+                "Usage: fetch_sec_filings.py [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--limit N] TICKER [TICKER ...]\n"
+                "Default SEC window is the last 5 years of 10-K / 10-Q primary filings.",
                 file=sys.stderr,
             )
             return 2
@@ -68,7 +69,8 @@ def main() -> int:
 
     if not args:
         print(
-            "Usage: fetch_sec_filings.py [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--limit N] TICKER [TICKER ...]",
+            "Usage: fetch_sec_filings.py [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--limit N] TICKER [TICKER ...]\n"
+            "Default SEC window is the last 5 years of 10-K / 10-Q primary filings.",
             file=sys.stderr,
         )
         return 2
@@ -89,7 +91,7 @@ def main() -> int:
     print(f"  earnings_8k_only:       {counts['earnings_8k_only']}")
     print(f"  raw_responses written:  {counts['raw_responses']}")
     print(f"  filings seen:           {counts['filings_seen']}")
-    print(f"  package files fetched:  {counts['files_fetched']}")
+    print(f"  filing docs fetched:    {counts['documents_fetched']}")
     print(f"  artifacts written:      {counts['artifacts_written']}")
     print(f"  artifacts existing:     {counts['artifacts_existing']}")
     for artifact_type, n in sorted(counts["artifacts_by_type"].items()):

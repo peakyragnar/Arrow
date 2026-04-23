@@ -97,11 +97,11 @@ def test_ingest_recent_10q_writes_raw_and_artifact() -> None:
             url=url,
         )
 
-    with get_conn() as conn:
-        _reset(conn)
-        _seed_nvda(conn)
-        with patch("arrow.ingest.common.http.HttpClient.get", new=_fake_get):
-            counts = ingest_recent_sec_filings(conn, ["NVDA"])
+        with get_conn() as conn:
+            _reset(conn)
+            _seed_nvda(conn)
+            with patch("arrow.ingest.common.http.HttpClient.get", new=_fake_get):
+                counts = ingest_recent_sec_filings(conn, ["NVDA"])
 
         assert counts["raw_responses"] == 3
         assert counts["filings_seen"] == 1
@@ -213,12 +213,12 @@ def test_ingest_recent_8k_writes_primary_and_press_release_and_dedupes() -> None
             url=url,
         )
 
-    with get_conn() as conn:
-        _reset(conn)
-        _seed_nvda(conn)
-        with patch("arrow.ingest.common.http.HttpClient.get", new=_fake_get):
-            first = ingest_recent_sec_filings(conn, ["NVDA"])
-            second = ingest_recent_sec_filings(conn, ["NVDA"])
+        with get_conn() as conn:
+            _reset(conn)
+            _seed_nvda(conn)
+            with patch("arrow.ingest.common.http.HttpClient.get", new=_fake_get):
+                first = ingest_recent_sec_filings(conn, ["NVDA"], forms=("8-K", "8-K/A"))
+                second = ingest_recent_sec_filings(conn, ["NVDA"], forms=("8-K", "8-K/A"))
 
         assert first["raw_responses"] == 4
         assert first["artifacts_written"] == 2
@@ -331,21 +331,22 @@ def test_ingest_historical_shard_fetches_full_package_files() -> None:
         with patch("arrow.ingest.common.http.HttpClient.get", new=_fake_get):
             counts = ingest_sec_filings(conn, ["NVDA"], since_date=date(2016, 1, 1))
 
-        assert counts["raw_responses"] == 10
+        assert counts["raw_responses"] == 4
         assert counts["filings_seen"] == 1
-        assert counts["files_fetched"] == 7
+        assert counts["documents_fetched"] == 1
+        assert counts["files_fetched"] == 1
         assert counts["artifacts_written"] == 1
 
         with conn.cursor() as cur:
             cur.execute("SELECT count(*) FROM raw_responses WHERE vendor = 'sec';")
-            assert cur.fetchone()[0] == 10
+            assert cur.fetchone()[0] == 4
             cur.execute(
                 """
                 SELECT count(*) FROM raw_responses
                 WHERE endpoint LIKE 'filings/0001045810/0001045810-18-000001/%';
                 """
             )
-            assert cur.fetchone()[0] == 8  # index.json + 7 package files
+            assert cur.fetchone()[0] == 2  # index.json + primary filing doc
             cur.execute(
                 """
                 SELECT artifact_type, source_document_id, fiscal_year, fiscal_quarter, form_family
