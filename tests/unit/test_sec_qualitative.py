@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from arrow.ingest.sec.qualitative import (
     ExtractedSection,
+    _is_subheading,
     build_chunks,
     extract_sections,
     normalize_filing_body,
@@ -164,3 +165,51 @@ def test_chunking_splits_embedded_mda_subheading_and_updates_heading_path() -> N
         "Adoption of New and Recently Issued Accounting Pronouncements",
     ]
     assert "global sustainability regulations" not in accounting_chunk.text
+
+
+def test_chunking_does_not_treat_financial_table_rows_as_subheadings() -> None:
+    leading_context = " ".join(
+        f"Operational sentence {i}. Demand remained broad across product categories."
+        for i in range(1, 150)
+    )
+    section = ExtractedSection(
+        section_key="part1_item2_mda",
+        section_title="Part I Item 2. Management's Discussion and Analysis",
+        part_label="Part I",
+        item_label="Item 2",
+        text=(
+            "Results of Operations\n\n"
+            f"{leading_context}\n\n"
+            "Net income $ 16,599 $ 14,881 $ 6,188 12 % 168 %\n\n"
+            "Sequentially, gross margin decreased primarily driven by inventory "
+            "provisions and a higher mix of new products."
+        ),
+        start_offset=0,
+        end_offset=12000,
+        confidence=1.0,
+        extraction_method="deterministic",
+    )
+
+    chunks = build_chunks(section)
+
+    assert not any("Net income $" in " > ".join(chunk.heading_path) for chunk in chunks)
+    assert any(
+        chunk.heading_path == [
+            "Part I Item 2. Management's Discussion and Analysis",
+            "Results of Operations",
+        ]
+        and "Sequentially, gross margin decreased" in chunk.text
+        for chunk in chunks
+    )
+
+
+def test_subheading_detection_rejects_financial_table_rows() -> None:
+    assert not _is_subheading("Net income $ 16,599 $ 14,881 $ 6,188 12 % 168 %")
+    assert not _is_subheading("Net income $ 4,757 $ 2,114")
+    assert not _is_subheading("Net income $ 4,757")
+    assert not _is_subheading("Revenue $ 30,040 $ 26,974 $ 13,507 11 % 122 %")
+    assert not _is_subheading("Gross margin 75.1 % 78.4 % 70.1 %")
+
+    assert _is_subheading("Critical Accounting Policies and Estimates")
+    assert _is_subheading("Market Platform Highlights")
+    assert _is_subheading("Liquidity and Capital Resources")

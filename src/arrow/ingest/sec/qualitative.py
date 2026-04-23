@@ -11,7 +11,7 @@ from typing import Literal
 import psycopg
 
 EXTRACTOR_VERSION = "sec_sections_v3"
-CHUNKER_VERSION = "sec_chunks_v5"
+CHUNKER_VERSION = "sec_chunks_v7"
 
 ExtractionMethod = Literal["deterministic", "repair", "unparsed_fallback"]
 FormFamily = Literal["10-K", "10-Q"]
@@ -837,11 +837,28 @@ def _is_subheading(text: str) -> bool:
         return False
     if text.endswith((".", "?", "!", ";")):
         return False
+    if _looks_like_financial_table_row(text):
+        return False
     words = re.findall(r"[A-Za-z][A-Za-z&/\-']*", text)
     if not words:
         return False
     title_case = sum(1 for word in words if word[:1].isupper())
     return title_case >= max(1, len(words) // 2)
+
+
+def _looks_like_financial_table_row(text: str) -> bool:
+    numeric_tokens = re.findall(r"\b\d[\d,]*(?:\.\d+)?\b", text)
+    if not numeric_tokens:
+        return False
+    words = re.findall(r"[A-Za-z][A-Za-z&/\-']*", text)
+    has_financial_markers = "$" in text or "%" in text
+    if has_financial_markers and len(words) <= 4:
+        return True
+    if len(numeric_tokens) < 3:
+        return False
+    if has_financial_markers:
+        return len(words) <= 8 or len(numeric_tokens) >= len(words)
+    return len(numeric_tokens) >= max(4, len(words) * 2)
 
 
 def _section_title_for_key(section_key: str) -> str:
