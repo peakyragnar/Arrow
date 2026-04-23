@@ -33,6 +33,26 @@ def test_extract_10q_sections_is_part_aware_and_skips_toc() -> None:
     assert "TABLE OF CONTENTS" not in sections[0].text
 
 
+def test_extract_10q_stops_part1_before_part2_title_line() -> None:
+    html = b"""
+    <html><body>
+      <div>Part I</div>
+      <h2>Item 2. Management's Discussion and Analysis of Financial Condition and Results of Operations</h2>
+      <p>MD&A text that should stay inside the section.</p>
+      <div>PART II. OTHER INFORMATION</div>
+      <h2>Item 1A. Risk Factors</h2>
+      <p>Risk factor text.</p>
+    </body></html>
+    """
+    normalized = normalize_filing_body(html, "text/html")
+
+    sections = extract_sections("10-Q", normalized)
+    mda = next(section for section in sections if section.section_key == "part1_item2_mda")
+
+    assert "MD&A text that should stay inside the section." in mda.text
+    assert "PART II. OTHER INFORMATION" not in mda.text
+
+
 def test_extract_unparsed_body_when_no_valid_headings_found() -> None:
     normalized = normalize_filing_body(
         b"<html><body><p>Plain filing body with no recognizable SEC item headings.</p></body></html>",

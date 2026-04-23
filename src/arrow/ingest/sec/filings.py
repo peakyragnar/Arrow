@@ -12,10 +12,11 @@ import psycopg
 
 from arrow.ingest.common.artifacts import write_artifact
 from arrow.ingest.common.cache import RAW_DIR, cache_path
-from arrow.ingest.common.http import HttpClient
+from arrow.ingest.common.http import HttpClient, Response
 from arrow.ingest.common.raw_responses import write_raw_response
 from arrow.ingest.common.runs import close_failed, close_succeeded, open_run
 from arrow.ingest.sec.qualitative import (
+    EXTRACTOR_VERSION,
     extract_sections,
     find_amends_artifact_id,
     normalize_filing_body,
@@ -373,11 +374,23 @@ def _is_in_qualitative_window(
     return True
 
 
-def _artifact_has_sections(conn: psycopg.Connection, artifact_id: int) -> bool:
+def _artifact_has_current_sections(conn: psycopg.Connection, artifact_id: int) -> bool:
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT EXISTS (SELECT 1 FROM artifact_sections WHERE artifact_id = %s);",
-            (artifact_id,),
+            """
+            SELECT EXISTS (
+                       SELECT 1
+                       FROM artifact_sections
+                       WHERE artifact_id = %s
+                   )
+                   AND NOT EXISTS (
+                       SELECT 1
+                       FROM artifact_sections
+                       WHERE artifact_id = %s
+                         AND extractor_version <> %s
+                   );
+            """,
+            (artifact_id, artifact_id, EXTRACTOR_VERSION),
         )
         return bool(cur.fetchone()[0])
 
@@ -626,7 +639,10 @@ def ingest_sec_filings(
                                 should_write_sections = (
                                     normalized_body is not None
                                     and form_family is not None
-                                    and (created or not _artifact_has_sections(conn, artifact_id))
+                                    and (
+                                        created
+                                        or not _artifact_has_current_sections(conn, artifact_id)
+                                    )
                                 )
                                 if should_write_sections:
                                     replace_sections_and_chunks(

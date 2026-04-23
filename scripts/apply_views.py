@@ -16,6 +16,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from psycopg import sql
+
 from arrow.db.connection import get_conn
 
 QUERIES_DIR = Path(__file__).resolve().parents[1] / "db" / "queries"
@@ -40,6 +42,28 @@ def _discover() -> list[tuple[str, Path]]:
     return items
 
 
+def _drop_view_or_stale_type(cur, name: str) -> None:
+    ident = sql.Identifier(name)
+    cur.execute(
+        """
+        SELECT c.relkind
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = current_schema()
+          AND c.relname = %s;
+        """,
+        (name,),
+    )
+    row = cur.fetchone()
+    if row is None or row[0] in {"v", "m"}:
+        cur.execute(sql.SQL("DROP VIEW IF EXISTS {} CASCADE;").format(ident))
+        return
+    if row[0] == "c":
+        cur.execute(sql.SQL("DROP TYPE IF EXISTS {} CASCADE;").format(ident))
+        return
+    raise RuntimeError(f"{name} exists but is not a view or stale composite type")
+
+
 def main() -> int:
     views = _discover()
     if not views:
@@ -53,7 +77,7 @@ def main() -> int:
         print("Dropping existing views (reverse order)...")
         with conn.cursor() as cur:
             for name, _path in reversed(views):
-                cur.execute(f"DROP VIEW IF EXISTS {name} CASCADE;")
+                _drop_view_or_stale_type(cur, name)
                 print(f"  dropped: {name}")
 
         # Create in forward order.
@@ -61,8 +85,8 @@ def main() -> int:
         print("Creating views (forward order)...")
         with conn.cursor() as cur:
             for name, path in views:
-                sql = path.read_text()
-                cur.execute(sql)
+                view_sql = path.read_text()
+                cur.execute(view_sql)
                 print(f"  created: {name}  ({path.name})")
 
     print()

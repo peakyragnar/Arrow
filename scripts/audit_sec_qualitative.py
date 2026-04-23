@@ -65,6 +65,9 @@ DEFAULT_QUERIES = [
     "export controls",
     "supply constraints",
 ]
+MD_AND_A_KEYS = ["item_7_mda", "part1_item2_mda"]
+RISK_KEYS = ["item_1a_risk_factors", "part2_item1a_risk_factors"]
+BUSINESS_KEYS = ["item_1_business"]
 
 
 @dataclass(frozen=True)
@@ -81,6 +84,39 @@ def _parse_date(value: str | None) -> date | None:
     if value is None:
         return None
     return date.fromisoformat(value)
+
+
+def _preferred_sections_for_query(query: str) -> list[str]:
+    q = query.lower()
+    preferred: list[str] = []
+    if any(
+        token in q
+        for token in (
+            "revenue",
+            "sales",
+            "margin",
+            "gross",
+            "operating",
+            "cash",
+            "capex",
+            "expenses",
+        )
+    ):
+        preferred.extend(MD_AND_A_KEYS)
+    if any(
+        token in q
+        for token in (
+            "risk",
+            "export",
+            "controls",
+            "constraint",
+            "supply",
+            "regulation",
+            "china",
+        )
+    ):
+        preferred.extend(RISK_KEYS + MD_AND_A_KEYS + BUSINESS_KEYS)
+    return list(dict.fromkeys(preferred))
 
 
 def _expected_filings(
@@ -381,20 +417,29 @@ def _collect_report(
 
     retrieval: dict[str, list[dict[str, Any]]] = {}
     for query in queries:
+        preferred_sections = _preferred_sections_for_query(query)
         with conn.cursor() as cur:
             cur.execute(
                 """
+                WITH q AS (
+                    SELECT websearch_to_tsquery('english', %s) AS tsq
+                )
                 SELECT a.fiscal_period_key, s.section_key, ch.chunk_ordinal,
+                       CASE WHEN s.section_key = ANY(%s::text[]) THEN true ELSE false END
+                           AS preferred_section,
+                       round(ts_rank_cd(ch.tsv, q.tsq)::numeric, 4) AS rank,
                        left(ch.search_text, 320) AS snippet
                 FROM artifact_section_chunks ch
                 JOIN artifact_sections s ON s.id = ch.section_id
                 JOIN artifacts a ON a.id = s.artifact_id
+                CROSS JOIN q
                 WHERE a.ticker = %s
-                  AND ch.tsv @@ websearch_to_tsquery('english', %s)
-                ORDER BY a.published_at DESC, ch.chunk_ordinal
+                  AND ch.tsv @@ q.tsq
+                ORDER BY preferred_section DESC, rank DESC, a.published_at DESC,
+                         ch.chunk_ordinal
                 LIMIT 5;
                 """,
-                (ticker.upper(), query),
+                (query, preferred_sections, ticker.upper()),
             )
             retrieval[query] = _dict_rows(cur)
 
@@ -645,24 +690,33 @@ def _retrieval_smoke(conn, ticker: str, queries: list[str]) -> None:
     print()
     print("Retrieval Smoke Tests")
     for query in queries:
+        preferred_sections = _preferred_sections_for_query(query)
         with conn.cursor() as cur:
             cur.execute(
                 """
+                WITH q AS (
+                    SELECT websearch_to_tsquery('english', %s) AS tsq
+                )
                 SELECT a.fiscal_period_key, s.section_key, ch.chunk_ordinal,
+                       CASE WHEN s.section_key = ANY(%s::text[]) THEN 'yes' ELSE 'no' END
+                           AS preferred,
+                       round(ts_rank_cd(ch.tsv, q.tsq)::numeric, 4) AS rank,
                        left(ch.search_text, 180) AS snippet
                 FROM artifact_section_chunks ch
                 JOIN artifact_sections s ON s.id = ch.section_id
                 JOIN artifacts a ON a.id = s.artifact_id
+                CROSS JOIN q
                 WHERE a.ticker = %s
-                  AND ch.tsv @@ websearch_to_tsquery('english', %s)
-                ORDER BY a.published_at DESC, ch.chunk_ordinal
+                  AND ch.tsv @@ q.tsq
+                ORDER BY preferred DESC, rank DESC, a.published_at DESC,
+                         ch.chunk_ordinal
                 LIMIT 5;
                 """,
-                (ticker.upper(), query),
+                (query, preferred_sections, ticker.upper()),
             )
             rows = cur.fetchall()
         print(f"  query: {query!r}")
-        _print_table(["period", "section", "ord", "snippet"], rows)
+        _print_table(["period", "section", "ord", "pref", "rank", "snippet"], rows)
 
 
 def _period_listing(conn, ticker: str) -> None:
@@ -871,9 +925,10 @@ def _retrieval_html(report: dict[str, Any]) -> str:
     for query, rows in report["retrieval"].items():
         cards = []
         for row in rows:
+            preferred = "preferred" if row.get("preferred_section") else "matched"
             cards.append(
                 "<article class=\"result-card\">"
-                f"<div class=\"result-meta\">{_escape(row['fiscal_period_key'])} · {_escape(row['section_key'])} · chunk {_escape(row['chunk_ordinal'])}</div>"
+                f"<div class=\"result-meta\">{_escape(row['fiscal_period_key'])} · {_escape(row['section_key'])} · chunk {_escape(row['chunk_ordinal'])} · {_escape(preferred)} · rank {_escape(row.get('rank'))}</div>"
                 f"<p>{_escape(row['snippet'])}</p>"
                 "</article>"
             )

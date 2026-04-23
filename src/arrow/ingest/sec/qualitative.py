@@ -10,7 +10,7 @@ from typing import Literal
 
 import psycopg
 
-EXTRACTOR_VERSION = "sec_sections_v1"
+EXTRACTOR_VERSION = "sec_sections_v2"
 CHUNKER_VERSION = "sec_chunks_v1"
 
 ExtractionMethod = Literal["deterministic", "repair", "unparsed_fallback"]
@@ -30,7 +30,7 @@ _TAG_PATTERN = re.compile(r"(?is)<[^>]+>")
 _WHITESPACE_PATTERN = re.compile(r"[ \t\f\v]+")
 _SENTENCE_SPLIT_PATTERN = re.compile(r"(?<=[.!?])\s+")
 _TOC_DOTS_PATTERN = re.compile(r"\.{2,}\s*\d+$")
-_INLINE_PART_PATTERN = re.compile(r"(?i)\bpart\s+(i{1,3}|iv)\b")
+_PART_HEADING_PATTERN = re.compile(r"(?i)^\s*part\s+(i|ii)\b")
 
 _TEN_K_SECTIONS: list[tuple[str, str, str]] = [
     ("item_1_business", "Item 1", r"item\s+1(?:\s*[\.\-:]\s*|\s+)business\b"),
@@ -429,7 +429,7 @@ def _collect_candidates(
     candidates: dict[str, list[SectionCandidate]] = {}
     current_part: str | None = None
     for idx, line in enumerate(lines):
-        inline_part = _extract_part(line.text)
+        inline_part = _extract_part_heading(line.text)
         if inline_part is not None:
             current_part = inline_part
         for key, compiled, expected_part, item_label in patterns:
@@ -507,7 +507,7 @@ def _materialize_sections(
             next_candidate = ordered[idx + 1]
             if candidate.part_label != next_candidate.part_label:
                 for probe in lines[candidate.line_index + 1 : next_candidate.line_index + 1]:
-                    if probe.text == next_candidate.part_label:
+                    if _extract_part_heading(probe.text) == next_candidate.part_label:
                         end = probe.start
                         break
         text = body[start:end].strip()
@@ -661,8 +661,11 @@ def _word_count(text: str) -> int:
     return len(re.findall(r"\b\w+\b", text))
 
 
-def _extract_part(line: str) -> str | None:
-    match = _INLINE_PART_PATTERN.search(line)
+def _extract_part_heading(line: str) -> str | None:
+    text = line.strip()
+    if len(text) > 160 or _word_count(text) > 14:
+        return None
+    match = _PART_HEADING_PATTERN.match(text)
     if match is None:
         return None
     roman = match.group(1).upper()

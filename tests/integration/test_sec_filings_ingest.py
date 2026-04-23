@@ -14,6 +14,7 @@ from arrow.db.connection import get_conn
 from arrow.db.migrations import apply
 from arrow.ingest.common.http import Response
 from arrow.ingest.sec.filings import ingest_recent_sec_filings, ingest_sec_filings
+from arrow.ingest.sec.qualitative import EXTRACTOR_VERSION
 
 
 def _reset(conn) -> None:
@@ -185,6 +186,20 @@ def test_ingest_recent_10q_writes_raw_and_artifact() -> None:
                 ("part1_item3_market_risk", "deterministic"),
                 ("part2_item1a_risk_factors", "deterministic"),
             ]
+            cur.execute(
+                "UPDATE artifact_sections SET extractor_version = 'sec_sections_legacy';"
+            )
+            conn.commit()
+
+        with patch("arrow.ingest.common.http.HttpClient.get", new=_fake_get):
+            third = ingest_recent_sec_filings(conn, ["NVDA"])
+
+        assert third["artifacts_written"] == 0
+        assert third["artifacts_existing"] == 1
+        assert third["sections_written"] == 1
+        with conn.cursor() as cur:
+            cur.execute("SELECT DISTINCT extractor_version FROM artifact_sections;")
+            assert cur.fetchall() == [(EXTRACTOR_VERSION,)]
 
 
 def test_ingest_recent_8k_writes_primary_and_press_release_and_dedupes() -> None:
