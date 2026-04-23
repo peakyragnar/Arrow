@@ -35,7 +35,11 @@ def write_artifact(
     source: str,
     source_document_id: str | None,
     body: bytes,
+    canonical_body: bytes | None = None,
+    company_id: int | None = None,
     ticker: str | None = None,
+    fiscal_period_key: str | None = None,
+    form_family: str | None = None,
     fiscal_year: int | None = None,
     fiscal_quarter: int | None = None,
     fiscal_period_label: str | None = None,
@@ -50,6 +54,10 @@ def write_artifact(
     language: str | None = None,
     published_at: datetime | None = None,
     effective_at: datetime | None = None,
+    cik: str | None = None,
+    accession_number: str | None = None,
+    raw_primary_doc_path: str | None = None,
+    amends_artifact_id: int | None = None,
     artifact_metadata: dict[str, Any] | None = None,
 ) -> tuple[int, bool]:
     """Insert an artifact row, deduping identical current source docs.
@@ -59,9 +67,26 @@ def write_artifact(
     """
 
     raw_hash = _sha256(body)
-    canonical_hash = _sha256(_canonical_bytes(body, content_type))
+    canonical_hash = _sha256(canonical_body or _canonical_bytes(body, content_type))
     supersedes: int | None = None
     superseded_at = published_at or datetime.now(timezone.utc)
+
+    if cik is not None and accession_number is not None:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id
+                FROM artifacts
+                WHERE cik = %s
+                  AND accession_number = %s
+                ORDER BY id DESC
+                LIMIT 1;
+                """,
+                (cik, accession_number),
+            )
+            existing = cur.fetchone()
+        if existing is not None:
+            return existing[0], False
 
     if source_document_id is not None:
         with conn.cursor() as cur:
@@ -90,24 +115,28 @@ def write_artifact(
             INSERT INTO artifacts (
                 ingest_run_id, artifact_type, source, source_document_id,
                 raw_hash, canonical_hash,
-                ticker,
+                company_id, ticker,
+                fiscal_period_key, form_family,
                 fiscal_year, fiscal_quarter, fiscal_period_label,
                 period_end, period_type,
                 calendar_year, calendar_quarter, calendar_period_label,
                 title, url, content_type, language,
                 published_at, effective_at,
-                supersedes,
+                cik, accession_number, raw_primary_doc_path,
+                supersedes, amends_artifact_id,
                 artifact_metadata
             ) VALUES (
                 %s, %s, %s, %s,
                 %s, %s,
-                %s,
+                %s, %s,
+                %s, %s,
                 %s, %s, %s,
                 %s, %s,
                 %s, %s, %s,
                 %s, %s, %s, %s,
                 %s, %s,
-                %s,
+                %s, %s, %s,
+                %s, %s,
                 %s
             )
             RETURNING id;
@@ -119,7 +148,10 @@ def write_artifact(
                 source_document_id,
                 raw_hash,
                 canonical_hash,
+                company_id,
                 ticker,
+                fiscal_period_key,
+                form_family,
                 fiscal_year,
                 fiscal_quarter,
                 fiscal_period_label,
@@ -134,7 +166,11 @@ def write_artifact(
                 language,
                 published_at,
                 effective_at,
+                cik,
+                accession_number,
+                raw_primary_doc_path,
                 supersedes,
+                amends_artifact_id,
                 Jsonb(artifact_metadata or {}),
             ),
         )

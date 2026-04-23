@@ -241,7 +241,7 @@ src/arrow/
     │   companies, artifacts, financial_facts,                            │
     │   prices_daily, macro_series, macro_observations, company_events,   │
     │   options_contracts, options_eod_snapshots                          │
-    │   (chunks table reintroduced when document text is ingested)        │
+    │   artifact_sections, artifact_section_chunks                        │
     └─────────────────────────────────────────────────────────────────────┘
                           │
         ┌─────────────────┼─────────────────┬─────────────────────┐

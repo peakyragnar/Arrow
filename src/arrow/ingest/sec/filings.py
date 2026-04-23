@@ -16,6 +16,12 @@ from arrow.ingest.common.cache import RAW_DIR, cache_path
 from arrow.ingest.common.http import HttpClient
 from arrow.ingest.common.raw_responses import write_raw_response
 from arrow.ingest.common.runs import close_failed, close_succeeded, open_run
+from arrow.ingest.sec.qualitative import (
+    extract_sections,
+    find_amends_artifact_id,
+    normalize_filing_body,
+    replace_sections_and_chunks,
+)
 from arrow.ingest.sec.bootstrap import SEC_RATE_LIMIT, SEC_USER_AGENT, SUBMISSIONS_URL_TEMPLATE
 from arrow.normalize.periods.derive import derive_calendar_period, derive_fiscal_period
 
@@ -297,8 +303,6 @@ def _filing_documents(
 ) -> list[FilingDocument]:
     amended = filing.form_type.upper().endswith("/A")
     base_metadata = {
-        "accession_number": filing.accession_number,
-        "filer_cik": _cik10(company.cik),
         "form_type": filing.form_type,
         "amended": amended,
         "filing_date": filing.filing_date.isoformat(),
@@ -338,6 +342,19 @@ def _filing_documents(
             )
         )
     return docs
+
+
+def _form_family_for_form(form_type: str) -> str | None:
+    upper = form_type.upper()
+    if upper.startswith("10-K"):
+        return "10-K"
+    if upper.startswith("10-Q"):
+        return "10-Q"
+    return None
+
+
+def _fiscal_period_key(period_fields: dict[str, Any]) -> str | None:
+    return period_fields.get("fiscal_period_label")
 
 
 def _iter_submission_payloads(
@@ -464,6 +481,22 @@ def ingest_sec_filings(
                         datetime.min.time(),
                         tzinfo=UTC,
                     )
+                    form_family = _form_family_for_form(filing.form_type)
+                    fiscal_period_key = _fiscal_period_key(period_fields)
+                    if form_family is not None and fiscal_period_key is None:
+                        raise ValueError(
+                            f"{company.ticker} {filing.form_type} {filing.accession_number} "
+                            "missing fiscal_period_key"
+                        )
+                    amends_artifact_id = None
+                    if filing.form_type.upper().endswith("/A"):
+                        amends_artifact_id = find_amends_artifact_id(
+                            conn,
+                            company_id=company.id,
+                            fiscal_period_key=fiscal_period_key,
+                            form_family=form_family,
+                            published_at=published_at,
+                        )
                     artifact_docs = {
                         document.filename: document
                         for document in _filing_documents(
@@ -497,22 +530,61 @@ def ingest_sec_filings(
                             artifact_doc = artifact_docs.get(filename)
                             created = None
                             if artifact_doc is not None:
-                                _, created = write_artifact(
+                                normalized_body = None
+                                canonical_body = None
+                                if artifact_doc.artifact_type in {"10k", "10q"}:
+                                    normalized_body = normalize_filing_body(
+                                        doc_resp.body, doc_resp.content_type
+                                    )
+                                    canonical_body = normalized_body.encode("utf-8")
+                                artifact_id, created = write_artifact(
                                     conn,
                                     ingest_run_id=run_id,
                                     artifact_type=artifact_doc.artifact_type,
                                     source="sec",
                                     source_document_id=artifact_doc.source_document_id,
                                     body=doc_resp.body,
+                                    canonical_body=canonical_body,
+                                    company_id=company.id,
                                     ticker=company.ticker,
+                                    fiscal_period_key=fiscal_period_key,
+                                    form_family=form_family,
                                     title=artifact_doc.title,
                                     url=document_url,
                                     content_type=doc_resp.content_type,
                                     language="en",
                                     published_at=published_at,
+                                    effective_at=published_at,
+                                    cik=_cik10(company.cik)
+                                    if artifact_doc.artifact_type in {"10k", "10q", "8k"}
+                                    else None,
+                                    accession_number=filing.accession_number
+                                    if artifact_doc.artifact_type in {"10k", "10q", "8k"}
+                                    else None,
+                                    raw_primary_doc_path=str(
+                                        _filing_cache_path(
+                                            company.cik,
+                                            filing.accession_number,
+                                            artifact_doc.filename,
+                                        ).relative_to(RAW_DIR.parents[1])
+                                    )
+                                    if artifact_doc.artifact_type in {"10k", "10q", "8k"}
+                                    else None,
+                                    amends_artifact_id=amends_artifact_id
+                                    if artifact_doc.artifact_type in {"10k", "10q"}
+                                    else None,
                                     artifact_metadata=artifact_doc.metadata,
                                     **period_fields,
                                 )
+                                if created and normalized_body is not None and form_family is not None:
+                                    replace_sections_and_chunks(
+                                        conn,
+                                        artifact_id=artifact_id,
+                                        company_id=company.id,
+                                        fiscal_period_key=fiscal_period_key,
+                                        form_family=form_family,
+                                        sections=extract_sections(form_family, normalized_body),
+                                    )
                         counts["raw_responses"] += 1
                         counts["files_fetched"] += 1
                         if artifact_doc is None:

@@ -12,6 +12,7 @@ Start here. Read only the next doc you need.
 - Repository flow / folder map: `docs/architecture/repository_flow.md`
 - Metrics platform (view stack; shared by dashboard, screener, analyst agent): `docs/architecture/metrics_platform.md`
 - Dashboard UI surface: `docs/architecture/dashboard.md`
+- SEC qualitative layer (filings → sections → chunks, amendments, FTS): `docs/architecture/sec_qualitative_layer.md`
 - Period spec (fiscal ↔ calendar rules): `docs/reference/periods.md`
 - Canonical bucket schema (IS/BS/CF normalization contract): `docs/reference/concepts.md`
 - FMP ↔ canonical mapping: `docs/reference/fmp_mapping.md`

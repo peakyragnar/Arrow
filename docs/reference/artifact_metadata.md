@@ -21,6 +21,7 @@
 These have dedicated columns and must not be duplicated in metadata:
 
 - Anything in [periods.md](./periods.md) — `fiscal_year`, `fiscal_quarter`, `period_end`, `calendar_*`, all labels
+- SEC filing identity on `artifacts` — `company_id`, `fiscal_period_key`, `form_family`, `cik`, `accession_number`, `raw_primary_doc_path`, `amends_artifact_id`
 - Hashes — `raw_hash`, `canonical_hash`
 - Provenance — `source`, `source_document_id`, `ticker`, `url`, `content_type`, `language`
 - Time-awareness — `published_at`, `effective_at`, `ingested_at`
@@ -37,8 +38,6 @@ These are the starting conventions. Add a row when you introduce a new type; ext
 
 | Key | Type | Notes |
 |---|---|---|
-| `accession_number` | string | SEC accession, e.g. `"0001045810-24-000316"` |
-| `filer_cik` | string | CIK, e.g. `"0001045810"` |
 | `form_type` | string | Literal form, e.g. `"10-K/A"` for amendments |
 | `amended` | bool | Present and `true` on amendments (`10-K/A`, `10-Q/A`) |
 | `filing_date` | string (ISO date) | Form filing date from SEC header; may differ from `published_at` if we received it late |
