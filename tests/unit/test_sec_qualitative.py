@@ -73,6 +73,25 @@ def test_extract_unparsed_body_when_no_valid_headings_found() -> None:
     assert section.confidence == 0.0
 
 
+def test_normalize_filing_body_strips_standalone_page_numbers() -> None:
+    normalized = normalize_filing_body(
+        b"""
+        <html><body>
+          <p>For a description of our operating lease obligations, refer to Note 3.</p>
+          <div>33</div>
+          <h3>Climate Change</h3>
+          <p>There has been no material impact from climate-related business trends.</p>
+          <table><tr><td>2024</td><td>100</td></tr></table>
+        </body></html>
+        """,
+        "text/html",
+    )
+
+    assert "\n33\n" not in normalized
+    assert "Note 3.\n\nClimate Change" in normalized
+    assert "2024 100" in normalized
+
+
 def test_chunking_preserves_heading_path_and_sentence_overlap() -> None:
     normalized = normalize_filing_body(
         (

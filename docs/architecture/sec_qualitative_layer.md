@@ -201,6 +201,7 @@ Pipeline:
    - decode HTML entities
    - normalize unicode (NFKC)
    - collapse whitespace
+   - strip conservative standalone page-number artifacts
    - remove obvious boilerplate
    - suppress table-of-contents duplicates
 3. Detect canonical SEC headings in filing-body order.

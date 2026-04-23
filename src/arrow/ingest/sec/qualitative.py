@@ -10,7 +10,7 @@ from typing import Literal
 
 import psycopg
 
-EXTRACTOR_VERSION = "sec_sections_v2"
+EXTRACTOR_VERSION = "sec_sections_v3"
 CHUNKER_VERSION = "sec_chunks_v5"
 
 ExtractionMethod = Literal["deterministic", "repair", "unparsed_fallback"]
@@ -194,14 +194,16 @@ def normalize_filing_body(body: bytes, content_type: str | None) -> str:
     text = html.unescape(text)
     text = unicodedata.normalize("NFKC", text)
     raw_lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    cleaned_lines = [_WHITESPACE_PATTERN.sub(" ", raw).strip() for raw in raw_lines]
     normalized_lines: list[str] = []
     blank_run = 0
-    for raw in raw_lines:
-        line = _WHITESPACE_PATTERN.sub(" ", raw).strip()
+    for idx, line in enumerate(cleaned_lines):
         if not line:
             blank_run += 1
             if blank_run <= 1:
                 normalized_lines.append("")
+            continue
+        if _is_probable_page_number_line(cleaned_lines, idx):
             continue
         blank_run = 0
         normalized_lines.append(line)
@@ -214,6 +216,43 @@ def search_text_from_text(text: str) -> str:
     normalized = normalized.lower()
     normalized = _WHITESPACE_PATTERN.sub(" ", normalized).strip()
     return normalized
+
+
+def _is_probable_page_number_line(lines: list[str], index: int) -> bool:
+    line = lines[index]
+    if not re.fullmatch(r"\d{1,3}", line):
+        return False
+    previous_line = _nearest_nonblank_line(lines, index, step=-1)
+    next_line = _nearest_nonblank_line(lines, index, step=1)
+    if previous_line is None or next_line is None:
+        return False
+    if not previous_line.endswith((".", "?", "!", ")", "]", "”", '"')):
+        return False
+    if _word_count(previous_line) < 8:
+        return False
+    return _looks_like_heading(next_line) or _word_count(next_line) >= 8
+
+
+def _nearest_nonblank_line(lines: list[str], index: int, *, step: int) -> str | None:
+    cursor = index + step
+    while 0 <= cursor < len(lines):
+        if lines[cursor]:
+            return lines[cursor]
+        cursor += step
+    return None
+
+
+def _looks_like_heading(text: str) -> bool:
+    if len(text) > 160 or _word_count(text) > 14:
+        return False
+    if re.match(r"(?i)^(item|part)\s+\d*[a-z]?", text):
+        return True
+    words = re.findall(r"[A-Za-z][A-Za-z&/\-']*", text)
+    if not words:
+        return False
+    title_case = sum(1 for word in words if word[:1].isupper())
+    upper_words = sum(1 for word in words if word.isupper() and len(word) > 1)
+    return title_case >= max(1, len(words) // 2) or upper_words >= max(1, len(words) // 2)
 
 
 def extract_sections(form_family: FormFamily, normalized_body: str) -> list[ExtractedSection]:
