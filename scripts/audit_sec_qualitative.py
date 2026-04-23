@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import re
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -68,6 +69,25 @@ DEFAULT_QUERIES = [
 MD_AND_A_KEYS = ["item_7_mda", "part1_item2_mda"]
 RISK_KEYS = ["item_1a_risk_factors", "part2_item1a_risk_factors"]
 BUSINESS_KEYS = ["item_1_business"]
+SHORT_VALID_SECTION_KEYS = {
+    "item_3_legal_proceedings",
+    "item_9a_controls",
+    "item_9b_other_information",
+    "part1_item4_controls",
+    "part2_item1_legal_proceedings",
+    "part2_item5_other_information",
+}
+SHORT_VALID_HEADING_TITLES = {
+    "Adoption of New and Recently Issued Accounting Pronouncements",
+    "Climate Change",
+    "Recent Accounting Pronouncements",
+    "Recently Issued Accounting Pronouncements",
+}
+BOUNDARY_TAIL_RE = re.compile(
+    r"\b(PART\s+[IVX]+|SIGNATURES?|TABLE\s+OF\s+CONTENTS)\b",
+    re.IGNORECASE,
+)
+TRAILING_PAGE_NUMBER_RE = re.compile(r"\.\s+\d{1,4}\s*$")
 
 
 @dataclass(frozen=True)
@@ -117,6 +137,142 @@ def _preferred_sections_for_query(query: str) -> list[str]:
     ):
         preferred.extend(RISK_KEYS + MD_AND_A_KEYS + BUSINESS_KEYS)
     return list(dict.fromkeys(preferred))
+
+
+def _preferred_reason_for_query(query: str, preferred_sections: list[str]) -> str:
+    if not preferred_sections:
+        return "No section preference; ranked by FTS score."
+    q = query.lower()
+    reasons = []
+    if any(
+        token in q
+        for token in (
+            "revenue",
+            "sales",
+            "margin",
+            "gross",
+            "operating",
+            "cash",
+            "capex",
+            "expenses",
+        )
+    ):
+        reasons.append("financial operating topic; prefer MD&A")
+    if any(
+        token in q
+        for token in (
+            "risk",
+            "export",
+            "controls",
+            "constraint",
+            "supply",
+            "regulation",
+            "china",
+        )
+    ):
+        reasons.append("risk/regulatory/supply topic; prefer Risk Factors, MD&A, Business")
+    return "; ".join(reasons)
+
+
+def _query_terms(query: str) -> list[str]:
+    terms = re.findall(r"[a-z0-9]+", query.lower())
+    return [term for term in terms if len(term) > 1]
+
+
+def _retrieval_explanation(query: str, search_text: str | None) -> dict[str, Any]:
+    haystack = (search_text or "").lower()
+    terms = _query_terms(query)
+    matched = [term for term in terms if term in haystack]
+    missing = [term for term in terms if term not in haystack]
+    return {
+        "matched_terms": matched,
+        "missing_terms": missing,
+        "exact_phrase": query.lower() in haystack if query else False,
+        "term_coverage": f"{len(matched)}/{len(terms)}" if terms else "-",
+    }
+
+
+def _highlight_html(value: Any) -> str:
+    escaped = _escape(value)
+    return (
+        escaped.replace("__HIGHLIGHT_START__", "<mark>")
+        .replace("__HIGHLIGHT_END__", "</mark>")
+    )
+
+
+def _highlight_text(value: Any) -> str:
+    return (
+        str(value or "")
+        .replace("__HIGHLIGHT_START__", "[")
+        .replace("__HIGHLIGHT_END__", "]")
+    )
+
+
+def _heading_path_label(value: Any) -> str:
+    if not value:
+        return "-"
+    if isinstance(value, list):
+        return " > ".join(str(item) for item in value if item)
+    return str(value)
+
+
+def _sentence_count(text: str) -> int:
+    return len([part for part in re.split(r"(?<=[.!?])\s+", text.strip()) if part])
+
+
+def _word_count(text: str) -> int:
+    return len(re.findall(r"\b\w+\b", text))
+
+
+def _chunk_warning_bucket(row: dict[str, Any]) -> tuple[str, str]:
+    text = row.get("text") or ""
+    section_key = row.get("section_key") or ""
+    chars = row.get("chars") or 0
+    heading_path = row.get("heading_path") or []
+    primary_heading = heading_path[-1] if heading_path else None
+    starts_with = row.get("starts_with") or ""
+    ends_with = row.get("ends_with") or ""
+    words = _word_count(text)
+    sentences = _sentence_count(text)
+
+    if chars > 12000:
+        return "large_chunk", "Over 12,000 characters; may be too broad for precise retrieval."
+    if not heading_path:
+        return "possible_boundary_issue", "No heading_path; chunk may be structurally orphaned."
+    if TRAILING_PAGE_NUMBER_RE.search(text):
+        return "possible_boundary_issue", "Tail ends with a likely page-number bleed."
+    if BOUNDARY_TAIL_RE.search(ends_with):
+        return "possible_boundary_issue", "Tail contains a filing boundary marker."
+    if re.fullmatch(r"[A-Z0-9 ,.;:()&/\\-]{20,}", starts_with.strip()) and words < 200:
+        return "possible_boundary_issue", "Short chunk starts with an all-caps orphan line."
+    if words < 200 and section_key not in SHORT_VALID_SECTION_KEYS:
+        if primary_heading in SHORT_VALID_HEADING_TITLES:
+            return "short_valid_section", "Short but expected for this boilerplate subsection."
+        return "possible_boundary_issue", "Under 200 words outside a normally short section."
+    if sentences < 3 and section_key not in SHORT_VALID_SECTION_KEYS:
+        if primary_heading in SHORT_VALID_HEADING_TITLES:
+            return "short_valid_section", "Short but expected for this boilerplate subsection."
+        return "possible_boundary_issue", "Fewer than three sentences outside a normally short section."
+    if chars < 500 and section_key in SHORT_VALID_SECTION_KEYS:
+        return "short_valid_section", "Short but expected for this SEC section type."
+    return "size_outlier", "Unusual size; review manually."
+
+
+def _classify_chunk_warnings(rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    buckets = {
+        "possible_boundary_issue": [],
+        "large_chunk": [],
+        "short_valid_section": [],
+        "size_outlier": [],
+    }
+    for row in rows:
+        bucket, reason = _chunk_warning_bucket(row)
+        row["warning_bucket"] = bucket
+        row["warning_reason"] = reason
+        row["word_count"] = _word_count(row.get("text") or "")
+        row["sentence_count"] = _sentence_count(row.get("text") or "")
+        buckets.setdefault(bucket, []).append(row)
+    return buckets
 
 
 def _expected_filings(
@@ -382,19 +538,26 @@ def _collect_report(
             """
             SELECT a.fiscal_period_key, s.section_key, ch.chunk_ordinal,
                    length(ch.text) AS chars,
+                   ch.heading_path,
+                   ch.text,
                    left(ch.text, 220) AS starts_with,
                    right(ch.text, 220) AS ends_with
             FROM artifact_section_chunks ch
             JOIN artifact_sections s ON s.id = ch.section_id
             JOIN artifacts a ON a.id = s.artifact_id
             WHERE a.ticker = %s
-              AND (length(ch.text) < 500 OR length(ch.text) > 12000)
+              AND (
+                  length(ch.text) < 500
+                  OR length(ch.text) > 12000
+                  OR ch.text ~ '\\.\\s+\\d{1,4}\\s*$'
+              )
             ORDER BY length(ch.text) DESC
             LIMIT 30;
             """,
             (ticker.upper(),),
         )
         chunk_outliers = _dict_rows(cur)
+        chunk_warning_buckets = _classify_chunk_warnings(chunk_outliers)
 
     sections_by_artifact: dict[int, dict[str, dict[str, Any]]] = {}
     for row in section_rows:
@@ -416,8 +579,10 @@ def _collect_report(
             weak.append(filing)
 
     retrieval: dict[str, list[dict[str, Any]]] = {}
+    retrieval_reasons: dict[str, str] = {}
     for query in queries:
         preferred_sections = _preferred_sections_for_query(query)
+        retrieval_reasons[query] = _preferred_reason_for_query(query, preferred_sections)
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -428,7 +593,17 @@ def _collect_report(
                        CASE WHEN s.section_key = ANY(%s::text[]) THEN true ELSE false END
                            AS preferred_section,
                        round(ts_rank_cd(ch.tsv, q.tsq)::numeric, 4) AS rank,
-                       left(ch.search_text, 320) AS snippet
+                       s.extraction_method,
+                       s.confidence,
+                       ch.heading_path,
+                       ts_headline(
+                           'english',
+                           ch.search_text,
+                           q.tsq,
+                           'StartSel=__HIGHLIGHT_START__, StopSel=__HIGHLIGHT_END__, MaxWords=35, MinWords=12'
+                       ) AS highlighted_snippet,
+                       left(ch.search_text, 320) AS snippet,
+                       ch.search_text AS match_source
                 FROM artifact_section_chunks ch
                 JOIN artifact_sections s ON s.id = ch.section_id
                 JOIN artifacts a ON a.id = s.artifact_id
@@ -441,7 +616,11 @@ def _collect_report(
                 """,
                 (query, preferred_sections, ticker.upper()),
             )
-            retrieval[query] = _dict_rows(cur)
+            rows = _dict_rows(cur)
+            for row in rows:
+                row.update(_retrieval_explanation(query, row.get("match_source")))
+                row.pop("match_source", None)
+            retrieval[query] = rows
 
     expected_counts = []
     for artifact_type in ("10k", "10q", "8k"):
@@ -458,7 +637,12 @@ def _collect_report(
         )
 
     hard_issues = len(missing) + len(unexpected) + len(weak)
-    warnings = len(missing_sections) + len(chunk_outliers)
+    reviewable_chunk_warnings = [
+        row
+        for row in chunk_outliers
+        if row.get("warning_bucket") != "short_valid_section"
+    ]
+    warnings = len(missing_sections) + len(reviewable_chunk_warnings)
     status = "FAIL" if hard_issues else "PASS_WITH_WARNINGS" if warnings else "PASS"
     return {
         "ticker": ticker.upper(),
@@ -478,7 +662,9 @@ def _collect_report(
         "weak": weak,
         "chunk_stats": chunk_stats,
         "chunk_outliers": chunk_outliers,
+        "chunk_warning_buckets": chunk_warning_buckets,
         "retrieval": retrieval,
+        "retrieval_reasons": retrieval_reasons,
         "status": status,
         "hard_issues": hard_issues,
         "warnings": warnings,
@@ -664,26 +850,53 @@ def _chunk_health(conn, ticker: str) -> int:
             """
             SELECT a.fiscal_period_key, s.section_key, ch.chunk_ordinal,
                    length(ch.text) AS chars,
+                   ch.heading_path,
+                   ch.text,
                    left(ch.text, 120) AS starts_with,
                    right(ch.text, 120) AS ends_with
             FROM artifact_section_chunks ch
             JOIN artifact_sections s ON s.id = ch.section_id
             JOIN artifacts a ON a.id = s.artifact_id
             WHERE a.ticker = %s
-              AND (length(ch.text) < 500 OR length(ch.text) > 12000)
+              AND (
+                  length(ch.text) < 500
+                  OR length(ch.text) > 12000
+                  OR ch.text ~ '\\.\\s+\\d{1,4}\\s*$'
+              )
             ORDER BY length(ch.text) DESC
             LIMIT 20;
             """,
             (ticker.upper(),),
         )
-        outliers = cur.fetchall()
+        outliers = _dict_rows(cur)
+        buckets = _classify_chunk_warnings(outliers)
     if outliers:
         print()
-        print("Chunk size outliers")
-        _print_table(["period", "section", "ord", "chars", "starts_with", "ends_with"], outliers)
+        print("Chunk Warnings By Type")
+        for bucket, rows in buckets.items():
+            if not rows:
+                continue
+            print(f"  {bucket}: {len(rows)}")
+            table_rows = [
+                (
+                    row["fiscal_period_key"],
+                    row["section_key"],
+                    row["chunk_ordinal"],
+                    row["chars"],
+                    row["word_count"],
+                    row["warning_reason"],
+                    row["ends_with"],
+                )
+                for row in rows[:8]
+            ]
+            _print_table(["period", "section", "ord", "chars", "words", "reason", "ends_with"], table_rows)
     else:
-        print("  chunk size outliers: none using <500 or >12000 chars")
-    return len(outliers)
+        print("  chunk warnings: none using <500 or >12000 chars")
+    return sum(
+        len(rows)
+        for bucket, rows in buckets.items()
+        if bucket != "short_valid_section"
+    )
 
 
 def _retrieval_smoke(conn, ticker: str, queries: list[str]) -> None:
@@ -691,6 +904,7 @@ def _retrieval_smoke(conn, ticker: str, queries: list[str]) -> None:
     print("Retrieval Smoke Tests")
     for query in queries:
         preferred_sections = _preferred_sections_for_query(query)
+        reason = _preferred_reason_for_query(query, preferred_sections)
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -701,7 +915,14 @@ def _retrieval_smoke(conn, ticker: str, queries: list[str]) -> None:
                        CASE WHEN s.section_key = ANY(%s::text[]) THEN 'yes' ELSE 'no' END
                            AS preferred,
                        round(ts_rank_cd(ch.tsv, q.tsq)::numeric, 4) AS rank,
-                       left(ch.search_text, 180) AS snippet
+                       ch.heading_path,
+                       ts_headline(
+                           'english',
+                           ch.search_text,
+                           q.tsq,
+                           'StartSel=__HIGHLIGHT_START__, StopSel=__HIGHLIGHT_END__, MaxWords=22, MinWords=8'
+                       ) AS highlighted_snippet,
+                       ch.search_text AS match_source
                 FROM artifact_section_chunks ch
                 JOIN artifact_sections s ON s.id = ch.section_id
                 JOIN artifacts a ON a.id = s.artifact_id
@@ -714,9 +935,29 @@ def _retrieval_smoke(conn, ticker: str, queries: list[str]) -> None:
                 """,
                 (query, preferred_sections, ticker.upper()),
             )
-            rows = cur.fetchall()
+            rows = _dict_rows(cur)
         print(f"  query: {query!r}")
-        _print_table(["period", "section", "ord", "pref", "rank", "snippet"], rows)
+        print(f"  preference: {reason}")
+        table_rows = []
+        for row in rows:
+            explanation = _retrieval_explanation(query, row.get("match_source"))
+            table_rows.append(
+                (
+                    row["fiscal_period_key"],
+                    row["section_key"],
+                    row["chunk_ordinal"],
+                    row["preferred"],
+                    row["rank"],
+                    explanation["term_coverage"],
+                    ", ".join(explanation["matched_terms"]),
+                    _heading_path_label(row["heading_path"]),
+                    _highlight_text(row["highlighted_snippet"]),
+                )
+            )
+        _print_table(
+            ["period", "section", "ord", "pref", "rank", "terms", "matched", "heading", "snippet"],
+            table_rows,
+        )
 
 
 def _period_listing(conn, ticker: str) -> None:
@@ -894,17 +1135,41 @@ def _warnings_html(report: dict[str, Any]) -> str:
     if not missing_rows:
         missing_rows.append('<tr><td colspan="4">No missing standard section warnings.</td></tr>')
 
-    outlier_cards = []
-    for row in report["chunk_outliers"]:
-        outlier_cards.append(
-            "<article class=\"chunk-card\">"
-            f"<div><strong>{_escape(row['fiscal_period_key'])}</strong> · {_escape(row['section_key'])} · chunk {_escape(row['chunk_ordinal'])} · {_escape(row['chars'])} chars</div>"
-            f"<p><span>Starts:</span> {_escape(row['starts_with'])}</p>"
-            f"<p><span>Ends:</span> {_escape(row['ends_with'])}</p>"
-            "</article>"
+    bucket_titles = {
+        "possible_boundary_issue": "Possible Boundary Issues",
+        "large_chunk": "Large Chunks",
+        "short_valid_section": "Short Valid Sections",
+        "size_outlier": "Other Size Outliers",
+    }
+    bucket_notes = {
+        "possible_boundary_issue": "Review these first. They may indicate a section tail, orphan heading, or fragment.",
+        "large_chunk": "These may be too broad for precise retrieval or citation.",
+        "short_valid_section": "Usually informational. Legal, controls, and other-information sections are often short by design.",
+        "size_outlier": "Unusual size but not classified by a stronger rule.",
+    }
+    outlier_groups = []
+    for bucket, title in bucket_titles.items():
+        rows = report["chunk_warning_buckets"].get(bucket, [])
+        if not rows:
+            continue
+        cards = []
+        for row in rows:
+            cards.append(
+                "<article class=\"chunk-card\">"
+                f"<div><strong>{_escape(row['fiscal_period_key'])}</strong> · {_escape(row['section_key'])} · chunk {_escape(row['chunk_ordinal'])} · {_escape(row['chars'])} chars · {_escape(row['word_count'])} words</div>"
+                f"<p><span>Reason:</span> {_escape(row['warning_reason'])}</p>"
+                f"<p><span>Heading:</span> {_escape(_heading_path_label(row['heading_path']))}</p>"
+                f"<p><span>Starts:</span> {_escape(row['starts_with'])}</p>"
+                f"<p><span>Ends:</span> {_escape(row['ends_with'])}</p>"
+                "</article>"
+            )
+        outlier_groups.append(
+            f"<h4>{_escape(title)} ({len(rows)})</h4>"
+            f"<p class=\"section-note\">{_escape(bucket_notes[bucket])}</p>"
+            f"<div class=\"chunk-grid\">{''.join(cards)}</div>"
         )
-    if not outlier_cards:
-        outlier_cards.append("<p>No chunk size outliers.</p>")
+    if not outlier_groups:
+        outlier_groups.append("<p>No chunk size warnings.</p>")
 
     return f"""
         <section>
@@ -914,8 +1179,8 @@ def _warnings_html(report: dict[str, Any]) -> str:
             <thead><tr><th>Type</th><th>Period</th><th>Accession</th><th>Missing Sections</th></tr></thead>
             <tbody>{''.join(missing_rows)}</tbody>
           </table>
-          <h3>Chunk Outliers</h3>
-          <div class="chunk-grid">{''.join(outlier_cards)}</div>
+          <h3>Chunk Warnings</h3>
+          {''.join(outlier_groups)}
         </section>
     """
 
@@ -924,18 +1189,27 @@ def _retrieval_html(report: dict[str, Any]) -> str:
     groups = []
     for query, rows in report["retrieval"].items():
         cards = []
+        reason = report["retrieval_reasons"].get(query, "")
         for row in rows:
             preferred = "preferred" if row.get("preferred_section") else "matched"
+            exact = "exact phrase" if row.get("exact_phrase") else "term match"
+            matched_terms = row.get("matched_terms") or []
+            missing_terms = row.get("missing_terms") or []
+            chips = "".join(f'<span class="chip ok">{_escape(term)}</span>' for term in matched_terms)
+            chips += "".join(f'<span class="chip missing">{_escape(term)}</span>' for term in missing_terms)
             cards.append(
                 "<article class=\"result-card\">"
-                f"<div class=\"result-meta\">{_escape(row['fiscal_period_key'])} · {_escape(row['section_key'])} · chunk {_escape(row['chunk_ordinal'])} · {_escape(preferred)} · rank {_escape(row.get('rank'))}</div>"
-                f"<p>{_escape(row['snippet'])}</p>"
+                f"<div class=\"result-meta\">{_escape(row['fiscal_period_key'])} · {_escape(row['section_key'])} · chunk {_escape(row['chunk_ordinal'])} · {_escape(preferred)} · rank {_escape(row.get('rank'))} · {_escape(row.get('term_coverage'))} terms · {_escape(exact)}</div>"
+                f"<div class=\"breadcrumb\">{_escape(_heading_path_label(row.get('heading_path')))}</div>"
+                f"<div class=\"chips\">{chips}</div>"
+                f"<p>{_highlight_html(row.get('highlighted_snippet') or row.get('snippet'))}</p>"
+                f"<p class=\"why\"><span>Extraction:</span> {_escape(row.get('extraction_method'))} / conf {_escape(row.get('confidence'))}</p>"
                 "</article>"
             )
         if not cards:
             cards.append("<p>No matches.</p>")
         groups.append(
-            f"<div class=\"retrieval-group\"><h3>{_escape(query)}</h3>{''.join(cards)}</div>"
+            f"<div class=\"retrieval-group\"><h3>{_escape(query)}</h3><p class=\"section-note\">{_escape(reason)}</p>{''.join(cards)}</div>"
         )
     return f"""
         <section>
@@ -967,7 +1241,7 @@ def _render_html_report(reports: list[dict[str, Any]]) -> str:
               {_metric_card('Filing Coverage', f'{total_stored}/{total_expected}' if total_expected else total_stored, 'stored vs expected', 'ok' if report['hard_issues'] == 0 else 'bad')}
               {_metric_card('Weak Extractions', len(report['weak']), 'low confidence, fallback, or missing', 'ok' if not report['weak'] else 'bad')}
               {_metric_card('Chunks', total_chunks, 'retrieval units', 'neutral')}
-              {_metric_card('Warnings', report['warnings'], 'optional sections + chunk outliers', 'warn' if report['warnings'] else 'ok')}
+              {_metric_card('Warnings', report['warnings'], 'missing sections + reviewable chunk warnings', 'warn' if report['warnings'] else 'ok')}
             </div>
             {_coverage_html(report)}
             {_section_health_html(report)}
@@ -1010,6 +1284,7 @@ def _render_html_report(reports: list[dict[str, Any]]) -> str:
     h1 {{ margin: 0; font-size: 40px; letter-spacing: 0; }}
     h2 {{ margin: 0 0 14px; font-size: 22px; letter-spacing: 0; }}
     h3 {{ margin: 18px 0 10px; font-size: 16px; letter-spacing: 0; }}
+    h4 {{ margin: 18px 0 6px; font-size: 14px; letter-spacing: 0; color: #31414a; }}
     p {{ color: var(--muted); }}
     section, .metric {{ background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }}
     section {{ padding: 18px; margin: 16px 0; overflow-x: auto; }}
@@ -1040,6 +1315,13 @@ def _render_html_report(reports: list[dict[str, Any]]) -> str:
     .chunk-card, .result-card {{ border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: #fbfcfd; }}
     .chunk-card p, .result-card p {{ margin: 8px 0 0; color: var(--ink); line-height: 1.45; }}
     .chunk-card span, .result-meta {{ color: var(--muted); font-weight: 700; font-size: 12px; }}
+    .breadcrumb {{ color: var(--blue); font-size: 12px; font-weight: 700; margin-top: 8px; }}
+    .chips {{ display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }}
+    .chip {{ border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 700; }}
+    .chip.ok {{ background: var(--ok-bg); color: var(--ok); border-color: #91d4b4; }}
+    .chip.missing {{ background: #eef1f3; color: #7a858c; }}
+    mark {{ background: #fff0a8; color: inherit; padding: 0 2px; border-radius: 3px; }}
+    .why span {{ color: var(--muted); font-weight: 700; font-size: 12px; }}
     .section-note {{ margin-top: -4px; }}
     @media (max-width: 900px) {{
       .metrics, .two-col {{ grid-template-columns: 1fr; }}
@@ -1151,7 +1433,7 @@ def _audit_ticker(args: argparse.Namespace, ticker: str) -> int:
     print(f"  unexpected stored filings:    {unexpected}")
     print(f"  weak/missing extractions:     {weak}")
     print(f"  filings missing some standard sections: {missing_sections}")
-    print(f"  chunk size outliers:          {chunk_outliers}")
+    print(f"  reviewable chunk warnings:    {chunk_outliers}")
     return 0 if hard_issues == 0 else 1
 
 

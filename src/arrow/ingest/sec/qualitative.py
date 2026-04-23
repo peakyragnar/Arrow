@@ -11,7 +11,7 @@ from typing import Literal
 import psycopg
 
 EXTRACTOR_VERSION = "sec_sections_v2"
-CHUNKER_VERSION = "sec_chunks_v1"
+CHUNKER_VERSION = "sec_chunks_v5"
 
 ExtractionMethod = Literal["deterministic", "repair", "unparsed_fallback"]
 FormFamily = Literal["10-K", "10-Q"]
@@ -31,6 +31,40 @@ _WHITESPACE_PATTERN = re.compile(r"[ \t\f\v]+")
 _SENTENCE_SPLIT_PATTERN = re.compile(r"(?<=[.!?])\s+")
 _TOC_DOTS_PATTERN = re.compile(r"\.{2,}\s*\d+$")
 _PART_HEADING_PATTERN = re.compile(r"(?i)^\s*part\s+(i|ii)\b")
+_EMBEDDED_SUBHEADINGS = tuple(
+    sorted(
+        {
+            "Acquisition Termination Cost",
+            "Adoption of New and Recently Issued Accounting Pronouncements",
+            "Capital Return to Shareholders",
+            "Climate Change",
+            "Concentration of Revenue",
+            "Critical Accounting Policies and Estimates",
+            "Critical Accounting Estimates",
+            "Global Trade",
+            "Gross Margin",
+            "Gross Profit and Gross Margin",
+            "License and Development Arrangements",
+            "Liquidity and Capital Resources",
+            "Market Platform Highlights",
+            "Material Cash Requirements and Other Obligations",
+            "Off-Balance Sheet Arrangements",
+            "Operating Expenses",
+            "Outstanding Indebtedness and Commercial Paper Program",
+            "Outstanding Indebtedness and Commercial Paper",
+            "Product Sales Revenue",
+            "Product Transitions and New Product Introductions",
+            "Recent Accounting Pronouncements",
+            "Recently Issued Accounting Pronouncements",
+            "Results of Operations",
+        },
+        key=len,
+        reverse=True,
+    )
+)
+_EMBEDDED_SUBHEADING_PATTERN = re.compile(
+    r"\b(" + "|".join(re.escape(heading) for heading in _EMBEDDED_SUBHEADINGS) + r")\b"
+)
 
 _TEN_K_SECTIONS: list[tuple[str, str, str]] = [
     ("item_1_business", "Item 1", r"item\s+1(?:\s*[\.\-:]\s*|\s+)business\b"),
@@ -135,6 +169,15 @@ class _SentenceUnit:
     end_offset: int
     heading_path: list[str]
     is_heading: bool = False
+    force_boundary: bool = False
+
+
+@dataclass(frozen=True)
+class _Block:
+    text: str
+    start: int
+    end: int
+    embedded_heading: bool = False
 
 
 def normalize_filing_body(body: bytes, content_type: str | None) -> str:
@@ -251,6 +294,13 @@ def build_chunks(section: ExtractedSection) -> list[ChunkRow]:
         unit = units[idx]
         unit_words = _word_count(unit.text)
         next_is_heading = idx + 1 < len(units) and units[idx + 1].is_heading
+
+        if current and unit.is_heading and unit.force_boundary and _has_content_units(current):
+            chunks.append(_emit_chunk(section, ordinal, current))
+            ordinal += 1
+            current = []
+            current_words = 0
+            overlap_units = []
 
         if current:
             would_exceed = current_words + unit_words > _TARGET_MAX_WORDS
@@ -570,20 +620,21 @@ def _section_units(section: ExtractedSection) -> list[_SentenceUnit]:
     blocks = _paragraph_blocks(section.text, base_offset=section.start_offset)
     units: list[_SentenceUnit] = []
     heading_stack = [section.section_title]
-    for block_text, start, end in blocks:
-        if _is_subheading(block_text):
-            heading_stack = [section.section_title, block_text]
+    for block in blocks:
+        if _is_subheading(block.text):
+            heading_stack = [section.section_title, block.text]
             units.append(
                 _SentenceUnit(
-                    text=block_text,
-                    start_offset=start,
-                    end_offset=end,
+                    text=block.text,
+                    start_offset=block.start,
+                    end_offset=block.end,
                     heading_path=list(heading_stack),
                     is_heading=True,
+                    force_boundary=block.embedded_heading,
                 )
             )
             continue
-        for sentence_text, sent_start, sent_end in _sentence_units(block_text, start):
+        for sentence_text, sent_start, sent_end in _sentence_units(block.text, block.start):
             units.append(
                 _SentenceUnit(
                     text=sentence_text,
@@ -595,21 +646,70 @@ def _section_units(section: ExtractedSection) -> list[_SentenceUnit]:
     return units
 
 
-def _paragraph_blocks(text: str, *, base_offset: int) -> list[tuple[str, int, int]]:
-    blocks: list[tuple[str, int, int]] = []
+def _paragraph_blocks(text: str, *, base_offset: int) -> list[_Block]:
+    blocks: list[_Block] = []
     pattern = re.compile(r"\n\s*\n")
     cursor = 0
     for match in pattern.finditer(text):
         block = text[cursor:match.start()].strip()
         if block:
             start = base_offset + cursor + text[cursor:match.start()].find(block)
-            blocks.append((block, start, start + len(block)))
+            blocks.extend(_split_embedded_subheadings(block, base_offset=start))
         cursor = match.end()
     tail = text[cursor:].strip()
     if tail:
         start = base_offset + cursor + text[cursor:].find(tail)
-        blocks.append((tail, start, start + len(tail)))
+        blocks.extend(_split_embedded_subheadings(tail, base_offset=start))
     return blocks
+
+
+def _split_embedded_subheadings(text: str, *, base_offset: int) -> list[_Block]:
+    pieces: list[_Block] = []
+    cursor = 0
+    for match in _EMBEDDED_SUBHEADING_PATTERN.finditer(text):
+        if not _is_embedded_subheading_match(text, match):
+            continue
+        _append_block_piece(pieces, text[cursor : match.start()], base_offset + cursor)
+        _append_block_piece(
+            pieces,
+            match.group(1),
+            base_offset + match.start(),
+            embedded_heading=True,
+        )
+        cursor = match.end()
+    _append_block_piece(pieces, text[cursor:], base_offset + cursor)
+    return pieces
+
+
+def _append_block_piece(
+    out: list[_Block], raw: str, start: int, *, embedded_heading: bool = False
+) -> None:
+    text = raw.strip()
+    if not text:
+        return
+    relative_start = raw.find(text)
+    absolute_start = start + relative_start
+    out.append(
+        _Block(
+            text=text,
+            start=absolute_start,
+            end=absolute_start + len(text),
+            embedded_heading=embedded_heading,
+        )
+    )
+
+
+def _is_embedded_subheading_match(text: str, match: re.Match[str]) -> bool:
+    before = text[: match.start()].rstrip()
+    after = text[match.end() :].lstrip()
+    if before and before[-1] not in ".!?":
+        return False
+    if not after:
+        return True
+    next_char = after[0]
+    if not (next_char.isupper() or next_char.isdigit() or next_char in "$("):
+        return False
+    return True
 
 
 def _sentence_units(text: str, start_offset: int) -> list[tuple[str, int, int]]:
@@ -642,6 +742,10 @@ def _sentence_overlap(units: list[_SentenceUnit]) -> list[_SentenceUnit]:
     if chunk_words and overlap_words / chunk_words > 0.18:
         return overlap[-1:]
     return overlap
+
+
+def _has_content_units(units: list[_SentenceUnit]) -> bool:
+    return any(not unit.is_heading for unit in units)
 
 
 def _emit_chunk(section: ExtractedSection, ordinal: int, units: list[_SentenceUnit]) -> ChunkRow:

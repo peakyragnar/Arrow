@@ -240,8 +240,10 @@ Chunking rules:
 - never cross section boundaries
 - split on structure first:
   - subheadings
+  - conservative known embedded subheadings promoted from paragraph text
   - paragraph boundaries
   - sentence boundaries if needed
+- do not carry sentence overlap across a `heading_path` boundary
 - size is a guardrail, not the primary split rule
 
 Standard:
@@ -345,6 +347,61 @@ Two FTS surfaces:
    - feeds model context packets and citation-ready snippets
 
 Both are derived and regeneratable.
+
+## Retrieval Principles
+
+The qualitative layer uses sections, chunks, and evidence packets for different
+jobs:
+
+- `artifact_sections` are the canonical narrative truth. A section is the
+  durable unit a human analyst recognizes.
+- `artifact_section_chunks` are search and citation indexes. They help locate
+  candidate evidence under context-window scarcity; they are not source truth.
+- Evidence packets are the product assembled for an analyst agent. They combine
+  selected filing evidence with financial facts, transcripts, news, and other
+  dated context.
+
+Operational rule:
+
+- retrieve small
+- read bigger
+- cite precisely
+
+In practice, chunk-level FTS finds candidate passages, then the packet builder
+may expand context before handing evidence to a model.
+
+Supported expansion modes:
+
+1. Neighbor expansion
+   - Include adjacent chunks from the same section.
+   - Use when the matched chunk is short and the answer may straddle a chunk
+     boundary.
+   - Do not cross `heading_path` boundaries by default; bridging unrelated
+     Risk Factors is noise.
+
+2. Subsection expansion
+   - Include chunks sharing the same `heading_path` prefix.
+   - Use when the match is inside a thematic cluster, such as a risk category
+     or MD&A subheading.
+
+3. Parent-section expansion
+   - Include the full `artifact_sections.text` value.
+   - Use when token budget allows and the question is synthesis-oriented, such
+     as an analyst memo, year-over-year comparison, or broad business review.
+   - Avoid by default for lookup-style questions where a narrower passage is
+     sufficient.
+
+Always carry cheap context with each result:
+
+- `heading_path`
+- parent artifact metadata
+- `section_key`
+- `extraction_method`
+- `confidence`
+
+The audit report is the quality gate for this behavior. It should explain why a
+retrieval result matched before the system adds more complex chunking,
+deterministic tags, or LLM-derived tags.
 
 ## Large Text Discipline
 

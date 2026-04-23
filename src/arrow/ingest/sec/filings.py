@@ -16,6 +16,7 @@ from arrow.ingest.common.http import HttpClient, Response
 from arrow.ingest.common.raw_responses import write_raw_response
 from arrow.ingest.common.runs import close_failed, close_succeeded, open_run
 from arrow.ingest.sec.qualitative import (
+    CHUNKER_VERSION,
     EXTRACTOR_VERSION,
     extract_sections,
     find_amends_artifact_id,
@@ -374,7 +375,9 @@ def _is_in_qualitative_window(
     return True
 
 
-def _artifact_has_current_sections(conn: psycopg.Connection, artifact_id: int) -> bool:
+def _artifact_has_current_sections_and_chunks(
+    conn: psycopg.Connection, artifact_id: int
+) -> bool:
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -388,9 +391,33 @@ def _artifact_has_current_sections(conn: psycopg.Connection, artifact_id: int) -
                        FROM artifact_sections
                        WHERE artifact_id = %s
                          AND extractor_version <> %s
+                   )
+                   AND NOT EXISTS (
+                       SELECT 1
+                       FROM artifact_section_chunks ch
+                       JOIN artifact_sections s ON s.id = ch.section_id
+                       WHERE s.artifact_id = %s
+                         AND ch.chunker_version <> %s
+                   )
+                   AND NOT EXISTS (
+                       SELECT 1
+                       FROM artifact_sections s
+                       WHERE s.artifact_id = %s
+                         AND NOT EXISTS (
+                             SELECT 1
+                             FROM artifact_section_chunks ch
+                             WHERE ch.section_id = s.id
+                         )
                    );
             """,
-            (artifact_id, artifact_id, EXTRACTOR_VERSION),
+            (
+                artifact_id,
+                artifact_id,
+                EXTRACTOR_VERSION,
+                artifact_id,
+                CHUNKER_VERSION,
+                artifact_id,
+            ),
         )
         return bool(cur.fetchone()[0])
 
@@ -641,7 +668,9 @@ def ingest_sec_filings(
                                     and form_family is not None
                                     and (
                                         created
-                                        or not _artifact_has_current_sections(conn, artifact_id)
+                                        or not _artifact_has_current_sections_and_chunks(
+                                            conn, artifact_id
+                                        )
                                     )
                                 )
                                 if should_write_sections:

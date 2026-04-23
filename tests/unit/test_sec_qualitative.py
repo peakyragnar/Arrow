@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from arrow.ingest.sec.qualitative import build_chunks, extract_sections, normalize_filing_body
+from arrow.ingest.sec.qualitative import (
+    ExtractedSection,
+    build_chunks,
+    extract_sections,
+    normalize_filing_body,
+)
 
 
 def test_extract_10q_sections_is_part_aware_and_skips_toc() -> None:
@@ -97,3 +102,46 @@ def test_chunking_preserves_heading_path_and_sentence_overlap() -> None:
     tail_sentence = chunks[0].text.split(".")[-2].strip()
     assert tail_sentence
     assert tail_sentence in chunks[1].text
+
+
+def test_chunking_splits_embedded_mda_subheading_and_updates_heading_path() -> None:
+    section = ExtractedSection(
+        section_key="part1_item2_mda",
+        section_title="Part I Item 2. Management's Discussion and Analysis",
+        part_label="Part I",
+        item_label="Item 2",
+        text=(
+            "Material Cash Requirements and Other Obligations\n\n"
+            "33 To date, there has been no material impact to our results of operations "
+            "associated with global sustainability regulations, compliance, costs from "
+            "sourcing renewable energy or climate-related business trends. Adoption of "
+            "New and Recently Issued Accounting Pronouncements There has been no adoption "
+            "of any new and recently issued accounting pronouncements."
+        ),
+        start_offset=0,
+        end_offset=357,
+        confidence=1.0,
+        extraction_method="deterministic",
+    )
+
+    chunks = build_chunks(section)
+
+    material_chunk = next(
+        chunk for chunk in chunks if "global sustainability regulations" in chunk.text
+    )
+    accounting_chunk = next(
+        chunk
+        for chunk in chunks
+        if "There has been no adoption of any new and recently issued accounting pronouncements"
+        in chunk.text
+    )
+
+    assert material_chunk.heading_path == [
+        "Part I Item 2. Management's Discussion and Analysis",
+        "Material Cash Requirements and Other Obligations",
+    ]
+    assert accounting_chunk.heading_path == [
+        "Part I Item 2. Management's Discussion and Analysis",
+        "Adoption of New and Recently Issued Accounting Pronouncements",
+    ]
+    assert "global sustainability regulations" not in accounting_chunk.text

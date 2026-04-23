@@ -57,6 +57,7 @@ def _drop_view_or_stale_type(cur, name: str) -> None:
     row = cur.fetchone()
     if row is None or row[0] in {"v", "m"}:
         cur.execute(sql.SQL("DROP VIEW IF EXISTS {} CASCADE;").format(ident))
+        cur.execute(sql.SQL("DROP TYPE IF EXISTS {} CASCADE;").format(ident))
         return
     if row[0] == "c":
         cur.execute(sql.SQL("DROP TYPE IF EXISTS {} CASCADE;").format(ident))
