@@ -73,7 +73,9 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 # Jan 2026. The fiscal-year axis is audit-aligned: each FY column ties
 # to a single 10-K filing.
 FY_COUNT = 5
-Q_COUNT = 8  # rolling fiscal quarters
+Q_COUNT = 8          # rolling fiscal quarters displayed
+Q_FETCH_COUNT = 12   # fetch 4 extra priors so each displayed quarter has a
+                     # same-quarter-prior-year lookback for YoY deltas
 
 
 # ---------------------------------------------------------------------------
@@ -91,7 +93,7 @@ def fetch_tickers(conn: psycopg.Connection) -> list[str]:
         return [r[0] for r in cur.fetchall()]
 
 
-def fetch_quarterly(conn: psycopg.Connection, ticker: str, n: int = Q_COUNT) -> list[dict]:
+def fetch_quarterly(conn: psycopg.Connection, ticker: str, n: int = Q_FETCH_COUNT) -> list[dict]:
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -297,11 +299,21 @@ class _Columns:
         ttm: dict | None,
         quarterly: list[dict],
         fy_ttm_by_anchor: dict[Any, dict] | None = None,
+        *,
+        quarterly_full: list[dict] | None = None,
     ):
-        self.fy = fy_rows  # oldest → newest
+        """fy_rows / quarterly are the displayed sets (oldest → newest).
+
+        `quarterly_full` holds the extended 12-quarter window so that
+        each displayed quarter can look up its same-quarter-prior-year
+        value for YoY deltas. quarterly_full is oldest → newest and
+        has `quarterly` as its last len(quarterly) entries.
+        """
+        self.fy = fy_rows
         self.fy_ttm = fy_ttm_by_anchor or {}
         self.ttm = ttm or {}
         self.q = quarterly
+        self.q_full = quarterly_full if quarterly_full is not None else quarterly
 
     @property
     def n_fy(self) -> int:
@@ -325,6 +337,26 @@ class _Columns:
     def q_series(self, key: str) -> list[Any]:
         return [row.get(key) for row in self.q]
 
+    def q_prior_year_series(self, key: str) -> list[Any]:
+        """Return, for each displayed quarter, the value of `key` at the
+        same quarter one fiscal year earlier (i.e. 4 quarters back).
+
+        Uses q_full as the extended lookup window. If fewer than 4 prior
+        quarters exist for a given displayed quarter, returns None in
+        that slot so the caller suppresses the delta rather than computing
+        against nothing.
+        """
+        # q_full is chronological oldest → newest. displayed quarters are
+        # the last n of q_full. For displayed index i (0..n-1), its
+        # position in q_full is offset + i, where offset = len(q_full) − n.
+        # Its prior-year counterpart is at q_full[offset + i − 4].
+        offset = len(self.q_full) - len(self.q)
+        out: list[Any] = []
+        for i in range(len(self.q)):
+            src_idx = offset + i - 4
+            out.append(self.q_full[src_idx].get(key) if src_idx >= 0 else None)
+        return out
+
     def all_null_fy(self) -> list[Any]:
         return [None] * len(self.fy)
 
@@ -338,15 +370,21 @@ def _abs_row_with_yoy(name: str, c: _Columns, fy_key: str, ttm_key: str, q_key: 
     q_vals = c.q_series(q_key)
     values = fy_vals + [ttm_val] + q_vals
 
-    # Deltas: FY-over-FY, TTM-over-last-FY, Q-over-prior-Q
+    # All deltas are YoY (year-over-year) for consistency:
+    #   FY cell  → this FY vs prior FY        (already YoY)
+    #   TTM cell → this TTM vs prior FY total (TTM-over-last-FY approximation)
+    #   Q cell   → this quarter vs same quarter one year earlier (4 quarters back)
+    # Quarterly QoQ was seasonality-dominated; YoY matches how analysts
+    # actually talk about growth and the FY/TTM columns' semantics.
     fy_deltas = [None] + [_pct_change(fy_vals[i], fy_vals[i - 1]) for i in range(1, len(fy_vals))]
     ttm_delta = _pct_change(ttm_val, fy_vals[-1]) if fy_vals else None
-    q_deltas = [None] + [_pct_change(q_vals[i], q_vals[i - 1]) for i in range(1, len(q_vals))]
+    q_prior_year = c.q_prior_year_series(q_key)
+    q_deltas = [_pct_change(q_vals[i], q_prior_year[i]) for i in range(len(q_vals))]
     deltas = fy_deltas + [ttm_delta] + q_deltas
 
     return [
         PanelRow(name=name, format="money", values=values),
-        PanelRow(name=f"  Δ%", format="pct", values=deltas, is_change_row=True),
+        PanelRow(name=f"  Δ YoY", format="pct", values=deltas, is_change_row=True),
     ]
 
 
@@ -363,14 +401,16 @@ def _margin_row_with_bps(
     q_vals = c.q_series(q_key)
     values = fy_vals + [ttm_val] + q_vals
 
+    # BPS deltas mirror the abs-row YoY contract: quarter vs same-quarter-prior-year.
     fy_bps = [None] + [_bps_change(fy_vals[i], fy_vals[i - 1]) for i in range(1, len(fy_vals))]
     ttm_bps = _bps_change(ttm_val, fy_vals[-1]) if fy_vals else None
-    q_bps = [None] + [_bps_change(q_vals[i], q_vals[i - 1]) for i in range(1, len(q_vals))]
+    q_prior_year = c.q_prior_year_series(q_key)
+    q_bps = [_bps_change(q_vals[i], q_prior_year[i]) for i in range(len(q_vals))]
     bps = fy_bps + [ttm_bps] + q_bps
 
     return [
         PanelRow(name=name, format="pct", values=values),
-        PanelRow(name="  Δbps", format="bps", values=bps, is_change_row=True),
+        PanelRow(name="  Δbps YoY", format="bps", values=bps, is_change_row=True),
     ]
 
 
@@ -411,14 +451,18 @@ def build_panel(
     fy_rows: list[dict],
     ttm: dict | None,
     fy_ttm_by_anchor: dict[Any, dict] | None = None,
+    quarterly_full: list[dict] | None = None,
 ) -> tuple[list[str], list[PanelRow]]:
     """Compose metric rows aligned with (FY + TTM + Q) columns.
 
-    Returns (headers, rows, col_period_ends). col_period_ends gives the
-    period_end date (or None) for each column — used for cell-level
-    audit tooltips.
+    `quarterly` is the 8 displayed quarters. `quarterly_full` is the
+    extended 12-quarter window used to supply each displayed quarter's
+    prior-year lookback for YoY deltas.
     """
-    c = _Columns(fy_rows, ttm, quarterly, fy_ttm_by_anchor)
+    c = _Columns(
+        fy_rows, ttm, quarterly, fy_ttm_by_anchor,
+        quarterly_full=quarterly_full,
+    )
 
     # Column headers are structured as {date, main, sub?} so the
     # template can style each piece. date goes on top (dim, small),
@@ -591,21 +635,29 @@ def dashboard(request: Request, ticker: str) -> Any:
         tickers = fetch_tickers(conn)
         if ticker not in tickers:
             raise HTTPException(404, f"{ticker} not in companies")
-        quarterly = fetch_quarterly(conn, ticker, n=Q_COUNT)
+        # Fetch the extended window (12 = 8 displayed + 4 prior for YoY lookback).
+        quarterly_full = fetch_quarterly(conn, ticker, n=Q_FETCH_COUNT)
         fy_rows = fetch_fiscal_years(conn, ticker, n=FY_COUNT)
         fy_end_dates = [r["fy_end"] for r in fy_rows]
         fy_ttm_by_anchor = fetch_fy_ttm_metrics(conn, ticker, fy_end_dates)
         ttm = fetch_latest_ttm(conn, ticker)
         flag_counts = fetch_flag_counts(conn, ticker)
 
-    if not quarterly:
+    if not quarterly_full:
         return HTMLResponse(
             f"<html><body><h1>{ticker}: no facts loaded yet.</h1>"
             f"<p>Run <code>uv run scripts/ingest_company.py {ticker}</code> first.</p>"
             "</body></html>"
         )
 
-    headers, rows = build_panel(quarterly, fy_rows, ttm, fy_ttm_by_anchor)
+    # Displayed = the most recent Q_COUNT quarters; quarterly_full keeps
+    # the full 12-quarter window for YoY prior-year lookups.
+    quarterly = quarterly_full[-Q_COUNT:]
+
+    headers, rows = build_panel(
+        quarterly, fy_rows, ttm, fy_ttm_by_anchor,
+        quarterly_full=quarterly_full,
+    )
 
     # Column period-ends for cell-level audit tooltips:
     #   FY columns → fy_rows[i].fy_end
@@ -661,7 +713,7 @@ def dashboard(request: Request, ticker: str) -> Any:
 def dashboard_raw(ticker: str) -> Any:
     ticker = ticker.upper()
     with get_conn() as conn:
-        quarterly = fetch_quarterly(conn, ticker, n=Q_COUNT)
+        quarterly = fetch_quarterly(conn, ticker, n=Q_FETCH_COUNT)[-Q_COUNT:]
         fy_rows = fetch_fiscal_years(conn, ticker, n=FY_COUNT)
         ttm = fetch_latest_ttm(conn, ticker)
     return JSONResponse(
