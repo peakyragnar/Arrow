@@ -10,7 +10,7 @@ from typing import Literal
 
 import psycopg
 
-EXTRACTOR_VERSION = "sec_sections_v6"
+EXTRACTOR_VERSION = "sec_sections_v9"
 CHUNKER_VERSION = "sec_chunks_v10"
 
 ExtractionMethod = Literal["deterministic", "repair", "unparsed_fallback"]
@@ -30,7 +30,16 @@ _TAG_PATTERN = re.compile(r"(?is)<[^>]+>")
 _WHITESPACE_PATTERN = re.compile(r"[ \t\f\v]+")
 _SENTENCE_SPLIT_PATTERN = re.compile(r"(?<=[.!?])\s+")
 _TOC_DOTS_PATTERN = re.compile(r"\.{2,}\s*\d+$")
+_TOC_SUFFIX_PATTERN = re.compile(r"(?i)\s+table\s+of\s+conten\s*t\s*s\s*$")
 _PART_HEADING_PATTERN = re.compile(r"(?i)^\s*part\s+(i|ii)\b")
+_TEN_Q_ITEM_HEADING_PATTERN = re.compile(
+    r"(?i)^\s*(?:part\s+(?P<part>i|ii)\s*[\.\-:]*\s*)?"
+    r"item\s+(?P<item>\d+[a-z]?)(?:\s*[\.\-:]\s*|\s+)"
+)
+_TEN_K_ITEM_HEADING_PATTERN = re.compile(
+    r"(?i)^\s*(?:part\s+[ivx]+\s*[\.\-:]*\s*)?"
+    r"item\s+(?P<item>\d+[a-z]?)(?:\s*[\.\-:]\s*|\s+)"
+)
 _FILING_FURNITURE_TAIL_RE = re.compile(
     r"(?i)\b("
     r"inline\s+xbrl\s+document|"
@@ -133,6 +142,35 @@ _TEN_Q_SECTIONS: list[tuple[str, str, str, str]] = [
         r"item\s+5(?:\s*[\.\-:]\s*|\s+)other\s+information\b",
     ),
 ]
+_TEN_Q_BOUNDARY_ITEMS = {
+    "Part I": {"Item 1", "Item 2", "Item 3", "Item 4"},
+    "Part II": {"Item 1", "Item 1A", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6"},
+}
+_TEN_K_BOUNDARY_ITEMS = {
+    "Item 1",
+    "Item 1A",
+    "Item 1B",
+    "Item 1C",
+    "Item 2",
+    "Item 3",
+    "Item 4",
+    "Item 5",
+    "Item 6",
+    "Item 7",
+    "Item 7A",
+    "Item 8",
+    "Item 9",
+    "Item 9A",
+    "Item 9B",
+    "Item 9C",
+    "Item 10",
+    "Item 11",
+    "Item 12",
+    "Item 13",
+    "Item 14",
+    "Item 15",
+    "Item 16",
+}
 
 
 @dataclass(frozen=True)
@@ -221,6 +259,9 @@ def normalize_filing_body(body: bytes, content_type: str | None) -> str:
         if _is_probable_page_number_line(cleaned_lines, idx):
             continue
         line = _strip_probable_filing_furniture_page_number(line)
+        line = _strip_table_of_contents_marker(line)
+        if not line:
+            continue
         blank_run = 0
         normalized_lines.append(line)
     normalized = "\n".join(normalized_lines).strip()
@@ -260,6 +301,12 @@ def _strip_probable_filing_furniture_page_number(line: str) -> str:
         if signature_match is not None:
             return signature_match.group("body").rstrip()
     return line
+
+
+def _strip_table_of_contents_marker(line: str) -> str:
+    if _is_table_of_contents_heading(line):
+        return ""
+    return _TOC_SUFFIX_PATTERN.sub("", line).rstrip()
 
 
 def _nearest_nonblank_line(lines: list[str], index: int, *, step: int) -> str | None:
@@ -628,6 +675,10 @@ def _materialize_sections(
                     if _extract_part_heading(probe.text) == next_candidate.part_label:
                         end = probe.start
                         break
+        if form_family == "10-K":
+            end = min(end, _next_10k_item_boundary(candidate, lines, body, end))
+        if form_family == "10-Q":
+            end = min(end, _next_10q_item_boundary(candidate, lines, body, end))
         text = body[start:end].strip()
         if not text:
             continue
@@ -659,6 +710,65 @@ def _materialize_sections(
             )
         )
     return out
+
+
+def _next_10k_item_boundary(
+    candidate: SectionCandidate,
+    lines: list[_Line],
+    body: str,
+    fallback_end: int,
+) -> int:
+    """Find the next Form 10-K item heading, including unextracted items."""
+    current_order = _item_order(candidate.item_label)
+    for idx, line in enumerate(lines[candidate.line_index + 1 :], start=candidate.line_index + 1):
+        if line.start >= fallback_end:
+            break
+        item_label = _extract_10k_item_heading(line.text)
+        if item_label is None:
+            continue
+        if item_label not in _TEN_K_BOUNDARY_ITEMS:
+            continue
+        if _item_order(item_label) <= current_order:
+            continue
+        if _is_toc_like(lines, idx, body):
+            continue
+        return line.start
+    return fallback_end
+
+
+def _next_10q_item_boundary(
+    candidate: SectionCandidate,
+    lines: list[_Line],
+    body: str,
+    fallback_end: int,
+) -> int:
+    """Find the next same-part Form 10-Q item heading, including unextracted items."""
+    if candidate.part_label is None:
+        return fallback_end
+    current_order = _item_order(candidate.item_label)
+    current_part = candidate.part_label
+    for idx, line in enumerate(lines[candidate.line_index + 1 :], start=candidate.line_index + 1):
+        if line.start >= fallback_end:
+            break
+        inline_part = _extract_part_heading(line.text)
+        if inline_part is not None:
+            current_part = inline_part
+            if current_part != candidate.part_label:
+                return line.start
+        item_label = _extract_10q_item_heading(line.text)
+        if item_label is None:
+            continue
+        actual_part = inline_part or current_part
+        if actual_part != candidate.part_label:
+            continue
+        if item_label not in _TEN_Q_BOUNDARY_ITEMS.get(actual_part, set()):
+            continue
+        if _item_order(item_label) <= current_order:
+            continue
+        if _is_toc_like(lines, idx, body):
+            continue
+        return line.start
+    return fallback_end
 
 
 def _confidence_for_section(
@@ -846,6 +956,37 @@ def _extract_part_heading(line: str) -> str | None:
     if roman == "II":
         return "Part II"
     return None
+
+
+def _extract_10q_item_heading(line: str) -> str | None:
+    text = line.strip()
+    if len(text) > 220 or _word_count(text) > 18:
+        return None
+    match = _TEN_Q_ITEM_HEADING_PATTERN.match(text)
+    if match is None:
+        return None
+    item = match.group("item").upper()
+    return f"Item {item}"
+
+
+def _extract_10k_item_heading(line: str) -> str | None:
+    text = line.strip()
+    if len(text) > 220 or _word_count(text) > 18:
+        return None
+    match = _TEN_K_ITEM_HEADING_PATTERN.match(text)
+    if match is None:
+        return None
+    item = match.group("item").upper()
+    return f"Item {item}"
+
+
+def _item_order(item_label: str) -> int:
+    match = re.search(r"(?i)item\s+(\d+)([a-z]?)", item_label)
+    if match is None:
+        return -1
+    base = int(match.group(1)) * 10
+    suffix = match.group(2).upper()
+    return base + (ord(suffix) - ord("A") + 1 if suffix else 0)
 
 
 def _is_toc_like(lines: list[_Line], index: int, body: str) -> bool:

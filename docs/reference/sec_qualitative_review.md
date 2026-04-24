@@ -116,6 +116,18 @@ plus any pre-window quarters needed to complete the first included fiscal year
 For earnings 8-Ks, retention is filing-date based over the same calendar
 window because 8-Ks do not carry the 10-K / 10-Q fiscal section contract.
 
+The coverage tables split base filings from amendments:
+
+```text
+10-K and 10-K/A are separate display rows.
+10-Q and 10-Q/A are separate display rows.
+8-K and 8-K/A are separate display rows when amendments are present.
+```
+
+This is report labeling, not a storage split. The database still stores both
+base and amended annual filings under the same artifact family and uses filing
+metadata plus `amends_artifact_id` to distinguish amendments.
+
 Interpretation:
 
 ```text

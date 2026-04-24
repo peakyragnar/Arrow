@@ -59,6 +59,52 @@ def test_extract_10q_stops_part1_before_part2_title_line() -> None:
     assert "PART II. OTHER INFORMATION" not in mda.text
 
 
+def test_extract_10q_risk_factors_stop_before_unextracted_item6_exhibits() -> None:
+    html = b"""
+    <html><body>
+      <div>Part II</div>
+      <h2>Item 1A. Risk Factors</h2>
+      <p>Risk factor text that should stay inside the risk factor section.</p>
+      <h2>ITEM 6. EXHIBITS</h2>
+      <p>Exhibit index text should not be part of risk factors.</p>
+      <p>SIGNATURE Pursuant to the requirements of the Securities Exchange Act of 1934.</p>
+    </body></html>
+    """
+    normalized = normalize_filing_body(html, "text/html")
+
+    sections = extract_sections("10-Q", normalized)
+    risk_factors = next(
+        section for section in sections if section.section_key == "part2_item1a_risk_factors"
+    )
+
+    assert "Risk factor text that should stay inside" in risk_factors.text
+    assert "ITEM 6. EXHIBITS" not in risk_factors.text
+    assert "SIGNATURE" not in risk_factors.text
+
+
+def test_extract_10k_risk_factors_stop_before_unextracted_item1b() -> None:
+    html = b"""
+    <html><body>
+      <h2>Item 1A. Risk Factors</h2>
+      <p>Risk factor text that should stay inside the risk factor section.</p>
+      <h2>ITEM 1B. UNRESOLVED STAFF COMMENTS</h2>
+      <p>None.</p>
+      <h2>Item 3. Legal Proceedings</h2>
+      <p>Legal proceedings text.</p>
+    </body></html>
+    """
+    normalized = normalize_filing_body(html, "text/html")
+
+    sections = extract_sections("10-K", normalized)
+    risk_factors = next(
+        section for section in sections if section.section_key == "item_1a_risk_factors"
+    )
+
+    assert "Risk factor text that should stay inside" in risk_factors.text
+    assert "ITEM 1B. UNRESOLVED STAFF COMMENTS" not in risk_factors.text
+    assert "None." not in risk_factors.text
+
+
 def test_extract_unparsed_body_when_no_valid_headings_found() -> None:
     normalized = normalize_filing_body(
         b"<html><body><p>Plain filing body with no recognizable SEC item headings.</p></body></html>",
@@ -107,6 +153,24 @@ def test_normalize_filing_body_strips_final_page_number_after_signature() -> Non
 
     assert normalized.endswith("Principal Financial Officer")
     assert "\n62" not in normalized
+
+
+def test_normalize_filing_body_strips_table_of_contents_furniture() -> None:
+    normalized = normalize_filing_body(
+        b"""
+        <html><body>
+          <p>Financial statement discussion that should remain. Table of Contents</p>
+          <div>Table of Conten t s</div>
+          <p>Risk discussion that should also remain.</p>
+        </body></html>
+        """,
+        "text/html",
+    )
+
+    assert "Financial statement discussion that should remain." in normalized
+    assert "Risk discussion that should also remain." in normalized
+    assert "Table of Contents" not in normalized
+    assert "Table of Conten t s" not in normalized
 
 
 def test_normalize_filing_body_strips_conservative_filing_tail_page_numbers() -> None:

@@ -66,6 +66,7 @@ DEFAULT_QUERIES = [
     "export controls",
     "supply constraints",
 ]
+DISPLAY_FORM_ORDER = ["10-K", "10-K/A", "10-Q", "10-Q/A", "8-K", "8-K/A"]
 MD_AND_A_KEYS = ["item_7_mda", "part1_item2_mda"]
 RISK_KEYS = ["item_1a_risk_factors", "part2_item1a_risk_factors"]
 BUSINESS_KEYS = ["item_1_business"]
@@ -73,6 +74,7 @@ SHORT_VALID_SECTION_KEYS = {
     "item_3_legal_proceedings",
     "item_9a_controls",
     "item_9b_other_information",
+    "part1_item3_market_risk",
     "part1_item4_controls",
     "part2_item1_legal_proceedings",
     "part2_item5_other_information",
@@ -80,11 +82,20 @@ SHORT_VALID_SECTION_KEYS = {
 SHORT_VALID_HEADING_TITLES = {
     "Adoption of New and Recently Issued Accounting Pronouncements",
     "Climate Change",
+    "Critical Accounting Policies and Estimates",
+    "Critical Accounting Estimates",
+    "Off-Balance Sheet Arrangements",
+    "Overview and Recent Developments",
     "Recent Accounting Pronouncements",
     "Recently Issued Accounting Pronouncements",
 }
-BOUNDARY_TAIL_RE = re.compile(
-    r"\b(PART\s+[IVX]+|SIGNATURES?|TABLE\s+OF\s+CONTENTS)\b",
+BOUNDARY_MARKER_RE = re.compile(
+    r"\b("
+    r"PART\s+[IVX]+\s*[\.\-:]\s+OTHER\s+INFORMATION|"
+    r"ITEM\s+6\s*[\.\-:]\s*EXHIBITS|"
+    r"SIGNATURES?|"
+    r"TABLE\s+OF\s+CONTENTS"
+    r")\b",
     re.IGNORECASE,
 )
 TRAILING_PAGE_NUMBER_RE = re.compile(r"\.\s+\d{1,4}\s*$")
@@ -241,15 +252,19 @@ def _chunk_warning_bucket(row: dict[str, Any]) -> tuple[str, str]:
         return "possible_boundary_issue", "No heading_path; chunk may be structurally orphaned."
     if TRAILING_PAGE_NUMBER_RE.search(text):
         return "possible_boundary_issue", "Tail ends with a likely page-number bleed."
-    if BOUNDARY_TAIL_RE.search(ends_with):
-        return "possible_boundary_issue", "Tail contains a filing boundary marker."
+    if BOUNDARY_MARKER_RE.search(starts_with) or BOUNDARY_MARKER_RE.search(ends_with):
+        return "possible_boundary_issue", "Chunk edge contains a filing boundary marker."
     if re.fullmatch(r"[A-Z0-9 ,.;:()&/\\-]{20,}", starts_with.strip()) and words < 200:
         return "possible_boundary_issue", "Short chunk starts with an all-caps orphan line."
     if words < 200 and section_key not in SHORT_VALID_SECTION_KEYS:
+        if section_key in RISK_KEYS and len(heading_path) > 1:
+            return "short_valid_section", "Short but expected for an individual risk-factor bullet."
         if primary_heading in SHORT_VALID_HEADING_TITLES:
             return "short_valid_section", "Short but expected for this boilerplate subsection."
         return "possible_boundary_issue", "Under 200 words outside a normally short section."
     if sentences < 3 and section_key not in SHORT_VALID_SECTION_KEYS:
+        if section_key in RISK_KEYS and len(heading_path) > 1:
+            return "short_valid_section", "Short but expected for an individual risk-factor bullet."
         if primary_heading in SHORT_VALID_HEADING_TITLES:
             return "short_valid_section", "Short but expected for this boilerplate subsection."
         return "possible_boundary_issue", "Fewer than three sentences outside a normally short section."
@@ -341,6 +356,7 @@ def _stored_artifacts(conn, ticker: str) -> list[dict[str, Any]]:
         cur.execute(
             """
             SELECT id, artifact_type, accession_number, source_document_id,
+                   COALESCE(artifact_metadata->>'form_type', title) AS form_type,
                    fiscal_period_key, fiscal_year, published_at::date
             FROM artifacts
             WHERE ticker = %s
@@ -351,7 +367,13 @@ def _stored_artifacts(conn, ticker: str) -> list[dict[str, Any]]:
             (ticker.upper(),),
         )
         cols = [d.name for d in cur.description]
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+        rows = [dict(zip(cols, row)) for row in cur.fetchall()]
+    for row in rows:
+        row["display_type"] = _filing_display_type(
+            row["artifact_type"],
+            row.get("form_type"),
+        )
+    return rows
 
 
 def _print_table(headers: list[str], rows: list[tuple[Any, ...]]) -> None:
@@ -384,6 +406,79 @@ def _escape(value: Any) -> str:
 
 def _expected_section_keys(artifact_type: str) -> list[str]:
     return TEN_K_KEYS if artifact_type == "10k" else TEN_Q_KEYS
+
+
+def _filing_display_type(artifact_type: str, form_type: str | None) -> str:
+    form = (form_type or "").upper()
+    artifact = artifact_type.lower()
+    if artifact == "10k":
+        return "10-K/A" if form.startswith("10-K/A") else "10-K"
+    if artifact == "10q":
+        return "10-Q/A" if form.startswith("10-Q/A") else "10-Q"
+    if artifact == "8k":
+        return "8-K/A" if form.startswith("8-K/A") else "8-K"
+    return artifact_type
+
+
+def _display_type_sort_key(display_type: str) -> tuple[int, str]:
+    try:
+        return (DISPLAY_FORM_ORDER.index(display_type), display_type)
+    except ValueError:
+        return (len(DISPLAY_FORM_ORDER), display_type)
+
+
+def _display_types_for_counts(
+    stored: list[dict[str, Any]], expected: list[ExpectedFiling] | None
+) -> list[str]:
+    labels = set(DISPLAY_FORM_ORDER)
+    labels.update(row["display_type"] for row in stored)
+    if expected is not None:
+        labels.update(_filing_display_type(row.artifact_type, row.form_type) for row in expected)
+    return sorted(labels, key=_display_type_sort_key)
+
+
+def _coverage_rows_from_stored(
+    stored: list[dict[str, Any]], expected: list[ExpectedFiling] | None
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for display_type in _display_types_for_counts(stored, expected):
+        matches = [row for row in stored if row["display_type"] == display_type]
+        fiscal_years = [row["fiscal_year"] for row in matches if row.get("fiscal_year") is not None]
+        filed_dates = [row["published_at"] for row in matches if row.get("published_at") is not None]
+        rows.append(
+            {
+                "artifact_type": display_type,
+                "stored": len(matches),
+                "min_fy": min(fiscal_years) if fiscal_years else None,
+                "max_fy": max(fiscal_years) if fiscal_years else None,
+                "first_file": min(filed_dates) if filed_dates else None,
+                "last_file": max(filed_dates) if filed_dates else None,
+            }
+        )
+    return rows
+
+
+def _expected_count_rows(
+    stored: list[dict[str, Any]], expected: list[ExpectedFiling] | None
+) -> list[dict[str, Any]]:
+    rows = []
+    for display_type in _display_types_for_counts(stored, expected):
+        rows.append(
+            {
+                "artifact_type": display_type,
+                "expected": (
+                    sum(
+                        1
+                        for item in expected
+                        if _filing_display_type(item.artifact_type, item.form_type) == display_type
+                    )
+                    if expected is not None
+                    else None
+                ),
+                "stored": sum(1 for item in stored if item["display_type"] == display_type),
+            }
+        )
+    return rows
 
 
 def _is_amendment_filing(row: dict[str, Any]) -> bool:
@@ -458,25 +553,22 @@ def _collect_report(
     missing = sorted(expected_keys - stored_keys)
     unexpected = sorted(stored_keys - expected_keys) if expected is not None else []
 
+    coverage = _coverage_rows_from_stored(stored, expected)
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT artifact_type, count(*) AS stored, min(fiscal_year) AS min_fy,
-                   max(fiscal_year) AS max_fy, min(published_at)::date AS first_file,
-                   max(published_at)::date AS last_file
-            FROM artifacts
-            WHERE ticker = %s AND source = 'sec'
-              AND artifact_type IN ('10k', '10q', '8k')
-            GROUP BY artifact_type
-            ORDER BY artifact_type;
-            """,
-            (ticker.upper(),),
-        )
-        coverage = _dict_rows(cur)
-
-        cur.execute(
-            """
-            SELECT a.artifact_type,
+            SELECT CASE
+                       WHEN a.artifact_type = '10k'
+                            AND upper(COALESCE(a.artifact_metadata->>'form_type', a.title, '')) LIKE '10-K/A%%' THEN '10-K/A'
+                       WHEN a.artifact_type = '10k' THEN '10-K'
+                       WHEN a.artifact_type = '10q'
+                            AND upper(COALESCE(a.artifact_metadata->>'form_type', a.title, '')) LIKE '10-Q/A%%' THEN '10-Q/A'
+                       WHEN a.artifact_type = '10q' THEN '10-Q'
+                       WHEN a.artifact_type = '8k'
+                            AND upper(COALESCE(a.artifact_metadata->>'form_type', a.title, '')) LIKE '8-K/A%%' THEN '8-K/A'
+                       WHEN a.artifact_type = '8k' THEN '8-K'
+                       ELSE a.artifact_type
+                   END AS artifact_type,
                    count(DISTINCT a.id) AS artifacts,
                    count(DISTINCT s.artifact_id) AS with_sections,
                    count(DISTINCT s.id) AS sections,
@@ -489,8 +581,8 @@ def _collect_report(
             LEFT JOIN artifact_section_chunks ch ON ch.section_id = s.id
             WHERE a.ticker = %s AND a.source = 'sec'
               AND a.artifact_type IN ('10k', '10q', '8k')
-            GROUP BY a.artifact_type
-            ORDER BY a.artifact_type;
+            GROUP BY 1
+            ORDER BY 1;
             """,
             (ticker.upper(),),
         )
@@ -656,19 +748,7 @@ def _collect_report(
                 row.pop("match_source", None)
             retrieval[query] = rows
 
-    expected_counts = []
-    for artifact_type in ("10k", "10q", "8k"):
-        expected_counts.append(
-            {
-                "artifact_type": artifact_type,
-                "expected": (
-                    sum(1 for item in expected if item.artifact_type == artifact_type)
-                    if expected is not None
-                    else None
-                ),
-                "stored": sum(1 for item in stored if item["artifact_type"] == artifact_type),
-            }
-        )
+    expected_counts = _expected_count_rows(stored, expected)
 
     hard_issues = len(missing) + len(unexpected) + len(weak)
     reviewable_chunk_warnings = [
@@ -711,23 +791,20 @@ def _coverage(conn, ticker: str, expected: list[ExpectedFiling] | None) -> tuple
     stored_keys = {(row["artifact_type"], row["accession_number"]) for row in stored}
 
     print("Filing Coverage")
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT artifact_type, count(*), min(fiscal_year), max(fiscal_year),
-                   min(published_at)::date, max(published_at)::date
-            FROM artifacts
-            WHERE ticker = %s AND source = 'sec'
-              AND artifact_type IN ('10k', '10q', '8k')
-            GROUP BY artifact_type
-            ORDER BY artifact_type;
-            """,
-            (ticker.upper(),),
-        )
-        _print_table(
-            ["type", "stored", "min_fy", "max_fy", "first_file", "last_file"],
-            cur.fetchall(),
-        )
+    _print_table(
+        ["type", "stored", "min_fy", "max_fy", "first_file", "last_file"],
+        [
+            (
+                row["artifact_type"],
+                row["stored"],
+                row["min_fy"],
+                row["max_fy"],
+                row["first_file"],
+                row["last_file"],
+            )
+            for row in _coverage_rows_from_stored(stored, expected)
+        ],
+    )
 
     if expected is None:
         print("  live SEC comparison: skipped (--db-only)")
@@ -738,12 +815,13 @@ def _coverage(conn, ticker: str, expected: list[ExpectedFiling] | None) -> tuple
     unexpected = sorted(stored_keys - expected_keys)
     print()
     print("Live SEC Comparison")
-    expected_rows = []
-    for artifact_type in ("10k", "10q", "8k"):
-        expected_n = sum(1 for item in expected if item.artifact_type == artifact_type)
-        stored_n = sum(1 for row in stored if row["artifact_type"] == artifact_type)
-        expected_rows.append((artifact_type, expected_n, stored_n))
-    _print_table(["type", "expected", "stored"], expected_rows)
+    _print_table(
+        ["type", "expected", "stored"],
+        [
+            (row["artifact_type"], row["expected"], row["stored"])
+            for row in _expected_count_rows(stored, expected)
+        ],
+    )
 
     if missing:
         print()
@@ -762,7 +840,18 @@ def _section_health(conn, ticker: str) -> int:
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT a.artifact_type,
+            SELECT CASE
+                       WHEN a.artifact_type = '10k'
+                            AND upper(COALESCE(a.artifact_metadata->>'form_type', a.title, '')) LIKE '10-K/A%%' THEN '10-K/A'
+                       WHEN a.artifact_type = '10k' THEN '10-K'
+                       WHEN a.artifact_type = '10q'
+                            AND upper(COALESCE(a.artifact_metadata->>'form_type', a.title, '')) LIKE '10-Q/A%%' THEN '10-Q/A'
+                       WHEN a.artifact_type = '10q' THEN '10-Q'
+                       WHEN a.artifact_type = '8k'
+                            AND upper(COALESCE(a.artifact_metadata->>'form_type', a.title, '')) LIKE '8-K/A%%' THEN '8-K/A'
+                       WHEN a.artifact_type = '8k' THEN '8-K'
+                       ELSE a.artifact_type
+                   END AS artifact_type,
                    count(DISTINCT a.id) AS artifacts,
                    count(DISTINCT s.artifact_id) AS with_sections,
                    count(DISTINCT s.id) AS sections,
@@ -775,8 +864,8 @@ def _section_health(conn, ticker: str) -> int:
             LEFT JOIN artifact_section_chunks ch ON ch.section_id = s.id
             WHERE a.ticker = %s AND a.source = 'sec'
               AND a.artifact_type IN ('10k', '10q', '8k')
-            GROUP BY a.artifact_type
-            ORDER BY a.artifact_type;
+            GROUP BY 1
+            ORDER BY 1;
             """,
             (ticker.upper(),),
         )
@@ -1229,7 +1318,7 @@ def _section_matrix_html(report: dict[str, Any], artifact_type: str) -> str:
                 )
         body.append(
             "<tr>"
-            f"<td>{_escape(filing['artifact_type'])}</td>"
+            f"<td>{_escape(_filing_display_type(filing['artifact_type'], filing.get('form_type')))}</td>"
             f"<td>{_escape(filing['fiscal_period_key'])}</td>"
             f"<td>{_escape(filing['filed'])}</td>"
             f"<td class=\"mono\">{_escape(filing['accession_number'])}</td>"
@@ -1293,6 +1382,7 @@ def _warnings_html(report: dict[str, Any]) -> str:
                 f"<p><span>Heading:</span> {_escape(_heading_path_label(row['heading_path']))}</p>"
                 f"<p><span>Starts:</span> {_escape(row['starts_with'])}</p>"
                 f"<p><span>Ends:</span> {_escape(row['ends_with'])}</p>"
+                f"<details><summary>Full chunk text</summary><pre class=\"chunk-full\">{_escape(row.get('text'))}</pre></details>"
                 "</article>"
             )
         outlier_groups.append(
@@ -1448,6 +1538,9 @@ def _render_html_report(reports: list[dict[str, Any]]) -> str:
     .chunk-card, .result-card {{ border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: #fbfcfd; }}
     .chunk-card p, .result-card p {{ margin: 8px 0 0; color: var(--ink); line-height: 1.45; }}
     .chunk-card span, .result-meta {{ color: var(--muted); font-weight: 700; font-size: 12px; }}
+    details {{ margin-top: 10px; }}
+    summary {{ cursor: pointer; color: var(--blue); font-weight: 700; font-size: 12px; }}
+    .chunk-full {{ white-space: pre-wrap; overflow-wrap: anywhere; background: #f2f6f8; border: 1px solid var(--line); border-radius: 6px; padding: 10px; max-height: 360px; overflow: auto; font-size: 12px; line-height: 1.45; }}
     .breadcrumb {{ color: var(--blue); font-size: 12px; font-weight: 700; margin-top: 8px; }}
     .chips {{ display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }}
     .chip {{ border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 700; }}
