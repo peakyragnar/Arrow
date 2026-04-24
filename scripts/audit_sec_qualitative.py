@@ -533,7 +533,7 @@ def _is_hard_weak_filing(filing: dict[str, Any]) -> bool:
     fallbacks = filing.get("fallbacks") or 0
     min_confidence = filing.get("min_confidence")
     if _is_amendment_filing(filing):
-        return sections == 0 or fallbacks > 0
+        return sections == 0
     return sections == 0 or (min_confidence is not None and min_confidence < 0.85) or fallbacks > 0
 
 
@@ -542,7 +542,8 @@ def _is_amendment_extraction_note(filing: dict[str, Any]) -> bool:
         return False
     min_confidence = filing.get("min_confidence")
     repairs = filing.get("repairs") or 0
-    return repairs > 0 or (min_confidence is not None and min_confidence < 0.85)
+    fallbacks = filing.get("fallbacks") or 0
+    return fallbacks > 0 or repairs > 0 or (min_confidence is not None and min_confidence < 0.85)
 
 
 def _section_label(section_key: str) -> str:
@@ -767,10 +768,19 @@ def _collect_report(
     for row in section_rows:
         sections_by_artifact.setdefault(row["artifact_id"], {})[row["section_key"]] = row
 
+    quality_filings = filings
+    if expected is not None:
+        expected_keys = {(row.artifact_type, row.accession_number) for row in expected}
+        quality_filings = [
+            filing
+            for filing in filings
+            if (filing["artifact_type"], filing["accession_number"]) in expected_keys
+        ]
+
     missing_sections = []
     weak = []
     amendment_notes = []
-    for filing in filings:
+    for filing in quality_filings:
         section_map = sections_by_artifact.get(filing["id"], {})
         missing_for_filing = _missing_standard_sections_for_filing(filing, section_map)
         if missing_for_filing:
@@ -1004,7 +1014,9 @@ def _coverage(conn, ticker: str, expected: list[ExpectedFiling] | None) -> tuple
     return len(missing), len(unexpected)
 
 
-def _section_health(conn, ticker: str) -> int:
+def _section_health(
+    conn, ticker: str, expected: list[ExpectedFiling] | None = None
+) -> int:
     print()
     print("Section Extraction Health")
     with conn.cursor() as cur:
@@ -1080,7 +1092,16 @@ def _section_health(conn, ticker: str) -> int:
             """,
             (ticker.upper(),),
         )
-        weak = cur.fetchall()
+        weak_rows = cur.fetchall()
+        if expected is not None:
+            expected_keys = {(row.artifact_type, row.accession_number) for row in expected}
+            weak_rows = [
+                row
+                for row in weak_rows
+                if (row[0], row[2]) in expected_keys
+            ]
+        weak = [row for row in weak_rows if not row[7] or row[3] == 0]
+        weak_amendment_notes = [row for row in weak_rows if row[7] and row[3] > 0]
         cur.execute(
             """
             SELECT a.artifact_type, a.fiscal_period_key, a.accession_number,
@@ -1105,7 +1126,7 @@ def _section_health(conn, ticker: str) -> int:
             """,
             (ticker.upper(),),
         )
-        amendment_notes = cur.fetchall()
+        amendment_notes = [*weak_amendment_notes, *cur.fetchall()]
     if weak:
         print()
         print("Weak or missing extraction")
@@ -1115,7 +1136,7 @@ def _section_health(conn, ticker: str) -> int:
     if amendment_notes:
         print()
         print("Amendment extraction notes")
-        _print_table(["type", "period", "accession", "sections", "min_conf", "repairs"], amendment_notes)
+        _print_table(["type", "period", "accession", "sections", "min_conf", "repairs"], [row[:6] for row in amendment_notes])
     return len(weak)
 
 
@@ -1959,7 +1980,7 @@ def _audit_ticker(args: argparse.Namespace, ticker: str) -> int:
         print()
 
         missing, unexpected = _coverage(conn, ticker, expected)
-        weak = _section_health(conn, ticker)
+        weak = _section_health(conn, ticker, expected)
         missing_sections = _section_inventory(conn, ticker)
         chunk_outliers = _chunk_health(conn, ticker)
         _retrieval_smoke(conn, ticker, queries)

@@ -23,6 +23,10 @@ FILENAME_QUARTER_RE = re.compile(
     r"(?<![a-z0-9])q([1-4])[_-]?(?:fy)?([0-9]{2})(?![0-9])",
     re.IGNORECASE,
 )
+Q_YEAR_RE = re.compile(
+    r"\bq([1-4])[\s_-]*(?:fy)?([12][0-9]{3})(?![0-9])",
+    re.IGNORECASE,
+)
 PREFIX_QUARTER_RE = re.compile(
     r"([1-4])q([0-9]{2,4})(?![0-9])",
     re.IGNORECASE,
@@ -32,7 +36,7 @@ YEAR_QUARTER_RE = re.compile(
     re.IGNORECASE,
 )
 WORD_QUARTER_RE = re.compile(
-    r"\b(first|second|third|fourth)\s+quarter(?:\s+fiscal)?\s+([12][0-9]{3})\b",
+    r"\b(first|second|third|fourth)\s+quarter(?:\s+and)?(?:\s+fiscal(?:\s+year)?)?\s+([12][0-9]{3})\b",
     re.IGNORECASE,
 )
 ANNUAL_RE = re.compile(
@@ -68,6 +72,10 @@ def _parse_period_from_name(value: str | None) -> tuple[int, int | None] | None:
     if year_quarter is not None:
         return int(year_quarter.group(1)), int(year_quarter.group(2))
 
+    q_year = Q_YEAR_RE.search(value)
+    if q_year is not None:
+        return int(q_year.group(2)), int(q_year.group(1))
+
     prefix_quarter = PREFIX_QUARTER_RE.search(value)
     if prefix_quarter is not None:
         quarter = int(prefix_quarter.group(1))
@@ -101,13 +109,15 @@ def _period_from_financial_fact(cur, artifact: dict[str, Any]) -> PeriodFields |
             f.period_type,
             f.calendar_year,
             f.calendar_quarter,
-            f.calendar_period_label
+            f.calendar_period_label,
+            f.published_at::date
         FROM financial_facts f
         WHERE f.company_id = %(company_id)s
           AND f.statement = 'income_statement'
           AND f.period_type = 'quarter'
           AND f.superseded_at IS NULL
-          AND f.published_at::date = %(published_date)s
+          AND f.published_at::date BETWEEN %(published_date)s - INTERVAL '1 day'
+                                      AND %(published_date)s + INTERVAL '14 days'
         GROUP BY
             f.fiscal_period_label,
             f.fiscal_year,
@@ -116,8 +126,9 @@ def _period_from_financial_fact(cur, artifact: dict[str, Any]) -> PeriodFields |
             f.period_type,
             f.calendar_year,
             f.calendar_quarter,
-            f.calendar_period_label
-        ORDER BY f.period_end DESC
+            f.calendar_period_label,
+            f.published_at::date
+        ORDER BY abs(f.published_at::date - %(published_date)s), f.period_end DESC
         LIMIT 1;
         """,
         artifact,
@@ -135,7 +146,7 @@ def _period_from_financial_fact(cur, artifact: dict[str, Any]) -> PeriodFields |
         calendar_year=row[5],
         calendar_quarter=row[6],
         calendar_period_label=row[7],
-        method="financial_fact_published_date",
+        method="financial_fact_near_published_date",
     )
 
 
