@@ -111,6 +111,7 @@ def main() -> int:
     print(f"  artifacts written:      {counts['artifacts_written']}")
     print(f"  artifacts existing:     {counts['artifacts_existing']}")
     print(f"  sections written:       {counts['sections_written']}")
+    print(f"  text units written:     {counts.get('text_units_written', 0)}")
     for artifact_type, n in sorted(counts["artifacts_by_type"].items()):
         print(f"  {artifact_type}:                {n}")
     return 0

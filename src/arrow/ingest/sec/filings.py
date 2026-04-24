@@ -18,10 +18,13 @@ from arrow.ingest.common.runs import close_failed, close_succeeded, open_run
 from arrow.ingest.sec.qualitative import (
     CHUNKER_VERSION,
     EXTRACTOR_VERSION,
+    artifact_has_current_text_units_and_chunks,
     extract_sections,
+    extract_press_release_units,
     find_amends_artifact_id,
     normalize_filing_body,
     replace_sections_and_chunks,
+    replace_text_units_and_chunks,
 )
 from arrow.ingest.sec.bootstrap import SEC_RATE_LIMIT, SEC_USER_AGENT, SUBMISSIONS_URL_TEMPLATE
 from arrow.normalize.periods.derive import (
@@ -274,7 +277,15 @@ def _press_release_docs(index_payload: dict[str, Any]) -> list[dict[str, Any]]:
             out.append(item)
             continue
         description = str(item.get("description") or "").lower()
-        if "press release" in description or "earnings release" in description:
+        lower_name = str(name).lower()
+        if (
+            "press release" in description
+            or "earnings release" in description
+            or "earningsrelease" in lower_name
+            or "earnings-release" in lower_name
+            or "pressrelease" in lower_name
+            or "press-release" in lower_name
+        ):
             out.append(item)
     return out
 
@@ -472,6 +483,7 @@ def ingest_sec_filings(
         "artifacts_written": 0,
         "artifacts_existing": 0,
         "sections_written": 0,
+        "text_units_written": 0,
         "artifacts_by_type": {},
     }
 
@@ -619,11 +631,12 @@ def ingest_sec_filings(
                             if artifact_doc is not None:
                                 normalized_body = None
                                 canonical_body = None
-                                if artifact_doc.artifact_type in {"10k", "10q"}:
+                                if artifact_doc.artifact_type in {"10k", "10q", "press_release"}:
                                     normalized_body = normalize_filing_body(
                                         doc_resp.body, doc_resp.content_type
                                     )
-                                    canonical_body = normalized_body.encode("utf-8")
+                                    if artifact_doc.artifact_type in {"10k", "10q"}:
+                                        canonical_body = normalized_body.encode("utf-8")
                                 artifact_id, created = write_artifact(
                                     conn,
                                     ingest_run_id=run_id,
@@ -683,6 +696,26 @@ def ingest_sec_filings(
                                         sections=extract_sections(form_family, normalized_body),
                                     )
                                     counts["sections_written"] += 1
+                                should_write_text_units = (
+                                    normalized_body is not None
+                                    and artifact_doc.artifact_type == "press_release"
+                                    and (
+                                        created
+                                        or not artifact_has_current_text_units_and_chunks(
+                                            conn, artifact_id
+                                        )
+                                    )
+                                )
+                                if should_write_text_units:
+                                    text_units = extract_press_release_units(normalized_body)
+                                    replace_text_units_and_chunks(
+                                        conn,
+                                        artifact_id=artifact_id,
+                                        company_id=company.id,
+                                        fiscal_period_key=fiscal_period_key,
+                                        units=text_units,
+                                    )
+                                    counts["text_units_written"] += len(text_units)
                         counts["raw_responses"] += 1
                         counts["documents_fetched"] += 1
                         counts["files_fetched"] += 1

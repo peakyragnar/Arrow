@@ -621,6 +621,39 @@ def _collect_report(
 
         cur.execute(
             """
+            SELECT count(DISTINCT a.id) AS artifacts,
+                   count(DISTINCT u.artifact_id) AS with_units,
+                   count(DISTINCT u.id) AS units,
+                   count(ch.id) AS chunks,
+                   min(u.confidence) AS min_confidence,
+                   count(DISTINCT u.id) FILTER (WHERE u.extraction_method = 'unparsed_fallback') AS fallbacks
+            FROM artifacts a
+            LEFT JOIN artifact_text_units u ON u.artifact_id = a.id
+            LEFT JOIN artifact_text_chunks ch ON ch.text_unit_id = u.id
+            WHERE a.ticker = %s AND a.source = 'sec'
+              AND a.artifact_type = 'press_release';
+            """,
+            (ticker.upper(),),
+        )
+        press_release_health = _dict_rows(cur)[0]
+
+        cur.execute(
+            """
+            SELECT u.unit_type, u.unit_key, u.extraction_method,
+                   count(*) AS artifacts_with_unit,
+                   min(u.confidence) AS min_confidence
+            FROM artifact_text_units u
+            JOIN artifacts a ON a.id = u.artifact_id
+            WHERE a.ticker = %s
+            GROUP BY u.unit_type, u.unit_key, u.extraction_method
+            ORDER BY u.unit_type, u.unit_key, u.extraction_method;
+            """,
+            (ticker.upper(),),
+        )
+        text_unit_inventory = _dict_rows(cur)
+
+        cur.execute(
+            """
             SELECT a.id, a.artifact_type, a.fiscal_period_key, a.accession_number,
                    COALESCE(a.artifact_metadata->>'form_type', a.title) AS form_type,
                    a.amends_artifact_id,
@@ -663,18 +696,28 @@ def _collect_report(
 
         cur.execute(
             """
-            SELECT percentile_disc(0.05) WITHIN GROUP (ORDER BY length(ch.text)) AS p05_chars,
-                   percentile_disc(0.50) WITHIN GROUP (ORDER BY length(ch.text)) AS p50_chars,
-                   percentile_disc(0.95) WITHIN GROUP (ORDER BY length(ch.text)) AS p95_chars,
-                   max(length(ch.text)) AS max_chars,
-                   min(length(ch.text)) AS min_chars,
+            WITH chunks AS (
+                SELECT ch.text
+                FROM artifact_section_chunks ch
+                JOIN artifact_sections s ON s.id = ch.section_id
+                JOIN artifacts a ON a.id = s.artifact_id
+                WHERE a.ticker = %s
+                UNION ALL
+                SELECT ch.text
+                FROM artifact_text_chunks ch
+                JOIN artifact_text_units u ON u.id = ch.text_unit_id
+                JOIN artifacts a ON a.id = u.artifact_id
+                WHERE a.ticker = %s
+            )
+            SELECT percentile_disc(0.05) WITHIN GROUP (ORDER BY length(text)) AS p05_chars,
+                   percentile_disc(0.50) WITHIN GROUP (ORDER BY length(text)) AS p50_chars,
+                   percentile_disc(0.95) WITHIN GROUP (ORDER BY length(text)) AS p95_chars,
+                   max(length(text)) AS max_chars,
+                   min(length(text)) AS min_chars,
                    count(*) AS chunks
-            FROM artifact_section_chunks ch
-            JOIN artifact_sections s ON s.id = ch.section_id
-            JOIN artifacts a ON a.id = s.artifact_id
-            WHERE a.ticker = %s;
+            FROM chunks;
             """,
-            (ticker.upper(),),
+            (ticker.upper(), ticker.upper()),
         )
         chunk_stats = _dict_rows(cur)[0]
 
@@ -730,33 +773,66 @@ def _collect_report(
                 """
                 WITH q AS (
                     SELECT websearch_to_tsquery('english', %s) AS tsq
+                ),
+                matches AS (
+                    SELECT a.fiscal_period_key,
+                           'filing_section' AS source_kind,
+                           s.section_key,
+                           ch.chunk_ordinal,
+                           CASE WHEN s.section_key = ANY(%s::text[]) THEN true ELSE false END
+                               AS preferred_section,
+                           ts_rank_cd(ch.tsv, q.tsq) AS rank,
+                           s.extraction_method,
+                           s.confidence,
+                           ch.heading_path,
+                           ch.search_text,
+                           a.published_at
+                    FROM artifact_section_chunks ch
+                    JOIN artifact_sections s ON s.id = ch.section_id
+                    JOIN artifacts a ON a.id = s.artifact_id
+                    CROSS JOIN q
+                    WHERE a.ticker = %s
+                      AND ch.tsv @@ q.tsq
+                    UNION ALL
+                    SELECT COALESCE(a.fiscal_period_key, a.published_at::date::text) AS fiscal_period_key,
+                           'press_release' AS source_kind,
+                           'press_release:' || u.unit_key AS section_key,
+                           ch.chunk_ordinal,
+                           false AS preferred_section,
+                           ts_rank_cd(ch.tsv, q.tsq) AS rank,
+                           u.extraction_method,
+                           u.confidence,
+                           ch.heading_path,
+                           ch.search_text,
+                           a.published_at
+                    FROM artifact_text_chunks ch
+                    JOIN artifact_text_units u ON u.id = ch.text_unit_id
+                    JOIN artifacts a ON a.id = u.artifact_id
+                    CROSS JOIN q
+                    WHERE a.ticker = %s
+                      AND ch.tsv @@ q.tsq
                 )
-                SELECT a.fiscal_period_key, s.section_key, ch.chunk_ordinal,
-                       CASE WHEN s.section_key = ANY(%s::text[]) THEN true ELSE false END
-                           AS preferred_section,
-                       round(ts_rank_cd(ch.tsv, q.tsq)::numeric, 4) AS rank,
-                       s.extraction_method,
-                       s.confidence,
-                       ch.heading_path,
+                SELECT fiscal_period_key, source_kind, section_key, chunk_ordinal,
+                       preferred_section,
+                       round(rank::numeric, 4) AS rank,
+                       extraction_method,
+                       confidence,
+                       heading_path,
                        ts_headline(
                            'english',
-                           ch.search_text,
+                           search_text,
                            q.tsq,
                            'StartSel=__HIGHLIGHT_START__, StopSel=__HIGHLIGHT_END__, MaxWords=35, MinWords=12'
                        ) AS highlighted_snippet,
-                       left(ch.search_text, 320) AS snippet,
-                       ch.search_text AS match_source
-                FROM artifact_section_chunks ch
-                JOIN artifact_sections s ON s.id = ch.section_id
-                JOIN artifacts a ON a.id = s.artifact_id
+                       left(search_text, 320) AS snippet,
+                       search_text AS match_source
+                FROM matches
                 CROSS JOIN q
-                WHERE a.ticker = %s
-                  AND ch.tsv @@ q.tsq
-                ORDER BY preferred_section DESC, rank DESC, a.published_at DESC,
-                         ch.chunk_ordinal
+                ORDER BY preferred_section DESC, rank DESC, published_at DESC,
+                         chunk_ordinal
                 LIMIT 5;
                 """,
-                (query, preferred_sections, ticker.upper()),
+                (query, preferred_sections, ticker.upper(), ticker.upper()),
             )
             rows = _dict_rows(cur)
             for row in rows:
@@ -772,7 +848,17 @@ def _collect_report(
         for row in chunk_outliers
         if row.get("warning_bucket") not in {"short_valid_section", "normal_market_risk_reference"}
     ]
-    warnings = len(missing_sections) + len(reviewable_chunk_warnings) + len(amendment_notes)
+    press_release_missing_units = max(
+        0,
+        (press_release_health.get("artifacts") or 0)
+        - (press_release_health.get("with_units") or 0),
+    )
+    warnings = (
+        len(missing_sections)
+        + len(reviewable_chunk_warnings)
+        + len(amendment_notes)
+        + press_release_missing_units
+    )
     status = "FAIL" if hard_issues else "PASS_WITH_WARNINGS" if warnings else "PASS"
     return {
         "ticker": ticker.upper(),
@@ -786,6 +872,9 @@ def _collect_report(
         "unexpected": unexpected,
         "section_health": section_health,
         "section_inventory": section_inventory,
+        "press_release_health": press_release_health,
+        "press_release_missing_units": press_release_missing_units,
+        "text_unit_inventory": text_unit_inventory,
         "filings": filings,
         "sections_by_artifact": sections_by_artifact,
         "missing_sections": missing_sections,
@@ -1102,30 +1191,59 @@ def _retrieval_smoke(conn, ticker: str, queries: list[str]) -> None:
                 """
                 WITH q AS (
                     SELECT websearch_to_tsquery('english', %s) AS tsq
+                ),
+                matches AS (
+                    SELECT a.fiscal_period_key,
+                           'filing_section' AS source_kind,
+                           s.section_key,
+                           ch.chunk_ordinal,
+                           CASE WHEN s.section_key = ANY(%s::text[]) THEN 'yes' ELSE 'no' END
+                               AS preferred,
+                           ts_rank_cd(ch.tsv, q.tsq) AS rank,
+                           ch.heading_path,
+                           ch.search_text,
+                           a.published_at
+                    FROM artifact_section_chunks ch
+                    JOIN artifact_sections s ON s.id = ch.section_id
+                    JOIN artifacts a ON a.id = s.artifact_id
+                    CROSS JOIN q
+                    WHERE a.ticker = %s
+                      AND ch.tsv @@ q.tsq
+                    UNION ALL
+                    SELECT COALESCE(a.fiscal_period_key, a.published_at::date::text) AS fiscal_period_key,
+                           'press_release' AS source_kind,
+                           'press_release:' || u.unit_key AS section_key,
+                           ch.chunk_ordinal,
+                           'no' AS preferred,
+                           ts_rank_cd(ch.tsv, q.tsq) AS rank,
+                           ch.heading_path,
+                           ch.search_text,
+                           a.published_at
+                    FROM artifact_text_chunks ch
+                    JOIN artifact_text_units u ON u.id = ch.text_unit_id
+                    JOIN artifacts a ON a.id = u.artifact_id
+                    CROSS JOIN q
+                    WHERE a.ticker = %s
+                      AND ch.tsv @@ q.tsq
                 )
-                SELECT a.fiscal_period_key, s.section_key, ch.chunk_ordinal,
-                       CASE WHEN s.section_key = ANY(%s::text[]) THEN 'yes' ELSE 'no' END
-                           AS preferred,
-                       round(ts_rank_cd(ch.tsv, q.tsq)::numeric, 4) AS rank,
-                       ch.heading_path,
+                SELECT fiscal_period_key, source_kind, section_key, chunk_ordinal,
+                       preferred,
+                       round(rank::numeric, 4) AS rank,
+                       heading_path,
                        ts_headline(
                            'english',
-                           ch.search_text,
+                           search_text,
                            q.tsq,
                            'StartSel=__HIGHLIGHT_START__, StopSel=__HIGHLIGHT_END__, MaxWords=22, MinWords=8'
                        ) AS highlighted_snippet,
-                       ch.search_text AS match_source
-                FROM artifact_section_chunks ch
-                JOIN artifact_sections s ON s.id = ch.section_id
-                JOIN artifacts a ON a.id = s.artifact_id
+                       search_text AS match_source
+                FROM matches
                 CROSS JOIN q
-                WHERE a.ticker = %s
-                  AND ch.tsv @@ q.tsq
-                ORDER BY preferred DESC, rank DESC, a.published_at DESC,
-                         ch.chunk_ordinal
+                ORDER BY preferred DESC, rank DESC, published_at DESC,
+                         chunk_ordinal
                 LIMIT 5;
                 """,
-                (query, preferred_sections, ticker.upper()),
+                (query, preferred_sections, ticker.upper(), ticker.upper()),
             )
             rows = _dict_rows(cur)
         print(f"  query: {query!r}")
@@ -1136,6 +1254,7 @@ def _retrieval_smoke(conn, ticker: str, queries: list[str]) -> None:
             table_rows.append(
                 (
                     row["fiscal_period_key"],
+                    row["source_kind"],
                     row["section_key"],
                     row["chunk_ordinal"],
                     row["preferred"],
@@ -1147,7 +1266,7 @@ def _retrieval_smoke(conn, ticker: str, queries: list[str]) -> None:
                 )
             )
         _print_table(
-            ["period", "section", "ord", "pref", "rank", "terms", "matched", "heading", "snippet"],
+            ["period", "source", "section", "ord", "pref", "rank", "terms", "matched", "heading", "snippet"],
             table_rows,
         )
 
@@ -1228,7 +1347,7 @@ def _coverage_html(report: dict[str, Any]) -> str:
 def _section_health_html(report: dict[str, Any]) -> str:
     rows = []
     for row in report["section_health"]:
-        tone = "warn-row" if row["artifact_type"] == "8k" else "ok-row"
+        tone = "ok-row"
         rows.append(
             f'<tr class="{tone}">'
             f"<td>{_escape(row['artifact_type'])}</td>"
@@ -1262,6 +1381,48 @@ def _section_health_html(report: dict[str, Any]) -> str:
           <h3>Section Inventory</h3>
           <table>
             <thead><tr><th>Family</th><th>Section Key</th><th>Method</th><th>Filings</th><th>Min Conf</th></tr></thead>
+            <tbody>{''.join(inv_rows)}</tbody>
+          </table>
+        </section>
+    """
+
+
+def _press_release_html(report: dict[str, Any]) -> str:
+    health = report["press_release_health"]
+    inv_rows = []
+    for row in report["text_unit_inventory"]:
+        inv_rows.append(
+            "<tr>"
+            f"<td>{_escape(row['unit_type'])}</td>"
+            f"<td>{_escape(row['unit_key'])}</td>"
+            f"<td>{_escape(row['extraction_method'])}</td>"
+            f"<td>{_escape(row['artifacts_with_unit'])}</td>"
+            f"<td>{_escape(row['min_confidence'])}</td>"
+            "</tr>"
+        )
+    if not inv_rows:
+        inv_rows.append('<tr><td colspan="5">No press-release text units yet.</td></tr>')
+    tone = "ok-row" if health["artifacts"] == health["with_units"] else "warn-row"
+    return f"""
+        <section>
+          <h2>Earnings Release Extraction</h2>
+          <p class="section-note">8-K filing envelopes are stored as artifacts. EX-99 earnings releases are stored as press_release artifacts, then extracted into generic text units and chunks.</p>
+          <table>
+            <thead><tr><th>Artifacts</th><th>With Units</th><th>Units</th><th>Chunks</th><th>Min Conf</th><th>Fallbacks</th></tr></thead>
+            <tbody>
+              <tr class="{tone}">
+                <td>{_escape(health['artifacts'])}</td>
+                <td>{_escape(health['with_units'])}</td>
+                <td>{_escape(health['units'])}</td>
+                <td>{_escape(health['chunks'])}</td>
+                <td>{_escape(health['min_confidence'])}</td>
+                <td>{_escape(health['fallbacks'])}</td>
+              </tr>
+            </tbody>
+          </table>
+          <h3>Text Unit Inventory</h3>
+          <table>
+            <thead><tr><th>Type</th><th>Unit Key</th><th>Method</th><th>Artifacts</th><th>Min Conf</th></tr></thead>
             <tbody>{''.join(inv_rows)}</tbody>
           </table>
         </section>
@@ -1432,6 +1593,7 @@ def _retrieval_html(report: dict[str, Any]) -> str:
         reason = report["retrieval_reasons"].get(query, "")
         for row in rows:
             preferred = "preferred" if row.get("preferred_section") else "matched"
+            source = row.get("source_kind") or "filing_section"
             exact = "exact phrase" if row.get("exact_phrase") else "term match"
             matched_terms = row.get("matched_terms") or []
             missing_terms = row.get("missing_terms") or []
@@ -1439,7 +1601,7 @@ def _retrieval_html(report: dict[str, Any]) -> str:
             chips += "".join(f'<span class="chip missing">{_escape(term)}</span>' for term in missing_terms)
             cards.append(
                 "<article class=\"result-card\">"
-                f"<div class=\"result-meta\">{_escape(row['fiscal_period_key'])} · {_escape(row['section_key'])} · chunk {_escape(row['chunk_ordinal'])} · {_escape(preferred)} · rank {_escape(row.get('rank'))} · {_escape(row.get('term_coverage'))} terms · {_escape(exact)}</div>"
+                f"<div class=\"result-meta\">{_escape(row['fiscal_period_key'])} · {_escape(source)} · {_escape(row['section_key'])} · chunk {_escape(row['chunk_ordinal'])} · {_escape(preferred)} · rank {_escape(row.get('rank'))} · {_escape(row.get('term_coverage'))} terms · {_escape(exact)}</div>"
                 f"<div class=\"breadcrumb\">{_escape(_heading_path_label(row.get('heading_path')))}</div>"
                 f"<div class=\"chips\">{chips}</div>"
                 f"<p>{_highlight_html(row.get('highlighted_snippet') or row.get('snippet'))}</p>"
@@ -1485,6 +1647,7 @@ def _render_html_report(reports: list[dict[str, Any]]) -> str:
             </div>
               {_coverage_html(report)}
               {_section_health_html(report)}
+              {_press_release_html(report)}
               {_amendments_html(report)}
               {_section_matrix_html(report, '10k')}
             {_section_matrix_html(report, '10q')}

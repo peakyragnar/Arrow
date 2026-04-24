@@ -18,10 +18,13 @@ Operational default retention:
   a company's annual 10-K for that fiscal year is filed after the cutoff,
   include that fiscal year's Q1-Q3 10-Qs even if those 10-Qs were filed before
   January 1.
-- Earnings `8-K` retention is filing-date based over the same calendar window;
-  8-Ks are filing artifacts but are not sectionized into the 10-K/10-Q
-  qualitative section hierarchy.
-- stored raw files: `index.json` + primary filing document only
+- Earnings `8-K` retention is filing-date based over the same calendar window.
+  The `8-K` itself is the filing envelope. EX-99 earnings-release exhibits are
+  stored as `press_release` artifacts and extracted into the generic text-unit
+  layer, not the 10-K/10-Q section hierarchy.
+- stored raw files: `index.json` + primary filing document for 10-K/Q; for
+  earnings 8-Ks, also retain earnings-release exhibits such as EX-99.1 or
+  filename/description-detected earnings releases
 - do not default-retain package sidecars (`EX-101`, `.xsd`, `.zip`, images, css/js, etc.)
 - FMP remains the 10-year numeric history source of truth
 
@@ -42,11 +45,25 @@ The qualitative hierarchy is:
    - Every section is chunked in a standardized way.
    - Chunks are derived retrieval units, not source truth.
 
+4. `artifact_text_units`
+   - Generic extracted units for non-10-K/Q text artifacts.
+   - Current use case: EX-99 earnings releases attached to 8-Ks.
+
+5. `artifact_text_chunks`
+   - Retrieval chunks derived from `artifact_text_units`.
+
 Hierarchy:
 
 - filing artifact
 - full extracted section
 - standardized chunks
+
+For earnings 8-Ks:
+
+- 8-K filing envelope artifact
+- EX-99 `press_release` artifact
+- deterministic earnings-release text units
+- standardized text chunks
 
 ## Identity And Join Contract
 
@@ -258,6 +275,53 @@ Standard:
 - overlap must be sentence-aligned
 - target overlap range: about `10-15%`
 - mid-sentence overlap is invalid output
+
+## Earnings 8-K / Press Release Layer
+
+Earnings 8-Ks are not forced into the 10-K / 10-Q section model.
+
+The 8-K primary document is stored as an `8k` artifact. It usually says that
+results were furnished under Item 2.02 and that exhibits were furnished under
+Item 9.01. The actual useful narrative is commonly an EX-99.1 earnings-release
+exhibit, stored separately as a `press_release` artifact with
+`artifact_metadata.distribution_channel = 'sec_exhibit'`.
+
+The current extraction target for `press_release` artifacts is deterministic
+unitization, not AI classification:
+
+- normalize the exhibit body
+- skip SEC exhibit wrapper boilerplate such as `EX-99.1`, `Document`,
+  filenames, address blocks, and generic `News Release` labels
+- extract the first plausible earnings-release headline
+- remove repeated press-release page furniture such as `Company/Page N` and the
+  following repeated company masthead line
+- split the remaining release on recurring standalone labels, including
+  `news_summary`, `financial_results`, `business_unit_summary`,
+  `business_outlook`, `earnings_webcast`, `forward_looking_statements`,
+  `about_company`, `financial_tables`, `non_gaap_measures`, and
+  `non_gaap_reconciliations`
+- if no clean headline exists, store the whole document as `full_release_body`
+- chunk every text unit for FTS retrieval
+
+Tables:
+
+- `artifact_text_units`
+- `artifact_text_chunks`
+
+These tables are generic by design. They are the future home for transcripts,
+news, and other non-10-K/Q text artifacts that need retrieval chunks without
+polluting the canonical SEC section schema.
+
+The unit labels are intentionally few and based on recurring headings, not
+company-specific layouts. Add new labels only after they recur across enough
+real releases to be deterministic.
+
+Success criteria:
+
+- every retained earnings EX-99 press release has at least one text unit
+- every text unit has at least one chunk
+- chunks are FTS-searchable
+- audit output shows coverage, unit inventory, and retrieval evidence
 
 Each `artifact_section_chunks` row stores:
 

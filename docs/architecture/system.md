@@ -84,10 +84,13 @@ This one command runs the normal company flow:
 - ingest FMP employee counts
 - backfill SEC `10-K` / `10-Q` qualitative filings (default 5 fiscal years,
   rounded to complete fiscal years from each company's `fiscal_year_end_md`;
-  `index.json` + primary filing doc only)
+  `index.json` + primary filing doc for 10-K/Q; earnings 8-Ks also retain
+  detected earnings-release exhibits)
 
 - FMP historical financial ingest -> `financial_facts`
-- SEC qualitative filing ingest -> `artifacts` + `artifact_sections` + `artifact_section_chunks`
+- SEC qualitative filing ingest -> `artifacts` + `artifact_sections` +
+  `artifact_section_chunks`; earnings EX-99 press releases -> `press_release`
+  artifacts + `artifact_text_units` + `artifact_text_chunks`
 - FMP transcript ingest -> `artifacts`
 - later: news/events/retrieval/synthesis
 
@@ -372,10 +375,12 @@ Stated explicitly so future-us doesn't drift:
 
 - `artifacts` are source truth — never regenerated, only superseded.
 - `financial_facts` are regeneratable from artifacts + raw_responses — if extraction logic changes, bump `extraction_version` and re-derive; preserve prior row with `superseded_at`.
-- `artifact_sections` and `artifact_section_chunks` are regeneratable from artifacts — if extraction or chunking strategy changes, truncate and re-derive. Cheap under FTS-only.
+- `artifact_sections` / `artifact_section_chunks` and `artifact_text_units` /
+  `artifact_text_chunks` are regeneratable from artifacts — if extraction or
+  chunking strategy changes, truncate and re-derive. Cheap under FTS-only.
 - If embeddings are ever added: they are regeneratable from section chunks. Chunks do not depend on embeddings.
 
-Direction of dependency: `raw_responses → artifacts → artifact_sections → artifact_section_chunks → (optional) embeddings`; `raw_responses/artifacts → facts`. Never the reverse.
+Direction of dependency: `raw_responses → artifacts → artifact_sections → artifact_section_chunks → (optional) embeddings`; `raw_responses → artifacts → artifact_text_units → artifact_text_chunks`; `raw_responses/artifacts → facts`. Never the reverse.
 
 ## Training-Ready By Design
 
@@ -452,6 +457,8 @@ Status legend:
 | `financial_facts` | built | migration 008 |
 | `artifact_sections` | built | migration 014; canonical extracted filing sections (`10-K`, `10-Q`) |
 | `artifact_section_chunks` | built | migration 014; standardized retrieval chunks derived from `artifact_sections` |
+| `artifact_text_units` | built | migration 015; generic extracted text units for non-10-K/Q artifacts, starting with earnings press releases |
+| `artifact_text_chunks` | built | migration 015; standardized retrieval chunks derived from `artifact_text_units` |
 | `artifact_chunks` | withdrawn | migration 005 added it; migration 006 dropped it. Re-add when chunking has real documents to operate on. ADR-0008 captures the prior design. |
 | `prices_daily` | deferred | — |
 | `prices_intraday` | deferred | reserved for event-reaction workflows |
@@ -1197,7 +1204,7 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 16. ✅ implement SEC qualitative section + chunk layer (`artifact_sections`, `artifact_section_chunks`) for filing text in migration 014. Transcript-specific chunking remains future work.
 17. ⬜ add section-over-time comparison support
 18. ⬜ add `signals` + `alerts`
-19. 🚧 add SEC fast-path ingest for newly dropped filings (recent submissions + raw filing artifacts; 8-K exhibit/press-release support started)
+19. 🚧 add SEC fast-path ingest for newly dropped filings (recent submissions + raw filing artifacts; 8-K exhibit/press-release text-unit support landed in migration 015; first-class update orchestration remains next)
 20. ⬜ add Massive-backed options ingest later
 21. ⬜ migrate to cloud when durability/reliability justify it
 22. ⬜ metrics platform + analyst surfaces (see `docs/architecture/metrics_platform.md`, `docs/architecture/dashboard.md`). Sub-phases: Phase 0 formulas.md spec tweaks (done) → Phase 1 mapper audit + FMP `historical-employee-count` ingest + next metrics migration → Phase 2 10-year history backfill for existing tickers → Phase 3 view stack (`v_ff_current`, `v_company_period_wide`, `v_rd_*`, `v_ttm_*`, `v_metrics_*`, `v_metric_changes`, `v_dashboard_panel`) → Phase 4 dashboard UI → Phase 5 screener CLI.

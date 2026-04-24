@@ -20,6 +20,10 @@ artifact_sections
 
 artifact_section_chunks
   smaller retrieval units built from those sections
+
+artifact_text_units / artifact_text_chunks
+  generic evidence units for non-10-K/Q text artifacts, starting with EX-99
+  earnings releases attached to 8-Ks
 ```
 
 This is not yet an AI judgment layer. It is the evidence layer an AI will read
@@ -116,6 +120,20 @@ plus any pre-window quarters needed to complete the first included fiscal year
 For earnings 8-Ks, retention is filing-date based over the same calendar
 window because 8-Ks do not carry the 10-K / 10-Q fiscal section contract.
 
+The 8-K filing envelope itself is not expected to produce 10-K/Q sections.
+For earnings 8-Ks, inspect the associated `press_release` artifacts instead:
+
+```text
+8-K artifact
+  stored filing envelope
+
+press_release artifact
+  EX-99 earnings release exhibit
+
+artifact_text_units / artifact_text_chunks
+  searchable earnings-release evidence
+```
+
 The coverage tables split base filings from amendments:
 
 ```text
@@ -174,6 +192,41 @@ Amended filings are partial in v1. A `10-K/A` or `10-Q/A` is not expected to
 repeat the complete base filing section inventory. If an amendment produces
 usable repaired text, the report lists it as an amendment note rather than a hard
 failure.
+
+### Earnings Release Extraction
+
+This section covers EX-99 earnings releases attached to 8-Ks.
+
+Good state:
+
+```text
+press_release artifacts == with_units
+fallbacks == 0
+chunks > 0
+```
+
+Expected deterministic unit keys include:
+
+```text
+headline
+news_summary
+financial_results
+business_unit_summary
+business_outlook
+earnings_webcast
+forward_looking_statements
+about_company
+financial_tables
+non_gaap_measures
+non_gaap_reconciliations
+release_body
+full_release_body
+```
+
+Not every release will have every unit. `release_body` means the extractor found
+a headline but did not find recurring section labels. `full_release_body` means
+the extractor could not confidently find a real headline and fell back to
+storing the whole document as one searchable unit.
 
 ### What `min_conf = 1.0` Means
 

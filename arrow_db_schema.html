@@ -194,9 +194,9 @@
 </div>
 
 <h2>Per-table detail</h2>
-<nav class="toc"><a href='#tbl-artifact_section_chunks'>artifact_section_chunks</a> · <a href='#tbl-artifact_sections'>artifact_sections</a> · <a href='#tbl-artifacts'>artifacts</a> · <a href='#tbl-companies'>companies</a> · <a href='#tbl-data_quality_flags'>data_quality_flags</a> · <a href='#tbl-financial_facts'>financial_facts</a> · <a href='#tbl-ingest_runs'>ingest_runs</a> · <a href='#tbl-raw_responses'>raw_responses</a></nav>
+<nav class="toc"><a href='#tbl-artifact_section_chunks'>artifact_section_chunks</a> · <a href='#tbl-artifact_sections'>artifact_sections</a> · <a href='#tbl-artifact_text_chunks'>artifact_text_chunks</a> · <a href='#tbl-artifact_text_units'>artifact_text_units</a> · <a href='#tbl-artifacts'>artifacts</a> · <a href='#tbl-companies'>companies</a> · <a href='#tbl-data_quality_flags'>data_quality_flags</a> · <a href='#tbl-financial_facts'>financial_facts</a> · <a href='#tbl-ingest_runs'>ingest_runs</a> · <a href='#tbl-raw_responses'>raw_responses</a></nav>
 <div class="cards">
-    
+
     <section class="table-card" id="tbl-artifact_section_chunks">
         <h3>artifact_section_chunks</h3>
         <table class="cols">
@@ -204,7 +204,7 @@
                 <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
             </thead>
             <tbody>
-                
+
             <tr>
                 <td class="col-name">id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -212,7 +212,7 @@
                 <td class="col-default"><code>nextval(&#x27;artifact_section_chunks_id_seq&#x27;::regclass)</code></td>
                 <td class="col-keys"><span class="badge pk">PK</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">section_id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -220,7 +220,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"><span class="badge fk">FK→artifact_sections.id</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">chunk_ordinal</td>
                 <td class="col-type"><code>integer</code></td>
@@ -228,7 +228,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">text</td>
                 <td class="col-type"><code>text</code></td>
@@ -236,7 +236,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">search_text</td>
                 <td class="col-type"><code>text</code></td>
@@ -244,7 +244,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">heading_path</td>
                 <td class="col-type"><code>text[]</code></td>
@@ -252,7 +252,7 @@
                 <td class="col-default"><code>&#x27;{}&#x27;::text[]</code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">start_offset</td>
                 <td class="col-type"><code>integer</code></td>
@@ -260,7 +260,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">end_offset</td>
                 <td class="col-type"><code>integer</code></td>
@@ -268,7 +268,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">chunker_version</td>
                 <td class="col-type"><code>text</code></td>
@@ -276,7 +276,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">created_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -284,7 +284,7 @@
                 <td class="col-default"><code>now()</code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">tsv</td>
                 <td class="col-type"><code>tsvector</code></td>
@@ -292,7 +292,7 @@
                 <td class="col-default"><code>to_tsvector(&#x27;english&#x27;::regconfig, search_text)</code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             </tbody>
         </table>
         <h4>Foreign keys</h4><ul><li><code>(section_id)</code> → <code>artifact_sections(id)</code> <span class='badge on-delete'>ON DELETE CASCADE</span> <span class='cname'>(artifact_section_chunks_section_id_fkey)</span></li></ul>
@@ -300,7 +300,7 @@
         <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK (((start_offset &gt;= 0) AND (end_offset &gt;= 0)))</code> <span class='cname'>(artifact_section_chunks_offsets_nonneg)</span></li><li><code class='check-def'>CHECK ((end_offset &gt;= start_offset))</code> <span class='cname'>(artifact_section_chunks_offsets_ordered)</span></li><li><code class='check-def'>CHECK ((chunk_ordinal &gt; 0))</code> <span class='cname'>(artifact_section_chunks_ordinal_positive)</span></li></ul>
         <h4>Indexes</h4><ul><li><b>artifact_section_chunks_heading_path_idx</b> <br><code class='index-def'>CREATE INDEX artifact_section_chunks_heading_path_idx ON public.artifact_section_chunks USING gin (heading_path)</code></li><li><b>artifact_section_chunks_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifact_section_chunks_pkey ON public.artifact_section_chunks USING btree (id)</code></li><li><b>artifact_section_chunks_section_id_idx</b> <br><code class='index-def'>CREATE INDEX artifact_section_chunks_section_id_idx ON public.artifact_section_chunks USING btree (section_id)</code></li><li><b>artifact_section_chunks_tsv_idx</b> <br><code class='index-def'>CREATE INDEX artifact_section_chunks_tsv_idx ON public.artifact_section_chunks USING gin (tsv)</code></li><li><b>artifact_section_chunks_unique_ordinal</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX artifact_section_chunks_unique_ordinal ON public.artifact_section_chunks USING btree (section_id, chunk_ordinal)</code></li></ul>
     </section>
-    
+
 
     <section class="table-card" id="tbl-artifact_sections">
         <h3>artifact_sections</h3>
@@ -309,7 +309,7 @@
                 <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
             </thead>
             <tbody>
-                
+
             <tr>
                 <td class="col-name">id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -317,7 +317,7 @@
                 <td class="col-default"><code>nextval(&#x27;artifact_sections_id_seq&#x27;::regclass)</code></td>
                 <td class="col-keys"><span class="badge pk">PK</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">artifact_id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -325,7 +325,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"><span class="badge fk">FK→artifacts.id</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">company_id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -333,7 +333,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"><span class="badge fk">FK→companies.id</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">fiscal_period_key</td>
                 <td class="col-type"><code>text</code></td>
@@ -341,7 +341,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">form_family</td>
                 <td class="col-type"><code>text</code></td>
@@ -349,7 +349,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">section_key</td>
                 <td class="col-type"><code>text</code></td>
@@ -357,7 +357,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">section_title</td>
                 <td class="col-type"><code>text</code></td>
@@ -365,7 +365,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">part_label</td>
                 <td class="col-type"><code>text</code></td>
@@ -373,7 +373,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">item_label</td>
                 <td class="col-type"><code>text</code></td>
@@ -381,7 +381,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">text</td>
                 <td class="col-type"><code>text</code></td>
@@ -389,7 +389,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">start_offset</td>
                 <td class="col-type"><code>integer</code></td>
@@ -397,7 +397,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">end_offset</td>
                 <td class="col-type"><code>integer</code></td>
@@ -405,7 +405,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">extractor_version</td>
                 <td class="col-type"><code>text</code></td>
@@ -413,7 +413,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">confidence</td>
                 <td class="col-type"><code>double precision</code></td>
@@ -421,7 +421,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">extraction_method</td>
                 <td class="col-type"><code>text</code></td>
@@ -429,7 +429,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">created_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -437,7 +437,7 @@
                 <td class="col-default"><code>now()</code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">tsv</td>
                 <td class="col-type"><code>tsvector</code></td>
@@ -445,7 +445,7 @@
                 <td class="col-default"><code>to_tsvector(&#x27;english&#x27;::regconfig, text)</code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             </tbody>
         </table>
         <h4>Foreign keys</h4><ul><li><code>(artifact_id)</code> → <code>artifacts(id)</code> <span class='badge on-delete'>ON DELETE CASCADE</span> <span class='cname'>(artifact_sections_artifact_id_fkey)</span></li><li><code>(company_id)</code> → <code>companies(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(artifact_sections_company_id_fkey)</span></li></ul>
@@ -453,7 +453,257 @@
         <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK ((((extraction_method = &#x27;deterministic&#x27;::text) AND (confidence &gt;= (0.85)::double precision)) OR ((extraction_method = &#x27;repair&#x27;::text) AND (confidence &gt; (0.0)::double precision) AND (confidence &lt; (0.85)::double precision)) OR ((extraction_method = &#x27;unparsed_fallback&#x27;::text) AND (confidence = (0.0)::double precision) AND (section_key = &#x27;unparsed_body&#x27;::text))))</code> <span class='cname'>(artifact_sections_confidence_method_contract)</span></li><li><code class='check-def'>CHECK (((confidence &gt;= (0.0)::double precision) AND (confidence &lt;= (1.0)::double precision)))</code> <span class='cname'>(artifact_sections_confidence_range)</span></li><li><code class='check-def'>CHECK ((extraction_method = ANY (ARRAY[&#x27;deterministic&#x27;::text, &#x27;repair&#x27;::text, &#x27;unparsed_fallback&#x27;::text])))</code> <span class='cname'>(artifact_sections_extraction_method_check)</span></li><li><code class='check-def'>CHECK ((form_family = ANY (ARRAY[&#x27;10-K&#x27;::text, &#x27;10-Q&#x27;::text])))</code> <span class='cname'>(artifact_sections_form_family_check)</span></li><li><code class='check-def'>CHECK ((section_key = ANY (ARRAY[&#x27;item_1_business&#x27;::text, &#x27;item_1a_risk_factors&#x27;::text, &#x27;item_1c_cybersecurity&#x27;::text, &#x27;item_3_legal_proceedings&#x27;::text, &#x27;item_7_mda&#x27;::text, &#x27;item_7a_market_risk&#x27;::text, &#x27;item_9a_controls&#x27;::text, &#x27;item_9b_other_information&#x27;::text, &#x27;part1_item2_mda&#x27;::text, &#x27;part1_item3_market_risk&#x27;::text, &#x27;part1_item4_controls&#x27;::text, &#x27;part2_item1_legal_proceedings&#x27;::text, &#x27;part2_item1a_risk_factors&#x27;::text, &#x27;part2_item5_other_information&#x27;::text, &#x27;unparsed_body&#x27;::text])))</code> <span class='cname'>(artifact_sections_key_check)</span></li><li><code class='check-def'>CHECK (((start_offset &gt;= 0) AND (end_offset &gt;= 0)))</code> <span class='cname'>(artifact_sections_offsets_nonneg)</span></li><li><code class='check-def'>CHECK ((end_offset &gt;= start_offset))</code> <span class='cname'>(artifact_sections_offsets_ordered)</span></li></ul>
         <h4>Indexes</h4><ul><li><b>artifact_sections_artifact_id_idx</b> <br><code class='index-def'>CREATE INDEX artifact_sections_artifact_id_idx ON public.artifact_sections USING btree (artifact_id)</code></li><li><b>artifact_sections_identity_idx</b> <br><code class='index-def'>CREATE INDEX artifact_sections_identity_idx ON public.artifact_sections USING btree (company_id, fiscal_period_key, form_family, section_key)</code></li><li><b>artifact_sections_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifact_sections_pkey ON public.artifact_sections USING btree (id)</code></li><li><b>artifact_sections_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifact_sections_pkey ON public.artifact_sections USING btree (id)</code></li><li><b>artifact_sections_tsv_idx</b> <br><code class='index-def'>CREATE INDEX artifact_sections_tsv_idx ON public.artifact_sections USING gin (tsv)</code></li><li><b>artifact_sections_unique_per_artifact</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX artifact_sections_unique_per_artifact ON public.artifact_sections USING btree (artifact_id, section_key)</code></li></ul>
     </section>
-    
+
+
+    <section class="table-card" id="tbl-artifact_text_chunks">
+        <h3>artifact_text_chunks</h3>
+        <table class="cols">
+            <thead>
+                <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
+            </thead>
+            <tbody>
+
+            <tr>
+                <td class="col-name">id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>nextval(&#x27;artifact_text_chunks_id_seq&#x27;::regclass)</code></td>
+                <td class="col-keys"><span class="badge pk">PK</span></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">text_unit_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→artifact_text_units.id</span></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">chunk_ordinal</td>
+                <td class="col-type"><code>integer</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">text</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">search_text</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">heading_path</td>
+                <td class="col-type"><code>text[]</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>&#x27;{}&#x27;::text[]</code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">start_offset</td>
+                <td class="col-type"><code>integer</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">end_offset</td>
+                <td class="col-type"><code>integer</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">chunker_version</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">created_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>now()</code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">tsv</td>
+                <td class="col-type"><code>tsvector</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code>to_tsvector(&#x27;english&#x27;::regconfig, search_text)</code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            </tbody>
+        </table>
+        <h4>Foreign keys</h4><ul><li><code>(text_unit_id)</code> → <code>artifact_text_units(id)</code> <span class='badge on-delete'>ON DELETE CASCADE</span> <span class='cname'>(artifact_text_chunks_text_unit_id_fkey)</span></li></ul>
+        <h4>Unique constraints</h4><ul><li><code>UNIQUE (text_unit_id, chunk_ordinal)</code> <span class='cname'>(artifact_text_chunks_unique_ordinal)</span></li></ul>
+        <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK (((start_offset &gt;= 0) AND (end_offset &gt;= 0)))</code> <span class='cname'>(artifact_text_chunks_offsets_nonneg)</span></li><li><code class='check-def'>CHECK ((end_offset &gt;= start_offset))</code> <span class='cname'>(artifact_text_chunks_offsets_ordered)</span></li><li><code class='check-def'>CHECK ((chunk_ordinal &gt; 0))</code> <span class='cname'>(artifact_text_chunks_ordinal_positive)</span></li></ul>
+        <h4>Indexes</h4><ul><li><b>artifact_text_chunks_heading_path_idx</b> <br><code class='index-def'>CREATE INDEX artifact_text_chunks_heading_path_idx ON public.artifact_text_chunks USING gin (heading_path)</code></li><li><b>artifact_text_chunks_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifact_text_chunks_pkey ON public.artifact_text_chunks USING btree (id)</code></li><li><b>artifact_text_chunks_text_unit_id_idx</b> <br><code class='index-def'>CREATE INDEX artifact_text_chunks_text_unit_id_idx ON public.artifact_text_chunks USING btree (text_unit_id)</code></li><li><b>artifact_text_chunks_tsv_idx</b> <br><code class='index-def'>CREATE INDEX artifact_text_chunks_tsv_idx ON public.artifact_text_chunks USING gin (tsv)</code></li><li><b>artifact_text_chunks_unique_ordinal</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX artifact_text_chunks_unique_ordinal ON public.artifact_text_chunks USING btree (text_unit_id, chunk_ordinal)</code></li></ul>
+    </section>
+
+
+    <section class="table-card" id="tbl-artifact_text_units">
+        <h3>artifact_text_units</h3>
+        <table class="cols">
+            <thead>
+                <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
+            </thead>
+            <tbody>
+
+            <tr>
+                <td class="col-name">id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>nextval(&#x27;artifact_text_units_id_seq&#x27;::regclass)</code></td>
+                <td class="col-keys"><span class="badge pk">PK</span></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">artifact_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→artifacts.id</span></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">company_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→companies.id</span></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">fiscal_period_key</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">unit_ordinal</td>
+                <td class="col-type"><code>integer</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">unit_type</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">unit_key</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">unit_title</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">text</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">start_offset</td>
+                <td class="col-type"><code>integer</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">end_offset</td>
+                <td class="col-type"><code>integer</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">extractor_version</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">confidence</td>
+                <td class="col-type"><code>double precision</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">extraction_method</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">created_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>now()</code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">tsv</td>
+                <td class="col-type"><code>tsvector</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code>to_tsvector(&#x27;english&#x27;::regconfig, text)</code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            </tbody>
+        </table>
+        <h4>Foreign keys</h4><ul><li><code>(artifact_id)</code> → <code>artifacts(id)</code> <span class='badge on-delete'>ON DELETE CASCADE</span> <span class='cname'>(artifact_text_units_artifact_id_fkey)</span></li><li><code>(company_id)</code> → <code>companies(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(artifact_text_units_company_id_fkey)</span></li></ul>
+        <h4>Unique constraints</h4><ul><li><code>UNIQUE (artifact_id, unit_ordinal)</code> <span class='cname'>(artifact_text_units_unique_ordinal)</span></li></ul>
+        <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK ((((extraction_method = &#x27;deterministic&#x27;::text) AND (confidence &gt;= (0.85)::double precision)) OR ((extraction_method = &#x27;unparsed_fallback&#x27;::text) AND (confidence = (0.0)::double precision))))</code> <span class='cname'>(artifact_text_units_confidence_method_contract)</span></li><li><code class='check-def'>CHECK (((confidence &gt;= (0.0)::double precision) AND (confidence &lt;= (1.0)::double precision)))</code> <span class='cname'>(artifact_text_units_confidence_range)</span></li><li><code class='check-def'>CHECK ((extraction_method = ANY (ARRAY[&#x27;deterministic&#x27;::text, &#x27;unparsed_fallback&#x27;::text])))</code> <span class='cname'>(artifact_text_units_extraction_method_check)</span></li><li><code class='check-def'>CHECK (((start_offset &gt;= 0) AND (end_offset &gt;= 0)))</code> <span class='cname'>(artifact_text_units_offsets_nonneg)</span></li><li><code class='check-def'>CHECK ((end_offset &gt;= start_offset))</code> <span class='cname'>(artifact_text_units_offsets_ordered)</span></li><li><code class='check-def'>CHECK ((unit_ordinal &gt; 0))</code> <span class='cname'>(artifact_text_units_ordinal_positive)</span></li><li><code class='check-def'>CHECK ((unit_type = &#x27;press_release&#x27;::text))</code> <span class='cname'>(artifact_text_units_type_check)</span></li></ul>
+        <h4>Indexes</h4><ul><li><b>artifact_text_units_artifact_id_idx</b> <br><code class='index-def'>CREATE INDEX artifact_text_units_artifact_id_idx ON public.artifact_text_units USING btree (artifact_id)</code></li><li><b>artifact_text_units_identity_idx</b> <br><code class='index-def'>CREATE INDEX artifact_text_units_identity_idx ON public.artifact_text_units USING btree (company_id, unit_type, unit_key)</code></li><li><b>artifact_text_units_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifact_text_units_pkey ON public.artifact_text_units USING btree (id)</code></li><li><b>artifact_text_units_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifact_text_units_pkey ON public.artifact_text_units USING btree (id)</code></li><li><b>artifact_text_units_tsv_idx</b> <br><code class='index-def'>CREATE INDEX artifact_text_units_tsv_idx ON public.artifact_text_units USING gin (tsv)</code></li><li><b>artifact_text_units_unique_ordinal</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX artifact_text_units_unique_ordinal ON public.artifact_text_units USING btree (artifact_id, unit_ordinal)</code></li></ul>
+    </section>
+
 
     <section class="table-card" id="tbl-artifacts">
         <h3>artifacts</h3>
@@ -462,7 +712,7 @@
                 <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
             </thead>
             <tbody>
-                
+
             <tr>
                 <td class="col-name">id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -470,7 +720,7 @@
                 <td class="col-default"><code>nextval(&#x27;artifacts_id_seq&#x27;::regclass)</code></td>
                 <td class="col-keys"><span class="badge pk">PK</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">ingest_run_id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -478,7 +728,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"><span class="badge fk">FK→ingest_runs.id</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">artifact_type</td>
                 <td class="col-type"><code>text</code></td>
@@ -486,7 +736,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">source</td>
                 <td class="col-type"><code>text</code></td>
@@ -494,7 +744,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">source_document_id</td>
                 <td class="col-type"><code>text</code></td>
@@ -502,7 +752,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">raw_hash</td>
                 <td class="col-type"><code>bytea</code></td>
@@ -510,7 +760,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">canonical_hash</td>
                 <td class="col-type"><code>bytea</code></td>
@@ -518,7 +768,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">ticker</td>
                 <td class="col-type"><code>text</code></td>
@@ -526,7 +776,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">fiscal_year</td>
                 <td class="col-type"><code>smallint</code></td>
@@ -534,7 +784,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">fiscal_quarter</td>
                 <td class="col-type"><code>smallint</code></td>
@@ -542,7 +792,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">fiscal_period_label</td>
                 <td class="col-type"><code>text</code></td>
@@ -550,7 +800,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">period_end</td>
                 <td class="col-type"><code>date</code></td>
@@ -558,7 +808,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">period_type</td>
                 <td class="col-type"><code>text</code></td>
@@ -566,7 +816,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">calendar_year</td>
                 <td class="col-type"><code>smallint</code></td>
@@ -574,7 +824,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">calendar_quarter</td>
                 <td class="col-type"><code>smallint</code></td>
@@ -582,7 +832,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">calendar_period_label</td>
                 <td class="col-type"><code>text</code></td>
@@ -590,7 +840,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">title</td>
                 <td class="col-type"><code>text</code></td>
@@ -598,7 +848,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">url</td>
                 <td class="col-type"><code>text</code></td>
@@ -606,7 +856,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">content_type</td>
                 <td class="col-type"><code>text</code></td>
@@ -614,7 +864,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">language</td>
                 <td class="col-type"><code>text</code></td>
@@ -622,7 +872,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">published_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -630,7 +880,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">effective_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -638,7 +888,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">ingested_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -646,7 +896,7 @@
                 <td class="col-default"><code>now()</code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">supersedes</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -654,7 +904,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"><span class="badge fk">FK→artifacts.id</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">superseded_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -662,7 +912,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">authored_by</td>
                 <td class="col-type"><code>text</code></td>
@@ -670,7 +920,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">last_reviewed_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -678,7 +928,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">asserted_valid_through</td>
                 <td class="col-type"><code>date</code></td>
@@ -686,7 +936,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">artifact_metadata</td>
                 <td class="col-type"><code>jsonb</code></td>
@@ -694,7 +944,7 @@
                 <td class="col-default"><code>&#x27;{}&#x27;::jsonb</code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">company_id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -702,7 +952,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"><span class="badge fk">FK→companies.id</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">fiscal_period_key</td>
                 <td class="col-type"><code>text</code></td>
@@ -710,7 +960,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">form_family</td>
                 <td class="col-type"><code>text</code></td>
@@ -718,7 +968,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">cik</td>
                 <td class="col-type"><code>text</code></td>
@@ -726,7 +976,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">accession_number</td>
                 <td class="col-type"><code>text</code></td>
@@ -734,7 +984,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">raw_primary_doc_path</td>
                 <td class="col-type"><code>text</code></td>
@@ -742,7 +992,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">amends_artifact_id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -750,15 +1000,15 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"><span class="badge fk">FK→artifacts.id</span></td>
             </tr>
-        
+
             </tbody>
         </table>
         <h4>Foreign keys</h4><ul><li><code>(amends_artifact_id)</code> → <code>artifacts(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(artifacts_amends_artifact_id_fkey)</span></li><li><code>(company_id)</code> → <code>companies(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(artifacts_company_id_fkey)</span></li><li><code>(ingest_run_id)</code> → <code>ingest_runs(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(artifacts_ingest_run_id_fkey)</span></li><li><code>(supersedes)</code> → <code>artifacts(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(artifacts_supersedes_fkey)</span></li></ul>
-        
+
         <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK (((amends_artifact_id IS NULL) OR (amends_artifact_id &lt;&gt; id)))</code> <span class='cname'>(artifacts_amends_not_self)</span></li><li><code class='check-def'>CHECK (((calendar_period_label IS NULL) OR (calendar_period_label ~ &#x27;^CY[0-9]{4} Q[1-4]$&#x27;::text)))</code> <span class='cname'>(artifacts_calendar_period_label_format)</span></li><li><code class='check-def'>CHECK (((calendar_quarter IS NULL) OR ((calendar_quarter &gt;= 1) AND (calendar_quarter &lt;= 4))))</code> <span class='cname'>(artifacts_calendar_quarter_range)</span></li><li><code class='check-def'>CHECK ((octet_length(canonical_hash) = 32))</code> <span class='cname'>(artifacts_canonical_hash_len)</span></li><li><code class='check-def'>CHECK (((fiscal_period_label IS NULL) OR (fiscal_period_label ~ &#x27;^FY[0-9]{4}( Q[1-4])?$&#x27;::text)))</code> <span class='cname'>(artifacts_fiscal_period_label_format)</span></li><li><code class='check-def'>CHECK (((fiscal_quarter IS NULL) OR ((fiscal_quarter &gt;= 1) AND (fiscal_quarter &lt;= 4))))</code> <span class='cname'>(artifacts_fiscal_quarter_range)</span></li><li><code class='check-def'>CHECK (((form_family IS NULL) OR (form_family = ANY (ARRAY[&#x27;10-K&#x27;::text, &#x27;10-Q&#x27;::text]))))</code> <span class='cname'>(artifacts_form_family_check)</span></li><li><code class='check-def'>CHECK ((((artifact_type = &#x27;10k&#x27;::text) AND (form_family = &#x27;10-K&#x27;::text)) OR ((artifact_type = &#x27;10q&#x27;::text) AND (form_family = &#x27;10-Q&#x27;::text)) OR ((artifact_type &lt;&gt; ALL (ARRAY[&#x27;10k&#x27;::text, &#x27;10q&#x27;::text])) AND (form_family IS NULL))))</code> <span class='cname'>(artifacts_form_family_matches_type)</span></li><li><code class='check-def'>CHECK (((period_type IS NULL) OR (period_type = ANY (ARRAY[&#x27;quarter&#x27;::text, &#x27;annual&#x27;::text, &#x27;stub&#x27;::text]))))</code> <span class='cname'>(artifacts_period_type_check)</span></li><li><code class='check-def'>CHECK (((period_type IS NULL) OR ((period_type = ANY (ARRAY[&#x27;annual&#x27;::text, &#x27;stub&#x27;::text])) AND (fiscal_quarter IS NULL)) OR ((period_type = &#x27;quarter&#x27;::text) AND (fiscal_quarter IS NOT NULL))))</code> <span class='cname'>(artifacts_period_type_quarter_iff)</span></li><li><code class='check-def'>CHECK ((octet_length(raw_hash) = 32))</code> <span class='cname'>(artifacts_raw_hash_len)</span></li><li><code class='check-def'>CHECK (((supersedes IS NULL) OR (supersedes &lt;&gt; id)))</code> <span class='cname'>(artifacts_supersedes_not_self)</span></li><li><code class='check-def'>CHECK ((artifact_type = ANY (ARRAY[&#x27;10k&#x27;::text, &#x27;10q&#x27;::text, &#x27;8k&#x27;::text, &#x27;transcript&#x27;::text, &#x27;press_release&#x27;::text, &#x27;news_article&#x27;::text, &#x27;presentation&#x27;::text, &#x27;video_transcript&#x27;::text, &#x27;research_note&#x27;::text, &#x27;industry_primer&#x27;::text, &#x27;product_primer&#x27;::text, &#x27;macro_primer&#x27;::text, &#x27;macro_release&#x27;::text])))</code> <span class='cname'>(artifacts_type_check)</span></li></ul>
-        <h4>Indexes</h4><ul><li><b>artifacts_amends_artifact_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_amends_artifact_idx ON public.artifacts USING btree (amends_artifact_id) WHERE (amends_artifact_id IS NOT NULL)</code></li><li><b>artifacts_calendar_period_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_calendar_period_idx ON public.artifacts USING btree (calendar_year, calendar_quarter, artifact_type) WHERE (calendar_year IS NOT NULL)</code></li><li><b>artifacts_canonical_hash_idx</b> <br><code class='index-def'>CREATE INDEX artifacts_canonical_hash_idx ON public.artifacts USING btree (canonical_hash)</code></li><li><b>artifacts_company_period_family_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_company_period_family_idx ON public.artifacts USING btree (company_id, fiscal_period_key, form_family, published_at DESC) WHERE ((company_id IS NOT NULL) AND (fiscal_period_key IS NOT NULL) AND (form_family IS NOT NULL))</code></li><li><b>artifacts_company_type_published_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_company_type_published_idx ON public.artifacts USING btree (company_id, artifact_type, published_at DESC) WHERE (company_id IS NOT NULL)</code></li><li><b>artifacts_current_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_current_idx ON public.artifacts USING btree (ticker, artifact_type, published_at DESC) WHERE ((superseded_at IS NULL) AND (ticker IS NOT NULL))</code></li><li><b>artifacts_fiscal_period_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_fiscal_period_idx ON public.artifacts USING btree (ticker, fiscal_year, fiscal_quarter) WHERE ((ticker IS NOT NULL) AND (fiscal_year IS NOT NULL))</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_raw_hash_idx</b> <br><code class='index-def'>CREATE INDEX artifacts_raw_hash_idx ON public.artifacts USING btree (raw_hash)</code></li><li><b>artifacts_research_freshness_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_research_freshness_idx ON public.artifacts USING btree (artifact_type, last_reviewed_at DESC) WHERE (artifact_type = ANY (ARRAY[&#x27;research_note&#x27;::text, &#x27;industry_primer&#x27;::text, &#x27;product_primer&#x27;::text, &#x27;macro_primer&#x27;::text]))</code></li><li><b>artifacts_sec_accession_uniq</b> <span class="badge uk">UNIQUE</span> <span class="badge partial">partial</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_sec_accession_uniq ON public.artifacts USING btree (cik, accession_number) WHERE ((cik IS NOT NULL) AND (accession_number IS NOT NULL) AND (artifact_type = ANY (ARRAY[&#x27;10k&#x27;::text, &#x27;10q&#x27;::text, &#x27;8k&#x27;::text])))</code></li><li><b>artifacts_source_doc_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_source_doc_idx ON public.artifacts USING btree (source, source_document_id) WHERE (source_document_id IS NOT NULL)</code></li><li><b>artifacts_supersedes_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_supersedes_idx ON public.artifacts USING btree (supersedes) WHERE (supersedes IS NOT NULL)</code></li><li><b>artifacts_ticker_type_published_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_ticker_type_published_idx ON public.artifacts USING btree (ticker, artifact_type, published_at DESC) WHERE (ticker IS NOT NULL)</code></li></ul>
+        <h4>Indexes</h4><ul><li><b>artifacts_amends_artifact_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_amends_artifact_idx ON public.artifacts USING btree (amends_artifact_id) WHERE (amends_artifact_id IS NOT NULL)</code></li><li><b>artifacts_calendar_period_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_calendar_period_idx ON public.artifacts USING btree (calendar_year, calendar_quarter, artifact_type) WHERE (calendar_year IS NOT NULL)</code></li><li><b>artifacts_canonical_hash_idx</b> <br><code class='index-def'>CREATE INDEX artifacts_canonical_hash_idx ON public.artifacts USING btree (canonical_hash)</code></li><li><b>artifacts_company_period_family_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_company_period_family_idx ON public.artifacts USING btree (company_id, fiscal_period_key, form_family, published_at DESC) WHERE ((company_id IS NOT NULL) AND (fiscal_period_key IS NOT NULL) AND (form_family IS NOT NULL))</code></li><li><b>artifacts_company_type_published_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_company_type_published_idx ON public.artifacts USING btree (company_id, artifact_type, published_at DESC) WHERE (company_id IS NOT NULL)</code></li><li><b>artifacts_current_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_current_idx ON public.artifacts USING btree (ticker, artifact_type, published_at DESC) WHERE ((superseded_at IS NULL) AND (ticker IS NOT NULL))</code></li><li><b>artifacts_fiscal_period_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_fiscal_period_idx ON public.artifacts USING btree (ticker, fiscal_year, fiscal_quarter) WHERE ((ticker IS NOT NULL) AND (fiscal_year IS NOT NULL))</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_raw_hash_idx</b> <br><code class='index-def'>CREATE INDEX artifacts_raw_hash_idx ON public.artifacts USING btree (raw_hash)</code></li><li><b>artifacts_research_freshness_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_research_freshness_idx ON public.artifacts USING btree (artifact_type, last_reviewed_at DESC) WHERE (artifact_type = ANY (ARRAY[&#x27;research_note&#x27;::text, &#x27;industry_primer&#x27;::text, &#x27;product_primer&#x27;::text, &#x27;macro_primer&#x27;::text]))</code></li><li><b>artifacts_sec_accession_uniq</b> <span class="badge uk">UNIQUE</span> <span class="badge partial">partial</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_sec_accession_uniq ON public.artifacts USING btree (cik, accession_number) WHERE ((cik IS NOT NULL) AND (accession_number IS NOT NULL) AND (artifact_type = ANY (ARRAY[&#x27;10k&#x27;::text, &#x27;10q&#x27;::text, &#x27;8k&#x27;::text])))</code></li><li><b>artifacts_source_doc_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_source_doc_idx ON public.artifacts USING btree (source, source_document_id) WHERE (source_document_id IS NOT NULL)</code></li><li><b>artifacts_supersedes_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_supersedes_idx ON public.artifacts USING btree (supersedes) WHERE (supersedes IS NOT NULL)</code></li><li><b>artifacts_ticker_type_published_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_ticker_type_published_idx ON public.artifacts USING btree (ticker, artifact_type, published_at DESC) WHERE (ticker IS NOT NULL)</code></li></ul>
     </section>
-    
+
 
     <section class="table-card" id="tbl-companies">
         <h3>companies</h3>
@@ -767,7 +1017,7 @@
                 <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
             </thead>
             <tbody>
-                
+
             <tr>
                 <td class="col-name">id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -775,7 +1025,7 @@
                 <td class="col-default"><code>nextval(&#x27;companies_id_seq&#x27;::regclass)</code></td>
                 <td class="col-keys"><span class="badge pk">PK</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">cik</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -783,7 +1033,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">ticker</td>
                 <td class="col-type"><code>text</code></td>
@@ -791,7 +1041,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">name</td>
                 <td class="col-type"><code>text</code></td>
@@ -799,7 +1049,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">fiscal_year_end_md</td>
                 <td class="col-type"><code>text</code></td>
@@ -807,7 +1057,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">status</td>
                 <td class="col-type"><code>text</code></td>
@@ -815,7 +1065,7 @@
                 <td class="col-default"><code>&#x27;active&#x27;::text</code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">created_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -823,7 +1073,7 @@
                 <td class="col-default"><code>now()</code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">updated_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -831,15 +1081,15 @@
                 <td class="col-default"><code>now()</code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             </tbody>
         </table>
-        
+
         <h4>Unique constraints</h4><ul><li><code>UNIQUE (cik)</code> <span class='cname'>(companies_cik_key)</span></li></ul>
         <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK ((cik &gt; 0))</code> <span class='cname'>(companies_cik_positive)</span></li><li><code class='check-def'>CHECK ((fiscal_year_end_md ~ &#x27;^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$&#x27;::text))</code> <span class='cname'>(companies_fiscal_year_end_md_format)</span></li><li><code class='check-def'>CHECK ((status = ANY (ARRAY[&#x27;active&#x27;::text, &#x27;delisted&#x27;::text, &#x27;merged&#x27;::text, &#x27;acquired&#x27;::text, &#x27;private&#x27;::text])))</code> <span class='cname'>(companies_status_check)</span></li></ul>
-        <h4>Indexes</h4><ul><li><b>companies_active_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX companies_active_idx ON public.companies USING btree (ticker) WHERE (status = &#x27;active&#x27;::text)</code></li><li><b>companies_cik_key</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_cik_key ON public.companies USING btree (cik)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_ticker_idx</b> <br><code class='index-def'>CREATE INDEX companies_ticker_idx ON public.companies USING btree (ticker)</code></li></ul>
+        <h4>Indexes</h4><ul><li><b>companies_active_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX companies_active_idx ON public.companies USING btree (ticker) WHERE (status = &#x27;active&#x27;::text)</code></li><li><b>companies_cik_key</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_cik_key ON public.companies USING btree (cik)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_ticker_idx</b> <br><code class='index-def'>CREATE INDEX companies_ticker_idx ON public.companies USING btree (ticker)</code></li></ul>
     </section>
-    
+
 
     <section class="table-card" id="tbl-data_quality_flags">
         <h3>data_quality_flags</h3>
@@ -848,7 +1098,7 @@
                 <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
             </thead>
             <tbody>
-                
+
             <tr>
                 <td class="col-name">id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -856,7 +1106,7 @@
                 <td class="col-default"><code>nextval(&#x27;data_quality_flags_id_seq&#x27;::regclass)</code></td>
                 <td class="col-keys"><span class="badge pk">PK</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">company_id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -864,7 +1114,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"><span class="badge fk">FK→companies.id</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">statement</td>
                 <td class="col-type"><code>text</code></td>
@@ -872,7 +1122,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">concept</td>
                 <td class="col-type"><code>text</code></td>
@@ -880,7 +1130,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">fiscal_year</td>
                 <td class="col-type"><code>integer</code></td>
@@ -888,7 +1138,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">fiscal_quarter</td>
                 <td class="col-type"><code>integer</code></td>
@@ -896,7 +1146,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">period_end</td>
                 <td class="col-type"><code>date</code></td>
@@ -904,7 +1154,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">period_type</td>
                 <td class="col-type"><code>text</code></td>
@@ -912,7 +1162,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">flag_type</td>
                 <td class="col-type"><code>text</code></td>
@@ -920,7 +1170,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">severity</td>
                 <td class="col-type"><code>text</code></td>
@@ -928,7 +1178,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">expected_value</td>
                 <td class="col-type"><code>numeric</code></td>
@@ -936,7 +1186,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">computed_value</td>
                 <td class="col-type"><code>numeric</code></td>
@@ -944,7 +1194,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">delta</td>
                 <td class="col-type"><code>numeric</code></td>
@@ -952,7 +1202,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">tolerance</td>
                 <td class="col-type"><code>numeric</code></td>
@@ -960,7 +1210,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">suggested_value</td>
                 <td class="col-type"><code>numeric</code></td>
@@ -968,7 +1218,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">reason</td>
                 <td class="col-type"><code>text</code></td>
@@ -976,7 +1226,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">context</td>
                 <td class="col-type"><code>jsonb</code></td>
@@ -984,7 +1234,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">source_run_id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -992,7 +1242,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"><span class="badge fk">FK→ingest_runs.id</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">flagged_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -1000,7 +1250,7 @@
                 <td class="col-default"><code>now()</code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">resolved_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -1008,7 +1258,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">resolution</td>
                 <td class="col-type"><code>text</code></td>
@@ -1016,7 +1266,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">resolution_value</td>
                 <td class="col-type"><code>numeric</code></td>
@@ -1024,7 +1274,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">resolution_source</td>
                 <td class="col-type"><code>text</code></td>
@@ -1032,7 +1282,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">resolution_note</td>
                 <td class="col-type"><code>text</code></td>
@@ -1040,15 +1290,15 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             </tbody>
         </table>
         <h4>Foreign keys</h4><ul><li><code>(company_id)</code> → <code>companies(id)</code> <span class='badge on-delete'>ON DELETE CASCADE</span> <span class='cname'>(data_quality_flags_company_id_fkey)</span></li><li><code>(source_run_id)</code> → <code>ingest_runs(id)</code> <span class='badge on-delete'>ON DELETE NO ACTION</span> <span class='cname'>(data_quality_flags_source_run_id_fkey)</span></li></ul>
-        
+
         <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK ((length(flag_type) &gt; 0))</code> <span class='cname'>(data_quality_flags_flag_type_nonempty)</span></li><li><code class='check-def'>CHECK (((resolution IS NULL) OR (resolution = ANY (ARRAY[&#x27;approve_suggestion&#x27;::text, &#x27;override&#x27;::text, &#x27;accept_as_is&#x27;::text, &#x27;superseded_by_reingest&#x27;::text]))))</code> <span class='cname'>(data_quality_flags_resolution_enum)</span></li><li><code class='check-def'>CHECK ((severity = ANY (ARRAY[&#x27;informational&#x27;::text, &#x27;warning&#x27;::text, &#x27;investigate&#x27;::text])))</code> <span class='cname'>(data_quality_flags_severity_enum)</span></li></ul>
         <h4>Indexes</h4><ul><li><b>data_quality_flags_company_unresolved_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX data_quality_flags_company_unresolved_idx ON public.data_quality_flags USING btree (company_id, flagged_at DESC) WHERE (resolved_at IS NULL)</code></li><li><b>data_quality_flags_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX data_quality_flags_pkey ON public.data_quality_flags USING btree (id)</code></li><li><b>data_quality_flags_scope_idx</b> <br><code class='index-def'>CREATE INDEX data_quality_flags_scope_idx ON public.data_quality_flags USING btree (company_id, concept, fiscal_year)</code></li><li><b>data_quality_flags_type_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX data_quality_flags_type_idx ON public.data_quality_flags USING btree (flag_type, severity) WHERE (resolved_at IS NULL)</code></li></ul>
     </section>
-    
+
 
     <section class="table-card" id="tbl-financial_facts">
         <h3>financial_facts</h3>
@@ -1057,7 +1307,7 @@
                 <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
             </thead>
             <tbody>
-                
+
             <tr>
                 <td class="col-name">id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -1065,7 +1315,7 @@
                 <td class="col-default"><code>nextval(&#x27;financial_facts_id_seq&#x27;::regclass)</code></td>
                 <td class="col-keys"><span class="badge pk">PK</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">ingest_run_id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -1073,7 +1323,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"><span class="badge fk">FK→ingest_runs.id</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">company_id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -1081,7 +1331,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"><span class="badge fk">FK→companies.id</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">statement</td>
                 <td class="col-type"><code>text</code></td>
@@ -1089,7 +1339,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">concept</td>
                 <td class="col-type"><code>text</code></td>
@@ -1097,7 +1347,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">value</td>
                 <td class="col-type"><code>numeric(28,4)</code></td>
@@ -1105,7 +1355,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">unit</td>
                 <td class="col-type"><code>text</code></td>
@@ -1113,7 +1363,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">fiscal_year</td>
                 <td class="col-type"><code>smallint</code></td>
@@ -1121,7 +1371,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">fiscal_quarter</td>
                 <td class="col-type"><code>smallint</code></td>
@@ -1129,7 +1379,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">fiscal_period_label</td>
                 <td class="col-type"><code>text</code></td>
@@ -1137,7 +1387,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">period_end</td>
                 <td class="col-type"><code>date</code></td>
@@ -1145,7 +1395,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">period_type</td>
                 <td class="col-type"><code>text</code></td>
@@ -1153,7 +1403,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">calendar_year</td>
                 <td class="col-type"><code>smallint</code></td>
@@ -1161,7 +1411,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">calendar_quarter</td>
                 <td class="col-type"><code>smallint</code></td>
@@ -1169,7 +1419,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">calendar_period_label</td>
                 <td class="col-type"><code>text</code></td>
@@ -1177,7 +1427,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">published_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -1185,7 +1435,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">effective_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -1193,7 +1443,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">superseded_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -1201,7 +1451,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">ingested_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -1209,7 +1459,7 @@
                 <td class="col-default"><code>now()</code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">source_raw_response_id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -1217,7 +1467,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"><span class="badge fk">FK→raw_responses.id</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">source_artifact_id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -1225,7 +1475,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"><span class="badge fk">FK→artifacts.id</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">extraction_version</td>
                 <td class="col-type"><code>text</code></td>
@@ -1233,7 +1483,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">supersedes_fact_id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -1241,7 +1491,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"><span class="badge fk">FK→financial_facts.id</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">supersession_reason</td>
                 <td class="col-type"><code>text</code></td>
@@ -1249,7 +1499,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             </tbody>
         </table>
         <h4>Foreign keys</h4><ul><li><code>(company_id)</code> → <code>companies(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_company_id_fkey)</span></li><li><code>(ingest_run_id)</code> → <code>ingest_runs(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_ingest_run_id_fkey)</span></li><li><code>(source_artifact_id)</code> → <code>artifacts(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_source_artifact_id_fkey)</span></li><li><code>(source_raw_response_id)</code> → <code>raw_responses(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_source_raw_response_id_fkey)</span></li><li><code>(supersedes_fact_id)</code> → <code>financial_facts(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(financial_facts_supersedes_fact_id_fkey)</span></li></ul>
@@ -1257,7 +1507,7 @@
         <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK ((calendar_period_label ~ &#x27;^CY[0-9]{4} Q[1-4]$&#x27;::text))</code> <span class='cname'>(financial_facts_calendar_period_label_format)</span></li><li><code class='check-def'>CHECK (((calendar_quarter &gt;= 1) AND (calendar_quarter &lt;= 4)))</code> <span class='cname'>(financial_facts_calendar_quarter_range)</span></li><li><code class='check-def'>CHECK ((fiscal_period_label ~ &#x27;^FY[0-9]{4}( Q[1-4])?$&#x27;::text))</code> <span class='cname'>(financial_facts_fiscal_period_label_format)</span></li><li><code class='check-def'>CHECK (((fiscal_quarter IS NULL) OR ((fiscal_quarter &gt;= 1) AND (fiscal_quarter &lt;= 4))))</code> <span class='cname'>(financial_facts_fiscal_quarter_range)</span></li><li><code class='check-def'>CHECK ((period_type = ANY (ARRAY[&#x27;quarter&#x27;::text, &#x27;annual&#x27;::text, &#x27;stub&#x27;::text])))</code> <span class='cname'>(financial_facts_period_type_check)</span></li><li><code class='check-def'>CHECK ((((period_type = ANY (ARRAY[&#x27;annual&#x27;::text, &#x27;stub&#x27;::text])) AND (fiscal_quarter IS NULL)) OR ((period_type = &#x27;quarter&#x27;::text) AND (fiscal_quarter IS NOT NULL))))</code> <span class='cname'>(financial_facts_period_type_quarter_iff)</span></li><li><code class='check-def'>CHECK ((statement = ANY (ARRAY[&#x27;income_statement&#x27;::text, &#x27;balance_sheet&#x27;::text, &#x27;cash_flow&#x27;::text, &#x27;metrics&#x27;::text, &#x27;ratios&#x27;::text, &#x27;segment&#x27;::text])))</code> <span class='cname'>(financial_facts_statement_check)</span></li></ul>
         <h4>Indexes</h4><ul><li><b>financial_facts_calendar_period_concept_idx</b> <br><code class='index-def'>CREATE INDEX financial_facts_calendar_period_concept_idx ON public.financial_facts USING btree (calendar_year, calendar_quarter, concept)</code></li><li><b>financial_facts_company_concept_period_idx</b> <br><code class='index-def'>CREATE INDEX financial_facts_company_concept_period_idx ON public.financial_facts USING btree (company_id, concept, period_end DESC)</code></li><li><b>financial_facts_current_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX financial_facts_current_idx ON public.financial_facts USING btree (company_id, concept, period_end DESC) WHERE (superseded_at IS NULL)</code></li><li><b>financial_facts_one_current_idx</b> <span class="badge uk">UNIQUE</span> <span class="badge partial">partial</span><br><code class='index-def'>CREATE UNIQUE INDEX financial_facts_one_current_idx ON public.financial_facts USING btree (company_id, concept, period_end, period_type, extraction_version) WHERE (superseded_at IS NULL)</code></li><li><b>financial_facts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX financial_facts_pkey ON public.financial_facts USING btree (id)</code></li><li><b>financial_facts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX financial_facts_pkey ON public.financial_facts USING btree (id)</code></li><li><b>financial_facts_source_artifact_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX financial_facts_source_artifact_idx ON public.financial_facts USING btree (source_artifact_id) WHERE (source_artifact_id IS NOT NULL)</code></li><li><b>financial_facts_source_raw_response_idx</b> <br><code class='index-def'>CREATE INDEX financial_facts_source_raw_response_idx ON public.financial_facts USING btree (source_raw_response_id)</code></li><li><b>financial_facts_statement_company_idx</b> <br><code class='index-def'>CREATE INDEX financial_facts_statement_company_idx ON public.financial_facts USING btree (statement, company_id, period_end DESC)</code></li><li><b>financial_facts_supersedes_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX financial_facts_supersedes_idx ON public.financial_facts USING btree (supersedes_fact_id) WHERE (supersedes_fact_id IS NOT NULL)</code></li><li><b>financial_facts_unique_extraction</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX financial_facts_unique_extraction ON public.financial_facts USING btree (company_id, concept, period_end, period_type, source_raw_response_id, extraction_version)</code></li></ul>
     </section>
-    
+
 
     <section class="table-card" id="tbl-ingest_runs">
         <h3>ingest_runs</h3>
@@ -1266,7 +1516,7 @@
                 <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
             </thead>
             <tbody>
-                
+
             <tr>
                 <td class="col-name">id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -1274,7 +1524,7 @@
                 <td class="col-default"><code>nextval(&#x27;ingest_runs_id_seq&#x27;::regclass)</code></td>
                 <td class="col-keys"><span class="badge pk">PK</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">run_kind</td>
                 <td class="col-type"><code>text</code></td>
@@ -1282,7 +1532,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">vendor</td>
                 <td class="col-type"><code>text</code></td>
@@ -1290,7 +1540,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">ticker_scope</td>
                 <td class="col-type"><code>text[]</code></td>
@@ -1298,7 +1548,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">status</td>
                 <td class="col-type"><code>text</code></td>
@@ -1306,7 +1556,7 @@
                 <td class="col-default"><code>&#x27;started&#x27;::text</code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">started_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -1314,7 +1564,7 @@
                 <td class="col-default"><code>now()</code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">finished_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -1322,7 +1572,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">counts</td>
                 <td class="col-type"><code>jsonb</code></td>
@@ -1330,7 +1580,7 @@
                 <td class="col-default"><code>&#x27;{}&#x27;::jsonb</code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">error_message</td>
                 <td class="col-type"><code>text</code></td>
@@ -1338,7 +1588,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">error_details</td>
                 <td class="col-type"><code>jsonb</code></td>
@@ -1346,7 +1596,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">code_version</td>
                 <td class="col-type"><code>text</code></td>
@@ -1354,15 +1604,15 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             </tbody>
         </table>
-        
-        
+
+
         <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK ((((status = &#x27;started&#x27;::text) AND (finished_at IS NULL)) OR ((status &lt;&gt; &#x27;started&#x27;::text) AND (finished_at IS NOT NULL))))</code> <span class='cname'>(ingest_runs_finished_at_check)</span></li><li><code class='check-def'>CHECK ((run_kind = ANY (ARRAY[&#x27;backfill&#x27;::text, &#x27;incremental&#x27;::text, &#x27;reconciliation&#x27;::text, &#x27;manual&#x27;::text])))</code> <span class='cname'>(ingest_runs_run_kind_check)</span></li><li><code class='check-def'>CHECK ((status = ANY (ARRAY[&#x27;started&#x27;::text, &#x27;succeeded&#x27;::text, &#x27;failed&#x27;::text, &#x27;partial&#x27;::text])))</code> <span class='cname'>(ingest_runs_status_check)</span></li></ul>
         <h4>Indexes</h4><ul><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX ingest_runs_pkey ON public.ingest_runs USING btree (id)</code></li><li><b>ingest_runs_status_problem_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX ingest_runs_status_problem_idx ON public.ingest_runs USING btree (started_at DESC) WHERE (status = ANY (ARRAY[&#x27;failed&#x27;::text, &#x27;partial&#x27;::text]))</code></li><li><b>ingest_runs_vendor_started_at_idx</b> <br><code class='index-def'>CREATE INDEX ingest_runs_vendor_started_at_idx ON public.ingest_runs USING btree (vendor, started_at DESC)</code></li></ul>
     </section>
-    
+
 
     <section class="table-card" id="tbl-raw_responses">
         <h3>raw_responses</h3>
@@ -1371,7 +1621,7 @@
                 <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
             </thead>
             <tbody>
-                
+
             <tr>
                 <td class="col-name">id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -1379,7 +1629,7 @@
                 <td class="col-default"><code>nextval(&#x27;raw_responses_id_seq&#x27;::regclass)</code></td>
                 <td class="col-keys"><span class="badge pk">PK</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">ingest_run_id</td>
                 <td class="col-type"><code>bigint</code></td>
@@ -1387,7 +1637,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"><span class="badge fk">FK→ingest_runs.id</span></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">vendor</td>
                 <td class="col-type"><code>text</code></td>
@@ -1395,7 +1645,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">endpoint</td>
                 <td class="col-type"><code>text</code></td>
@@ -1403,7 +1653,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">params</td>
                 <td class="col-type"><code>jsonb</code></td>
@@ -1411,7 +1661,7 @@
                 <td class="col-default"><code>&#x27;{}&#x27;::jsonb</code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">params_hash</td>
                 <td class="col-type"><code>bytea</code></td>
@@ -1419,7 +1669,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">request_url</td>
                 <td class="col-type"><code>text</code></td>
@@ -1427,7 +1677,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">http_status</td>
                 <td class="col-type"><code>smallint</code></td>
@@ -1435,7 +1685,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">content_type</td>
                 <td class="col-type"><code>text</code></td>
@@ -1443,7 +1693,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">response_headers</td>
                 <td class="col-type"><code>jsonb</code></td>
@@ -1451,7 +1701,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">body_jsonb</td>
                 <td class="col-type"><code>jsonb</code></td>
@@ -1459,7 +1709,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">body_raw</td>
                 <td class="col-type"><code>bytea</code></td>
@@ -1467,7 +1717,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">raw_hash</td>
                 <td class="col-type"><code>bytea</code></td>
@@ -1475,7 +1725,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">canonical_hash</td>
                 <td class="col-type"><code>bytea</code></td>
@@ -1483,7 +1733,7 @@
                 <td class="col-default"><code></code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             <tr>
                 <td class="col-name">fetched_at</td>
                 <td class="col-type"><code>timestamp with time zone</code></td>
@@ -1491,15 +1741,15 @@
                 <td class="col-default"><code>now()</code></td>
                 <td class="col-keys"></td>
             </tr>
-        
+
             </tbody>
         </table>
         <h4>Foreign keys</h4><ul><li><code>(ingest_run_id)</code> → <code>ingest_runs(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(raw_responses_ingest_run_id_fkey)</span></li></ul>
-        
+
         <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK (((body_jsonb IS NULL) &lt;&gt; (body_raw IS NULL)))</code> <span class='cname'>(raw_responses_body_xor)</span></li><li><code class='check-def'>CHECK ((octet_length(canonical_hash) = 32))</code> <span class='cname'>(raw_responses_canonical_hash_len)</span></li><li><code class='check-def'>CHECK ((octet_length(params_hash) = 32))</code> <span class='cname'>(raw_responses_params_hash_len)</span></li><li><code class='check-def'>CHECK ((octet_length(raw_hash) = 32))</code> <span class='cname'>(raw_responses_raw_hash_len)</span></li></ul>
         <h4>Indexes</h4><ul><li><b>raw_responses_canonical_hash_idx</b> <br><code class='index-def'>CREATE INDEX raw_responses_canonical_hash_idx ON public.raw_responses USING btree (canonical_hash)</code></li><li><b>raw_responses_ingest_run_id_idx</b> <br><code class='index-def'>CREATE INDEX raw_responses_ingest_run_id_idx ON public.raw_responses USING btree (ingest_run_id)</code></li><li><b>raw_responses_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX raw_responses_pkey ON public.raw_responses USING btree (id)</code></li><li><b>raw_responses_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX raw_responses_pkey ON public.raw_responses USING btree (id)</code></li><li><b>raw_responses_raw_hash_idx</b> <br><code class='index-def'>CREATE INDEX raw_responses_raw_hash_idx ON public.raw_responses USING btree (raw_hash)</code></li><li><b>raw_responses_request_fetched_idx</b> <br><code class='index-def'>CREATE INDEX raw_responses_request_fetched_idx ON public.raw_responses USING btree (vendor, endpoint, params_hash, fetched_at DESC)</code></li></ul>
     </section>
-    
+
 </div>
 
 <footer>
@@ -1524,10 +1774,10 @@ mermaid.initialize({
     },
 });
 
-const src = "erDiagram\n  ARTIFACT_SECTIONS ||--o{ ARTIFACT_SECTION_CHUNKS : \"artifact_section_chunks_section_id_fkey\"\n  ARTIFACTS ||--o{ ARTIFACT_SECTIONS : \"artifact_sections_artifact_id_fkey\"\n  COMPANIES ||--o{ ARTIFACT_SECTIONS : \"artifact_sections_company_id_fkey\"\n  ARTIFACTS |o--o{ ARTIFACTS : \"artifacts_amends_artifact_id_fkey\"\n  COMPANIES |o--o{ ARTIFACTS : \"artifacts_company_id_fkey\"\n  INGEST_RUNS |o--o{ ARTIFACTS : \"artifacts_ingest_run_id_fkey\"\n  ARTIFACTS |o--o{ ARTIFACTS : \"artifacts_supersedes_fkey\"\n  COMPANIES ||--o{ DATA_QUALITY_FLAGS : \"data_quality_flags_company_id_fkey\"\n  INGEST_RUNS |o--o{ DATA_QUALITY_FLAGS : \"data_quality_flags_source_run_id_fkey\"\n  COMPANIES ||--o{ FINANCIAL_FACTS : \"financial_facts_company_id_fkey\"\n  INGEST_RUNS |o--o{ FINANCIAL_FACTS : \"financial_facts_ingest_run_id_fkey\"\n  ARTIFACTS |o--o{ FINANCIAL_FACTS : \"financial_facts_source_artifact_id_fkey\"\n  RAW_RESPONSES ||--o{ FINANCIAL_FACTS : \"financial_facts_source_raw_response_id_fkey\"\n  FINANCIAL_FACTS |o--o{ FINANCIAL_FACTS : \"financial_facts_supersedes_fact_id_fkey\"\n  INGEST_RUNS ||--o{ RAW_RESPONSES : \"raw_responses_ingest_run_id_fkey\"\n  ARTIFACT_SECTION_CHUNKS {\n    bigint id PK \"NOT NULL, default nextval('artifact_section_chunks_id_seq'::regclass)\"\n    bigint section_id FK \"NOT NULL\"\n    integer chunk_ordinal \"NOT NULL\"\n    text text \"NOT NULL\"\n    text search_text \"NOT NULL\"\n    text[] heading_path \"NOT NULL, default '{}'::text[]\"\n    integer start_offset \"NOT NULL\"\n    integer end_offset \"NOT NULL\"\n    text chunker_version \"NOT NULL\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    tsvector tsv \"nullable, default to_tsvector('english'::regconfig, search_text)\"\n  }\n  ARTIFACT_SECTIONS {\n    bigint id PK \"NOT NULL, default nextval('artifact_sections_id_seq'::regclass)\"\n    bigint artifact_id FK \"NOT NULL\"\n    bigint company_id FK \"NOT NULL\"\n    text fiscal_period_key \"NOT NULL\"\n    text form_family \"NOT NULL\"\n    text section_key \"NOT NULL\"\n    text section_title \"NOT NULL\"\n    text part_label \"nullable\"\n    text item_label \"nullable\"\n    text text \"NOT NULL\"\n    integer start_offset \"NOT NULL\"\n    integer end_offset \"NOT NULL\"\n    text extractor_version \"NOT NULL\"\n    double_precision confidence \"NOT NULL\"\n    text extraction_method \"NOT NULL\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    tsvector tsv \"nullable, default to_tsvector('english'::regconfig, text)\"\n  }\n  ARTIFACTS {\n    bigint id PK \"NOT NULL, default nextval('artifacts_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"nullable\"\n    text artifact_type \"NOT NULL\"\n    text source \"NOT NULL\"\n    text source_document_id \"nullable\"\n    bytea raw_hash \"NOT NULL\"\n    bytea canonical_hash \"NOT NULL\"\n    text ticker \"nullable\"\n    smallint fiscal_year \"nullable\"\n    smallint fiscal_quarter \"nullable\"\n    text fiscal_period_label \"nullable\"\n    date period_end \"nullable\"\n    text period_type \"nullable\"\n    smallint calendar_year \"nullable\"\n    smallint calendar_quarter \"nullable\"\n    text calendar_period_label \"nullable\"\n    text title \"nullable\"\n    text url \"nullable\"\n    text content_type \"nullable\"\n    text language \"nullable\"\n    timestamp_with_time_zone published_at \"nullable\"\n    timestamp_with_time_zone effective_at \"nullable\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n    bigint supersedes FK \"nullable\"\n    timestamp_with_time_zone superseded_at \"nullable\"\n    text authored_by \"nullable\"\n    timestamp_with_time_zone last_reviewed_at \"nullable\"\n    date asserted_valid_through \"nullable\"\n    jsonb artifact_metadata \"NOT NULL, default '{}'::jsonb\"\n    bigint company_id FK \"nullable\"\n    text fiscal_period_key \"nullable\"\n    text form_family \"nullable\"\n    text cik \"nullable\"\n    text accession_number \"nullable\"\n    text raw_primary_doc_path \"nullable\"\n    bigint amends_artifact_id FK \"nullable\"\n  }\n  COMPANIES {\n    bigint id PK \"NOT NULL, default nextval('companies_id_seq'::regclass)\"\n    bigint cik UK \"NOT NULL\"\n    text ticker \"NOT NULL\"\n    text name \"NOT NULL\"\n    text fiscal_year_end_md \"NOT NULL\"\n    text status \"NOT NULL, default 'active'::text\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone updated_at \"NOT NULL, default now()\"\n  }\n  DATA_QUALITY_FLAGS {\n    bigint id PK \"NOT NULL, default nextval('data_quality_flags_id_seq'::regclass)\"\n    bigint company_id FK \"NOT NULL\"\n    text statement \"nullable\"\n    text concept \"nullable\"\n    integer fiscal_year \"nullable\"\n    integer fiscal_quarter \"nullable\"\n    date period_end \"nullable\"\n    text period_type \"nullable\"\n    text flag_type \"NOT NULL\"\n    text severity \"NOT NULL\"\n    numeric expected_value \"nullable\"\n    numeric computed_value \"nullable\"\n    numeric delta \"nullable\"\n    numeric tolerance \"nullable\"\n    numeric suggested_value \"nullable\"\n    text reason \"NOT NULL\"\n    jsonb context \"nullable\"\n    bigint source_run_id FK \"nullable\"\n    timestamp_with_time_zone flagged_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone resolved_at \"nullable\"\n    text resolution \"nullable\"\n    numeric resolution_value \"nullable\"\n    text resolution_source \"nullable\"\n    text resolution_note \"nullable\"\n  }\n  FINANCIAL_FACTS {\n    bigint id PK \"NOT NULL, default nextval('financial_facts_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"nullable\"\n    bigint company_id FK \"NOT NULL\"\n    text statement \"NOT NULL\"\n    text concept \"NOT NULL\"\n    numeric_28_4 value \"NOT NULL\"\n    text unit \"NOT NULL\"\n    smallint fiscal_year \"NOT NULL\"\n    smallint fiscal_quarter \"nullable\"\n    text fiscal_period_label \"NOT NULL\"\n    date period_end \"NOT NULL\"\n    text period_type \"NOT NULL\"\n    smallint calendar_year \"NOT NULL\"\n    smallint calendar_quarter \"NOT NULL\"\n    text calendar_period_label \"NOT NULL\"\n    timestamp_with_time_zone published_at \"NOT NULL\"\n    timestamp_with_time_zone effective_at \"nullable\"\n    timestamp_with_time_zone superseded_at \"nullable\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n    bigint source_artifact_id FK \"nullable\"\n    text extraction_version \"NOT NULL\"\n    bigint supersedes_fact_id FK \"nullable\"\n    text supersession_reason \"nullable\"\n  }\n  INGEST_RUNS {\n    bigint id PK \"NOT NULL, default nextval('ingest_runs_id_seq'::regclass)\"\n    text run_kind \"NOT NULL\"\n    text vendor \"NOT NULL\"\n    text[] ticker_scope \"nullable\"\n    text status \"NOT NULL, default 'started'::text\"\n    timestamp_with_time_zone started_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone finished_at \"nullable\"\n    jsonb counts \"NOT NULL, default '{}'::jsonb\"\n    text error_message \"nullable\"\n    jsonb error_details \"nullable\"\n    text code_version \"nullable\"\n  }\n  RAW_RESPONSES {\n    bigint id PK \"NOT NULL, default nextval('raw_responses_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"NOT NULL\"\n    text vendor \"NOT NULL\"\n    text endpoint \"NOT NULL\"\n    jsonb params \"NOT NULL, default '{}'::jsonb\"\n    bytea params_hash \"NOT NULL\"\n    text request_url \"nullable\"\n    smallint http_status \"NOT NULL\"\n    text content_type \"NOT NULL\"\n    jsonb response_headers \"nullable\"\n    jsonb body_jsonb \"nullable\"\n    bytea body_raw \"nullable\"\n    bytea raw_hash \"NOT NULL\"\n    bytea canonical_hash \"NOT NULL\"\n    timestamp_with_time_zone fetched_at \"NOT NULL, default now()\"\n  }";
+const src = "erDiagram\n  ARTIFACT_SECTIONS ||--o{ ARTIFACT_SECTION_CHUNKS : \"artifact_section_chunks_section_id_fkey\"\n  ARTIFACTS ||--o{ ARTIFACT_SECTIONS : \"artifact_sections_artifact_id_fkey\"\n  COMPANIES ||--o{ ARTIFACT_SECTIONS : \"artifact_sections_company_id_fkey\"\n  ARTIFACT_TEXT_UNITS ||--o{ ARTIFACT_TEXT_CHUNKS : \"artifact_text_chunks_text_unit_id_fkey\"\n  ARTIFACTS ||--o{ ARTIFACT_TEXT_UNITS : \"artifact_text_units_artifact_id_fkey\"\n  COMPANIES |o--o{ ARTIFACT_TEXT_UNITS : \"artifact_text_units_company_id_fkey\"\n  ARTIFACTS |o--o{ ARTIFACTS : \"artifacts_amends_artifact_id_fkey\"\n  COMPANIES |o--o{ ARTIFACTS : \"artifacts_company_id_fkey\"\n  INGEST_RUNS |o--o{ ARTIFACTS : \"artifacts_ingest_run_id_fkey\"\n  ARTIFACTS |o--o{ ARTIFACTS : \"artifacts_supersedes_fkey\"\n  COMPANIES ||--o{ DATA_QUALITY_FLAGS : \"data_quality_flags_company_id_fkey\"\n  INGEST_RUNS |o--o{ DATA_QUALITY_FLAGS : \"data_quality_flags_source_run_id_fkey\"\n  COMPANIES ||--o{ FINANCIAL_FACTS : \"financial_facts_company_id_fkey\"\n  INGEST_RUNS |o--o{ FINANCIAL_FACTS : \"financial_facts_ingest_run_id_fkey\"\n  ARTIFACTS |o--o{ FINANCIAL_FACTS : \"financial_facts_source_artifact_id_fkey\"\n  RAW_RESPONSES ||--o{ FINANCIAL_FACTS : \"financial_facts_source_raw_response_id_fkey\"\n  FINANCIAL_FACTS |o--o{ FINANCIAL_FACTS : \"financial_facts_supersedes_fact_id_fkey\"\n  INGEST_RUNS ||--o{ RAW_RESPONSES : \"raw_responses_ingest_run_id_fkey\"\n  ARTIFACT_SECTION_CHUNKS {\n    bigint id PK \"NOT NULL, default nextval('artifact_section_chunks_id_seq'::regclass)\"\n    bigint section_id FK \"NOT NULL\"\n    integer chunk_ordinal \"NOT NULL\"\n    text text \"NOT NULL\"\n    text search_text \"NOT NULL\"\n    text[] heading_path \"NOT NULL, default '{}'::text[]\"\n    integer start_offset \"NOT NULL\"\n    integer end_offset \"NOT NULL\"\n    text chunker_version \"NOT NULL\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    tsvector tsv \"nullable, default to_tsvector('english'::regconfig, search_text)\"\n  }\n  ARTIFACT_SECTIONS {\n    bigint id PK \"NOT NULL, default nextval('artifact_sections_id_seq'::regclass)\"\n    bigint artifact_id FK \"NOT NULL\"\n    bigint company_id FK \"NOT NULL\"\n    text fiscal_period_key \"NOT NULL\"\n    text form_family \"NOT NULL\"\n    text section_key \"NOT NULL\"\n    text section_title \"NOT NULL\"\n    text part_label \"nullable\"\n    text item_label \"nullable\"\n    text text \"NOT NULL\"\n    integer start_offset \"NOT NULL\"\n    integer end_offset \"NOT NULL\"\n    text extractor_version \"NOT NULL\"\n    double_precision confidence \"NOT NULL\"\n    text extraction_method \"NOT NULL\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    tsvector tsv \"nullable, default to_tsvector('english'::regconfig, text)\"\n  }\n  ARTIFACT_TEXT_CHUNKS {\n    bigint id PK \"NOT NULL, default nextval('artifact_text_chunks_id_seq'::regclass)\"\n    bigint text_unit_id FK \"NOT NULL\"\n    integer chunk_ordinal \"NOT NULL\"\n    text text \"NOT NULL\"\n    text search_text \"NOT NULL\"\n    text[] heading_path \"NOT NULL, default '{}'::text[]\"\n    integer start_offset \"NOT NULL\"\n    integer end_offset \"NOT NULL\"\n    text chunker_version \"NOT NULL\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    tsvector tsv \"nullable, default to_tsvector('english'::regconfig, search_text)\"\n  }\n  ARTIFACT_TEXT_UNITS {\n    bigint id PK \"NOT NULL, default nextval('artifact_text_units_id_seq'::regclass)\"\n    bigint artifact_id FK \"NOT NULL\"\n    bigint company_id FK \"nullable\"\n    text fiscal_period_key \"nullable\"\n    integer unit_ordinal \"NOT NULL\"\n    text unit_type \"NOT NULL\"\n    text unit_key \"NOT NULL\"\n    text unit_title \"NOT NULL\"\n    text text \"NOT NULL\"\n    integer start_offset \"NOT NULL\"\n    integer end_offset \"NOT NULL\"\n    text extractor_version \"NOT NULL\"\n    double_precision confidence \"NOT NULL\"\n    text extraction_method \"NOT NULL\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    tsvector tsv \"nullable, default to_tsvector('english'::regconfig, text)\"\n  }\n  ARTIFACTS {\n    bigint id PK \"NOT NULL, default nextval('artifacts_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"nullable\"\n    text artifact_type \"NOT NULL\"\n    text source \"NOT NULL\"\n    text source_document_id \"nullable\"\n    bytea raw_hash \"NOT NULL\"\n    bytea canonical_hash \"NOT NULL\"\n    text ticker \"nullable\"\n    smallint fiscal_year \"nullable\"\n    smallint fiscal_quarter \"nullable\"\n    text fiscal_period_label \"nullable\"\n    date period_end \"nullable\"\n    text period_type \"nullable\"\n    smallint calendar_year \"nullable\"\n    smallint calendar_quarter \"nullable\"\n    text calendar_period_label \"nullable\"\n    text title \"nullable\"\n    text url \"nullable\"\n    text content_type \"nullable\"\n    text language \"nullable\"\n    timestamp_with_time_zone published_at \"nullable\"\n    timestamp_with_time_zone effective_at \"nullable\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n    bigint supersedes FK \"nullable\"\n    timestamp_with_time_zone superseded_at \"nullable\"\n    text authored_by \"nullable\"\n    timestamp_with_time_zone last_reviewed_at \"nullable\"\n    date asserted_valid_through \"nullable\"\n    jsonb artifact_metadata \"NOT NULL, default '{}'::jsonb\"\n    bigint company_id FK \"nullable\"\n    text fiscal_period_key \"nullable\"\n    text form_family \"nullable\"\n    text cik \"nullable\"\n    text accession_number \"nullable\"\n    text raw_primary_doc_path \"nullable\"\n    bigint amends_artifact_id FK \"nullable\"\n  }\n  COMPANIES {\n    bigint id PK \"NOT NULL, default nextval('companies_id_seq'::regclass)\"\n    bigint cik UK \"NOT NULL\"\n    text ticker \"NOT NULL\"\n    text name \"NOT NULL\"\n    text fiscal_year_end_md \"NOT NULL\"\n    text status \"NOT NULL, default 'active'::text\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone updated_at \"NOT NULL, default now()\"\n  }\n  DATA_QUALITY_FLAGS {\n    bigint id PK \"NOT NULL, default nextval('data_quality_flags_id_seq'::regclass)\"\n    bigint company_id FK \"NOT NULL\"\n    text statement \"nullable\"\n    text concept \"nullable\"\n    integer fiscal_year \"nullable\"\n    integer fiscal_quarter \"nullable\"\n    date period_end \"nullable\"\n    text period_type \"nullable\"\n    text flag_type \"NOT NULL\"\n    text severity \"NOT NULL\"\n    numeric expected_value \"nullable\"\n    numeric computed_value \"nullable\"\n    numeric delta \"nullable\"\n    numeric tolerance \"nullable\"\n    numeric suggested_value \"nullable\"\n    text reason \"NOT NULL\"\n    jsonb context \"nullable\"\n    bigint source_run_id FK \"nullable\"\n    timestamp_with_time_zone flagged_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone resolved_at \"nullable\"\n    text resolution \"nullable\"\n    numeric resolution_value \"nullable\"\n    text resolution_source \"nullable\"\n    text resolution_note \"nullable\"\n  }\n  FINANCIAL_FACTS {\n    bigint id PK \"NOT NULL, default nextval('financial_facts_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"nullable\"\n    bigint company_id FK \"NOT NULL\"\n    text statement \"NOT NULL\"\n    text concept \"NOT NULL\"\n    numeric_28_4 value \"NOT NULL\"\n    text unit \"NOT NULL\"\n    smallint fiscal_year \"NOT NULL\"\n    smallint fiscal_quarter \"nullable\"\n    text fiscal_period_label \"NOT NULL\"\n    date period_end \"NOT NULL\"\n    text period_type \"NOT NULL\"\n    smallint calendar_year \"NOT NULL\"\n    smallint calendar_quarter \"NOT NULL\"\n    text calendar_period_label \"NOT NULL\"\n    timestamp_with_time_zone published_at \"NOT NULL\"\n    timestamp_with_time_zone effective_at \"nullable\"\n    timestamp_with_time_zone superseded_at \"nullable\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n    bigint source_artifact_id FK \"nullable\"\n    text extraction_version \"NOT NULL\"\n    bigint supersedes_fact_id FK \"nullable\"\n    text supersession_reason \"nullable\"\n  }\n  INGEST_RUNS {\n    bigint id PK \"NOT NULL, default nextval('ingest_runs_id_seq'::regclass)\"\n    text run_kind \"NOT NULL\"\n    text vendor \"NOT NULL\"\n    text[] ticker_scope \"nullable\"\n    text status \"NOT NULL, default 'started'::text\"\n    timestamp_with_time_zone started_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone finished_at \"nullable\"\n    jsonb counts \"NOT NULL, default '{}'::jsonb\"\n    text error_message \"nullable\"\n    jsonb error_details \"nullable\"\n    text code_version \"nullable\"\n  }\n  RAW_RESPONSES {\n    bigint id PK \"NOT NULL, default nextval('raw_responses_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"NOT NULL\"\n    text vendor \"NOT NULL\"\n    text endpoint \"NOT NULL\"\n    jsonb params \"NOT NULL, default '{}'::jsonb\"\n    bytea params_hash \"NOT NULL\"\n    text request_url \"nullable\"\n    smallint http_status \"NOT NULL\"\n    text content_type \"NOT NULL\"\n    jsonb response_headers \"nullable\"\n    jsonb body_jsonb \"nullable\"\n    bytea body_raw \"nullable\"\n    bytea raw_hash \"NOT NULL\"\n    bytea canonical_hash \"NOT NULL\"\n    timestamp_with_time_zone fetched_at \"NOT NULL, default now()\"\n  }";
 const { svg } = await mermaid.render('erd-svg', src);
 document.getElementById('erd').innerHTML = svg;
-const tableNames = ["artifact_section_chunks", "artifact_sections", "artifacts", "companies", "data_quality_flags", "financial_facts", "ingest_runs", "raw_responses"];
+const tableNames = ["artifact_section_chunks", "artifact_sections", "artifact_text_chunks", "artifact_text_units", "artifacts", "companies", "data_quality_flags", "financial_facts", "ingest_runs", "raw_responses"];
 const viewport = document.getElementById('erd-viewport');
 const svgEl = document.querySelector('#erd svg.erDiagram');
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));

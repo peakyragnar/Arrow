@@ -95,6 +95,8 @@ def test_created_tables_exist() -> None:
         "artifacts",
         "artifact_sections",
         "artifact_section_chunks",
+        "artifact_text_units",
+        "artifact_text_chunks",
         "schema_migrations",
     }.issubset(tables)
     # artifact_chunks created in 005 then dropped in 006

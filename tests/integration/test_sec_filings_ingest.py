@@ -14,7 +14,12 @@ from arrow.db.connection import get_conn
 from arrow.db.migrations import apply
 from arrow.ingest.common.http import Response
 from arrow.ingest.sec.filings import ingest_recent_sec_filings, ingest_sec_filings
-from arrow.ingest.sec.qualitative import CHUNKER_VERSION, EXTRACTOR_VERSION
+from arrow.ingest.sec.qualitative import (
+    CHUNKER_VERSION,
+    EXTRACTOR_VERSION,
+    TEXT_CHUNKER_VERSION,
+    TEXT_UNIT_EXTRACTOR_VERSION,
+)
 
 
 def _reset(conn) -> None:
@@ -236,12 +241,17 @@ def test_ingest_recent_8k_writes_primary_and_press_release_and_dedupes() -> None
         "directory": {
             "item": [
                 {"name": "nvda-8k.htm", "type": "8-K", "description": "Current report"},
-                {"name": "ex99-1.htm", "type": "EX-99.1", "description": "Earnings release"},
+                {"name": "q126earningsrelease.htm", "type": "text.gif", "description": ""},
             ]
         }
     }
     eight_k_html = b"<html><body>8-K body</body></html>"
-    press_release_html = b"<html><body>Earnings release body</body></html>"
+    press_release_html = b"""
+    <html><body>
+      <h1>NVIDIA Announces Quarterly Financial Results</h1>
+      <p>Revenue was $30.0 billion and gross margin expanded.</p>
+    </body></html>
+    """
 
     def _fake_get(self, url: str, params=None) -> Response:  # noqa: ARG001
         if "submissions/CIK0001045810.json" in url:
@@ -253,7 +263,7 @@ def test_ingest_recent_8k_writes_primary_and_press_release_and_dedupes() -> None
         elif url.endswith("/nvda-8k.htm"):
             body = eight_k_html
             content_type = "text/html"
-        elif url.endswith("/ex99-1.htm"):
+        elif url.endswith("/q126earningsrelease.htm"):
             body = press_release_html
             content_type = "text/html"
         else:
@@ -275,8 +285,10 @@ def test_ingest_recent_8k_writes_primary_and_press_release_and_dedupes() -> None
 
         assert first["raw_responses"] == 4
         assert first["artifacts_written"] == 2
+        assert first["text_units_written"] == 2
         assert second["artifacts_written"] == 0
         assert second["artifacts_existing"] == 2
+        assert second["text_units_written"] == 0
 
         with conn.cursor() as cur:
             cur.execute("SELECT count(*) FROM raw_responses WHERE vendor = 'sec';")
@@ -290,13 +302,38 @@ def test_ingest_recent_8k_writes_primary_and_press_release_and_dedupes() -> None
                 """
             )
             rows = cur.fetchall()
+            cur.execute(
+                """
+                SELECT u.unit_key, u.extractor_version, ch.chunker_version, ch.search_text
+                FROM artifact_text_units u
+                JOIN artifact_text_chunks ch ON ch.text_unit_id = u.id
+                JOIN artifacts a ON a.id = u.artifact_id
+                WHERE a.artifact_type = 'press_release'
+                ORDER BY u.unit_ordinal, ch.chunk_ordinal;
+                """
+            )
+            unit_rows = cur.fetchall()
         assert rows == [
             ("8k", "0001045810-26-000222", "Current report", None),
             (
                 "press_release",
-                "0001045810-26-000222:ex99-1.htm",
-                "Earnings release",
+                "0001045810-26-000222:q126earningsrelease.htm",
+                "NVDA press release",
                 "sec_exhibit",
+            ),
+        ]
+        assert unit_rows == [
+            (
+                "headline",
+                TEXT_UNIT_EXTRACTOR_VERSION,
+                TEXT_CHUNKER_VERSION,
+                "nvidia announces quarterly financial results",
+            ),
+            (
+                "release_body",
+                TEXT_UNIT_EXTRACTOR_VERSION,
+                TEXT_CHUNKER_VERSION,
+                "revenue was $30.0 billion and gross margin expanded.",
             ),
         ]
 

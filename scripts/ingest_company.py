@@ -180,6 +180,7 @@ def main() -> int:
             "artifacts_written": sec_counts["artifacts_written"],
             "artifacts_existing": sec_counts["artifacts_existing"],
             "sections_written": sec_counts["sections_written"],
+            "text_units_written": sec_counts.get("text_units_written", 0),
         },
     )
     print("Status: PASS — baseline facts + SEC qualitative filings stored.")

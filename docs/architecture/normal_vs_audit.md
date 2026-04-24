@@ -27,10 +27,15 @@ SEC is still active, but for documents:
 - filing text
 - freshness / low-latency filing arrival
 
+For earnings 8-Ks, the 8-K is the filing envelope. The EX-99 earnings release
+is stored as a `press_release` artifact and extracted into generic text units
+and chunks for retrieval. It is not forced into the 10-K / 10-Q section schema.
+
 Destination:
 
 - `raw_responses`
 - `artifacts`
+- `artifact_text_units` / `artifact_text_chunks` for earnings press releases
 - part of the same normal company run; not a separate architecture
 
 ### Transcripts

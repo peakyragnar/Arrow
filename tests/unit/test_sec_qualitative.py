@@ -4,7 +4,9 @@ from arrow.ingest.sec.qualitative import (
     ExtractedSection,
     _is_subheading,
     build_chunks,
+    build_text_unit_chunks,
     extract_sections,
+    extract_press_release_units,
     normalize_filing_body,
 )
 
@@ -321,3 +323,93 @@ def test_subheading_detection_rejects_table_of_contents_labels() -> None:
     assert not _is_subheading("Table of Conten t s")
 
     assert _is_subheading("Legal and Regulatory Risks")
+
+
+def test_press_release_extraction_creates_headline_and_body_units() -> None:
+    normalized = normalize_filing_body(
+        b"""
+        <html><body>
+          <h1>Intel Reports First-Quarter 2026 Financial Results</h1>
+          <p>Revenue was $12.7 billion and gross margin improved sequentially.</p>
+          <p>The company provided second-quarter guidance.</p>
+        </body></html>
+        """,
+        "text/html",
+    )
+
+    units = extract_press_release_units(normalized)
+
+    assert [unit.unit_key for unit in units] == ["headline", "release_body"]
+    assert units[0].text == "Intel Reports First-Quarter 2026 Financial Results"
+    assert "gross margin improved" in units[1].text
+    assert units[0].confidence == 1.0
+
+
+def test_press_release_extraction_skips_exhibit_boilerplate_and_splits_units() -> None:
+    normalized = normalize_filing_body(
+        b"""
+        <html><body>
+          <div>EX-99.1</div>
+          <div>2</div>
+          <div>q126earningsrelease.htm</div>
+          <div>EX-99.1</div>
+          <div>Document</div>
+          <div>Exhibit 99.1</div>
+          <div>Intel Corporation</div>
+          <div>2200 Mission College Blvd.</div>
+          <div>Santa Clara, CA 95054-1549</div>
+          <div>News Release</div>
+          <h1>Intel Reports First-Quarter 2026 Financial Results</h1>
+          <h2>News Summary</h2>
+          <p>First-quarter revenue was $13.6 billion, up 7% year-over-year.</p>
+          <h2>Business Outlook</h2>
+          <p>Forecasting second-quarter 2026 revenue of $13.8 billion to $14.8 billion.</p>
+          <h2>Forward-Looking Statements</h2>
+          <p>This release contains forward-looking statements.</p>
+          <h2>About Intel</h2>
+          <p>Intel designs and manufactures advanced semiconductors.</p>
+          <div>Intel/Page 6</div>
+          <div>Intel Corporation</div>
+          <h2>Supplemental Reconciliations of GAAP Actuals to Non-GAAP Actuals</h2>
+          <p>GAAP gross margin was 39.4% and non-GAAP gross margin was 41.0%.</p>
+        </body></html>
+        """,
+        "text/html",
+    )
+
+    units = extract_press_release_units(normalized)
+
+    assert [unit.unit_key for unit in units] == [
+        "headline",
+        "news_summary",
+        "business_outlook",
+        "forward_looking_statements",
+        "about_company",
+        "non_gaap_reconciliations",
+    ]
+    assert units[0].text == "Intel Reports First-Quarter 2026 Financial Results"
+    assert units[1].text.startswith("News Summary")
+    assert "EX-99.1" not in units[1].text
+    assert "q126earningsrelease.htm" not in units[1].text
+    assert "second-quarter 2026 revenue" in units[2].text
+    assert "Intel/Page 6" not in units[4].text
+    assert not units[4].text.endswith("Intel Corporation")
+
+
+def test_press_release_chunks_are_searchable_retrieval_units() -> None:
+    normalized = normalize_filing_body(
+        b"""
+        <html><body>
+          <h1>Intel Reports First-Quarter 2026 Financial Results</h1>
+          <p>Revenue was $12.7 billion and gross margin improved sequentially.</p>
+        </body></html>
+        """,
+        "text/html",
+    )
+    body_unit = extract_press_release_units(normalized)[1]
+
+    chunks = build_text_unit_chunks(body_unit)
+
+    assert len(chunks) == 1
+    assert chunks[0].heading_path == ["Release Body"]
+    assert "gross margin" in chunks[0].search_text

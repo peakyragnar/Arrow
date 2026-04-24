@@ -12,6 +12,8 @@ import psycopg
 
 EXTRACTOR_VERSION = "sec_sections_v9"
 CHUNKER_VERSION = "sec_chunks_v10"
+TEXT_UNIT_EXTRACTOR_VERSION = "press_release_units_v4"
+TEXT_CHUNKER_VERSION = "artifact_text_chunks_v1"
 
 ExtractionMethod = Literal["deterministic", "repair", "unparsed_fallback"]
 FormFamily = Literal["10-K", "10-Q"]
@@ -88,6 +90,69 @@ _EMBEDDED_SUBHEADINGS = tuple(
 )
 _EMBEDDED_SUBHEADING_PATTERN = re.compile(
     r"\b(" + "|".join(re.escape(heading) for heading in _EMBEDDED_SUBHEADINGS) + r")\b"
+)
+_PRESS_RELEASE_HEADLINE_TERMS_RE = re.compile(
+    r"(?i)\b("
+    r"announces?|reports?|results?|financial\s+results|"
+    r"quarter|quarterly|fiscal|year[- ]end|full[- ]year|earnings"
+    r")\b"
+)
+_PRESS_RELEASE_PREFIX_BOILERPLATE_RE = re.compile(
+    r"(?ix)^("
+    r"ex-?\s*99(?:\.\d+)?|"
+    r"exhibit\s+99(?:\.\d+)?|"
+    r"document|"
+    r"news\s+release|"
+    r"\d{1,4}|"
+    r".*\.(?:htm|html|txt)|"
+    r".*\b(?:blvd|boulevard|street|st\.|road|rd\.|avenue|ave\.|drive|dr\.|suite)\b\.?|"
+    r"[A-Z][A-Za-z .'-]+,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?"
+    r")$"
+)
+_PRESS_RELEASE_PAGE_FURNITURE_RE = re.compile(
+    r"(?i)^[A-Z][A-Za-z0-9&.,' -]{1,80}/Page\s+\d+$"
+)
+_PRESS_RELEASE_UNIT_MARKERS: tuple[tuple[str, str, re.Pattern[str]], ...] = (
+    ("news_summary", "News Summary", re.compile(r"(?i)^news\s+summary$")),
+    (
+        "financial_results",
+        "Financial Results",
+        re.compile(r"(?i)^(?:q[1-4]|first|second|third|fourth|full[- ]year).*\bfinancial\s+results$"),
+    ),
+    (
+        "business_unit_summary",
+        "Business Unit Summary",
+        re.compile(r"(?i)^business\s+unit\s+summary$"),
+    ),
+    ("business_outlook", "Business Outlook", re.compile(r"(?i)^business\s+outlook$")),
+    ("earnings_webcast", "Earnings Webcast", re.compile(r"(?i)^earnings\s+webcast$")),
+    (
+        "forward_looking_statements",
+        "Forward-Looking Statements",
+        re.compile(r"(?i)^forward[- ]looking\s+statements?$"),
+    ),
+    ("about_company", "About Company", re.compile(r"(?i)^about\s+[A-Z][A-Za-z0-9&.,' -]{1,80}$")),
+    (
+        "non_gaap_measures",
+        "Explanation of Non-GAAP Measures",
+        re.compile(r"(?i)^(?:explanation\s+of\s+)?non-gaap\s+(?:financial\s+)?measures$"),
+    ),
+    (
+        "non_gaap_reconciliations",
+        "Non-GAAP Reconciliations",
+        re.compile(r"(?i).*\breconciliations?\b.*\b(?:gaap|non-gaap)\b.*"),
+    ),
+    (
+        "financial_tables",
+        "Financial Tables",
+        re.compile(
+            r"(?i)^("
+            r"(?:consolidated\s+)?condensed\s+(?:consolidated\s+)?"
+            r"(?:statements?|balance\s+sheets?|cash\s+flows?).*|"
+            r"supplemental\s+operating\s+segment\s+results"
+            r")$"
+        ),
+    ),
 )
 
 _TEN_K_SECTIONS: list[tuple[str, str, str]] = [
@@ -206,6 +271,19 @@ class ChunkRow:
     heading_path: list[str]
     start_offset: int
     end_offset: int
+
+
+@dataclass(frozen=True)
+class TextUnit:
+    unit_ordinal: int
+    unit_type: str
+    unit_key: str
+    unit_title: str
+    text: str
+    start_offset: int
+    end_offset: int
+    confidence: float
+    extraction_method: ExtractionMethod
 
 
 @dataclass(frozen=True)
@@ -331,6 +409,43 @@ def _looks_like_heading(text: str) -> bool:
     return title_case >= max(1, len(words) // 2) or upper_words >= max(1, len(words) // 2)
 
 
+def _press_release_headline_line(lines: list[_Line]) -> _Line | None:
+    for line in lines[:40]:
+        text = line.text.strip()
+        if _is_press_release_prefix_boilerplate(text):
+            continue
+        if _looks_like_press_release_headline(text):
+            return line
+    return None
+
+
+def _is_press_release_prefix_boilerplate(text: str) -> bool:
+    normalized = _WHITESPACE_PATTERN.sub(" ", text).strip()
+    if not normalized:
+        return True
+    if _PRESS_RELEASE_PREFIX_BOILERPLATE_RE.match(normalized):
+        return True
+    if re.search(r"(?i)\b(?:form\s+8-k|united\s+states\s+securities)\b", normalized):
+        return True
+    return False
+
+
+def _looks_like_press_release_headline(text: str) -> bool:
+    if len(text) > 220 or _word_count(text) > 24:
+        return False
+    if text.endswith((".", ":", ";")):
+        return False
+    if re.search(r"(?i)\b(exhibit\s+99|document|news\s+release)\b", text):
+        return False
+    if not _PRESS_RELEASE_HEADLINE_TERMS_RE.search(text):
+        return False
+    words = re.findall(r"[A-Za-z][A-Za-z&/\-']*", text)
+    if not words:
+        return False
+    title_like = sum(1 for word in words if word[:1].isupper() or word.isupper())
+    return title_like >= max(2, len(words) // 2)
+
+
 def extract_sections(form_family: FormFamily, normalized_body: str) -> list[ExtractedSection]:
     lines = _indexed_lines(normalized_body)
     if not lines:
@@ -448,6 +563,267 @@ def build_chunks(section: ExtractedSection) -> list[ChunkRow]:
     return chunks
 
 
+def extract_press_release_units(normalized_body: str) -> list[TextUnit]:
+    """Extract broad deterministic units from an earnings press release.
+
+    v2 strips the SEC exhibit wrapper, finds the release headline, and splits
+    the release into a small set of common earnings-release units. Anything not
+    matching a known unit label remains searchable through a broad fallback unit.
+    """
+    body = normalized_body.strip()
+    if not body:
+        return [
+            TextUnit(
+                unit_ordinal=1,
+                unit_type="press_release",
+                unit_key="full_release_body",
+                unit_title="Full Release Body",
+                text=normalized_body,
+                start_offset=0,
+                end_offset=len(normalized_body),
+                confidence=0.0,
+                extraction_method="unparsed_fallback",
+            )
+        ]
+
+    body_start_offset = normalized_body.find(body)
+    lines = _indexed_lines(body)
+    headline_line = _press_release_headline_line(lines)
+    if headline_line is None:
+        return [
+            TextUnit(
+                unit_ordinal=1,
+                unit_type="press_release",
+                unit_key="full_release_body",
+                unit_title="Full Release Body",
+                text=body,
+                start_offset=body_start_offset,
+                end_offset=body_start_offset + len(body),
+                confidence=1.0,
+                extraction_method="deterministic",
+            )
+        ]
+
+    units: list[TextUnit] = []
+    headline = headline_line.text.strip()
+    headline_start = body_start_offset + headline_line.start
+    units.append(
+        TextUnit(
+            unit_ordinal=1,
+            unit_type="press_release",
+            unit_key="headline",
+            unit_title="Headline",
+            text=headline,
+            start_offset=headline_start,
+            end_offset=headline_start + len(headline),
+            confidence=1.0,
+            extraction_method="deterministic",
+        )
+    )
+
+    unit_ordinal = 2
+    for key, title, start, end in _press_release_unit_spans(
+        body, lines=lines, after_line=headline_line
+    ):
+        raw_text = body[start:end]
+        unit_text = _clean_press_release_unit_text(raw_text)
+        if not unit_text:
+            continue
+        absolute_start = body_start_offset + start + max(0, raw_text.find(unit_text[:80]))
+        units.append(
+            TextUnit(
+                unit_ordinal=unit_ordinal,
+                unit_type="press_release",
+                unit_key=key,
+                unit_title=title,
+                text=unit_text,
+                start_offset=absolute_start,
+                end_offset=absolute_start + len(unit_text),
+                confidence=1.0,
+                extraction_method="deterministic",
+            )
+        )
+        unit_ordinal += 1
+    return units
+
+
+def _press_release_unit_spans(
+    body: str, *, lines: list[_Line], after_line: _Line
+) -> list[tuple[str, str, int, int]]:
+    markers: list[tuple[str, str, int]] = []
+    for line in lines:
+        if line.start <= after_line.start:
+            continue
+        marker = _press_release_unit_marker(line.text)
+        if marker is None:
+            continue
+        key, title = marker
+        if markers and markers[-1][0] == key:
+            continue
+        markers.append((key, title, line.start))
+
+    if not markers:
+        start = after_line.end
+        return [("release_body", "Release Body", start, len(body))]
+
+    spans: list[tuple[str, str, int, int]] = []
+    if markers[0][2] > after_line.end:
+        spans.append(("release_body", "Release Body", after_line.end, markers[0][2]))
+    for idx, (key, title, start) in enumerate(markers):
+        end = markers[idx + 1][2] if idx + 1 < len(markers) else len(body)
+        spans.append((key, title, start, end))
+    return spans
+
+
+def _press_release_unit_marker(text: str) -> tuple[str, str] | None:
+    candidate = _WHITESPACE_PATTERN.sub(" ", text).strip()
+    if not candidate or candidate.endswith((".", ";", ",")):
+        return None
+    if len(candidate) > 140 or _word_count(candidate) > 14:
+        return None
+    for key, title, pattern in _PRESS_RELEASE_UNIT_MARKERS:
+        if pattern.match(candidate):
+            if key == "financial_tables" and "reconciliation" in candidate.lower():
+                continue
+            return key, title
+    return None
+
+
+def _clean_press_release_unit_text(text: str) -> str:
+    lines = text.splitlines()
+    cleaned: list[str] = []
+    skip_possible_masthead = False
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line:
+            if cleaned and cleaned[-1]:
+                cleaned.append("")
+            continue
+        if _is_press_release_page_furniture_line(line):
+            skip_possible_masthead = True
+            if cleaned and cleaned[-1]:
+                cleaned.append("")
+            continue
+        if skip_possible_masthead and _looks_like_press_release_masthead(line):
+            skip_possible_masthead = False
+            continue
+        skip_possible_masthead = False
+        cleaned.append(line)
+
+    while cleaned and not cleaned[0]:
+        cleaned.pop(0)
+    while cleaned and not cleaned[-1]:
+        cleaned.pop()
+    return "\n".join(cleaned)
+
+
+def _is_press_release_page_furniture_line(text: str) -> bool:
+    return bool(_PRESS_RELEASE_PAGE_FURNITURE_RE.match(text))
+
+
+def _looks_like_press_release_masthead(text: str) -> bool:
+    if len(text) > 90 or _word_count(text) > 8:
+        return False
+    if text.endswith((".", ":", ";")):
+        return False
+    if _press_release_unit_marker(text) is not None:
+        return False
+    words = re.findall(r"[A-Za-z][A-Za-z&.'-]*", text)
+    if not words:
+        return False
+    title_like = sum(1 for word in words if word[:1].isupper() or word.isupper())
+    return title_like == len(words)
+
+
+def build_text_unit_chunks(unit: TextUnit) -> list[ChunkRow]:
+    section = ExtractedSection(
+        section_key=unit.unit_key,
+        section_title=unit.unit_title,
+        part_label=None,
+        item_label=None,
+        text=unit.text,
+        start_offset=unit.start_offset,
+        end_offset=unit.end_offset,
+        confidence=unit.confidence,
+        extraction_method=unit.extraction_method,
+    )
+    return build_chunks(section)
+
+
+def replace_text_units_and_chunks(
+    conn: psycopg.Connection,
+    *,
+    artifact_id: int,
+    company_id: int | None,
+    fiscal_period_key: str | None,
+    units: list[TextUnit],
+) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            DELETE FROM artifact_text_chunks
+            WHERE text_unit_id IN (
+                SELECT id FROM artifact_text_units WHERE artifact_id = %s
+            );
+            """,
+            (artifact_id,),
+        )
+        cur.execute("DELETE FROM artifact_text_units WHERE artifact_id = %s;", (artifact_id,))
+
+        for unit in units:
+            cur.execute(
+                """
+                INSERT INTO artifact_text_units (
+                    artifact_id, company_id, fiscal_period_key,
+                    unit_ordinal, unit_type, unit_key, unit_title,
+                    text, start_offset, end_offset,
+                    extractor_version, confidence, extraction_method
+                ) VALUES (
+                    %s, %s, %s,
+                    %s, %s, %s, %s,
+                    %s, %s, %s,
+                    %s, %s, %s
+                )
+                RETURNING id;
+                """,
+                (
+                    artifact_id,
+                    company_id,
+                    fiscal_period_key,
+                    unit.unit_ordinal,
+                    unit.unit_type,
+                    unit.unit_key,
+                    unit.unit_title,
+                    unit.text,
+                    unit.start_offset,
+                    unit.end_offset,
+                    TEXT_UNIT_EXTRACTOR_VERSION,
+                    unit.confidence,
+                    unit.extraction_method,
+                ),
+            )
+            unit_id = cur.fetchone()[0]
+            for chunk in build_text_unit_chunks(unit):
+                cur.execute(
+                    """
+                    INSERT INTO artifact_text_chunks (
+                        text_unit_id, chunk_ordinal, text, search_text,
+                        heading_path, start_offset, end_offset, chunker_version
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+                    """,
+                    (
+                        unit_id,
+                        chunk.chunk_ordinal,
+                        chunk.text,
+                        chunk.search_text,
+                        chunk.heading_path,
+                        chunk.start_offset,
+                        chunk.end_offset,
+                        TEXT_CHUNKER_VERSION,
+                    ),
+                )
+
+
 def replace_sections_and_chunks(
     conn: psycopg.Connection,
     *,
@@ -550,6 +926,54 @@ def find_amends_artifact_id(
         )
         row = cur.fetchone()
     return None if row is None else row[0]
+
+
+def artifact_has_current_text_units_and_chunks(
+    conn: psycopg.Connection,
+    artifact_id: int,
+) -> bool:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT EXISTS (
+                SELECT 1
+                FROM artifact_text_units u
+                WHERE u.artifact_id = %s
+            )
+            AND NOT EXISTS (
+                SELECT 1
+                FROM artifact_text_units u
+                WHERE u.artifact_id = %s
+                  AND u.extractor_version <> %s
+            )
+            AND NOT EXISTS (
+                SELECT 1
+                FROM artifact_text_chunks ch
+                JOIN artifact_text_units u ON u.id = ch.text_unit_id
+                WHERE u.artifact_id = %s
+                  AND ch.chunker_version <> %s
+            )
+            AND NOT EXISTS (
+                SELECT 1
+                FROM artifact_text_units u
+                WHERE u.artifact_id = %s
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM artifact_text_chunks ch
+                      WHERE ch.text_unit_id = u.id
+                  )
+            );
+            """,
+            (
+                artifact_id,
+                artifact_id,
+                TEXT_UNIT_EXTRACTOR_VERSION,
+                artifact_id,
+                TEXT_CHUNKER_VERSION,
+                artifact_id,
+            ),
+        )
+        return bool(cur.fetchone()[0])
 
 
 def _indexed_lines(body: str) -> list[_Line]:
