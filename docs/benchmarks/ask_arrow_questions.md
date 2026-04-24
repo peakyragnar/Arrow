@@ -31,16 +31,16 @@ Failure modes:
 ### 1. PLTR FY2024 Revenue Drivers
 
 Question: What drove PLTR revenue growth in FY2024?
-Status:
+Status: good
 Failure mode:
-Notes:
+Notes: Verified deterministic answer. Segment facts identify U.S., Government, and Commercial growth; ranked evidence now avoids intro and forward-looking boilerplate.
 
 ### 2. NVDA FY2025 Revenue Drivers
 
 Question: What drove NVDA revenue growth in FY2025?
-Status:
+Status: good
 Failure mode:
-Notes:
+Notes: Verified deterministic answer. Segment facts identify Data Center growth; earnings-release evidence surfaces full-year and Data Center revenue commentary.
 
 ## Tier 2: Same Recipe, Broader Companies
 

@@ -18,6 +18,31 @@ from psycopg.rows import dict_row
 
 
 MDA_SECTION_KEYS = ("item_7_mda", "part1_item2_mda")
+REVENUE_SIGNAL_WEIGHTS = (
+    (r"\brevenue\b", 4),
+    (r"\bgrowth\b|\bgrew\b|\bincrease[sd]?\b", 3),
+    (r"\bcustomer[s]?\b", 3),
+    (r"\bcommercial\b", 4),
+    (r"\bgovernment\b", 4),
+    (r"\bu\.s\.\b|\bunited states\b", 3),
+    (r"\bdata center\b", 4),
+    (r"\bdemand\b", 3),
+    (r"\bsegment\b", 2),
+    (r"\bfull[- ]year\b|\bfiscal year\b", 2),
+)
+BOILERPLATE_PENALTIES = (
+    (r"\bforward-looking statements?\b", 8),
+    (r"\brisks and uncertainties\b", 5),
+    (r"\bannual report on form 10-k\b", 4),
+    (r"\bquarterly report on form 10-q\b", 4),
+    (r"\bshould be read in conjunction\b", 4),
+    (r"\btable of contents\b", 4),
+    (r"\bsafe harbor\b", 5),
+    (r"\bnon-gaap\b", 4),
+    (r"\breconciliation table\b|\breconciliation of\b", 5),
+    (r"\bfinancial measure\b", 3),
+)
+WEAK_EVIDENCE_SCORE = 4
 
 
 @dataclass(frozen=True)
@@ -280,6 +305,47 @@ def _clean_text(value: str, *, max_chars: int = 360) -> str:
     if len(text) <= max_chars:
         return text
     return text[: max_chars - 3].rstrip() + "..."
+
+
+def _evidence_score(chunk: EvidenceChunk) -> int:
+    haystack = " ".join(
+        [
+            chunk.unit_key or "",
+            chunk.unit_title or "",
+            " ".join(chunk.heading_path or []),
+            chunk.text,
+        ]
+    ).lower()
+    score = 0
+    for pattern, weight in REVENUE_SIGNAL_WEIGHTS:
+        score += len(re.findall(pattern, haystack, re.I)) * weight
+    for pattern, penalty in BOILERPLATE_PENALTIES:
+        score -= len(re.findall(pattern, haystack, re.I)) * penalty
+    return score
+
+
+def _rank_evidence_chunks(
+    chunks: list[EvidenceChunk], *, limit: int
+) -> list[EvidenceChunk]:
+    ranked = sorted(
+        chunks,
+        key=lambda chunk: (
+            -_evidence_score(chunk),
+            chunk.chunk_ordinal,
+            chunk.chunk_id,
+        ),
+    )
+    strong = [
+        chunk for chunk in ranked
+        if _evidence_score(chunk) >= WEAK_EVIDENCE_SCORE
+    ]
+    return (strong or ranked)[:limit]
+
+
+def _best_evidence_score(chunks: list[EvidenceChunk]) -> int | None:
+    if not chunks:
+        return None
+    return max(_evidence_score(chunk) for chunk in chunks)
 
 
 def _metric(row: dict[str, Any] | None) -> FiscalMetric | None:
@@ -588,12 +654,13 @@ def build_revenue_driver_packet(
                 period_end=row["period_end"],
             )
         )
-    mda_chunks = [
+    candidate_limit = max(limit_chunks * 8, 12)
+    mda_candidates = [
         EvidenceChunk(source_kind="mda", **row)
         for row in _query(
             conn,
             trace,
-            label="get_mda_chunks",
+            label="get_mda_chunk_candidates",
             sql="""
                 SELECT
                     a.id AS artifact_id,
@@ -620,17 +687,18 @@ def build_revenue_driver_packet(
                     c.chunk_ordinal
                 LIMIT %s;
             """,
-            params=(intent.company_id, intent.fiscal_period_key, list(MDA_SECTION_KEYS), limit_chunks),
+            params=(intent.company_id, intent.fiscal_period_key, list(MDA_SECTION_KEYS), candidate_limit),
             selected_id_keys=("artifact_id", "chunk_id"),
         )
     ]
+    mda_chunks = _rank_evidence_chunks(mda_candidates, limit=limit_chunks)
     fy_end = None if current_metrics is None else current_metrics.fy_end
-    earnings_chunks = [
+    earnings_candidates = [
         EvidenceChunk(source_kind="earnings_release", **row)
         for row in _query(
             conn,
             trace,
-            label="get_earnings_release_chunks",
+            label="get_earnings_release_chunk_candidates",
             sql="""
                 SELECT
                     a.id AS artifact_id,
@@ -676,11 +744,12 @@ def build_revenue_driver_packet(
                 intent.fiscal_year,
                 fy_end,
                 intent.fiscal_period_key,
-                limit_chunks,
+                candidate_limit,
             ),
             selected_id_keys=("artifact_id", "chunk_id"),
         )
     ]
+    earnings_chunks = _rank_evidence_chunks(earnings_candidates, limit=limit_chunks)
     readiness, gaps = _ground_gaps(
         intent=intent,
         current_metrics=current_metrics,
@@ -689,6 +758,8 @@ def build_revenue_driver_packet(
         segment_facts=segment_facts,
         mda_chunks=mda_chunks,
         earnings_chunks=earnings_chunks,
+        mda_candidate_count=len(mda_candidates),
+        earnings_candidate_count=len(earnings_candidates),
     )
     trace.readiness = asdict(readiness)
     trace.gaps = gaps
@@ -741,6 +812,8 @@ def _ground_gaps(
     segment_facts: list[SegmentFact],
     mda_chunks: list[EvidenceChunk],
     earnings_chunks: list[EvidenceChunk],
+    mda_candidate_count: int,
+    earnings_candidate_count: int,
 ) -> tuple[ReadinessResult, list[str]]:
     checks: list[str] = []
     gaps: list[str] = []
@@ -778,9 +851,19 @@ def _ground_gaps(
         gaps.append("Segment facts found, but no prior-year segment matches were found.")
     if not mda_chunks:
         gaps.append("Plan requested MD&A evidence, but no period-aligned MD&A chunks were found.")
+    elif (score := _best_evidence_score(mda_chunks)) is not None and score < WEAK_EVIDENCE_SCORE:
+        gaps.append(
+            "Plan requested MD&A revenue-driver evidence, but top ranked chunks were weak "
+            f"(best_score={score}, candidates={mda_candidate_count})."
+        )
     if not earnings_chunks:
         gaps.append(
             "Plan requested earnings-release evidence, but no exact annual or FY-end Q4 chunks were found."
+        )
+    elif (score := _best_evidence_score(earnings_chunks)) is not None and score < WEAK_EVIDENCE_SCORE:
+        gaps.append(
+            "Plan requested earnings-release revenue-driver evidence, but top ranked chunks were weak "
+            f"(best_score={score}, candidates={earnings_candidate_count})."
         )
     status = "PASS" if not gaps else "SOFT_GAP"
     return ReadinessResult(status, checks, gaps), gaps
