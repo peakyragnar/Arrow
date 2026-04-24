@@ -114,7 +114,7 @@ def test_coverage_counts_split_base_filings_from_amendments() -> None:
     assert expected_counts["10-Q/A"] == (0, 0)
 
 
-def test_market_risk_cross_reference_is_short_valid_not_boundary_issue() -> None:
+def test_market_risk_cross_reference_gets_deterministic_normal_bucket() -> None:
     row = {
         "section_key": "part1_item3_market_risk",
         "chars": 430,
@@ -124,13 +124,20 @@ def test_market_risk_cross_reference_is_short_valid_not_boundary_issue() -> None
         ],
         "starts_with": "Reference is made to Part II, Item 7A, Quantitative and Qualitative Disclosures About Market Risk.",
         "ends_with": "There have not been any material changes in market risk.",
-        "text": "Reference is made to Part II, Item 7A, Quantitative and Qualitative Disclosures About Market Risk. There have not been any material changes in market risk.",
+        "text": (
+            "ITEM 3. QUANTITATIVE AND QUALITATIVE DISCLOSURES ABOUT MARKET RISK "
+            "Reference is made to Part II, Item 7A, Quantitative and Qualitative "
+            "Disclosures About Market Risk, in our Annual Report on Form 10-K for "
+            "the fiscal year ended December 31, 2022. There have not been any "
+            "material changes in interest rate risk, default risk or foreign "
+            "exchange risk since December 31, 2022."
+        ),
     }
 
     bucket, reason = _chunk_warning_bucket(row)
 
-    assert bucket == "short_valid_section"
-    assert "SEC section type" in reason
+    assert bucket == "normal_market_risk_reference"
+    assert "no material changes" in reason
 
 
 def test_signature_chunk_remains_possible_boundary_issue() -> None:

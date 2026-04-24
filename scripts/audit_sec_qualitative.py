@@ -99,6 +99,12 @@ BOUNDARY_MARKER_RE = re.compile(
     re.IGNORECASE,
 )
 TRAILING_PAGE_NUMBER_RE = re.compile(r"\.\s+\d{1,4}\s*$")
+MARKET_RISK_REFERENCE_RE = re.compile(
+    r"(?is)\breference\s+is\s+made\s+to\b"
+    r".*\bitem\s+7a\b"
+    r".*\bannual\s+report\s+on\s+form\s+10-k\b"
+    r".*\b(?:have|has)\s+not\s+been\s+any\s+material\s+changes?\b"
+)
 
 
 @dataclass(frozen=True)
@@ -248,6 +254,11 @@ def _chunk_warning_bucket(row: dict[str, Any]) -> tuple[str, str]:
 
     if chars > 12000:
         return "large_chunk", "Over 12,000 characters; may be too broad for precise retrieval."
+    if _is_normal_market_risk_reference(section_key, text):
+        return (
+            "normal_market_risk_reference",
+            "Complete 10-Q market-risk cross-reference; no material changes disclosed.",
+        )
     if not heading_path:
         return "possible_boundary_issue", "No heading_path; chunk may be structurally orphaned."
     if TRAILING_PAGE_NUMBER_RE.search(text):
@@ -273,10 +284,15 @@ def _chunk_warning_bucket(row: dict[str, Any]) -> tuple[str, str]:
     return "size_outlier", "Unusual size; review manually."
 
 
+def _is_normal_market_risk_reference(section_key: str, text: str) -> bool:
+    return section_key == "part1_item3_market_risk" and bool(MARKET_RISK_REFERENCE_RE.search(text))
+
+
 def _classify_chunk_warnings(rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     buckets = {
         "possible_boundary_issue": [],
         "large_chunk": [],
+        "normal_market_risk_reference": [],
         "short_valid_section": [],
         "size_outlier": [],
     }
@@ -754,7 +770,7 @@ def _collect_report(
     reviewable_chunk_warnings = [
         row
         for row in chunk_outliers
-        if row.get("warning_bucket") != "short_valid_section"
+        if row.get("warning_bucket") not in {"short_valid_section", "normal_market_risk_reference"}
     ]
     warnings = len(missing_sections) + len(reviewable_chunk_warnings) + len(amendment_notes)
     status = "FAIL" if hard_issues else "PASS_WITH_WARNINGS" if warnings else "PASS"
@@ -1048,7 +1064,7 @@ def _chunk_health(conn, ticker: str) -> int:
         buckets = _classify_chunk_warnings(outliers)
     if outliers:
         print()
-        print("Chunk Warnings By Type")
+        print("Chunk Review By Type")
         for bucket, rows in buckets.items():
             if not rows:
                 continue
@@ -1067,11 +1083,11 @@ def _chunk_health(conn, ticker: str) -> int:
             ]
             _print_table(["period", "section", "ord", "chars", "words", "reason", "ends_with"], table_rows)
     else:
-        print("  chunk warnings: none using <500 or >12000 chars")
+        print("  chunk review items: none using <500 or >12000 chars")
     return sum(
         len(rows)
         for bucket, rows in buckets.items()
-        if bucket != "short_valid_section"
+        if bucket not in {"short_valid_section", "normal_market_risk_reference"}
     )
 
 
@@ -1359,12 +1375,14 @@ def _warnings_html(report: dict[str, Any]) -> str:
     bucket_titles = {
         "possible_boundary_issue": "Possible Boundary Issues",
         "large_chunk": "Large Chunks",
+        "normal_market_risk_reference": "Normal Market-Risk References",
         "short_valid_section": "Short Valid Sections",
         "size_outlier": "Other Size Outliers",
     }
     bucket_notes = {
         "possible_boundary_issue": "Review these first. They may indicate a section tail, orphan heading, or fragment.",
         "large_chunk": "These may be too broad for precise retrieval or citation.",
+        "normal_market_risk_reference": "Expected 10-Q Item 3 pattern: the filer points back to annual Item 7A and discloses no material market-risk changes.",
         "short_valid_section": "Usually informational. Legal, controls, and other-information sections are often short by design.",
         "size_outlier": "Unusual size but not classified by a stronger rule.",
     }
@@ -1391,7 +1409,7 @@ def _warnings_html(report: dict[str, Any]) -> str:
             f"<div class=\"chunk-grid\">{''.join(cards)}</div>"
         )
     if not outlier_groups:
-        outlier_groups.append("<p>No chunk size warnings.</p>")
+        outlier_groups.append("<p>No chunk review items.</p>")
 
     return f"""
         <section>
@@ -1401,7 +1419,7 @@ def _warnings_html(report: dict[str, Any]) -> str:
             <thead><tr><th>Type</th><th>Period</th><th>Accession</th><th>Missing Sections</th></tr></thead>
             <tbody>{''.join(missing_rows)}</tbody>
           </table>
-          <h3>Chunk Warnings</h3>
+          <h3>Chunk Review</h3>
           {''.join(outlier_groups)}
         </section>
     """
@@ -1463,7 +1481,7 @@ def _render_html_report(reports: list[dict[str, Any]]) -> str:
               {_metric_card('Filing Coverage', f'{total_stored}/{total_expected}' if total_expected else total_stored, 'stored vs expected', 'ok' if report['hard_issues'] == 0 else 'bad')}
               {_metric_card('Weak Extractions', len(report['weak']), 'low confidence, fallback, or missing', 'ok' if not report['weak'] else 'bad')}
               {_metric_card('Chunks', total_chunks, 'retrieval units', 'neutral')}
-              {_metric_card('Warnings', report['warnings'], 'missing sections + reviewable chunk warnings', 'warn' if report['warnings'] else 'ok')}
+              {_metric_card('Review Items', report['warnings'], 'missing sections + reviewable chunk issues', 'warn' if report['warnings'] else 'ok')}
             </div>
               {_coverage_html(report)}
               {_section_health_html(report)}
@@ -1659,7 +1677,7 @@ def _audit_ticker(args: argparse.Namespace, ticker: str) -> int:
     print(f"  unexpected stored filings:    {unexpected}")
     print(f"  weak/missing extractions:     {weak}")
     print(f"  filings missing some standard sections: {missing_sections}")
-    print(f"  reviewable chunk warnings:    {chunk_outliers}")
+    print(f"  reviewable chunk issues:      {chunk_outliers}")
     return 0 if hard_issues == 0 else 1
 
 
