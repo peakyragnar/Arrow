@@ -66,6 +66,12 @@ DEFAULT_QUERIES = [
     "export controls",
     "supply constraints",
 ]
+DEFAULT_EARNINGS_RELEASE_QUERIES = [
+    "business outlook",
+    "second-quarter revenue",
+    "gross margin outlook",
+    "non-GAAP reconciliations",
+]
 DISPLAY_FORM_ORDER = ["10-K", "10-K/A", "10-Q", "10-Q/A", "8-K", "8-K/A"]
 MD_AND_A_KEYS = ["item_7_mda", "part1_item2_mda"]
 RISK_KEYS = ["item_1a_risk_factors", "part2_item1a_risk_factors"]
@@ -207,6 +213,17 @@ def _retrieval_explanation(query: str, search_text: str | None) -> dict[str, Any
         "exact_phrase": query.lower() in haystack if query else False,
         "term_coverage": f"{len(matched)}/{len(terms)}" if terms else "-",
     }
+
+
+def _earnings_release_reason_for_query(query: str) -> str:
+    q = query.lower()
+    if "outlook" in q or "guidance" in q:
+        return "earnings-release guidance topic; validate Business Outlook / forward-looking units."
+    if "non-gaap" in q or "reconciliation" in q:
+        return "earnings-release adjustment topic; validate Non-GAAP units."
+    if "revenue" in q or "margin" in q or "eps" in q:
+        return "earnings-release financial topic; validate summary/results/outlook units."
+    return "Earnings-release-only search; ranked by FTS score."
 
 
 def _highlight_html(value: Any) -> str:
@@ -840,6 +857,52 @@ def _collect_report(
                 row.pop("match_source", None)
             retrieval[query] = rows
 
+    earnings_release_retrieval: dict[str, list[dict[str, Any]]] = {}
+    earnings_release_reasons: dict[str, str] = {}
+    for query in DEFAULT_EARNINGS_RELEASE_QUERIES:
+        earnings_release_reasons[query] = _earnings_release_reason_for_query(query)
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                WITH q AS (
+                    SELECT websearch_to_tsquery('english', %s) AS tsq
+                )
+                SELECT COALESCE(a.fiscal_period_key, a.published_at::date::text) AS fiscal_period_key,
+                       'press_release' AS source_kind,
+                       'press_release:' || u.unit_key AS section_key,
+                       ch.chunk_ordinal,
+                       true AS preferred_section,
+                       round(ts_rank_cd(ch.tsv, q.tsq)::numeric, 4) AS rank,
+                       u.extraction_method,
+                       u.confidence,
+                       ch.heading_path,
+                       ts_headline(
+                           'english',
+                           ch.search_text,
+                           q.tsq,
+                           'StartSel=__HIGHLIGHT_START__, StopSel=__HIGHLIGHT_END__, MaxWords=35, MinWords=12'
+                       ) AS highlighted_snippet,
+                       left(ch.search_text, 320) AS snippet,
+                       ch.search_text AS match_source,
+                       a.published_at
+                FROM artifact_text_chunks ch
+                JOIN artifact_text_units u ON u.id = ch.text_unit_id
+                JOIN artifacts a ON a.id = u.artifact_id
+                CROSS JOIN q
+                WHERE a.ticker = %s
+                  AND a.artifact_type = 'press_release'
+                  AND ch.tsv @@ q.tsq
+                ORDER BY a.published_at DESC, rank DESC, u.unit_ordinal, ch.chunk_ordinal
+                LIMIT 5;
+                """,
+                (query, ticker.upper()),
+            )
+            rows = _dict_rows(cur)
+            for row in rows:
+                row.update(_retrieval_explanation(query, row.get("match_source")))
+                row.pop("match_source", None)
+            earnings_release_retrieval[query] = rows
+
     expected_counts = _expected_count_rows(stored, expected)
 
     hard_issues = len(missing) + len(unexpected) + len(weak)
@@ -885,6 +948,8 @@ def _collect_report(
         "chunk_warning_buckets": chunk_warning_buckets,
         "retrieval": retrieval,
         "retrieval_reasons": retrieval_reasons,
+        "earnings_release_retrieval": earnings_release_retrieval,
+        "earnings_release_reasons": earnings_release_reasons,
         "status": status,
         "hard_issues": hard_issues,
         "warnings": warnings,
@@ -1271,6 +1336,67 @@ def _retrieval_smoke(conn, ticker: str, queries: list[str]) -> None:
         )
 
 
+def _earnings_release_smoke(conn, ticker: str) -> None:
+    print()
+    print("Earnings Release Smoke Tests")
+    for query in DEFAULT_EARNINGS_RELEASE_QUERIES:
+        reason = _earnings_release_reason_for_query(query)
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                WITH q AS (
+                    SELECT websearch_to_tsquery('english', %s) AS tsq
+                )
+                SELECT COALESCE(a.fiscal_period_key, a.published_at::date::text) AS fiscal_period_key,
+                       'press_release' AS source_kind,
+                       'press_release:' || u.unit_key AS section_key,
+                       ch.chunk_ordinal,
+                       round(ts_rank_cd(ch.tsv, q.tsq)::numeric, 4) AS rank,
+                       ch.heading_path,
+                       ts_headline(
+                           'english',
+                           ch.search_text,
+                           q.tsq,
+                           'StartSel=__HIGHLIGHT_START__, StopSel=__HIGHLIGHT_END__, MaxWords=22, MinWords=8'
+                       ) AS highlighted_snippet,
+                       ch.search_text AS match_source,
+                       a.published_at
+                FROM artifact_text_chunks ch
+                JOIN artifact_text_units u ON u.id = ch.text_unit_id
+                JOIN artifacts a ON a.id = u.artifact_id
+                CROSS JOIN q
+                WHERE a.ticker = %s
+                  AND a.artifact_type = 'press_release'
+                  AND ch.tsv @@ q.tsq
+                ORDER BY a.published_at DESC, rank DESC, u.unit_ordinal, ch.chunk_ordinal
+                LIMIT 5;
+                """,
+                (query, ticker.upper()),
+            )
+            rows = _dict_rows(cur)
+        print(f"  query: {query!r}")
+        print(f"  preference: {reason}")
+        table_rows = []
+        for row in rows:
+            explanation = _retrieval_explanation(query, row.get("match_source"))
+            table_rows.append(
+                (
+                    row["fiscal_period_key"],
+                    row["section_key"],
+                    row["chunk_ordinal"],
+                    row["rank"],
+                    explanation["term_coverage"],
+                    ", ".join(explanation["matched_terms"]),
+                    _heading_path_label(row["heading_path"]),
+                    _highlight_text(row["highlighted_snippet"]),
+                )
+            )
+        _print_table(
+            ["period", "section", "ord", "rank", "terms", "matched", "heading", "snippet"],
+            table_rows,
+        )
+
+
 def _period_listing(conn, ticker: str) -> None:
     print()
     print("Kept 10-K / 10-Q Filings")
@@ -1587,40 +1713,50 @@ def _warnings_html(report: dict[str, Any]) -> str:
 
 
 def _retrieval_html(report: dict[str, Any]) -> str:
-    groups = []
-    for query, rows in report["retrieval"].items():
-        cards = []
-        reason = report["retrieval_reasons"].get(query, "")
-        for row in rows:
-            preferred = "preferred" if row.get("preferred_section") else "matched"
-            source = row.get("source_kind") or "filing_section"
-            exact = "exact phrase" if row.get("exact_phrase") else "term match"
-            matched_terms = row.get("matched_terms") or []
-            missing_terms = row.get("missing_terms") or []
-            chips = "".join(f'<span class="chip ok">{_escape(term)}</span>' for term in matched_terms)
-            chips += "".join(f'<span class="chip missing">{_escape(term)}</span>' for term in missing_terms)
-            cards.append(
-                "<article class=\"result-card\">"
-                f"<div class=\"result-meta\">{_escape(row['fiscal_period_key'])} · {_escape(source)} · {_escape(row['section_key'])} · chunk {_escape(row['chunk_ordinal'])} · {_escape(preferred)} · rank {_escape(row.get('rank'))} · {_escape(row.get('term_coverage'))} terms · {_escape(exact)}</div>"
-                f"<div class=\"breadcrumb\">{_escape(_heading_path_label(row.get('heading_path')))}</div>"
-                f"<div class=\"chips\">{chips}</div>"
-                f"<p>{_highlight_html(row.get('highlighted_snippet') or row.get('snippet'))}</p>"
-                f"<p class=\"why\"><span>Extraction:</span> {_escape(row.get('extraction_method'))} / conf {_escape(row.get('confidence'))}</p>"
-                "</article>"
+    def render_groups(retrieval: dict[str, list[dict[str, Any]]], reasons: dict[str, str]) -> str:
+        groups = []
+        for query, rows in retrieval.items():
+            cards = []
+            reason = reasons.get(query, "")
+            for row in rows:
+                preferred = "preferred" if row.get("preferred_section") else "matched"
+                source = row.get("source_kind") or "filing_section"
+                exact = "exact phrase" if row.get("exact_phrase") else "term match"
+                matched_terms = row.get("matched_terms") or []
+                missing_terms = row.get("missing_terms") or []
+                chips = "".join(f'<span class="chip ok">{_escape(term)}</span>' for term in matched_terms)
+                chips += "".join(f'<span class="chip missing">{_escape(term)}</span>' for term in missing_terms)
+                cards.append(
+                    "<article class=\"result-card\">"
+                    f"<div class=\"result-meta\">{_escape(row['fiscal_period_key'])} · {_escape(source)} · {_escape(row['section_key'])} · chunk {_escape(row['chunk_ordinal'])} · {_escape(preferred)} · rank {_escape(row.get('rank'))} · {_escape(row.get('term_coverage'))} terms · {_escape(exact)}</div>"
+                    f"<div class=\"breadcrumb\">{_escape(_heading_path_label(row.get('heading_path')))}</div>"
+                    f"<div class=\"chips\">{chips}</div>"
+                    f"<p>{_highlight_html(row.get('highlighted_snippet') or row.get('snippet'))}</p>"
+                    f"<p class=\"why\"><span>Extraction:</span> {_escape(row.get('extraction_method'))} / conf {_escape(row.get('confidence'))}</p>"
+                    "</article>"
+                )
+            if not cards:
+                cards.append("<p>No matches.</p>")
+            groups.append(
+                f"<div class=\"retrieval-group\"><h3>{_escape(query)}</h3><p class=\"section-note\">{_escape(reason)}</p>{''.join(cards)}</div>"
             )
-        if not cards:
-            cards.append("<p>No matches.</p>")
-        groups.append(
-            f"<div class=\"retrieval-group\"><h3>{_escape(query)}</h3><p class=\"section-note\">{_escape(reason)}</p>{''.join(cards)}</div>"
-        )
+        return "".join(groups)
+
+    broad_groups = render_groups(report["retrieval"], report["retrieval_reasons"])
+    earnings_groups = render_groups(
+        report["earnings_release_retrieval"],
+        report["earnings_release_reasons"],
+    )
     return f"""
         <section>
           <h2>Retrieval Smoke Tests</h2>
-          <p class="section-note">These are FTS sanity checks, not final ranking quality. Use them to see whether searches are finding plausible evidence.</p>
-          <div class="retrieval-grid">{''.join(groups)}</div>
+          <p class="section-note">These broad checks validate that 10-K/10-Q sections and press releases are searchable together. Preferred sections bias analytical queries toward filing sections.</p>
+          <div class="retrieval-grid">{broad_groups}</div>
+          <h3>Earnings Release Smoke Tests</h3>
+          <p class="section-note">These checks search only EX-99 press-release chunks, so 8-K earnings evidence is visible even when filing sections rank higher in the broad search.</p>
+          <div class="retrieval-grid">{earnings_groups}</div>
         </section>
     """
-
 
 def _render_html_report(reports: list[dict[str, Any]]) -> str:
     sections = []
@@ -1822,6 +1958,7 @@ def _audit_ticker(args: argparse.Namespace, ticker: str) -> int:
         missing_sections = _section_inventory(conn, ticker)
         chunk_outliers = _chunk_health(conn, ticker)
         _retrieval_smoke(conn, ticker, queries)
+        _earnings_release_smoke(conn, ticker)
         if args.list_filings:
             _period_listing(conn, ticker)
 
