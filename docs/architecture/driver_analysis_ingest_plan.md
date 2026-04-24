@@ -185,6 +185,42 @@ Rule:
 
 This is expected to be a small backfill/update script, not re-extraction.
 
+## Company Context Packet Checkpoint
+
+Before transcript ingestion, run one narrow period-integrity packet:
+
+```bash
+uv run scripts/company_context_packet.py PLTR --fiscal-year 2024
+```
+
+Purpose:
+
+- validate `company_id + fiscal_period_key` as the join surface across FMP
+  facts, SEC MD&A chunks, and earnings-release chunks
+- inspect one real company-period end to end before adding another source
+  with its own period model
+
+Scope:
+
+- one ticker
+- one fiscal year
+- read-only query/report
+- for annual packets, include exact annual evidence plus Q4 earnings-release
+  chunks when `fiscal_year` and `period_end` match the FY row
+- no LLM synthesis
+- no new schema
+- no multi-year driver sweep
+
+Readiness outcomes:
+
+- `PASS`: facts, MD&A, and earnings-release evidence align to the requested
+  fiscal-year packet; transcript ingestion can proceed, and transcripts should
+  plug into this packet shape
+- `SOFT_FAIL`: period keys join but evidence is missing or thin; transcript
+  ingestion can still proceed, with retrieval/coverage tuning tracked
+- `HARD_FAIL`: FMP facts or period-bearing artifacts disagree on the requested
+  period key; fix the period model before adding transcript ingestion
+
 ## SEC Coverage Work
 
 Some companies have 10-K/10-Q artifacts but no extracted sections. That is an
@@ -274,11 +310,12 @@ Status: complete. Delivered by ADR 0011 and migration 016.
 
 The next concrete work should be:
 
-1. Earnings-release period-linkage backfill.
-2. SEC coverage run for companies missing sections.
-3. Derived driver views and bridge queries.
-4. Transcript ingestion and first-pass claim atoms.
-5. Market/backtest sources only after the evidence and observation substrate is stable.
+1. Run the company context packet checkpoint for `PLTR FY2024`.
+2. Earnings-release period-linkage backfill.
+3. SEC coverage run for companies missing sections.
+4. Derived driver views and bridge queries.
+5. Transcript ingestion and first-pass claim atoms.
+6. Market/backtest sources only after the evidence and observation substrate is stable.
 
 Do not build the full analyst packet yet. Do not build full topic entities or
 drift detectors yet. The immediate goal is to ensure today's ingestion will not

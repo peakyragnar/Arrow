@@ -261,6 +261,92 @@ def test_wide_view_prefers_amendment_over_larger_fmp_current_value() -> None:
     assert row["revenue"] == Decimal("100.0000")
 
 
+def test_wide_view_excludes_dimensioned_segment_revenue() -> None:
+    with get_conn() as conn:
+        _reset(conn)
+        company_id = _seed_company(conn, cik=3001, ticker="SEG")
+        run_id, raw_id = _seed_run_and_raw(conn)
+
+        _insert_fact(
+            conn,
+            company_id=company_id,
+            ingest_run_id=run_id,
+            raw_response_id=raw_id,
+            concept="revenue",
+            value=Decimal("1000"),
+            fiscal_year=2024,
+            period_type="annual",
+            extraction_version="fmp-is-v2",
+        )
+        _insert_fact(
+            conn,
+            company_id=company_id,
+            ingest_run_id=run_id,
+            raw_response_id=raw_id,
+            concept="gross_profit",
+            value=Decimal("600"),
+            fiscal_year=2024,
+            period_type="annual",
+            extraction_version="fmp-is-v2",
+        )
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO financial_facts (
+                    company_id, statement, concept, value, unit,
+                    fiscal_year, fiscal_quarter, fiscal_period_label,
+                    period_end, period_type,
+                    calendar_year, calendar_quarter, calendar_period_label,
+                    published_at, source_raw_response_id, extraction_version,
+                    ingest_run_id,
+                    dimension_type, dimension_key, dimension_label, dimension_source
+                ) VALUES (
+                    %s, 'segment', 'revenue', 500, 'USD',
+                    2024, NULL, 'FY2024',
+                    DATE '2024-12-31', 'annual',
+                    2024, 4, 'CY2024 Q4',
+                    %s, %s, 'fmp-segments-v1',
+                    %s,
+                    'geography', 'united_states', 'UNITED STATES',
+                    'fmp:revenue-geographic-segmentation'
+                );
+                """,
+                (
+                    company_id,
+                    datetime(2025, 2, 1, tzinfo=timezone.utc),
+                    raw_id,
+                    run_id,
+                ),
+            )
+        conn.commit()
+
+        wide = _fetch_one(
+            conn,
+            """
+            SELECT revenue
+            FROM v_company_period_wide
+            WHERE ticker = 'SEG'
+              AND period_end = %s
+              AND period_type = 'annual';
+            """,
+            (date(2024, 12, 31),),
+        )
+        fy = _fetch_one(
+            conn,
+            """
+            SELECT revenue_fy, gross_margin_fy
+            FROM v_metrics_fy
+            WHERE ticker = 'SEG'
+              AND fiscal_year = 2024;
+            """,
+            (),
+        )
+
+    assert wide["revenue"] == Decimal("1000.0000")
+    assert fy["revenue_fy"] == Decimal("1000.0000")
+    assert fy["gross_margin_fy"] == Decimal("0.60000000000000000000")
+
+
 def _weighted_rd_asset(values: list[Decimal]) -> Decimal:
     start_weight = 21 - len(values)
     total = Decimal("0")
