@@ -759,6 +759,10 @@ Part of the future training-data design, governed by consent/sensitivity flags a
 
 ## Retrieval Design
 
+Runtime design: `docs/architecture/analyst_runtime.md` defines the analyst
+answer spine (`Intent -> Plan -> Retrieve -> Ground -> Synthesize -> Verify ->
+Trace -> Channel`) used by CLI, chat, saved prompts, and future monitoring.
+
 ### Agent tools
 
 - `list_documents(ticker, doc_type, date_range, fiscal_period, calendar_period)`
@@ -1024,6 +1028,8 @@ Vintage-preserving.
 
 Goal: frontier-model analyst over trusted data.
 
+Runtime design: `docs/architecture/analyst_runtime.md`.
+
 Input:
 - SQL facts (PIT-aware)
 - macro series (PIT-aware)
@@ -1045,6 +1051,7 @@ Outputs:
 - alerts
 - monitoring
 - later thesis / estimate support
+- action traces for correctness review and performance optimization
 
 ## Derived Views
 
@@ -1207,7 +1214,7 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 11. ⬜ implement fiscal, calendar-normalized, and PIT derived views
 12. ⬜ implement `prices_daily`
 13. ⬜ implement `company_events`
-14. ⬜ implement analyst retrieval tools (PIT-aware)
+14. ⬜ implement analyst runtime retrieval tools and deterministic revenue-driver CLI (PIT-aware; see `docs/architecture/analyst_runtime.md`)
 15. ⬜ implement `qa_log` as part of normal analyst flow (with consent flags)
 16. ✅ implement SEC qualitative section + chunk layer (`artifact_sections`, `artifact_section_chunks`) for filing text in migration 014. Transcript-specific chunking remains future work.
 17. ⬜ add section-over-time comparison support

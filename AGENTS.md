@@ -11,6 +11,7 @@ Start here. Read only the next doc you need.
 - Fast orientation: `docs/architecture/normal_vs_audit.md`
 - Repository flow / folder map: `docs/architecture/repository_flow.md`
 - Metrics platform (view stack; shared by dashboard, screener, analyst agent): `docs/architecture/metrics_platform.md`
+- Analyst runtime (chat, retrieval recipes, evidence packets, tracing): `docs/architecture/analyst_runtime.md`
 - Driver analysis ingest plan (growth/margin/cash driver substrate): `docs/architecture/driver_analysis_ingest_plan.md`
 - Dashboard UI surface: `docs/architecture/dashboard.md`
 - SEC qualitative layer (filings → sections → chunks, amendments, FTS): `docs/architecture/sec_qualitative_layer.md`
@@ -33,7 +34,7 @@ Start here. Read only the next doc you need.
 1. `AGENTS.md`
 2. `docs/architecture/system.md`
 3. `docs/architecture/normal_vs_audit.md`
-4. task-specific doc in `docs/`
+4. task-specific doc in `docs/` (`docs/architecture/analyst_runtime.md` for analyst/chat/runtime work)
 5. live code in `src/` / `db/` / `scripts/`
 6. `archive/` only if you need legacy reference
 
