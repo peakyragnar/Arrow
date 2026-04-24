@@ -23,7 +23,7 @@ This doc covers:
 
 ## Architectural rule: compute, don't store
 
-Only raw vendor facts live in `financial_facts` — one row per (ticker, concept, period). Metrics are computed on demand by views. This is deliberate:
+Only raw vendor observations live in `financial_facts`. Company-level statement facts are one row per (ticker, concept, period). Segment facts are one row per (ticker, concept, period, dimension) using `dimension_type`, `dimension_key`, `dimension_label`, and `dimension_source`. Metrics are computed on demand by views. This is deliberate:
 
 - **Formula changes ripple instantly.** If ROIC's definition changes, one view updates and every consumer sees the new value. No recompute pass across rows.
 - **No staleness.** Views reflect current `financial_facts` state. New ingest rows light up across all metrics at once. Superseded rows drop out automatically via `v_ff_current`.
@@ -192,7 +192,7 @@ LIMIT 8;
 
 ### 4. Future analyst agent
 
-The agent's retrieval tools `get_financial_fact(ticker, concept, period, asof)` and `sql_query(...)` read the same views. `get_metric(ticker, metric_name, period, asof)` becomes a thin wrapper.
+The agent's retrieval tools `get_financial_fact(ticker, concept, period, asof)`, `get_segment_fact(ticker, dimension_type, dimension_key, period, asof)`, and `sql_query(...)` read the same facts and views. `get_metric(ticker, metric_name, period, asof)` becomes a thin wrapper. For driver analysis, the agent starts with structured facts and deterministic comparisons, then uses SEC/transcript evidence to explain, contradict, or qualify the observed drivers.
 
 ## Build sequencing
 
@@ -228,7 +228,7 @@ No code outside the view stack needs to change for most metric additions.
 ## Status
 
 - Phase 0 — formula spec tweaks (15% fallback, R&D partial-history rule, metric 18 source): **done** in this commit.
-- Phase 1 — mapper audit + employee ingest endpoint + next metrics migration: **next**.
+- Phase 1 — mapper audit + employee ingest endpoint + next metrics migration: **next**. FMP revenue segment ingest is already available as dimensioned `financial_facts`.
 - Phase 2 — 10-year history backfill for existing tickers: after Phase 1.
 - Phase 3 — view stack (this doc's subject): after Phase 2.
 - Phase 4 — dashboard (see `dashboard.md`): after Phase 3.

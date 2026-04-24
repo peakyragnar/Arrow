@@ -81,6 +81,7 @@ uv run scripts/ingest_company.py TICKER
 This one command runs the normal company flow:
 - seed company from SEC bootstrap
 - backfill baseline FMP financial facts
+- ingest FMP product and geography revenue segments
 - ingest FMP employee counts
 - backfill SEC `10-K` / `10-Q` qualitative filings (default 5 fiscal years,
   rounded to complete fiscal years from each company's `fiscal_year_end_md`;
@@ -88,6 +89,7 @@ This one command runs the normal company flow:
   detected earnings-release exhibits)
 
 - FMP historical financial ingest -> `financial_facts`
+- FMP revenue segmentation ingest -> dimensioned `financial_facts` rows
 - SEC qualitative filing ingest -> `artifacts` + `artifact_sections` +
   `artifact_section_chunks`; earnings EX-99 press releases -> `press_release`
   artifacts + `artifact_text_units` + `artifact_text_chunks`
@@ -115,6 +117,7 @@ Important:
 
 - `scripts/ingest_company.py` — default company run; normal flow end-to-end
 - `scripts/backfill_fmp.py` — FMP-only financial backfill
+- `scripts/ingest_segments.py` — FMP product/geography revenue segment refresh only
 - `scripts/ingest_employees.py` — employee metric refresh only
 - `scripts/fetch_sec_filings.py` — SEC `10-K` / `10-Q` qualitative backfill only (default 5-year window, primary docs only)
 - `scripts/reconcile_fmp_vs_xbrl.py` — audit side rail only
@@ -262,6 +265,7 @@ Historical `financial_facts` are FMP-first.
 Default historical ingest:
 - fetch FMP
 - normalize into `financial_facts`
+- load revenue segmentation as dimensioned `financial_facts`
 - enforce Layer 1 load-time statement sanity
   - hard: IS subtotal ties, BS balance identity, CF cash roll-forward
   - soft: BS/CF subtotal-component drift -> `data_quality_flags`
@@ -1196,8 +1200,8 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 5. ✅ define training-trace requirements clearly (this doc, § qa_log + § Training-Ready By Design)
 6. ✅ implement `raw_responses` + `ingest_runs` (migrations 002, 003)
 7. ✅ implement `artifacts` (migration 004, with double-hash). SEC qualitative filing identity extensions landed in migration 014.
-8. ⏳ implement FMP ingest for historical filings and transcripts
-9. ✅ implement `financial_facts` schema with fiscal, calendar, PIT, and segment-dimension fields (migrations 008, 016). Populating depends on step 8.
+8. ⏳ implement FMP ingest for historical filings and transcripts. Historical financials and revenue segmentation are built; transcripts remain next.
+9. ✅ implement and populate `financial_facts` schema with fiscal, calendar, PIT, and segment-dimension fields (migrations 008, 016; segment ingest built 2026-04-24).
 9.5. ✅ implement FMP ↔ SEC/XBRL audit rail (migrations 010 + 011, built 2026-04-21/22). Preserved for separate audit/reconciliation passes. No longer part of default baseline FMP backfill. Divergences write to `data_quality_flags` when audit is run; amendment-detect remains preserved as later audit functionality rather than default ingest behavior.
 10. ⬜ implement `series` + `series_observations` (unified macro / industry / commodity substrate, vintage-preserving). Build when first real source lands.
 11. ⬜ implement fiscal, calendar-normalized, and PIT derived views

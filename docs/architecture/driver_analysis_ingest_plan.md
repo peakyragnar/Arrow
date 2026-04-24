@@ -1,6 +1,6 @@
 # Driver Analysis Ingest Plan
 
-Status: working plan
+Status: active plan; Phase 1 complete
 
 This document turns the current ingestion audit into an execution plan. It is
 not a new architecture from a blank page. It checks the existing Arrow design
@@ -32,9 +32,10 @@ eventual backtests.
 The existing design is compatible with the target questions. Current ingest is
 mostly on-spec. No currently loaded data needs to be discarded or rewritten.
 
-The main ingest risk is segment data. Segment/product/geography revenue is the
+The main ingest risk was segment data. Segment/product/geography revenue is the
 first source that can turn revenue growth from a top-line fact into a driver
-analysis. It should not be ingested casually into ad hoc concept names.
+analysis. It is now loaded as dimensioned `financial_facts`, avoiding ad hoc
+concept names.
 
 ### Passing Foundations
 
@@ -55,7 +56,7 @@ analysis. It should not be ingested casually into ad hoc concept names.
 | SEC section keys are item-level, not risk-factor-level entities. | Section-level diffs are feasible now; individual risk-factor drift needs later atoms/entities. |
 | Current chunks are retrieval units, not atoms. | Later guidance, driver, risk, and claim atoms should point back to chunks plus quote spans. |
 | FMP `published_at` timezone is vendor-derived. | Good enough for period-level PIT; not authoritative for intraday event-reaction work. |
-| Segment rows are not loaded today. | Q1-Q4 driver analysis lacks the key quantitative substrate. |
+| Segment rows now exist, but canonical peer mapping is not built. | Company-level driver analysis can use product/geography segments; cross-company peer buckets still need later mapping. |
 | Some companies have SEC artifacts but no extracted sections yet. | Existing pipeline can fill this; it is coverage work, not a schema redesign. |
 | Press-release artifacts currently need period-linkage cleanup. | Earnings releases should be pairable with the fiscal period they discuss. |
 
@@ -74,8 +75,9 @@ that produced them.
 
 ## Segment Data Decision
 
-Segment ingestion is the one current gap that can create schema regret. The
-system should decide the representation before loading FMP segment endpoints.
+Segment ingestion was the one current gap that could create schema regret. The
+representation is now decided and implemented in migration 016, with the design
+recorded in ADR 0011.
 
 ### Rejected Option A: Encode Segments In `concept`
 
@@ -95,7 +97,7 @@ special-case segments whenever it wants revenue and segment revenue together.
 It also duplicates fiscal/calendar/PIT/provenance semantics already solved in
 `financial_facts`.
 
-### Recommended Option B: Dimension Columns On `financial_facts`
+### Selected Option B: Dimension Columns On `financial_facts`
 
 Keep the long/skinny fact model and add nullable dimension columns:
 
@@ -132,15 +134,12 @@ company_id, concept, period_end, period_type, source_raw_response_id, extraction
 
 while differing by dimension.
 
-Migration 016 should update:
+Migration 016 updated:
 
 - the unique constraint used by `ON CONFLICT`
 - the current-row unique index
 - any loader code that references the old conflict constraint name
 - docs that describe `financial_facts`
-
-Use the `ship-schema-change` skill for that migration because it touches
-`db/schema/`.
 
 ## Future Segment Canonicalization
 
@@ -222,15 +221,17 @@ and enough source detail for PIT backtests.
 
 ### Phase 1: Protect Segment Ingest
 
-1. Write ADR for segment facts in `financial_facts`.
-2. Implement migration 016 with `ship-schema-change`.
-3. Add nullable dimension columns to `financial_facts`.
-4. Update uniqueness and loader conflict handling for dimensional facts.
-5. Implement FMP segment fetchers:
+Status: complete. Delivered by ADR 0011 and migration 016.
+
+1. ✅ Write ADR for segment facts in `financial_facts`.
+2. ✅ Implement migration 016 with `ship-schema-change`.
+3. ✅ Add nullable dimension columns to `financial_facts`.
+4. ✅ Update uniqueness and loader conflict handling for dimensional facts.
+5. ✅ Implement FMP segment fetchers:
    - `revenue-product-segmentation`
    - `revenue-geographic-segmentation`
-6. Load segment rows as `statement = 'segment'`, `concept = 'revenue'`.
-7. Add tests proving multiple segments can coexist for the same company and
+6. ✅ Load segment rows as `statement = 'segment'`, `concept = 'revenue'`.
+7. ✅ Add tests proving multiple segments can coexist for the same company and
    period.
 
 ### Phase 2: Clean Current Qualitative Coverage
@@ -273,11 +274,11 @@ and enough source detail for PIT backtests.
 
 The next concrete work should be:
 
-1. ADR for segment representation.
-2. Schema migration 016 for dimension-aware `financial_facts`.
-3. FMP segment ingest.
-4. Earnings-release period-linkage backfill.
-5. SEC coverage run for companies missing sections.
+1. Earnings-release period-linkage backfill.
+2. SEC coverage run for companies missing sections.
+3. Derived driver views and bridge queries.
+4. Transcript ingestion and first-pass claim atoms.
+5. Market/backtest sources only after the evidence and observation substrate is stable.
 
 Do not build the full analyst packet yet. Do not build full topic entities or
 drift detectors yet. The immediate goal is to ensure today's ingestion will not

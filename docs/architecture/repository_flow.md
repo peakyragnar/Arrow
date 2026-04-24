@@ -113,8 +113,9 @@ Present:
 - `scripts/gen_schema_viz.py` — introspect the live DB and regenerate `arrow_db_schema.html` (the visual source of truth for the schema)
 
 Examples (future):
-- `scripts/ingest_company.py NVDA` — normal company flow: seed + FMP facts + employees + SEC documents
+- `scripts/ingest_company.py NVDA` — normal company flow: seed + FMP facts + revenue segments + employees + SEC documents
 - `scripts/backfill_fmp.py NVDA` — FMP-only financial backfill
+- `scripts/ingest_segments.py NVDA` — FMP product/geography revenue segment refresh
 - `scripts/fetch_prices.py --tickers NVDA,MSFT --from 2022-01-01`
 - `scripts/reconcile_fmp_sec.py` — run the divergence job
 - `scripts/export_training_set.py --out out.jsonl` — dump qa_log with consent filters
@@ -172,8 +173,8 @@ src/arrow/
 │   └── options/ ← Massive client (later, when paid)
 │
 ├── normalize/   ← derive layer: raw vendor payload → canonical rows
-│   ├── financials/  ← FMP/SEC statements → financial_facts rows
-│   │                  (fiscal + calendar + published_at/superseded_at)
+│   ├── financials/  ← FMP/SEC statements + segment endpoints → financial_facts rows
+│   │                  (fiscal + calendar + dimensions + published_at/superseded_at)
 │   ├── events/      ← filings, earnings dates, splits → company_events rows
 │   └── periods/     ← fiscal ↔ calendar mapping logic (the "two clocks" rule)
 │                      lives here because it's shared by every normalizer

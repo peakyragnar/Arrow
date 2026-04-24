@@ -11,6 +11,7 @@ Start here. Read only the next doc you need.
 - Fast orientation: `docs/architecture/normal_vs_audit.md`
 - Repository flow / folder map: `docs/architecture/repository_flow.md`
 - Metrics platform (view stack; shared by dashboard, screener, analyst agent): `docs/architecture/metrics_platform.md`
+- Driver analysis ingest plan (growth/margin/cash driver substrate): `docs/architecture/driver_analysis_ingest_plan.md`
 - Dashboard UI surface: `docs/architecture/dashboard.md`
 - SEC qualitative layer (filings → sections → chunks, amendments, FTS): `docs/architecture/sec_qualitative_layer.md`
 - How to review SEC qualitative extraction quality: `docs/reference/sec_qualitative_review.md`
@@ -75,6 +76,7 @@ Important:
 - Raw responses cached
 - Artifacts immutable
 - Facts derived and regeneratable
+- For analyst/driver work, preserve the split between source evidence, structured observations, derived signals, and AI synthesis. Start with structured facts and deterministic comparisons before asking an LLM to explain them.
 - **Schema changes ship with their docs.** A migration that adds, removes, or supersedes a table updates the v1 Tables status table in `docs/architecture/system.md` and any reference-doc mentions in the same commit. ADRs about withdrawn or superseded tables get their status flipped, never their bodies edited. Build Order step markers get updated too. After applying a migration, re-run `uv run scripts/gen_schema_viz.py` to regenerate the live schema view at `arrow_db_schema.html`.
 
 ## Data Rules
