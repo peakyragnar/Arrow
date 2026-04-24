@@ -32,7 +32,11 @@ YEAR_QUARTER_RE = re.compile(
     re.IGNORECASE,
 )
 WORD_QUARTER_RE = re.compile(
-    r"\b(first|second|third|fourth)\s+quarter\s+fiscal\s+([12][0-9]{3})\b",
+    r"\b(first|second|third|fourth)\s+quarter(?:\s+fiscal)?\s+([12][0-9]{3})\b",
+    re.IGNORECASE,
+)
+ANNUAL_RE = re.compile(
+    r"\b(?:full\s+year|fy)\s+([12][0-9]{3})\b",
     re.IGNORECASE,
 )
 WORD_QUARTERS = {
@@ -47,7 +51,7 @@ WORD_QUARTERS = {
 class PeriodFields:
     fiscal_period_key: str
     fiscal_year: int
-    fiscal_quarter: int
+    fiscal_quarter: int | None
     fiscal_period_label: str
     period_end: Any | None
     period_type: str
@@ -57,7 +61,7 @@ class PeriodFields:
     method: str
 
 
-def _parse_period_from_name(value: str | None) -> tuple[int, int] | None:
+def _parse_period_from_name(value: str | None) -> tuple[int, int | None] | None:
     if not value:
         return None
     year_quarter = YEAR_QUARTER_RE.search(value)
@@ -74,9 +78,12 @@ def _parse_period_from_name(value: str | None) -> tuple[int, int] | None:
     match = FILENAME_QUARTER_RE.search(value)
     if match is None:
         word_quarter = WORD_QUARTER_RE.search(value)
-        if word_quarter is None:
-            return None
-        return int(word_quarter.group(2)), WORD_QUARTERS[word_quarter.group(1).lower()]
+        if word_quarter is not None:
+            return int(word_quarter.group(2)), WORD_QUARTERS[word_quarter.group(1).lower()]
+        annual = ANNUAL_RE.search(value)
+        if annual is not None:
+            return int(annual.group(1)), None
+        return None
     quarter = int(match.group(1))
     year_2 = int(match.group(2))
     fiscal_year = 2000 + year_2
@@ -144,7 +151,8 @@ def _period_from_parsed_label(cur, artifact: dict[str, Any]) -> PeriodFields | N
         return None
 
     fiscal_year, fiscal_quarter = parsed
-    label = f"FY{fiscal_year} Q{fiscal_quarter}"
+    period_type = "annual" if fiscal_quarter is None else "quarter"
+    label = f"FY{fiscal_year}" if fiscal_quarter is None else f"FY{fiscal_year} Q{fiscal_quarter}"
     cur.execute(
         """
         SELECT
@@ -155,13 +163,13 @@ def _period_from_parsed_label(cur, artifact: dict[str, Any]) -> PeriodFields | N
         FROM financial_facts f
         WHERE f.company_id = %(company_id)s
           AND f.statement = 'income_statement'
-          AND f.period_type = 'quarter'
+          AND f.period_type = %(period_type)s
           AND f.fiscal_period_label = %(label)s
           AND f.superseded_at IS NULL
         ORDER BY f.period_end DESC
         LIMIT 1;
         """,
-        {"company_id": artifact["company_id"], "label": label},
+        {"company_id": artifact["company_id"], "period_type": period_type, "label": label},
     )
     row = cur.fetchone()
     return PeriodFields(
@@ -170,11 +178,11 @@ def _period_from_parsed_label(cur, artifact: dict[str, Any]) -> PeriodFields | N
         fiscal_quarter=fiscal_quarter,
         fiscal_period_label=label,
         period_end=row[0] if row else None,
-        period_type="quarter",
+        period_type=period_type,
         calendar_year=row[1] if row else None,
         calendar_quarter=row[2] if row else None,
         calendar_period_label=row[3] if row else None,
-        method="press_release_filename",
+        method="press_release_period_label",
     )
 
 

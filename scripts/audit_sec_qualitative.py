@@ -68,7 +68,7 @@ DEFAULT_QUERIES = [
 ]
 DEFAULT_EARNINGS_RELEASE_QUERIES = [
     "business outlook",
-    "second-quarter revenue",
+    "revenue",
     "gross margin outlook",
     "non-GAAP reconciliations",
 ]
