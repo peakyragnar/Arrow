@@ -10,8 +10,8 @@ from typing import Literal
 
 import psycopg
 
-EXTRACTOR_VERSION = "sec_sections_v3"
-CHUNKER_VERSION = "sec_chunks_v7"
+EXTRACTOR_VERSION = "sec_sections_v6"
+CHUNKER_VERSION = "sec_chunks_v10"
 
 ExtractionMethod = Literal["deterministic", "repair", "unparsed_fallback"]
 FormFamily = Literal["10-K", "10-Q"]
@@ -31,6 +31,21 @@ _WHITESPACE_PATTERN = re.compile(r"[ \t\f\v]+")
 _SENTENCE_SPLIT_PATTERN = re.compile(r"(?<=[.!?])\s+")
 _TOC_DOTS_PATTERN = re.compile(r"\.{2,}\s*\d+$")
 _PART_HEADING_PATTERN = re.compile(r"(?i)^\s*part\s+(i|ii)\b")
+_FILING_FURNITURE_TAIL_RE = re.compile(
+    r"(?i)\b("
+    r"inline\s+xbrl\s+document|"
+    r"management\s+contracts|"
+    r"compensatory\s+plans|"
+    r"exhibit\s+index|"
+    r"signatures?|"
+    r"signing\s+on\s+behalf|"
+    r"principal\s+financial\s+officer|"
+    r"table\s+of\s+contents|"
+    r"see\s+accompanying\s+notes\s+to\s+(?:the\s+)?(?:condensed\s+)?consolidated\s+financial\s+statements"
+    r")\b"
+)
+_TRAILING_FURNITURE_PAGE_NUMBER_RE = re.compile(r"^(?P<body>.+\.)\s+\d{1,3}$")
+_TRAILING_SIGNATURE_PAGE_NUMBER_RE = re.compile(r"^(?P<body>.+?)\s+\d{1,3}$")
 _EMBEDDED_SUBHEADINGS = tuple(
     sorted(
         {
@@ -205,6 +220,7 @@ def normalize_filing_body(body: bytes, content_type: str | None) -> str:
             continue
         if _is_probable_page_number_line(cleaned_lines, idx):
             continue
+        line = _strip_probable_filing_furniture_page_number(line)
         blank_run = 0
         normalized_lines.append(line)
     normalized = "\n".join(normalized_lines).strip()
@@ -224,13 +240,26 @@ def _is_probable_page_number_line(lines: list[str], index: int) -> bool:
         return False
     previous_line = _nearest_nonblank_line(lines, index, step=-1)
     next_line = _nearest_nonblank_line(lines, index, step=1)
-    if previous_line is None or next_line is None:
+    if previous_line is None:
         return False
+    if next_line is None:
+        return bool(_FILING_FURNITURE_TAIL_RE.search(previous_line[-360:]))
     if not previous_line.endswith((".", "?", "!", ")", "]", "”", '"')):
         return False
     if _word_count(previous_line) < 8:
         return False
     return _looks_like_heading(next_line) or _word_count(next_line) >= 8
+
+
+def _strip_probable_filing_furniture_page_number(line: str) -> str:
+    match = _TRAILING_FURNITURE_PAGE_NUMBER_RE.match(line)
+    if match is not None and _FILING_FURNITURE_TAIL_RE.search(line[-360:]):
+        return match.group("body").rstrip()
+    if re.search(r"(?i)\b(signing\s+on\s+behalf|principal\s+financial\s+officer|signatures?)\b", line[-360:]):
+        signature_match = _TRAILING_SIGNATURE_PAGE_NUMBER_RE.match(line)
+        if signature_match is not None:
+            return signature_match.group("body").rstrip()
+    return line
 
 
 def _nearest_nonblank_line(lines: list[str], index: int, *, step: int) -> str | None:
@@ -837,6 +866,8 @@ def _is_subheading(text: str) -> bool:
         return False
     if text.endswith((".", "?", "!", ";")):
         return False
+    if _is_table_of_contents_heading(text):
+        return False
     if _looks_like_financial_table_row(text):
         return False
     words = re.findall(r"[A-Za-z][A-Za-z&/\-']*", text)
@@ -844,6 +875,12 @@ def _is_subheading(text: str) -> bool:
         return False
     title_case = sum(1 for word in words if word[:1].isupper())
     return title_case >= max(1, len(words) // 2)
+
+
+def _is_table_of_contents_heading(text: str) -> bool:
+    normalized = _WHITESPACE_PATTERN.sub(" ", text).strip().lower()
+    normalized = normalized.replace("conten t s", "contents")
+    return normalized == "table of contents"
 
 
 def _looks_like_financial_table_row(text: str) -> bool:

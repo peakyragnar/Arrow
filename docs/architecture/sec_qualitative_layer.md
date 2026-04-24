@@ -202,6 +202,8 @@ Pipeline:
    - normalize unicode (NFKC)
    - collapse whitespace
    - strip conservative standalone page-number artifacts
+   - strip conservative filing-tail page-number artifacts after signature,
+     exhibit, Inline XBRL, and financial-statement furniture
    - remove obvious boilerplate
    - suppress table-of-contents duplicates
 3. Detect canonical SEC headings in filing-body order.
@@ -244,6 +246,7 @@ Chunking rules:
   - conservative known embedded subheadings promoted from paragraph text
   - paragraph boundaries
   - sentence boundaries if needed
+- reject table-of-contents labels and financial table rows as subheadings
 - do not carry sentence overlap across a `heading_path` boundary
 - size is a guardrail, not the primary split rule
 

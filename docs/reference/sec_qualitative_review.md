@@ -152,11 +152,16 @@ min_conf
   Lowest parser confidence in the group.
 
 repairs
-  Count of lower-confidence repaired extractions.
+  Count of lower-confidence repaired sections.
 
 fallbacks
-  Count of full-body fallback extractions.
+  Count of full-body fallback sections.
 ```
+
+Amended filings are partial in v1. A `10-K/A` or `10-Q/A` is not expected to
+repeat the complete base filing section inventory. If an amendment produces
+usable repaired text, the report lists it as an amendment note rather than a hard
+failure.
 
 ### What `min_conf = 1.0` Means
 
@@ -260,6 +265,9 @@ New-regulatory section missing from older filings
 
 The report does not yet label critical vs optional sections. Until it does,
 review missing sections using the critical list above.
+
+Amendments are excluded from this full-standard-section queue. Use the
+Amendments section of the HTML report to see what a partial amendment contributed.
 
 ### Chunk Shape
 

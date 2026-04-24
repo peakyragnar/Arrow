@@ -386,6 +386,37 @@ def _expected_section_keys(artifact_type: str) -> list[str]:
     return TEN_K_KEYS if artifact_type == "10k" else TEN_Q_KEYS
 
 
+def _is_amendment_filing(row: dict[str, Any]) -> bool:
+    form_type = str(row.get("form_type") or row.get("title") or "").upper()
+    return bool(row.get("is_amendment") or row.get("amends_artifact_id") or form_type.endswith("/A"))
+
+
+def _missing_standard_sections_for_filing(
+    filing: dict[str, Any], section_map: dict[str, dict[str, Any]]
+) -> list[str]:
+    if _is_amendment_filing(filing):
+        return []
+    expected_keys_for_type = _expected_section_keys(filing["artifact_type"])
+    return [key for key in expected_keys_for_type if key not in section_map]
+
+
+def _is_hard_weak_filing(filing: dict[str, Any]) -> bool:
+    sections = filing.get("sections") or 0
+    fallbacks = filing.get("fallbacks") or 0
+    min_confidence = filing.get("min_confidence")
+    if _is_amendment_filing(filing):
+        return sections == 0 or fallbacks > 0
+    return sections == 0 or (min_confidence is not None and min_confidence < 0.85) or fallbacks > 0
+
+
+def _is_amendment_extraction_note(filing: dict[str, Any]) -> bool:
+    if not _is_amendment_filing(filing) or _is_hard_weak_filing(filing):
+        return False
+    min_confidence = filing.get("min_confidence")
+    repairs = filing.get("repairs") or 0
+    return repairs > 0 or (min_confidence is not None and min_confidence < 0.85)
+
+
 def _section_label(section_key: str) -> str:
     labels = {
         "item_1_business": "Item 1",
@@ -451,8 +482,8 @@ def _collect_report(
                    count(DISTINCT s.id) AS sections,
                    count(ch.id) AS chunks,
                    min(s.confidence) AS min_confidence,
-                   count(*) FILTER (WHERE s.extraction_method = 'repair') AS repairs,
-                   count(*) FILTER (WHERE s.extraction_method = 'unparsed_fallback') AS fallbacks
+                   count(DISTINCT s.id) FILTER (WHERE s.extraction_method = 'repair') AS repairs,
+                   count(DISTINCT s.id) FILTER (WHERE s.extraction_method = 'unparsed_fallback') AS fallbacks
             FROM artifacts a
             LEFT JOIN artifact_sections s ON s.artifact_id = a.id
             LEFT JOIN artifact_section_chunks ch ON ch.section_id = s.id
@@ -483,18 +514,23 @@ def _collect_report(
         cur.execute(
             """
             SELECT a.id, a.artifact_type, a.fiscal_period_key, a.accession_number,
+                   COALESCE(a.artifact_metadata->>'form_type', a.title) AS form_type,
+                   a.amends_artifact_id,
+                   (a.amends_artifact_id IS NOT NULL
+                    OR upper(COALESCE(a.artifact_metadata->>'form_type', a.title, '')) LIKE '%%/A') AS is_amendment,
                    a.published_at::date AS filed,
                    count(DISTINCT s.id) AS sections,
                    count(ch.id) AS chunks,
                    min(s.confidence) AS min_confidence,
-                   count(*) FILTER (WHERE s.extraction_method = 'repair') AS repairs,
-                   count(*) FILTER (WHERE s.extraction_method = 'unparsed_fallback') AS fallbacks
+                   count(DISTINCT s.id) FILTER (WHERE s.extraction_method = 'repair') AS repairs,
+                   count(DISTINCT s.id) FILTER (WHERE s.extraction_method = 'unparsed_fallback') AS fallbacks
             FROM artifacts a
             LEFT JOIN artifact_sections s ON s.artifact_id = a.id
             LEFT JOIN artifact_section_chunks ch ON ch.section_id = s.id
             WHERE a.ticker = %s AND a.source = 'sec'
               AND a.artifact_type IN ('10k', '10q')
-            GROUP BY a.id, a.artifact_type, a.fiscal_period_key, a.accession_number, a.published_at
+            GROUP BY a.id, a.artifact_type, a.fiscal_period_key, a.accession_number,
+                     a.title, a.artifact_metadata, a.amends_artifact_id, a.published_at
             ORDER BY a.published_at;
             """,
             (ticker.upper(),),
@@ -565,18 +601,16 @@ def _collect_report(
 
     missing_sections = []
     weak = []
+    amendment_notes = []
     for filing in filings:
         section_map = sections_by_artifact.get(filing["id"], {})
-        expected_keys_for_type = _expected_section_keys(filing["artifact_type"])
-        missing_for_filing = [key for key in expected_keys_for_type if key not in section_map]
+        missing_for_filing = _missing_standard_sections_for_filing(filing, section_map)
         if missing_for_filing:
             missing_sections.append({**filing, "missing_sections": missing_for_filing})
-        if (
-            filing["sections"] == 0
-            or (filing["min_confidence"] is not None and filing["min_confidence"] < 0.85)
-            or filing["fallbacks"] > 0
-        ):
+        if _is_hard_weak_filing(filing):
             weak.append(filing)
+        elif _is_amendment_extraction_note(filing):
+            amendment_notes.append(filing)
 
     retrieval: dict[str, list[dict[str, Any]]] = {}
     retrieval_reasons: dict[str, str] = {}
@@ -642,7 +676,7 @@ def _collect_report(
         for row in chunk_outliers
         if row.get("warning_bucket") != "short_valid_section"
     ]
-    warnings = len(missing_sections) + len(reviewable_chunk_warnings)
+    warnings = len(missing_sections) + len(reviewable_chunk_warnings) + len(amendment_notes)
     status = "FAIL" if hard_issues else "PASS_WITH_WARNINGS" if warnings else "PASS"
     return {
         "ticker": ticker.upper(),
@@ -660,6 +694,7 @@ def _collect_report(
         "sections_by_artifact": sections_by_artifact,
         "missing_sections": missing_sections,
         "weak": weak,
+        "amendment_notes": amendment_notes,
         "chunk_stats": chunk_stats,
         "chunk_outliers": chunk_outliers,
         "chunk_warning_buckets": chunk_warning_buckets,
@@ -733,8 +768,8 @@ def _section_health(conn, ticker: str) -> int:
                    count(DISTINCT s.id) AS sections,
                    count(ch.id) AS chunks,
                    min(s.confidence) AS min_confidence,
-                   count(*) FILTER (WHERE s.extraction_method = 'repair') AS repairs,
-                   count(*) FILTER (WHERE s.extraction_method = 'unparsed_fallback') AS fallbacks
+                   count(DISTINCT s.id) FILTER (WHERE s.extraction_method = 'repair') AS repairs,
+                   count(DISTINCT s.id) FILTER (WHERE s.extraction_method = 'unparsed_fallback') AS fallbacks
             FROM artifacts a
             LEFT JOIN artifact_sections s ON s.artifact_id = a.id
             LEFT JOIN artifact_section_chunks ch ON ch.section_id = s.id
@@ -753,28 +788,75 @@ def _section_health(conn, ticker: str) -> int:
         cur.execute(
             """
             SELECT a.artifact_type, a.fiscal_period_key, a.accession_number,
-                   count(s.id) AS sections,
+                   count(DISTINCT s.id) AS sections,
                    min(s.confidence) AS min_confidence,
-                   count(*) FILTER (WHERE s.extraction_method = 'unparsed_fallback') AS fallbacks
+                   count(DISTINCT s.id) FILTER (WHERE s.extraction_method = 'repair') AS repairs,
+                   count(DISTINCT s.id) FILTER (WHERE s.extraction_method = 'unparsed_fallback') AS fallbacks,
+                   (a.amends_artifact_id IS NOT NULL
+                    OR upper(COALESCE(a.artifact_metadata->>'form_type', a.title, '')) LIKE '%%/A') AS is_amendment
             FROM artifacts a
             LEFT JOIN artifact_sections s ON s.artifact_id = a.id
             WHERE a.ticker = %s AND a.source = 'sec'
               AND a.artifact_type IN ('10k', '10q')
-            GROUP BY a.id, a.artifact_type, a.fiscal_period_key, a.accession_number, a.published_at
-            HAVING count(s.id) = 0
-                OR min(s.confidence) < 0.85
-                OR count(*) FILTER (WHERE s.extraction_method = 'unparsed_fallback') > 0
+            GROUP BY a.id, a.artifact_type, a.fiscal_period_key, a.accession_number,
+                     a.title, a.artifact_metadata, a.amends_artifact_id, a.published_at
+            HAVING (
+                    NOT (a.amends_artifact_id IS NOT NULL
+                         OR upper(COALESCE(a.artifact_metadata->>'form_type', a.title, '')) LIKE '%%/A')
+                    AND (
+                        count(DISTINCT s.id) = 0
+                        OR min(s.confidence) < 0.85
+                        OR count(DISTINCT s.id) FILTER (WHERE s.extraction_method = 'unparsed_fallback') > 0
+                    )
+                )
+                OR (
+                    (a.amends_artifact_id IS NOT NULL
+                     OR upper(COALESCE(a.artifact_metadata->>'form_type', a.title, '')) LIKE '%%/A')
+                    AND (
+                        count(DISTINCT s.id) = 0
+                        OR count(DISTINCT s.id) FILTER (WHERE s.extraction_method = 'unparsed_fallback') > 0
+                    )
+                )
             ORDER BY a.published_at;
             """,
             (ticker.upper(),),
         )
         weak = cur.fetchall()
+        cur.execute(
+            """
+            SELECT a.artifact_type, a.fiscal_period_key, a.accession_number,
+                   count(DISTINCT s.id) AS sections,
+                   min(s.confidence) AS min_confidence,
+                   count(DISTINCT s.id) FILTER (WHERE s.extraction_method = 'repair') AS repairs
+            FROM artifacts a
+            LEFT JOIN artifact_sections s ON s.artifact_id = a.id
+            WHERE a.ticker = %s AND a.source = 'sec'
+              AND a.artifact_type IN ('10k', '10q')
+              AND (
+                  a.amends_artifact_id IS NOT NULL
+                  OR upper(COALESCE(a.artifact_metadata->>'form_type', a.title, '')) LIKE '%%/A'
+              )
+            GROUP BY a.id, a.artifact_type, a.fiscal_period_key, a.accession_number, a.published_at
+            HAVING count(DISTINCT s.id) > 0
+               AND (
+                   min(s.confidence) < 0.85
+                   OR count(DISTINCT s.id) FILTER (WHERE s.extraction_method = 'repair') > 0
+               )
+            ORDER BY a.published_at;
+            """,
+            (ticker.upper(),),
+        )
+        amendment_notes = cur.fetchall()
     if weak:
         print()
         print("Weak or missing extraction")
-        _print_table(["type", "period", "accession", "sections", "min_conf", "fallbacks"], weak)
+        _print_table(["type", "period", "accession", "sections", "min_conf", "repairs", "fallbacks", "amendment"], weak)
     else:
         print("  weak extraction: none")
+    if amendment_notes:
+        print()
+        print("Amendment extraction notes")
+        _print_table(["type", "period", "accession", "sections", "min_conf", "repairs"], amendment_notes)
     return len(weak)
 
 
@@ -804,18 +886,23 @@ def _section_inventory(conn, ticker: str) -> int:
         cur.execute(
             """
             SELECT a.artifact_type, a.fiscal_period_key, a.accession_number,
+                   (a.amends_artifact_id IS NOT NULL
+                    OR upper(COALESCE(a.artifact_metadata->>'form_type', a.title, '')) LIKE '%%/A') AS is_amendment,
                    array_agg(s.section_key ORDER BY s.section_key) FILTER (WHERE s.section_key IS NOT NULL)
             FROM artifacts a
             LEFT JOIN artifact_sections s ON s.artifact_id = a.id
             WHERE a.ticker = %s AND a.source = 'sec'
               AND a.artifact_type IN ('10k', '10q')
-            GROUP BY a.id, a.artifact_type, a.fiscal_period_key, a.accession_number, a.published_at
+            GROUP BY a.id, a.artifact_type, a.fiscal_period_key, a.accession_number,
+                     a.title, a.artifact_metadata, a.amends_artifact_id, a.published_at
             ORDER BY a.published_at;
             """,
             (ticker.upper(),),
         )
         missing_rows = []
-        for artifact_type, period, accession, present in cur.fetchall():
+        for artifact_type, period, accession, is_amendment, present in cur.fetchall():
+            if is_amendment:
+                continue
             expected = TEN_K_KEYS if artifact_type == "10k" else TEN_Q_KEYS
             present_set = set(present or [])
             missing = [key for key in expected if key not in present_set]
@@ -1076,6 +1163,48 @@ def _section_health_html(report: dict[str, Any]) -> str:
     """
 
 
+def _amendments_html(report: dict[str, Any]) -> str:
+    amendments = [row for row in report["filings"] if _is_amendment_filing(row)]
+    if not amendments:
+        return ""
+    rows = []
+    for row in amendments:
+        note = "partial amendment"
+        if _is_hard_weak_filing(row):
+            tone = "bad-row"
+            note = "no usable amendment extraction"
+        elif _is_amendment_extraction_note(row):
+            tone = "warn-row"
+            note = "usable partial amendment; not expected to contain every base filing section"
+        else:
+            tone = "ok-row"
+            note = "usable amendment"
+        rows.append(
+            f'<tr class="{tone}">'
+            f"<td>{_escape(row['artifact_type'])}</td>"
+            f"<td>{_escape(row['fiscal_period_key'])}</td>"
+            f"<td>{_escape(row['filed'])}</td>"
+            f"<td class=\"mono\">{_escape(row['accession_number'])}</td>"
+            f"<td class=\"mono\">{_escape(row.get('amends_artifact_id'))}</td>"
+            f"<td>{_escape(row['sections'])}</td>"
+            f"<td>{_escape(row['chunks'])}</td>"
+            f"<td>{_escape(row['min_confidence'])}</td>"
+            f"<td>{_escape(row['repairs'])}</td>"
+            f"<td>{_escape(note)}</td>"
+            "</tr>"
+        )
+    return f"""
+        <section>
+          <h2>Amendments</h2>
+          <p class="section-note">Amended filings are partial by design in v1. The audit does not require a 10-K/A or 10-Q/A to repeat every base filing section.</p>
+          <table>
+            <thead><tr><th>Type</th><th>Period</th><th>Filed</th><th>Accession</th><th>Amends ID</th><th>Sections</th><th>Chunks</th><th>Min Conf</th><th>Repairs</th><th>Note</th></tr></thead>
+            <tbody>{''.join(rows)}</tbody>
+          </table>
+        </section>
+    """
+
+
 def _section_matrix_html(report: dict[str, Any], artifact_type: str) -> str:
     keys = _expected_section_keys(artifact_type)
     filings = [row for row in report["filings"] if row["artifact_type"] == artifact_type]
@@ -1086,7 +1215,10 @@ def _section_matrix_html(report: dict[str, Any], artifact_type: str) -> str:
         for key in keys:
             section = sections.get(key)
             if section is None:
-                cells.append(f'<td class="section-cell missing" title="{_escape(key)}">-</td>')
+                if _is_amendment_filing(filing):
+                    cells.append(f'<td class="section-cell muted" title="{_escape(key)}; amendment partial filing">·</td>')
+                else:
+                    cells.append(f'<td class="section-cell missing" title="{_escape(key)}">-</td>')
             else:
                 method = section["extraction_method"]
                 conf = section["confidence"]
@@ -1243,9 +1375,10 @@ def _render_html_report(reports: list[dict[str, Any]]) -> str:
               {_metric_card('Chunks', total_chunks, 'retrieval units', 'neutral')}
               {_metric_card('Warnings', report['warnings'], 'missing sections + reviewable chunk warnings', 'warn' if report['warnings'] else 'ok')}
             </div>
-            {_coverage_html(report)}
-            {_section_health_html(report)}
-            {_section_matrix_html(report, '10k')}
+              {_coverage_html(report)}
+              {_section_health_html(report)}
+              {_amendments_html(report)}
+              {_section_matrix_html(report, '10k')}
             {_section_matrix_html(report, '10q')}
             {_warnings_html(report)}
             {_retrieval_html(report)}

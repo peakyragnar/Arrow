@@ -93,6 +93,42 @@ def test_normalize_filing_body_strips_standalone_page_numbers() -> None:
     assert "2024 100" in normalized
 
 
+def test_normalize_filing_body_strips_final_page_number_after_signature() -> None:
+    normalized = normalize_filing_body(
+        b"""
+        <html><body>
+          <p>Title: Executive Vice President, Chief Financial Officer and Treasurer</p>
+          <p>Signing on behalf of the Registrant as the Principal Financial Officer</p>
+          <div>62</div>
+        </body></html>
+        """,
+        "text/html",
+    )
+
+    assert normalized.endswith("Principal Financial Officer")
+    assert "\n62" not in normalized
+
+
+def test_normalize_filing_body_strips_conservative_filing_tail_page_numbers() -> None:
+    normalized = normalize_filing_body(
+        b"""
+        <html><body>
+          <p>The Inline XBRL tags are embedded within the Inline XBRL document
+          * Management contracts and compensatory plans or arrangements. 62</p>
+          <p>Signing on behalf of the Registrant as the Principal Financial Officer 57</p>
+          <p>The company had no customer over 10%. 2024</p>
+        </body></html>
+        """,
+        "text/html",
+    )
+
+    assert "arrangements. 62" not in normalized
+    assert "arrangements." in normalized
+    assert "Principal Financial Officer 57" not in normalized
+    assert "Principal Financial Officer" in normalized
+    assert "The company had no customer over 10%. 2024" in normalized
+
+
 def test_chunking_preserves_heading_path_and_sentence_overlap() -> None:
     normalized = normalize_filing_body(
         (
@@ -213,3 +249,11 @@ def test_subheading_detection_rejects_financial_table_rows() -> None:
     assert _is_subheading("Critical Accounting Policies and Estimates")
     assert _is_subheading("Market Platform Highlights")
     assert _is_subheading("Liquidity and Capital Resources")
+
+
+def test_subheading_detection_rejects_table_of_contents_labels() -> None:
+    assert not _is_subheading("Table of Contents")
+    assert not _is_subheading("TABLE OF CONTENTS")
+    assert not _is_subheading("Table of Conten t s")
+
+    assert _is_subheading("Legal and Regulatory Risks")
