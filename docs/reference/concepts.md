@@ -89,7 +89,7 @@ formula           — (subtotal only) deterministic expression
 | `other_revenue` | detail | positive | non-primary revenue streams the filer breaks out (null if none) |
 | `total_revenue` | subtotal | positive | `= revenue + other_revenue` |
 
-**Segment revenue** (product/service, geographic, reportable segment) is **not** an IS bucket — it's out of scope here, handled in a future `segments` table.
+**Segment revenue** (product/service, geographic, reportable segment) is **not** an IS bucket. It is stored as dimensioned `financial_facts` with `statement = 'segment'`, `concept = 'revenue'`, and non-null `dimension_*` fields.
 
 ### 4.2 Gross profit
 
@@ -444,14 +444,15 @@ Documented so nobody redundantly re-derives the decision:
 - **Accrued compensation** as a separate bucket from `accrued_expenses`. Often large and analytically interesting (SBC vs cash comp split), but most filers don't break it out on the BS face.
 - **Deferred tax assets/liabilities current** (`deferred_tax_assets_current`, `deferred_tax_liability_current`). Rare but does occur — add buckets when a filer requires them.
 - **Expanded discontinued-operations treatment.** Currently `discontinued_ops` is a single IS bucket. Full treatment requires separate CF line (cash impact of discontinued ops) and retained-earnings roll effects. Revisit when a major filer triggers it.
-- **Segment data.** Product/service, geographic, and reportable-segment revenue belong in a future `segments` table keyed to `company_events` or a dedicated `segments` table. Explicitly out of scope for the IS buckets here.
+- **Segment data.** Product/service, geographic, and reportable-segment revenue are stored as dimensioned `financial_facts` rows (`statement = 'segment'`, `concept = 'revenue'`). They remain out of scope for IS bucket definitions.
 
 ---
 
 ## 13. What this doc unlocks
 
 - `financial_facts.concept` values (snake_case bucket names from above)
-- `financial_facts.statement` enum values (`income_statement`, `balance_sheet`, `cash_flow`)
+- `financial_facts.statement` enum values (`income_statement`, `balance_sheet`, `cash_flow`, `metrics`, `ratios`, `segment`)
+- `financial_facts.dimension_*` values for segment rows
 - FMP mapper (`fmp_mapping.md`) — maps FMP JSON fields into these buckets
 - Verification stack (`verification.md`) — enforces the ties and invariants above
 - Formula definitions (`formulas.md`) — computed values reference these bucket names

@@ -8,8 +8,9 @@ Usage:
 Normal flow:
   1. seed company from SEC
   2. backfill baseline FMP financials
-  3. ingest FMP employee counts
-  4. backfill SEC `10-K` / `10-Q` qualitative filings
+  3. ingest FMP revenue segments
+  4. ingest FMP employee counts
+  5. backfill SEC `10-K` / `10-Q` qualitative filings
      (5 fiscal years, complete first FY, primary docs only)
 """
 
@@ -20,6 +21,7 @@ from typing import Any
 
 from arrow.agents.fmp_employees import backfill_fmp_employees
 from arrow.agents.fmp_ingest import DEFAULT_SINCE_DATE, backfill_fmp_statements
+from arrow.agents.fmp_segments import backfill_fmp_segments
 from arrow.db.connection import get_conn
 from arrow.ingest.sec.bootstrap import seed_companies
 from arrow.ingest.sec.filings import DEFAULT_QUAL_SINCE_DATE, ingest_sec_filings
@@ -122,6 +124,7 @@ def main() -> int:
         with get_conn() as conn:
             seeded = seed_companies(conn, tickers)
             fmp_counts = backfill_fmp_statements(conn, tickers, **fmp_kwargs)
+            segment_counts = backfill_fmp_segments(conn, tickers, **fmp_kwargs)
             employee_counts = backfill_fmp_employees(conn, tickers)
             sec_counts = ingest_sec_filings(conn, tickers, **sec_kwargs)
     except VerificationFailed as e:
@@ -156,6 +159,17 @@ def main() -> int:
             ),
             "soft_flags_written": fmp_counts.get("bs_flags_written", 0)
             + fmp_counts.get("cf_flags_written", 0),
+        },
+    )
+    _print_section(
+        "FMP segments",
+        {
+            "ingest_run_id": segment_counts["ingest_run_id"],
+            "since_date": segment_counts["since_date"],
+            "rows_processed": segment_counts["rows_processed"],
+            "raw_responses": segment_counts["raw_responses"],
+            "segments_processed": segment_counts["segments_processed"],
+            "facts_written": segment_counts["facts_written"],
         },
     )
     _print_section(

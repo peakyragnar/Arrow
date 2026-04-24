@@ -30,6 +30,13 @@ If FMP's behavior changes and the mapper's output stops matching the regression 
 - **Unit**: absolute USD (not millions). Archive gold is USD_millions. Mapper divides FMP values by 1,000,000 for canonical storage. EPS and share counts are NOT scaled.
 - **Date**: FMP's `date` field matches the filing's `period_end` date exactly for NVDA's 52/53-week calendar (verified across 12 periods). No drift adjustment needed.
 - **Published date**: FMP exposes `filingDate`. This is what we use for `financial_facts.published_at`, not `fetched_at`.
+- **Revenue segmentation**: FMP `revenue-product-segmentation` and
+  `revenue-geographic-segmentation` rows are stored as dimensioned
+  `financial_facts` (`statement = 'segment'`, `concept = 'revenue'`). Segment
+  endpoints do not consistently expose `acceptedDate` / `filingDate`, so
+  `published_at` falls back to the matching current income-statement revenue
+  row for the same company/period when available, then to the segment row's
+  `date`.
 
 ---
 
@@ -95,7 +102,7 @@ This is the case that needs explicit mechanics. FMP's historical values *change 
    - The new row is written with `superseded_at = NULL` — it becomes the current value.
 6. **Old rows remain in the DB** with `superseded_at` set. They are preserved for audit, PIT queries, and post-hoc analysis.
 
-The `financial_facts_one_current_idx` DB constraint makes this a database-enforced invariant: a split-adjustment re-ingest that fails to supersede old rows fails at INSERT time.
+The `financial_facts_one_current_idx` DB index makes this a database-enforced invariant: a split-adjustment re-ingest that fails to supersede old rows fails at INSERT time.
 
 ### 3.4 Point-in-time queries around splits
 

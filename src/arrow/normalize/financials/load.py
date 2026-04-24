@@ -433,8 +433,7 @@ def load_fmp_is_rows(
                         %s, %s, %s,
                         %s
                     )
-                    ON CONFLICT ON CONSTRAINT financial_facts_unique_extraction
-                    DO NOTHING
+                    ON CONFLICT DO NOTHING
                     RETURNING id;
                     """,
                     (
@@ -575,8 +574,7 @@ def load_fmp_bs_rows(
                         %s, %s, %s,
                         %s
                     )
-                    ON CONFLICT ON CONSTRAINT financial_facts_unique_extraction
-                    DO NOTHING
+                    ON CONFLICT DO NOTHING
                     RETURNING id;
                     """,
                     (
@@ -726,8 +724,7 @@ def load_fmp_cf_rows(
                         %s, %s, %s,
                         %s
                     )
-                    ON CONFLICT ON CONSTRAINT financial_facts_unique_extraction
-                    DO NOTHING
+                    ON CONFLICT DO NOTHING
                     RETURNING id;
                     """,
                     (

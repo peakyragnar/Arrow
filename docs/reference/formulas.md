@@ -24,7 +24,7 @@ A small number of bucket names were clarified when lifting to `concepts.md`:
 | `stock_repurchase` | `stock_repurchase` (unchanged, now cash-impact sign) |
 | `change_ar`, `change_inventory`, `change_ap` | same names, now cash-impact sign throughout |
 | `extraordinary_items` / `ni_common_excl_extra` | **dropped** (GAAP ASU 2015-01) |
-| `finance_div_revenue`, `insurance_div_revenue` | **dropped** (segment data → future segments table) |
+| `finance_div_revenue`, `insurance_div_revenue` | **dropped** (segment data → dimensioned `financial_facts` rows, not canonical IS buckets) |
 
 See [`concepts.md`](concepts.md) § 12 for the full change log.
 

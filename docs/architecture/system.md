@@ -454,7 +454,7 @@ Status legend:
 | `raw_responses` | built | migration 003 |
 | `artifacts` | built | migration 004; SEC filing identity fields extended in migration 014 |
 | `companies` | built | migration 007 |
-| `financial_facts` | built | migration 008 |
+| `financial_facts` | built | migration 008; segment dimension identity added in migration 016 |
 | `artifact_sections` | built | migration 014; canonical extracted filing sections (`10-K`, `10-Q`) |
 | `artifact_section_chunks` | built | migration 014; standardized retrieval chunks derived from `artifact_sections` |
 | `artifact_text_units` | built | migration 015; generic extracted text units for non-10-K/Q artifacts, starting with earnings press releases |
@@ -586,6 +586,8 @@ Stores:
 - period_end
 - statement
 - concept / component_id
+- dimension fields for segment facts:
+  `dimension_type`, `dimension_key`, `dimension_label`, `dimension_source`
 - value
 - unit
 - source artifact or payload
@@ -607,6 +609,8 @@ Rule:
 - fiscal truth always stored
 - calendar normalization always stored
 - PIT columns always populated
+- segment rows use `statement = 'segment'`, `concept = 'revenue'`, and
+  non-null dimension fields; non-segment rows keep dimension fields NULL
 
 ### `prices_daily`
 Daily OHLCV history.
@@ -1193,7 +1197,7 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 6. ✅ implement `raw_responses` + `ingest_runs` (migrations 002, 003)
 7. ✅ implement `artifacts` (migration 004, with double-hash). SEC qualitative filing identity extensions landed in migration 014.
 8. ⏳ implement FMP ingest for historical filings and transcripts
-9. ✅ implement `financial_facts` schema with fiscal, calendar, and PIT fields (migration 008). Populating depends on step 8.
+9. ✅ implement `financial_facts` schema with fiscal, calendar, PIT, and segment-dimension fields (migrations 008, 016). Populating depends on step 8.
 9.5. ✅ implement FMP ↔ SEC/XBRL audit rail (migrations 010 + 011, built 2026-04-21/22). Preserved for separate audit/reconciliation passes. No longer part of default baseline FMP backfill. Divergences write to `data_quality_flags` when audit is run; amendment-detect remains preserved as later audit functionality rather than default ingest behavior.
 10. ⬜ implement `series` + `series_observations` (unified macro / industry / commodity substrate, vintage-preserving). Build when first real source lands.
 11. ⬜ implement fiscal, calendar-normalized, and PIT derived views

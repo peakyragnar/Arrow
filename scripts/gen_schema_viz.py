@@ -824,7 +824,9 @@ def main() -> None:
         for t in table_names
     )
 
-    html_out = render_html(mermaid_src, cards_html, table_names)
+    html_out = "\n".join(
+        line.rstrip() for line in render_html(mermaid_src, cards_html, table_names).splitlines()
+    ) + "\n"
     OUT_PATH.write_text(html_out, encoding="utf-8")
     print(f"Wrote {OUT_PATH}")
     print(f"  tables: {len(table_names)}")

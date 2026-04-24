@@ -146,8 +146,7 @@ def load_fmp_employee_rows(
                     %s, %s, %s,
                     %s
                 )
-                ON CONFLICT ON CONSTRAINT financial_facts_unique_extraction
-                DO NOTHING
+                ON CONFLICT DO NOTHING
                 RETURNING id;
                 """,
                 (

@@ -85,12 +85,17 @@ def _fact(
     superseded_at: datetime | None = None,
     ingest_run_id: int | None = None,
     source_artifact_id: int | None = None,
+    dimension_type: str | None = None,
+    dimension_key: str | None = None,
+    dimension_label: str | None = None,
+    dimension_source: str | None = None,
 ) -> int:
     with conn.cursor() as cur:
         cur.execute(
             """
             INSERT INTO financial_facts (
                 ingest_run_id, company_id, statement, concept, value, unit,
+                dimension_type, dimension_key, dimension_label, dimension_source,
                 fiscal_year, fiscal_quarter, fiscal_period_label,
                 period_end, period_type,
                 calendar_year, calendar_quarter, calendar_period_label,
@@ -98,6 +103,7 @@ def _fact(
                 source_raw_response_id, source_artifact_id, extraction_version
             )
             VALUES (%s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s,
                     %s, %s, %s,
                     %s, %s,
                     %s, %s, %s,
@@ -107,6 +113,7 @@ def _fact(
             """,
             (
                 ingest_run_id, company_id, statement, concept, value, unit,
+                dimension_type, dimension_key, dimension_label, dimension_source,
                 fiscal_year, fiscal_quarter, fiscal_period_label,
                 period_end, period_type,
                 calendar_year, calendar_quarter, calendar_period_label,
@@ -172,6 +179,65 @@ def test_label_regex_enforced() -> None:
             _fact(conn, company_id=cid, raw_response_id=rr, calendar_period_label="2024Q4")
 
 
+def test_segment_dimension_contract() -> None:
+    with get_conn() as conn:
+        _reset(conn)
+        cid = _seed_company(conn)
+        rr = _seed_raw_response(conn, _seed_run(conn))
+
+        with pytest.raises(psycopg.errors.CheckViolation):
+            _fact(
+                conn,
+                company_id=cid,
+                raw_response_id=rr,
+                statement="segment",
+                concept="revenue",
+            )
+
+        with pytest.raises(psycopg.errors.CheckViolation):
+            _fact(
+                conn,
+                company_id=cid,
+                raw_response_id=rr,
+                dimension_type="product",
+                dimension_key="data_center",
+                dimension_label="Data Center",
+                dimension_source="fmp:revenue-product-segmentation",
+            )
+
+        fid = _fact(
+            conn,
+            company_id=cid,
+            raw_response_id=rr,
+            statement="segment",
+            concept="revenue",
+            dimension_type="product",
+            dimension_key="data_center",
+            dimension_label="Data Center",
+            dimension_source="fmp:revenue-product-segmentation",
+        )
+        assert fid > 0
+
+
+def test_dimension_key_format_enforced() -> None:
+    with get_conn() as conn:
+        _reset(conn)
+        cid = _seed_company(conn)
+        rr = _seed_raw_response(conn, _seed_run(conn))
+        with pytest.raises(psycopg.errors.CheckViolation):
+            _fact(
+                conn,
+                company_id=cid,
+                raw_response_id=rr,
+                statement="segment",
+                concept="revenue",
+                dimension_type="product",
+                dimension_key="Data Center",
+                dimension_label="Data Center",
+                dimension_source="fmp:revenue-product-segmentation",
+            )
+
+
 # ---------- identity / uniqueness ----------
 
 def test_idempotent_extraction_unique_constraint() -> None:
@@ -183,6 +249,69 @@ def test_idempotent_extraction_unique_constraint() -> None:
         _fact(conn, company_id=cid, raw_response_id=rr)
         with pytest.raises(psycopg.errors.UniqueViolation):
             _fact(conn, company_id=cid, raw_response_id=rr)  # same identity → reject
+
+
+def test_segment_uniqueness_is_dimension_scoped() -> None:
+    with get_conn() as conn:
+        _reset(conn)
+        cid = _seed_company(conn)
+        rr = _seed_raw_response(conn, _seed_run(conn))
+
+        data_center = {
+            "statement": "segment",
+            "concept": "revenue",
+            "dimension_type": "product",
+            "dimension_key": "data_center",
+            "dimension_label": "Data Center",
+            "dimension_source": "fmp:revenue-product-segmentation",
+        }
+        _fact(conn, company_id=cid, raw_response_id=rr, **data_center)
+        _fact(
+            conn,
+            company_id=cid,
+            raw_response_id=rr,
+            statement="segment",
+            concept="revenue",
+            dimension_type="product",
+            dimension_key="gaming",
+            dimension_label="Gaming",
+            dimension_source="fmp:revenue-product-segmentation",
+        )
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            _fact(conn, company_id=cid, raw_response_id=rr, **data_center)
+
+
+def test_segment_current_uniqueness_is_dimension_scoped() -> None:
+    with get_conn() as conn:
+        _reset(conn)
+        cid = _seed_company(conn)
+        run_id = _seed_run(conn)
+        rr1 = _seed_raw_response(conn, run_id, params_hash=b"\x01" * 32)
+        rr2 = _seed_raw_response(conn, run_id, params_hash=b"\x02" * 32)
+        kwargs = {
+            "statement": "segment",
+            "concept": "revenue",
+            "dimension_type": "product",
+            "dimension_key": "data_center",
+            "dimension_label": "Data Center",
+            "dimension_source": "fmp:revenue-product-segmentation",
+        }
+
+        _fact(conn, company_id=cid, raw_response_id=rr1, **kwargs)
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            _fact(conn, company_id=cid, raw_response_id=rr2, **kwargs)
+
+        _fact(
+            conn,
+            company_id=cid,
+            raw_response_id=rr2,
+            statement="segment",
+            concept="revenue",
+            dimension_type="product",
+            dimension_key="gaming",
+            dimension_label="Gaming",
+            dimension_source="fmp:revenue-product-segmentation",
+        )
 
 
 def test_at_most_one_current_per_fact() -> None:
