@@ -413,3 +413,45 @@ def test_press_release_chunks_are_searchable_retrieval_units() -> None:
     assert len(chunks) == 1
     assert chunks[0].heading_path == ["Release Body"]
     assert "gross margin" in chunks[0].search_text
+
+
+def test_intel_style_standalone_headings_beat_toc_page_lists() -> None:
+    html = b"""
+    <html><body>
+      <p>Financial Statements Notes to Financial Statements</p>
+      <p>24</p>
+      <h2>Management's Discussion and Analysis</h2>
+      <p>This report should be read in conjunction with our annual report.</p>
+      <p>Revenue increased because client demand improved and costs declined.</p>
+      <p>MD&A</p>
+      <p>25</p>
+      <h2>Quantitative and Qualitative Disclosures About Market Risk</h2>
+      <p>There were no material changes in market risk.</p>
+      <h2>Controls and Procedures</h2>
+      <p>Disclosure controls and procedures were effective.</p>
+      <h2>Risk Factors</h2>
+      <p>Risk factors could materially affect the business.</p>
+      <h2>Part I - Financial Information</h2>
+      <p>Item 1. Financial Statements</p>
+      <p>Pages 3 - 24</p>
+      <p>Item 2.</p>
+      <p>Management's Discussion and Analysis of Financial Condition and Results of Operations</p>
+      <p>Liquidity and capital resources</p>
+      <p>Pages 33 - 34</p>
+      <p>Item 3. Quantitative and Qualitative Disclosures About Market Risk</p>
+      <p>Page 35</p>
+      <h2>Part II - Other Information</h2>
+      <p>Item 1A. Risk Factors</p>
+      <p>Page 36</p>
+    </body></html>
+    """
+
+    sections = extract_sections("10-Q", normalize_filing_body(html, "text/html"))
+    by_key = {section.section_key: section for section in sections}
+
+    assert "part1_item2_mda" in by_key
+    assert "Revenue increased because client demand improved" in by_key["part1_item2_mda"].text
+    assert "Pages 33 - 34" not in by_key["part1_item2_mda"].text
+    assert "part1_item3_market_risk" in by_key
+    assert "part1_item4_controls" in by_key
+    assert "part2_item1a_risk_factors" in by_key

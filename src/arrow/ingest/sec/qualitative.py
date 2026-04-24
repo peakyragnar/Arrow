@@ -10,7 +10,7 @@ from typing import Literal
 
 import psycopg
 
-EXTRACTOR_VERSION = "sec_sections_v9"
+EXTRACTOR_VERSION = "sec_sections_v10"
 CHUNKER_VERSION = "sec_chunks_v10"
 TEXT_UNIT_EXTRACTOR_VERSION = "press_release_units_v4"
 TEXT_CHUNKER_VERSION = "artifact_text_chunks_v1"
@@ -42,6 +42,19 @@ _TEN_K_ITEM_HEADING_PATTERN = re.compile(
     r"(?i)^\s*(?:part\s+[ivx]+\s*[\.\-:]*\s*)?"
     r"item\s+(?P<item>\d+[a-z]?)(?:\s*[\.\-:]\s*|\s+)"
 )
+_STANDALONE_MDA_HEADING_RE = re.compile(
+    r"(?i)^management(?:['’]s)?\s+discussion\s+and\s+analysis"
+    r"(?:\s+of\s+financial\s+condition\s+and\s+results\s+of\s+operations)?"
+    r"(?:\s+\(md&a\))?$"
+)
+_STANDALONE_MARKET_RISK_HEADING_RE = re.compile(
+    r"(?i)^quantitative\s+and\s+qualitative\s+disclosures\s+about\s+market\s+risk$"
+)
+_STANDALONE_CONTROLS_HEADING_RE = re.compile(r"(?i)^controls\s+and\s+procedures$")
+_STANDALONE_RISK_FACTORS_HEADING_RE = re.compile(r"(?i)^risk\s+factors$")
+_STANDALONE_LEGAL_HEADING_RE = re.compile(r"(?i)^legal\s+proceedings$")
+_STANDALONE_OTHER_INFO_HEADING_RE = re.compile(r"(?i)^other\s+information$")
+_STANDALONE_BUSINESS_HEADING_RE = re.compile(r"(?i)^(?:our\s+business|business)$")
 _FILING_FURNITURE_TAIL_RE = re.compile(
     r"(?i)\b("
     r"inline\s+xbrl\s+document|"
@@ -334,6 +347,8 @@ def normalize_filing_body(body: bytes, content_type: str | None) -> str:
             if blank_run <= 1:
                 normalized_lines.append("")
             continue
+        if _is_probable_running_header_line(cleaned_lines, idx):
+            continue
         if _is_probable_page_number_line(cleaned_lines, idx):
             continue
         line = _strip_probable_filing_furniture_page_number(line)
@@ -363,11 +378,28 @@ def _is_probable_page_number_line(lines: list[str], index: int) -> bool:
         return False
     if next_line is None:
         return bool(_FILING_FURNITURE_TAIL_RE.search(previous_line[-360:]))
+    if _looks_like_heading(previous_line) and (_word_count(next_line) >= 8 or _looks_like_heading(next_line)):
+        return True
     if not previous_line.endswith((".", "?", "!", ")", "]", "”", '"')):
         return False
     if _word_count(previous_line) < 8:
         return False
     return _looks_like_heading(next_line) or _word_count(next_line) >= 8
+
+
+def _is_probable_running_header_line(lines: list[str], index: int) -> bool:
+    line = lines[index]
+    if len(line) > 140 or _word_count(line) > 10:
+        return False
+    next_line = _nearest_nonblank_line(lines, index, step=1)
+    if next_line is None or not re.fullmatch(r"\d{1,3}", next_line):
+        return False
+    previous_line = _nearest_nonblank_line(lines, index, step=-1)
+    if previous_line is None:
+        return False
+    if _TOC_DOTS_PATTERN.search(line):
+        return False
+    return _word_count(previous_line) >= 8 or previous_line.endswith((".", "?", "!", ")", "]", "”", '"'))
 
 
 def _strip_probable_filing_furniture_page_number(line: str) -> str:
@@ -1039,6 +1071,25 @@ def _collect_candidates(
                     is_toc_like=_is_toc_like(lines, idx, body),
                 )
             )
+        standalone = _standalone_section_heading(form_family, line.text)
+        if standalone is None:
+            continue
+        key, expected_part, item_label = standalone
+        actual_part = inline_part or current_part
+        if form_family == "10-Q" and actual_part is not None and expected_part != actual_part:
+            continue
+        candidates.setdefault(key, []).append(
+            SectionCandidate(
+                key=key,
+                section_title=_section_title_for_key(key),
+                part_label=expected_part,
+                item_label=item_label,
+                line_index=idx,
+                start_offset=line.start,
+                end_offset=line.end,
+                is_toc_like=_is_toc_like(lines, idx, body),
+            )
+        )
     return candidates
 
 
@@ -1053,28 +1104,64 @@ def _select_candidates(
     ]
     selected: list[SectionCandidate] = []
     if strategy == "forward":
-        last_idx = -1
         for key in ordered_keys:
-            options = [c for c in candidates.get(key, []) if c.line_index > last_idx]
+            options = candidates.get(key, [])
             if not options:
                 continue
             preferred = [c for c in options if not c.is_toc_like]
-            chosen = preferred[0] if preferred else options[0]
+            if not preferred:
+                continue
+            chosen = preferred[0]
             selected.append(chosen)
-            last_idx = chosen.line_index
         return selected
 
-    next_idx = 10**9
     reverse_selected: list[SectionCandidate] = []
     for key in reversed(ordered_keys):
-        options = [c for c in candidates.get(key, []) if c.line_index < next_idx]
+        options = candidates.get(key, [])
         if not options:
             continue
         preferred = [c for c in options if not c.is_toc_like]
-        chosen = preferred[-1] if preferred else options[-1]
+        if not preferred:
+            continue
+        chosen = preferred[-1]
         reverse_selected.append(chosen)
-        next_idx = chosen.line_index
     return list(reversed(reverse_selected))
+
+
+def _standalone_section_heading(
+    form_family: FormFamily, line: str
+) -> tuple[str, str | None, str] | None:
+    text = _WHITESPACE_PATTERN.sub(" ", line).strip()
+    if len(text) > 160 or _word_count(text) > 14:
+        return None
+    if form_family == "10-K":
+        if _STANDALONE_BUSINESS_HEADING_RE.match(text):
+            return ("item_1_business", None, "Item 1")
+        if _STANDALONE_RISK_FACTORS_HEADING_RE.match(text):
+            return ("item_1a_risk_factors", None, "Item 1A")
+        if _STANDALONE_LEGAL_HEADING_RE.match(text):
+            return ("item_3_legal_proceedings", None, "Item 3")
+        if _STANDALONE_MDA_HEADING_RE.match(text):
+            return ("item_7_mda", None, "Item 7")
+        if _STANDALONE_MARKET_RISK_HEADING_RE.match(text):
+            return ("item_7a_market_risk", None, "Item 7A")
+        if _STANDALONE_CONTROLS_HEADING_RE.match(text):
+            return ("item_9a_controls", None, "Item 9A")
+        if _STANDALONE_OTHER_INFO_HEADING_RE.match(text):
+            return ("item_9b_other_information", None, "Item 9B")
+        return None
+
+    if _STANDALONE_MDA_HEADING_RE.match(text):
+        return ("part1_item2_mda", "Part I", "Item 2")
+    if _STANDALONE_MARKET_RISK_HEADING_RE.match(text):
+        return ("part1_item3_market_risk", "Part I", "Item 3")
+    if _STANDALONE_CONTROLS_HEADING_RE.match(text):
+        return ("part1_item4_controls", "Part I", "Item 4")
+    if _STANDALONE_RISK_FACTORS_HEADING_RE.match(text):
+        return ("part2_item1a_risk_factors", "Part II", "Item 1A")
+    if _STANDALONE_OTHER_INFO_HEADING_RE.match(text):
+        return ("part2_item5_other_information", "Part II", "Item 5")
+    return None
 
 
 def _materialize_sections(
@@ -1104,6 +1191,7 @@ def _materialize_sections(
         if form_family == "10-Q":
             end = min(end, _next_10q_item_boundary(candidate, lines, body, end))
         text = body[start:end].strip()
+        text, end = _trim_extracted_section_tail(text, start, end, candidate.key)
         if not text:
             continue
         confidence = _confidence_for_section(
@@ -1134,6 +1222,28 @@ def _materialize_sections(
             )
         )
     return out
+
+
+def _trim_extracted_section_tail(
+    text: str, start_offset: int, end_offset: int, section_key: str
+) -> tuple[str, int]:
+    trim_markers = [
+        "\nForm 10-K Cross-Reference Index\n",
+        "\nForm 10-Q Cross-Reference Index\n",
+        "\nItem Number Item\n",
+    ]
+    if section_key in {"item_3_legal_proceedings", "part2_item1_legal_proceedings"}:
+        trim_markers.extend(["\nKey Terms\n", "\nIndex to Supplemental Details\n"])
+    trim_at: int | None = None
+    for marker in trim_markers:
+        idx = text.find(marker)
+        if idx <= 0:
+            continue
+        trim_at = idx if trim_at is None else min(trim_at, idx)
+    if trim_at is None:
+        return text, end_offset
+    trimmed = text[:trim_at].rstrip()
+    return trimmed, start_offset + len(trimmed)
 
 
 def _next_10k_item_boundary(
@@ -1417,13 +1527,86 @@ def _is_toc_like(lines: list[_Line], index: int, body: str) -> bool:
     line = lines[index].text
     if _TOC_DOTS_PATTERN.search(line):
         return True
+    if lines[index].start <= int(len(body) * 0.15) and _looks_like_heading(line):
+        previous_headings = sum(
+            1
+            for probe in lines[max(0, index - 8) : index]
+            if _looks_like_heading(probe.text)
+        )
+        if previous_headings >= 4:
+            return True
+    following = lines[index + 1 : min(len(lines), index + 10)]
+    if _looks_like_toc_heading_list_window([lines[index], *following]):
+        return True
+    if _looks_like_toc_page_number_window(following):
+        return True
+    if any(_looks_like_toc_page_reference(probe.text) for probe in following):
+        prose_before_page_ref = False
+        for probe in following:
+            if _looks_like_toc_page_reference(probe.text):
+                break
+            if _word_count(probe.text) >= 6 and probe.text.endswith((".", "?", "!", "”", '"')):
+                prose_before_page_ref = True
+                break
+        if not prose_before_page_ref:
+            return True
     if lines[index].start > int(len(body) * 0.15):
         return False
-    nearby_headings = 0
-    for probe in lines[index : min(len(lines), index + 6)]:
-        if re.search(r"(?i)\bitem\s+\d+[a-z]?\b", probe.text):
-            nearby_headings += 1
-    return nearby_headings >= 3
+    return _looks_like_toc_item_heading_cluster(lines[index : min(len(lines), index + 8)])
+
+
+def _looks_like_toc_page_number_window(lines: list[_Line]) -> bool:
+    page_numbers = 0
+    short_labels = 0
+    for probe in lines:
+        text = probe.text.strip()
+        if re.fullmatch(r"\d{1,3}", text):
+            page_numbers += 1
+            if page_numbers >= 2 and short_labels >= 2:
+                return True
+            continue
+        if _word_count(text) >= 6 and text.endswith((".", "?", "!", "”", '"')):
+            return False
+        if text.endswith((".", "?", "!", ";", "”", '"')):
+            continue
+        if _looks_like_heading(text):
+            short_labels += 1
+            if page_numbers >= 2 and short_labels >= 2:
+                return True
+    return page_numbers >= 2 and short_labels >= 2
+
+
+def _looks_like_toc_heading_list_window(lines: list[_Line]) -> bool:
+    headings = 0
+    for probe in lines:
+        text = probe.text.strip()
+        if _word_count(text) >= 6 and text.endswith((".", "?", "!", "”", '"')):
+            return False
+        if text.endswith((".", "?", "!", ";", "”", '"')):
+            continue
+        if _looks_like_heading(text):
+            headings += 1
+    return headings >= 5
+
+
+def _looks_like_toc_item_heading_cluster(lines: list[_Line]) -> bool:
+    item_headings = 0
+    for probe in lines:
+        text = probe.text.strip()
+        if _word_count(text) >= 6 and text.endswith((".", "?", "!", "”", '"')):
+            return False
+        if text.endswith((".", "?", "!", ";", "”", '"')):
+            continue
+        if re.search(r"(?i)\bitem\s+\d+[a-z]?\b", text):
+            item_headings += 1
+    return item_headings >= 3
+
+
+def _looks_like_toc_page_reference(text: str) -> bool:
+    normalized = _WHITESPACE_PATTERN.sub(" ", text).strip()
+    if re.fullmatch(r"(?i)pages?\s+\d{1,4}(?:\s*[-,]\s*\d{1,4})*(?:\s*,\s*\d{1,4}\s*[-,]\s*\d{1,4})*", normalized):
+        return True
+    return normalized.lower() == "none"
 
 
 def _is_subheading(text: str) -> bool:
