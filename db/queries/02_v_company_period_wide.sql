@@ -25,6 +25,7 @@ WITH ranked_current_facts AS (
                 f.id DESC
         ) AS source_rank
     FROM v_ff_current f
+    WHERE f.dimension_type IS NULL
 ),
 preferred_current_facts AS (
     SELECT *
@@ -151,4 +152,4 @@ GROUP BY
     f.calendar_year, f.calendar_quarter, f.calendar_period_label;
 
 COMMENT ON VIEW v_company_period_wide IS
-    'Long-to-wide pivot of v_ff_current. One row per (ticker, period_end, period_type); columns are canonical buckets. If multiple current extraction versions coexist, prefers human-verified, then XBRL amendment, then FMP. NULL means concept not reported for that period.';
+    'Long-to-wide pivot of non-dimensioned v_ff_current rows. One row per (ticker, period_end, period_type); columns are canonical company-level buckets. Segment rows remain queryable in financial_facts and are intentionally excluded here. If multiple current extraction versions coexist, prefers human-verified, then XBRL amendment, then FMP. NULL means concept not reported for that period.';

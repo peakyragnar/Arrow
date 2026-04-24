@@ -21,9 +21,13 @@ SELECT
     calendar_period_label,
     published_at,
     source_raw_response_id,
-    extraction_version
+    extraction_version,
+    dimension_type,
+    dimension_key,
+    dimension_label,
+    dimension_source
 FROM financial_facts
 WHERE superseded_at IS NULL;
 
 COMMENT ON VIEW v_ff_current IS
-    'Current (non-superseded) facts from financial_facts. All metric views build on this.';
+    'Current (non-superseded) facts from financial_facts, including segment dimension metadata. All metric views build on this.';
