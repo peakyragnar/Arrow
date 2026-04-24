@@ -19,6 +19,9 @@ from psycopg.rows import dict_row
 
 MDA_SECTION_KEYS = ("item_7_mda", "part1_item2_mda")
 REVENUE_SIGNAL_WEIGHTS = (
+    (r"\bgrowth was driven\b|\bgrowth .* driven by\b|\bdriven by\b", 12),
+    (r"\bprimarily due to\b|\battributable to\b", 7),
+    (r"\bincreased \d+(?:\.\d+)?% year over year\b", 8),
     (r"\brevenue\b", 4),
     (r"\bgrowth\b|\bgrew\b|\bincrease[sd]?\b", 3),
     (r"\bcustomer[s]?\b", 3),
@@ -36,13 +39,24 @@ BOILERPLATE_PENALTIES = (
     (r"\bannual report on form 10-k\b", 4),
     (r"\bquarterly report on form 10-q\b", 4),
     (r"\bshould be read in conjunction\b", 4),
+    (r"\bintended to help the reader\b|\bprovided as a supplement\b", 10),
     (r"\btable of contents\b", 4),
     (r"\bsafe harbor\b", 5),
-    (r"\bnon-gaap\b", 4),
+    (r"\bnon-gaap\b|\babout non-gaap\b|\bconstant currency\b", 10),
     (r"\breconciliation table\b|\breconciliation of\b", 5),
     (r"\bfinancial measure\b", 3),
+    (r"\bcosts? of revenues?\b|\boperating expenses?\b", 14),
+    (r"\bprovision for income taxes\b|\beffective tax rate\b", 9),
+    (r"\bchanges in assets and liabilities\b|\baccounts receivable\b|\bincome taxes\b", 9),
+    (r"\bliquidity and capital resources\b|\bcash flow information\b", 12),
+    (r"\bcapital expenditures\b|\bcritical accounting (?:estimates|policies)\b", 25),
+    (r"\bcontract liabilities\b|\bgeopolitical tensions\b", 18),
+    (r"\bresearch and development expenses\b|\bexpenses include\b", 9),
+    (r"\beconomic conditions, challenges, and risks\b|\badversely affect\b", 25),
+    (r"\bstock-based compensation\b", 7),
+    (r"\bunfavorably affected\b", 10),
 )
-WEAK_EVIDENCE_SCORE = 4
+WEAK_EVIDENCE_SCORE = 12
 
 
 @dataclass(frozen=True)
@@ -308,12 +322,13 @@ def _clean_text(value: str, *, max_chars: int = 360) -> str:
 
 
 def _evidence_score(chunk: EvidenceChunk) -> int:
+    lead_text = chunk.text[:2400]
     haystack = " ".join(
         [
             chunk.unit_key or "",
             chunk.unit_title or "",
             " ".join(chunk.heading_path or []),
-            chunk.text,
+            lead_text,
         ]
     ).lower()
     score = 0
@@ -321,6 +336,8 @@ def _evidence_score(chunk: EvidenceChunk) -> int:
         score += len(re.findall(pattern, haystack, re.I)) * weight
     for pattern, penalty in BOILERPLATE_PENALTIES:
         score -= len(re.findall(pattern, haystack, re.I)) * penalty
+    if chunk.source_kind == "mda" and len(chunk.heading_path or []) <= 1:
+        score -= 60
     return score
 
 
@@ -339,7 +356,7 @@ def _rank_evidence_chunks(
         chunk for chunk in ranked
         if _evidence_score(chunk) >= WEAK_EVIDENCE_SCORE
     ]
-    return (strong or ranked)[:limit]
+    return strong[:limit]
 
 
 def _best_evidence_score(chunks: list[EvidenceChunk]) -> int | None:
@@ -760,6 +777,8 @@ def build_revenue_driver_packet(
         earnings_chunks=earnings_chunks,
         mda_candidate_count=len(mda_candidates),
         earnings_candidate_count=len(earnings_candidates),
+        mda_best_candidate_score=_best_evidence_score(mda_candidates),
+        earnings_best_candidate_score=_best_evidence_score(earnings_candidates),
     )
     trace.readiness = asdict(readiness)
     trace.gaps = gaps
@@ -814,6 +833,8 @@ def _ground_gaps(
     earnings_chunks: list[EvidenceChunk],
     mda_candidate_count: int,
     earnings_candidate_count: int,
+    mda_best_candidate_score: int | None,
+    earnings_best_candidate_score: int | None,
 ) -> tuple[ReadinessResult, list[str]]:
     checks: list[str] = []
     gaps: list[str] = []
@@ -850,16 +871,30 @@ def _ground_gaps(
     elif not any(segment.prior_value is not None for segment in segment_facts):
         gaps.append("Segment facts found, but no prior-year segment matches were found.")
     if not mda_chunks:
-        gaps.append("Plan requested MD&A evidence, but no period-aligned MD&A chunks were found.")
+        if mda_candidate_count:
+            gaps.append(
+                "Plan requested MD&A revenue-driver evidence, but no chunks cleared "
+                f"the quality threshold (best_score={mda_best_candidate_score}, "
+                f"candidates={mda_candidate_count})."
+            )
+        else:
+            gaps.append("Plan requested MD&A evidence, but no period-aligned MD&A chunks were found.")
     elif (score := _best_evidence_score(mda_chunks)) is not None and score < WEAK_EVIDENCE_SCORE:
         gaps.append(
             "Plan requested MD&A revenue-driver evidence, but top ranked chunks were weak "
             f"(best_score={score}, candidates={mda_candidate_count})."
         )
     if not earnings_chunks:
-        gaps.append(
-            "Plan requested earnings-release evidence, but no exact annual or FY-end Q4 chunks were found."
-        )
+        if earnings_candidate_count:
+            gaps.append(
+                "Plan requested earnings-release revenue-driver evidence, but no chunks cleared "
+                f"the quality threshold (best_score={earnings_best_candidate_score}, "
+                f"candidates={earnings_candidate_count})."
+            )
+        else:
+            gaps.append(
+                "Plan requested earnings-release evidence, but no exact annual or FY-end Q4 chunks were found."
+            )
     elif (score := _best_evidence_score(earnings_chunks)) is not None and score < WEAK_EVIDENCE_SCORE:
         gaps.append(
             "Plan requested earnings-release revenue-driver evidence, but top ranked chunks were weak "
