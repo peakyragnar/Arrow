@@ -905,7 +905,7 @@ def _collect_report(
 
     expected_counts = _expected_count_rows(stored, expected)
 
-    hard_issues = len(missing) + len(unexpected) + len(weak)
+    hard_issues = len(missing) + len(weak)
     reviewable_chunk_warnings = [
         row
         for row in chunk_outliers
@@ -999,7 +999,7 @@ def _coverage(conn, ticker: str, expected: list[ExpectedFiling] | None) -> tuple
         _print_table(["type", "accession"], [(kind, accn) for kind, accn in missing[:25]])
     if unexpected:
         print()
-        print("Stored but outside current expected window")
+        print("Stored outside current expected window (informational)")
         _print_table(["type", "accession"], [(kind, accn) for kind, accn in unexpected[:25]])
     return len(missing), len(unexpected)
 
@@ -1438,8 +1438,9 @@ def _coverage_html(report: dict[str, Any]) -> str:
             "</tr>"
         )
     expected_rows = []
+    missing_types = {kind for kind, _accession in report["missing"]}
     for row in report["expected_counts"]:
-        match = row["expected"] is None or row["expected"] == row["stored"]
+        match = row["expected"] is None or row["artifact_type"] not in missing_types
         expected_rows.append(
             f'<tr class="{"ok-row" if match else "bad-row"}">'
             f"<td>{_escape(row['artifact_type'])}</td>"
@@ -1763,8 +1764,11 @@ def _render_html_report(reports: list[dict[str, Any]]) -> str:
     for report in reports:
         status_tone = "bad" if report["status"] == "FAIL" else "warn" if report["status"] == "PASS_WITH_WARNINGS" else "ok"
         total_expected = sum(row["expected"] or 0 for row in report["expected_counts"])
+        expected_covered = total_expected - len(report["missing"])
         total_stored = sum(row["stored"] for row in report["expected_counts"])
         total_chunks = report["chunk_stats"]["chunks"]
+        coverage_value = f"{expected_covered}/{total_expected}" if total_expected else total_stored
+        coverage_note = "expected filings present" if total_expected else "stored filings"
         section = f"""
           <div class="report">
             <header class="hero">
@@ -1776,9 +1780,10 @@ def _render_html_report(reports: list[dict[str, Any]]) -> str:
               <span class="status {status_tone}">{_escape(report['status'])}</span>
             </header>
             <div class="metrics">
-              {_metric_card('Filing Coverage', f'{total_stored}/{total_expected}' if total_expected else total_stored, 'stored vs expected', 'ok' if report['hard_issues'] == 0 else 'bad')}
+              {_metric_card('Filing Coverage', coverage_value, coverage_note, 'ok' if not report['missing'] else 'bad')}
               {_metric_card('Weak Extractions', len(report['weak']), 'low confidence, fallback, or missing', 'ok' if not report['weak'] else 'bad')}
               {_metric_card('Chunks', total_chunks, 'retrieval units', 'neutral')}
+              {_metric_card('Extra Stored', len(report['unexpected']), 'outside audit window', 'neutral')}
               {_metric_card('Review Items', report['warnings'], 'missing sections + reviewable chunk issues', 'warn' if report['warnings'] else 'ok')}
             </div>
               {_coverage_html(report)}
@@ -1964,7 +1969,7 @@ def _audit_ticker(args: argparse.Namespace, ticker: str) -> int:
 
     print()
     print("Audit Summary")
-    hard_issues = missing + unexpected + weak
+    hard_issues = missing + weak
     warning_items = missing_sections + chunk_outliers
     if hard_issues:
         status = "FAIL"
@@ -1974,7 +1979,7 @@ def _audit_ticker(args: argparse.Namespace, ticker: str) -> int:
         status = "PASS"
     print(f"  status:                       {status}")
     print(f"  missing expected filings:     {missing}")
-    print(f"  unexpected stored filings:    {unexpected}")
+    print(f"  stored outside audit window:  {unexpected}")
     print(f"  weak/missing extractions:     {weak}")
     print(f"  filings missing some standard sections: {missing_sections}")
     print(f"  reviewable chunk issues:      {chunk_outliers}")
