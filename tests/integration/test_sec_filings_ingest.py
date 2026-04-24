@@ -13,7 +13,11 @@ from unittest.mock import patch
 from arrow.db.connection import get_conn
 from arrow.db.migrations import apply
 from arrow.ingest.common.http import Response
-from arrow.ingest.sec.filings import ingest_recent_sec_filings, ingest_sec_filings
+from arrow.ingest.sec.filings import (
+    _press_release_docs,
+    ingest_recent_sec_filings,
+    ingest_sec_filings,
+)
 from arrow.ingest.sec.qualitative import (
     CHUNKER_VERSION,
     EXTRACTOR_VERSION,
@@ -43,6 +47,35 @@ def _seed_nvda(conn) -> int:
         cid = cur.fetchone()[0]
     conn.commit()
     return cid
+
+
+def test_press_release_docs_detects_filename_only_ex99_exhibits() -> None:
+    payload = {
+        "directory": {
+            "item": [
+                {"name": "amd-20260203.htm", "type": "text.gif", "description": ""},
+                {"name": "q42025991.htm", "type": "text.gif", "description": ""},
+                {"name": "amdq425earningsslidesfin.htm", "type": "text.gif", "description": ""},
+                {"name": "amzn-20251231xex991.htm", "type": "text.gif", "description": ""},
+                {"name": "msft-ex99_1.htm", "type": "text.gif", "description": ""},
+                {"name": "q4fy26pr.htm", "type": "text.gif", "description": ""},
+                {"name": "q4fy26cfocommentary.htm", "type": "text.gif", "description": ""},
+                {"name": "coreweave4q25earningspress.htm", "type": "text.gif", "description": ""},
+                {"name": "exhibit991001.jpg", "type": "image2.gif", "description": ""},
+                {"name": "FilingSummary.xml", "type": "text.gif", "description": ""},
+            ]
+        }
+    }
+
+    names = [item["name"] for item in _press_release_docs(payload)]
+
+    assert names == [
+        "q42025991.htm",
+        "amzn-20251231xex991.htm",
+        "msft-ex99_1.htm",
+        "q4fy26pr.htm",
+        "coreweave4q25earningspress.htm",
+    ]
 
 
 def test_ingest_recent_10q_writes_raw_and_artifact() -> None:

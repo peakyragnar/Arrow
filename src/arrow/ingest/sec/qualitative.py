@@ -328,7 +328,7 @@ def normalize_filing_body(body: bytes, content_type: str | None) -> str:
     """Return normalized filing body text used for canonical hashes/extraction."""
 
     lower = (content_type or "").lower()
-    text = body.decode("utf-8", errors="replace")
+    text = body.decode("utf-8", errors="replace").replace("\x00", "")
     if "html" in lower or lower.startswith("text/") or "xml" in lower:
         text = _COMMENT_PATTERN.sub(" ", text)
         text = _SCRIPT_STYLE_PATTERN.sub(" ", text)
@@ -362,7 +362,7 @@ def normalize_filing_body(body: bytes, content_type: str | None) -> str:
 
 
 def search_text_from_text(text: str) -> str:
-    normalized = unicodedata.normalize("NFKC", html.unescape(text))
+    normalized = unicodedata.normalize("NFKC", html.unescape(text)).replace("\x00", "")
     normalized = normalized.lower()
     normalized = _WHITESPACE_PATTERN.sub(" ", normalized).strip()
     return normalized
@@ -1474,7 +1474,7 @@ def _emit_chunk(section: ExtractedSection, ordinal: int, units: list[_SentenceUn
 
 
 def _word_count(text: str) -> int:
-    return len(re.findall(r"\b\w+\b", text))
+    return sum(1 for _ in re.finditer(r"\b\w+\b", text))
 
 
 def _extract_part_heading(line: str) -> str | None:

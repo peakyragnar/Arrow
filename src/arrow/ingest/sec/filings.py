@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -35,6 +36,14 @@ from arrow.normalize.periods.derive import (
 )
 
 DEFAULT_FORMS = ("10-K", "10-K/A", "10-Q", "10-Q/A", "8-K", "8-K/A")
+TEXT_EXHIBIT_SUFFIXES = (".htm", ".html", ".txt")
+EX99_1_TYPE_RE = re.compile(r"^EX-99(?:\.?1)?$", re.IGNORECASE)
+EX99_1_FILENAME_RE = re.compile(
+    r"(?:xex99(?:1|_1)?|dex99(?:1|_1)?|ex99(?:1|_1)|exhibit99(?:1|_1)?|exhbit991)(?![0-9])",
+    re.IGNORECASE,
+)
+AMD_EX99_1_FILENAME_RE = re.compile(r"q[1-4][0-9]{4}991", re.IGNORECASE)
+QUARTERLY_PR_FILENAME_RE = re.compile(r"q[1-4](?:fy)?[0-9]{2}pr", re.IGNORECASE)
 
 
 def _years_ago(today: date, years: int) -> date:
@@ -268,26 +277,41 @@ def _press_release_docs(index_payload: dict[str, Any]) -> list[dict[str, Any]]:
     items = index_payload.get("directory", {}).get("item", [])
     out: list[dict[str, Any]] = []
     for item in items:
-        name = item.get("name")
-        doc_type = str(item.get("type") or "")
-        if not name:
-            continue
-        upper_type = doc_type.upper()
-        if upper_type.startswith("EX-99"):
-            out.append(item)
-            continue
-        description = str(item.get("description") or "").lower()
-        lower_name = str(name).lower()
-        if (
-            "press release" in description
-            or "earnings release" in description
-            or "earningsrelease" in lower_name
-            or "earnings-release" in lower_name
-            or "pressrelease" in lower_name
-            or "press-release" in lower_name
-        ):
+        if press_release_doc_reason(item) is not None:
             out.append(item)
     return out
+
+
+def press_release_doc_reason(item: dict[str, Any]) -> str | None:
+    """Return why an SEC index item is likely an earnings press release."""
+
+    name = item.get("name")
+    doc_type = str(item.get("type") or "")
+    if not name:
+        return None
+    lower_name = str(name).lower()
+    if not lower_name.endswith(TEXT_EXHIBIT_SUFFIXES):
+        return None
+    if EX99_1_TYPE_RE.match(doc_type):
+        return "sec_index_type_ex99"
+    description = str(item.get("description") or "").lower()
+    if "press release" in description:
+        return "description_press_release"
+    if "earnings release" in description:
+        return "description_earnings_release"
+    if "earningsrelease" in lower_name or "earnings-release" in lower_name:
+        return "filename_earnings_release"
+    if "earningspress" in lower_name:
+        return "filename_earnings_press"
+    if "pressrelease" in lower_name or "press-release" in lower_name:
+        return "filename_press_release"
+    if EX99_1_FILENAME_RE.search(lower_name):
+        return "filename_ex99_1"
+    if AMD_EX99_1_FILENAME_RE.search(lower_name):
+        return "filename_amd_ex99_1"
+    if QUARTERLY_PR_FILENAME_RE.search(lower_name):
+        return "filename_quarterly_pr"
+    return None
 
 
 def _retained_files(filing: RecentFiling, index_payload: dict[str, Any]) -> list[dict[str, Any]]:

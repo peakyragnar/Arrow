@@ -41,6 +41,13 @@ def test_extract_10q_sections_is_part_aware_and_skips_toc() -> None:
     assert "TABLE OF CONTENTS" not in sections[0].text
 
 
+def test_normalize_filing_body_removes_nul_bytes() -> None:
+    normalized = normalize_filing_body(b"<html><body>Revenue\x00 grew.</body></html>", "text/html")
+
+    assert "\x00" not in normalized
+    assert normalized == "Revenue grew."
+
+
 def test_extract_10q_stops_part1_before_part2_title_line() -> None:
     html = b"""
     <html><body>
