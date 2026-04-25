@@ -171,3 +171,67 @@ def test_actor_override_recorded_on_state_changes() -> None:
 def test_exit_code_is_zero_when_all_checks_succeed() -> None:
     cp = _run_cli()
     assert cp.returncode == 0
+
+
+def test_verbose_listing_excludes_stale_findings_from_prior_runs() -> None:
+    """The verbose 'New findings this run' listing must reflect what
+    THIS sweep created, not all open findings created by the same
+    actor over time. Prior implementation filtered by ``created_by``
+    only, which would surface findings from earlier sweeps as if
+    they were new — a misleading bug. Fixed by tracking new IDs
+    per-CheckResult and filtering by ID list.
+    """
+    with get_conn() as conn:
+        _reset(conn)
+        # Seed a zero-row run so the steward will produce a finding.
+        _insert_run(conn, counts={"rows_processed": 0}, ticker_scope=["OLDA"])
+
+    # First sweep creates a finding under actor 'human:test_runner'.
+    cp1 = _run_cli("--actor", "human:test_runner")
+    assert cp1.returncode == 0, f"stderr:\n{cp1.stderr}"
+    payload1 = json.loads(cp1.stdout)
+    assert payload1["totals"]["new"] == 1
+
+    # Insert ANOTHER zero-row run for a different ticker so the next
+    # sweep has something genuinely new to surface.
+    with get_conn() as conn:
+        _insert_run(conn, counts={"rows_processed": 0}, ticker_scope=["NEWB"])
+
+    # Second sweep with the same actor in verbose mode. The verbose
+    # 'New findings' section must list ONLY the NEWB finding (created
+    # this run), NOT the OLDA finding (created in the prior sweep).
+    cp2 = _run_cli("--actor", "human:test_runner", "--verbose")
+    assert cp2.returncode == 0, f"stderr:\n{cp2.stderr}"
+    payload2 = json.loads(cp2.stdout)
+    assert payload2["totals"]["new"] == 1
+    assert payload2["totals"]["unchanged"] == 1  # OLDA re-observed
+
+    # Find the "New findings this run:" block in stderr.
+    err = cp2.stderr
+    assert "New findings this run" in err, f"verbose mode missing new-findings block:\n{err}"
+    new_block = err.split("New findings this run:", 1)[1]
+    # NEWB must appear in the new-findings listing (created this run).
+    assert "NEWB" in new_block, (
+        f"NEWB (created this run) missing from new-findings listing:\n{new_block}"
+    )
+    # OLDA must NOT appear in the new-findings listing — it existed
+    # before this run. The prior buggy implementation would have
+    # included it because created_by matched.
+    assert "OLDA" not in new_block, (
+        f"OLDA (created in prior run) leaked into new-findings listing — "
+        f"the verbose-mode stale-finding bug is back:\n{new_block}"
+    )
+
+
+def test_default_actor_uses_user_env() -> None:
+    """The CLI should not bake an operator-specific name into the
+    default actor. Default reads $USER with 'human:cli' fallback."""
+    cp = _run_cli()  # no --actor; default kicks in
+    assert cp.returncode == 0
+    payload = json.loads(cp.stdout)
+    expected_user = os.environ.get("USER", "").strip()
+    expected = f"human:{expected_user}" if expected_user else "human:cli"
+    assert payload["actor"] == expected, (
+        f"default actor leak: got {payload['actor']!r}, expected {expected!r}. "
+        f"This catches the previous hardcoded 'human:michael' default."
+    )

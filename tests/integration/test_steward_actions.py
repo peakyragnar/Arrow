@@ -467,6 +467,82 @@ def test_set_coverage_tier_for_unmembered_ticker_raises() -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_open_finding_concurrent_inserts_no_crash() -> None:
+    """Two+ concurrent open_finding calls for the SAME fingerprint must
+    not crash with UniqueViolation against the partial unique index.
+    Exactly one row should end up open; the other callers should report
+    outcome='re_observed'.
+
+    This test would have failed against the previous three-step
+    implementation (suppression check + existing-open check + INSERT)
+    because callers race between the existing-open check and the INSERT
+    and the second INSERT hits the unique constraint. The atomic
+    INSERT...ON CONFLICT DO UPDATE fixes it.
+    """
+    import threading
+
+    with get_conn() as setup_conn:
+        _reset(setup_conn)
+        cid = _seed_company(setup_conn, ticker="TEST")
+
+    fp = fingerprint("zero_row_runs", {"ticker": "TEST"}, {})
+    kwargs = dict(
+        fingerprint=fp,
+        finding_type="zero_row_runs",
+        severity="warning",
+        company_id=cid,
+        ticker="TEST",
+        vertical=None,
+        fiscal_period_key=None,
+        source_check="test",
+        evidence={},
+        summary="concurrent insert test",
+        suggested_action=None,
+        actor="system:check_runner",
+    )
+
+    results: list = []
+    errors: list = []
+    barrier = threading.Barrier(8)
+
+    def caller():
+        try:
+            with get_conn() as conn:
+                # Wait at the barrier so all threads execute the
+                # critical section as concurrently as possible.
+                barrier.wait()
+                results.append(open_finding(conn, **kwargs))
+        except Exception as e:  # noqa: BLE001 — we want to surface anything
+            errors.append(e)
+
+    threads = [threading.Thread(target=caller) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert errors == [], (
+        f"open_finding crashed under concurrency: "
+        f"{[type(e).__name__ + ': ' + str(e) for e in errors]}"
+    )
+    assert len(results) == 8
+
+    # End state: exactly one open row for this fingerprint.
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) FROM data_quality_findings "
+            "WHERE fingerprint = %s AND status = 'open';",
+            (fp,),
+        )
+        assert cur.fetchone()[0] == 1
+
+    # Exactly one caller saw outcome='created'; the rest saw 're_observed'.
+    n_created = sum(1 for r in results if r.outcome == "created")
+    n_re_observed = sum(1 for r in results if r.outcome == "re_observed")
+    assert n_created == 1, f"expected exactly one created, got {n_created}"
+    assert n_re_observed == 7, f"expected 7 re_observed, got {n_re_observed}"
+
+
 def test_view_surfaces_open_finding_only() -> None:
     """Open findings appear in v_open_quality_signals; closed ones do not."""
     with get_conn() as conn:

@@ -433,6 +433,65 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started).
 - No LLM-as-judge checks — six deterministic checks first; LLM checks
   added in V2 once a deterministic baseline exists
 
+## Known Limitations (V1)
+
+Recorded after a self-review pass. Each item is real and worth fixing
+eventually, but each was intentionally deferred (or accepted) rather
+than papered over. Listing them here so they don't get buried.
+
+### Concurrency
+
+- **Suppression-vs-insert race in `open_finding`.** The function does
+  the suppression check as a separate SQL statement before the atomic
+  INSERT...ON CONFLICT. A suppression added between the two statements
+  can be missed; a new open finding is created instead of being
+  blocked. The next sweep respects the new suppression. Eliminating
+  the window entirely would require SERIALIZABLE isolation around
+  both statements, which conflicts with the caller-controlled
+  transaction contract. Window is microseconds; recovers naturally.
+  The narrower race (two concurrent `open_finding` calls for the same
+  fingerprint crashing on UniqueViolation) WAS fixed using ON CONFLICT
+  against the partial unique index — see
+  ``test_open_finding_concurrent_inserts_no_crash``.
+
+### Maintenance traps
+
+- **`OUTPUT_KEYS` in `zero_row_runs.py` is a hardcoded list.** When a
+  new ingest path adds a new "wrote rows" key (e.g. transcripts ingest
+  emitting `transcripts_written`), the check silently misses zero-row
+  runs of that kind unless the key is added to `OUTPUT_KEYS`. The
+  "new verticals ship with their checks" working rule covers this in
+  principle, but the failure mode is invisible. Long-term fix: drive
+  the key list from a registry that ingest paths populate, or
+  normalize at write time (`counts['__total_written__']`).
+
+### Schema hardening (defensive CHECKs missing)
+
+- `data_quality_findings.history` has no CHECK that `jsonb_typeof =
+  'array'` — application code always inserts arrays, but the schema
+  doesn't enforce it.
+- `data_quality_findings.suppressed_until` can be set even when
+  `closed_reason <> 'suppressed'`. The runner's reopen guard ignores
+  such rows, so it's harmless, but the schema doesn't reject the
+  inconsistency.
+
+Both are belt-and-suspenders. Add when there's time; not blocking.
+
+### Audit asymmetries
+
+- **`set_coverage_tier` doesn't capture history.** Findings carry
+  `history jsonb`; coverage_membership doesn't. Tier changes leave no
+  audit trace beyond the current state. Add a `history jsonb` column
+  on `coverage_membership` in a follow-up migration when tier changes
+  become frequent or the agent needs to learn from them.
+
+### Performance
+
+- **`_auto_resolve_cleared` is N+1.** Resolves cleared findings one at
+  a time. Fine while N is small (< ~100 per sweep); will need a
+  batched UPDATE when sweeps grow. Defer until it actually shows up
+  in a profile.
+
 ## Cross-References
 
 - Architecture north star: `docs/architecture/system.md`

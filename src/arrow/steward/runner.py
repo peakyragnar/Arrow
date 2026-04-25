@@ -58,6 +58,13 @@ class CheckResult:
     findings_resolved: int = 0
     duration_ms: float = 0.0
     error: str | None = None
+    #: IDs of findings this run created (outcome='created').
+    #: Used by the CLI's --verbose mode to list exactly what was new
+    #: this run, rather than filtering by ``created_by`` which would
+    #: include stale findings from prior runs by the same actor.
+    new_finding_ids: list[int] = field(default_factory=list)
+    #: IDs of findings this run resolved via auto-resolve.
+    resolved_finding_ids: list[int] = field(default_factory=list)
 
 
 @dataclass
@@ -162,18 +169,21 @@ def _run_one_check(
             produced_fingerprints.add(draft.fingerprint)
             if ref.outcome == "created":
                 result.findings_new += 1
+                result.new_finding_ids.append(ref.id)
             elif ref.outcome == "re_observed":
                 result.findings_unchanged += 1
             elif ref.outcome == "suppressed":
                 result.findings_suppressed += 1
 
-        result.findings_resolved = _auto_resolve_cleared(
+        resolved_ids = _auto_resolve_cleared(
             conn,
             check_name=check.name,
             scope=scope,
             produced_fingerprints=produced_fingerprints,
             actor=actor,
         )
+        result.resolved_finding_ids = resolved_ids
+        result.findings_resolved = len(resolved_ids)
     except Exception as e:
         result.error = f"{type(e).__name__}: {e}"
 
@@ -188,8 +198,10 @@ def _auto_resolve_cleared(
     scope: Scope,
     produced_fingerprints: set[str],
     actor: str,
-) -> int:
+) -> list[int]:
     """Resolve open findings of ``check_name`` that didn't surface this run.
+
+    Returns the list of finding IDs that were actually resolved.
 
     Scope intersection: if scope.tickers is set, only consider findings
     with ticker in that set. Universe runs consider all open findings of
@@ -207,7 +219,7 @@ def _auto_resolve_cleared(
         cur.execute(" ".join(sql), params)
         rows = cur.fetchall()
 
-    resolved = 0
+    resolved_ids: list[int] = []
     for row_id, fp in rows:
         if fp in produced_fingerprints:
             continue
@@ -216,9 +228,9 @@ def _auto_resolve_cleared(
                 conn, row_id, actor=actor,
                 note=f"cleared by {check_name} (no longer surfacing)",
             )
-            resolved += 1
+            resolved_ids.append(row_id)
         except StewardActionError:
             # Race: someone else closed it between our SELECT and resolve.
             # Acceptable; carry on.
             pass
-    return resolved
+    return resolved_ids

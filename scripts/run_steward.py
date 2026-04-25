@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from typing import Any
 
@@ -45,6 +46,14 @@ from arrow.steward.runner import RunSummary, run_steward
 
 # Import the checks package so registration side-effects fire.
 import arrow.steward.checks  # noqa: F401
+
+
+def _default_actor() -> str:
+    """Default actor for CLI invocations. Reads $USER (the operator's
+    OS account) so the audit trail captures who actually ran the
+    sweep. Falls back to 'cli' on systems where $USER isn't set."""
+    user = os.environ.get("USER", "").strip()
+    return f"human:{user}" if user else "human:cli"
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -83,11 +92,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument(
         "--actor",
-        default="human:michael",
+        default=_default_actor(),
         help=(
-            "Actor recorded on every state change. Default: human:michael. "
-            "Use system:cron for scheduled sweeps; future agent runs use "
-            "agent:steward_v1, etc."
+            "Actor recorded on every state change. Default: 'human:$USER' "
+            "(falls back to 'human:cli' if $USER is unset). Use system:cron "
+            "for scheduled sweeps; future agent runs use agent:steward_v1, etc."
         ),
     )
     parser.add_argument(
@@ -109,7 +118,13 @@ def _build_scope(args: argparse.Namespace) -> Scope:
 
 def _emit_verbose(summary: RunSummary, *, conn) -> None:
     """Stream a one-line description of each open or newly-resolved finding
-    that this run touched. For human consumption from the terminal."""
+    that this run touched. For human consumption from the terminal.
+
+    Lists 'new findings' by querying the exact IDs the runner created
+    (collected per-check in CheckResult.new_finding_ids). This is
+    correct even if other sweeps with the same actor ran recently —
+    filtering by ``created_by`` would have included those stale rows.
+    """
     print(file=sys.stderr)
     for r in summary.results:
         if r.error:
@@ -131,18 +146,18 @@ def _emit_verbose(summary: RunSummary, *, conn) -> None:
             file=sys.stderr,
         )
 
-    if summary.findings_new:
+    new_ids = [fid for r in summary.results for fid in r.new_finding_ids]
+    if new_ids:
         print("\n  New findings this run:", file=sys.stderr)
         with conn.cursor() as cur:
             cur.execute(
                 """
                 SELECT id, severity, ticker, summary
                 FROM data_quality_findings
-                WHERE status = 'open' AND created_by = %s
-                ORDER BY id DESC
-                LIMIT %s;
+                WHERE id = ANY(%s)
+                ORDER BY id DESC;
                 """,
-                (summary.actor, summary.findings_new),
+                (new_ids,),
             )
             for fid, sev, ticker, summ in cur.fetchall():
                 ticker_label = f"[{ticker}] " if ticker else ""

@@ -19,6 +19,7 @@ Scope: ``scope.tickers`` filters by the flag's ``company_id`` →
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Iterable
 
 import psycopg
@@ -88,13 +89,9 @@ class UnresolvedFlagsAging(Check):
             else None
         )
         age_days = (
-            (flagged_at and (flagged_at.now(tz=flagged_at.tzinfo) - flagged_at).days)
+            (datetime.now(timezone.utc) - flagged_at).days
             if flagged_at else None
         )
-        # Compute age via a simple now() since flagged_at is timezone-aware.
-        from datetime import datetime, timezone
-        if flagged_at:
-            age_days = (datetime.now(timezone.utc) - flagged_at).days
 
         summary = (
             f"Flag #{flag_id} ({flag_type}, {severity}) on {ticker} "

@@ -97,7 +97,7 @@ def open_finding(
     actor: str,
 ) -> FindingRef:
     """Insert an open finding for ``fingerprint``, or bump ``last_seen_at``
-    on an existing open one. Idempotent.
+    on an existing open one. Idempotent and concurrency-safe.
 
     Respects active suppressions: if a closed-suppressed row exists for
     this fingerprint with ``suppressed_until`` in the future (or NULL,
@@ -105,6 +105,28 @@ def open_finding(
     existing closed-suppressed row is returned. This is the rule that
     lets ``suppress_finding(reason='AVGO segment reorg confirmed')``
     actually stick across nightly sweeps.
+
+    Concurrency:
+        The atomic insert-or-bump uses ``INSERT ... ON CONFLICT (fingerprint)
+        WHERE status='open' DO UPDATE`` against the partial unique index
+        ``data_quality_findings_open_fingerprint_uidx``. Two concurrent
+        callers for the same fingerprint will not crash on
+        UniqueViolation: one inserts, the other takes the update path
+        and reports outcome='re_observed'. Tested in
+        ``test_open_finding_concurrent_inserts_no_crash``.
+
+        Residual race (documented, not eliminated): the suppression
+        check is a separate statement, so a suppression added between
+        that check and the upsert can be missed. The next sweep will
+        respect the new suppression. Eliminating this window entirely
+        would require SERIALIZABLE isolation around both statements,
+        which would conflict with the caller-controlled-transaction
+        contract this function follows.
+
+    Outcome reported on the returned FindingRef:
+        - "created"     — new open row inserted
+        - "re_observed" — existing open row had last_seen_at bumped
+        - "suppressed"  — active suppression matched; no row touched
     """
     _require(actor, "actor")
     _require(fingerprint, "fingerprint")
@@ -115,7 +137,7 @@ def open_finding(
         raise StewardActionError(f"invalid severity: {severity!r}")
 
     with conn.cursor() as cur:
-        # 1. Active suppression? If so, return the suppressed row, skip insert.
+        # 1. Active suppression? If so, return the suppressed row.
         cur.execute(
             """
             SELECT id, fingerprint, status, closed_reason
@@ -136,42 +158,19 @@ def open_finding(
                 outcome="suppressed",
             )
 
-        # 2. Existing open row? Bump last_seen_at, append history note.
-        cur.execute(
-            "SELECT id FROM data_quality_findings "
-            "WHERE fingerprint = %s AND status = 'open' LIMIT 1;",
-            (fingerprint,),
-        )
-        row = cur.fetchone()
-        if row is not None:
-            existing_id = row[0]
-            cur.execute(
-                """
-                UPDATE data_quality_findings
-                SET last_seen_at = now(),
-                    history = history || %s::jsonb
-                WHERE id = %s
-                RETURNING id, fingerprint, status, closed_reason;
-                """,
-                (
-                    Jsonb([_history_entry(actor=actor, action="re_observed", note=None)]),
-                    existing_id,
-                ),
-            )
-            r = cur.fetchone()
-            return FindingRef(
-                id=r[0], fingerprint=r[1], status=r[2], closed_reason=r[3],
-                outcome="re_observed",
-            )
-
-        # 3. Insert new open row with initial history entry.
+        # 2. Atomic insert-or-bump on the partial unique
+        #    (fingerprint) WHERE status='open'. Eliminates the
+        #    concurrent-callers crash. The xmax=0 trick distinguishes
+        #    insert (xmax = 0 on a fresh row) vs update (xmax > 0,
+        #    set to the current transaction id).
         initial_history = [
             _history_entry(
-                actor=actor,
-                action="opened",
-                after={"status": "open"},
-                note=None,
+                actor=actor, action="opened",
+                after={"status": "open"}, note=None,
             )
+        ]
+        bump_history = [
+            _history_entry(actor=actor, action="re_observed", note=None)
         ]
         cur.execute(
             """
@@ -187,7 +186,11 @@ def open_finding(
                 %s, %s, %s, %s,
                 'open', %s, %s
             )
-            RETURNING id, fingerprint, status, closed_reason;
+            ON CONFLICT (fingerprint) WHERE status = 'open'
+            DO UPDATE SET
+                last_seen_at = now(),
+                history = data_quality_findings.history || %s::jsonb
+            RETURNING id, fingerprint, status, closed_reason, (xmax = 0) AS was_inserted;
             """,
             (
                 fingerprint, finding_type, severity,
@@ -195,12 +198,14 @@ def open_finding(
                 source_check, Jsonb(evidence or {}), summary,
                 Jsonb(suggested_action) if suggested_action is not None else None,
                 Jsonb(initial_history), actor,
+                Jsonb(bump_history),
             ),
         )
         r = cur.fetchone()
+        outcome = "created" if r[4] else "re_observed"
         return FindingRef(
             id=r[0], fingerprint=r[1], status=r[2], closed_reason=r[3],
-            outcome="created",
+            outcome=outcome,
         )
 
 
