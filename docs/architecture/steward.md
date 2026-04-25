@@ -288,18 +288,30 @@ Concretely, V1 delivers:
   `coverage_ticker`
 - Tests: integration tests for actions, runner, each check, dashboard routes
 
-V1 deterministic checks (six):
+V1 deterministic checks (five):
 
-1. `zero_row_runs` — `ingest_runs` succeeded but wrote 0 rows
-2. `unresolved_flags_aging` — `data_quality_flags` open > 14 days
-3. `sec_artifact_orphans` — SEC filing artifact with no sections/text units
+1. `zero_row_runs` — `ingest_runs` succeeded but wrote 0 rows across
+   recognized output keys (FMP: `rows_processed`, `*_facts_written`,
+   `segments_processed`; SEC: `raw_responses`, `artifacts_written`,
+   `documents_fetched`, `sections_written`, `text_units_written`,
+   `files_fetched`)
+2. `unresolved_flags_aging` — inline `data_quality_flags` open > 14 days
+3. `sec_artifact_orphans` — `artifacts` (artifact_type IN '10k', '10q',
+   'press_release') with no `artifact_sections` AND no
+   `artifact_text_units`
 4. `unparsed_body_fallback` — `artifact_sections.section_key='unparsed_body'`
-5. `broken_provenance` — `financial_facts` with NULL or invalid
-   `source_raw_response_id`
-6. `section_confidence_drift` — rolling-window check on
-   `artifact_sections.confidence` per `(form_family, section_key)`
+   grouped per artifact
+5. `section_confidence_drift` — rolling-window check on
+   `artifact_sections.confidence` per `(form_family, section_key)`,
+   filtered to `extraction_method='deterministic'`
 
-V1.5 (after `coverage_membership` is populated): seventh check
+A sixth planned check, `broken_provenance`, was dropped on inspection:
+the schema enforces what it would have checked (NOT NULL +
+`ON DELETE RESTRICT` FK on `source_raw_response_id`), making the
+failure mode structurally impossible. Lean default — don't ship code
+for impossible failure modes.
+
+V1.5 (after `coverage_membership` is populated): sixth check
 `expected_coverage` consumes `expectations.py`.
 
 ## Working Rules
@@ -352,7 +364,16 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started).
    on stdout; per-finding lines to stderr in verbose mode. Exit code 1
    if any check raised. Tests: 7 new (covering scope passthrough,
    verbose, actor capture, exit code, unknown check name).
-5. ⬜ Remaining five deterministic checks
+5. ✅ Four additional deterministic checks
+   (`unresolved_flags_aging`, `sec_artifact_orphans`,
+   `unparsed_body_fallback`, `section_confidence_drift`). One planned
+   check (`broken_provenance`) was dropped on inspection: the schema
+   already enforces what it would have checked
+   (`source_raw_response_id` is NOT NULL with `ON DELETE RESTRICT` FK),
+   making both failure modes structurally impossible. Lean default —
+   don't ship code for impossible failure modes. V1 ships with five
+   deterministic checks total. Tests: 11 new integration; full suite
+   261 → 279.
 6. ⬜ Dashboard `/findings` list + detail + lifecycle POSTs
 7. ⬜ Dashboard `/coverage` matrix + per-ticker pane + add/remove ticker
 8. ⬜ `expectations.py` module + `expected_coverage` check (V1.5)
