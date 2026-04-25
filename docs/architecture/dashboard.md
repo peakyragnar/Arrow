@@ -1,8 +1,13 @@
 # Dashboard — UI Surface
 
-One-page analyst dashboard. Per-ticker view of the core metrics, laid out as two time axes side-by-side: five calendar years + TTM on the left, eight rolling fiscal quarters on the right.
+The dashboard is Arrow's **operator console** — the primary surface through which Arrow's owner inspects the data, triages quality findings, manages the coverage universe, and reviews analyst traces. It also hosts the per-ticker analyst metrics page.
 
-This is a thin surface. All math lives in the view stack (see [`metrics_platform.md`](metrics_platform.md)). Render logic is essentially: read `v_dashboard_panel` for the chosen ticker, format numbers, apply color.
+Two distinct surfaces, one app:
+
+1. **Per-ticker analyst lens** — one page per ticker showing core metrics across five calendar years + TTM + eight rolling fiscal quarters. Pure render over the view stack (see [`metrics_platform.md`](metrics_platform.md)). Shipped.
+2. **Operator console** — findings inbox, coverage matrix, ingest run log, and analyst trace view. Runs the steward layer's surface (see [`steward.md`](steward.md)). In progress under steward V1.
+
+Both surfaces are thin: all math lives in the view stack, all data-quality state lives in steward tables, all action logic lives in `src/arrow/steward/actions.py`. Dashboard route handlers are 3-line wrappers — they do not contain business logic.
 
 ## Purpose
 
@@ -141,12 +146,23 @@ Each metric cell is hover-sensitive. Tooltip content:
 
 ## Routes
 
-| route | handler | returns |
-|---|---|---|
-| `GET /` | landing | redirect to the first ticker alphabetically, or a "no tickers seeded" page if `companies` is empty |
-| `GET /t/<ticker>` | dashboard | rendered HTML for `v_dashboard_panel WHERE ticker = ?` |
-| `GET /t/<ticker>/raw` | JSON | same data, JSON — for debugging / future programmatic access |
-| `GET /health` | health | DB ping, latest `ingest_runs` timestamp, row counts |
+| route | handler | returns | status |
+|---|---|---|---|
+| `GET /` | landing | redirect to the first ticker alphabetically (operator-home pane planned) | shipped |
+| `GET /t/<ticker>` | per-ticker metrics | rendered HTML for the analyst metrics panel (FY + TTM + 8 quarters) | shipped |
+| `GET /t/<ticker>/raw` | JSON | same data, JSON — for debugging / future programmatic access | shipped |
+| `GET /health` | health | DB ping, latest `ingest_runs` timestamp, row counts | shipped |
+| `GET /findings` | findings list | open signals from `v_open_quality_signals`, filterable by ticker / severity / vertical / status | steward V1 |
+| `GET /findings/<id>` | finding detail | finding fields + history + suggested action | steward V1 |
+| `POST /findings/<id>/resolve` | lifecycle | calls `resolve_finding(actor="human:michael")`; redirect | steward V1 |
+| `POST /findings/<id>/suppress` | lifecycle | calls `suppress_finding(actor="human:michael", reason=Form, expires=Form?)`; redirect | steward V1 |
+| `POST /findings/<id>/dismiss` | lifecycle | calls `dismiss_finding(actor="human:michael")`; redirect | steward V1 |
+| `GET /coverage` | coverage matrix | tickers in `coverage_membership` × verticals; cell shows complete/partial/missing | steward V1 |
+| `GET /coverage/<ticker>` | per-ticker coverage | periods × verticals for the chosen ticker | steward V1 |
+| `POST /coverage/add` | add ticker | calls `seed_companies` + `add_to_coverage(actor="human:michael")` + scoped steward sweep | steward V1 |
+| `POST /coverage/<ticker>/remove` | remove ticker | calls `remove_from_coverage(actor="human:michael")` | steward V1 |
+| `GET /runs` | ingest run log | recent rows from `ingest_runs` with status, counts, durations | V1.5 |
+| `GET /traces` | analyst trace list | renders JSONL files from `outputs/qa_runs/`; click for detail | V1.5 |
 
 The ticker dropdown on every page queries `SELECT ticker FROM companies ORDER BY ticker;` at render time — any seeded ticker appears automatically.
 

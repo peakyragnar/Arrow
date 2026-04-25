@@ -12,6 +12,7 @@ Start here. Read only the next doc you need.
 - Repository flow / folder map: `docs/architecture/repository_flow.md`
 - Metrics platform (view stack; shared by dashboard, screener, analyst agent): `docs/architecture/metrics_platform.md`
 - Analyst runtime (chat, retrieval recipes, evidence packets, tracing): `docs/architecture/analyst_runtime.md`
+- Steward runtime (data trust: findings, coverage, expectations, three-agent split, V1→V3 LLM trajectory): `docs/architecture/steward.md`
 - Driver analysis ingest plan (growth/margin/cash driver substrate): `docs/architecture/driver_analysis_ingest_plan.md`
 - Dashboard UI surface: `docs/architecture/dashboard.md`
 - SEC qualitative layer (filings → sections → chunks, amendments, FTS): `docs/architecture/sec_qualitative_layer.md`
@@ -34,7 +35,7 @@ Start here. Read only the next doc you need.
 1. `AGENTS.md`
 2. `docs/architecture/system.md`
 3. `docs/architecture/normal_vs_audit.md`
-4. task-specific doc in `docs/` (`docs/architecture/analyst_runtime.md` for analyst/chat/runtime work)
+4. task-specific doc in `docs/` (`docs/architecture/analyst_runtime.md` for analyst/chat/runtime work; `docs/architecture/steward.md` for data-quality / coverage / findings work)
 5. live code in `src/` / `db/` / `scripts/`
 6. `archive/` only if you need legacy reference
 
@@ -79,6 +80,7 @@ Important:
 - Facts derived and regeneratable
 - For analyst/driver work, preserve the split between source evidence, structured observations, derived signals, and AI synthesis. Start with structured facts and deterministic comparisons before asking an LLM to explain them.
 - **Schema changes ship with their docs.** A migration that adds, removes, or supersedes a table updates the v1 Tables status table in `docs/architecture/system.md` and any reference-doc mentions in the same commit. ADRs about withdrawn or superseded tables get their status flipped, never their bodies edited. Build Order step markers get updated too. After applying a migration, re-run `uv run scripts/gen_schema_viz.py` to regenerate the live schema view at `arrow_db_schema.html`.
+- **New verticals ship with their expectations and steward checks.** Adding a new data vertical (transcripts, news, prices, options, macro, video, research primers, etc.) ships its `expectations.py` entry and at least basic steward checks (presence, freshness, orphan detection) in the same commit. Otherwise the data-trust layer falls behind the data layer. Parallel rule to "schema changes ship with their docs." See `docs/architecture/steward.md` § Working Rules.
 
 ## Data Rules
 

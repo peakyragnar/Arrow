@@ -475,6 +475,8 @@ Status legend:
 | `alerts` | deferred | — |
 | `watchlists` | deferred | — |
 | `qa_log` | deferred | wired up the moment the analyst flow exists; consent flags must be enforced from the first interaction |
+| `coverage_membership` | deferred | migration 017 — curated coverage universe with tier (`core`/`extended`); steward enforces full quality bar per tier. See `docs/architecture/steward.md`. |
+| `data_quality_findings` | deferred | migration 017 — steward-produced findings with two-state lifecycle (`open` → `closed` with structured `closed_reason`); audit captured in `history` jsonb. Distinct from inline-validation `data_quality_flags`; UNIONed by `v_open_quality_signals` for dashboard. See `docs/architecture/steward.md`. |
 
 ## Table Intent
 
@@ -900,6 +902,19 @@ Properties:
 - tool-using
 - debuggable
 
+### Steward agent
+Owns:
+- vigilance over data state: coverage, completeness, quality, freshness, lineage integrity
+- finding lifecycle (open → closed with structured reason)
+- never mutates source data; surfaces and proposes; operator (or autonomous-promoted check) executes via existing ingest/action paths
+
+Properties:
+- mostly deterministic in V1 (SQL checks); LLM-as-judge added in V2 for prose-judgment failure modes
+- per-check automation level (human_only → suggest_only → auto_with_review → autonomous); promotion happens by demonstrated correctness on that check, not globally
+- audit-first (every state change captured with `actor` + reason)
+
+See `docs/architecture/steward.md` for the full runtime, V1 build slice, and V1→V3 LLM trajectory.
+
 Do not combine roles.
 
 ## Always-On Monitoring
@@ -1223,6 +1238,7 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 20. ⬜ add Massive-backed options ingest later
 21. ⬜ migrate to cloud when durability/reliability justify it
 22. 🚧 metrics platform + analyst surfaces (see `docs/architecture/metrics_platform.md`, `docs/architecture/dashboard.md`). Shipped: formula spec tweaks, FMP employee-count ingest, segment-aware facts, core metric view stack, dashboard MVP (`scripts/dashboard.py`), screener MVP (`scripts/screen.py`). Remaining: complete presentation views such as `v_metric_changes` / `v_dashboard_panel` if still desired, full-history production backfill validation, and broader analyst-surface integration.
+23. 🚧 implement steward (data-trust) layer — `coverage_membership`, `data_quality_findings`, deterministic check registry, dashboard findings/coverage panes, action callables with `actor` field. **Now the load-bearing priority ahead of further analyst feature expansion.** V1 is deterministic (six SQL checks + Python expectations module + dashboard surface); V2 adds LLM suggester + LLM-as-judge checks; V3 promotes per-check autonomy on proven check types. See `docs/architecture/steward.md` for the full runtime, build order, and V1→V3 LLM trajectory.
 
 ✅ also: `companies` schema (migration 007) — implicit prerequisite to step 9, was not in the original numbered list but has to land before any fact references a company.
 
