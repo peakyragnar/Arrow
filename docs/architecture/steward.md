@@ -347,7 +347,11 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started).
    captures per-check error without aborting the whole run. First check
    surfaces succeeded ingest_runs that wrote 0 across the recognized
    `OUTPUT_KEYS`. Tests: 11 new integration; full suite 261/261.
-4. ⬜ `scripts/run_steward.py` CLI
+4. ✅ `scripts/run_steward.py` CLI. Args: `--ticker` (repeat),
+   `--vertical`, `--check`, `--actor`, `--verbose`. Emits JSON summary
+   on stdout; per-finding lines to stderr in verbose mode. Exit code 1
+   if any check raised. Tests: 7 new (covering scope passthrough,
+   verbose, actor capture, exit code, unknown check name).
 5. ⬜ Remaining five deterministic checks
 6. ⬜ Dashboard `/findings` list + detail + lifecycle POSTs
 7. ⬜ Dashboard `/coverage` matrix + per-ticker pane + add/remove ticker
