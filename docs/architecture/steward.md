@@ -334,7 +334,12 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started).
    `v_open_quality_signals` (view in `db/queries/15_v_open_quality_signals.sql`).
    `system.md` v1 Tables status flipped to `built`; `arrow_db_schema.html`
    regenerated.
-2. ⬜ `src/arrow/steward/actions.py` — action callables + `fingerprint.py`
+2. ✅ `src/arrow/steward/actions.py` — action callables + `fingerprint.py`.
+   Action surface: `open_finding` (idempotent, suppression-respecting),
+   `close_finding` + `resolve`/`suppress`/`dismiss` wrappers,
+   `add_to_coverage`/`remove_from_coverage`/`set_coverage_tier`. Every
+   action takes `actor: str` and appends to `history` jsonb. Tests:
+   29 new (10 unit + 19 integration); full suite 250/250.
 3. ⬜ `src/arrow/steward/registry.py` + `runner.py` + first check
    (`zero_row_runs`)
 4. ⬜ `scripts/run_steward.py` CLI
