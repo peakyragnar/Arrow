@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Arrow · Finding #{{ f.id }}</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">Arrow</div>
+  <nav class="topnav">
+    <a href="/findings?status=open" class="navlink current">Findings</a>
+  </nav>
+  <form class="ticker-select" method="get" action="/">
+    <label for="ticker-dropdown">Ticker:</label>
+    <select id="ticker-dropdown" onchange="window.location.href = '/t/' + this.value;">
+      <option value="">— pick —</option>
+      {% for t in tickers %}
+        <option value="{{ t }}">{{ t }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</header>
+
+<main class="finding-detail">
+  <a class="back" href="/findings?status={{ f.status }}">← back to findings</a>
+
+  <h1>
+    <span class="sev sev-{{ f.severity }}">{{ f.severity }}</span>
+    <span class="type">{{ f.finding_type }}</span>
+    <span class="finding-id">#{{ f.id }}</span>
+  </h1>
+
+  <p class="summary">{{ f.summary }}</p>
+
+  <section class="status-block">
+    <h2>Status</h2>
+    <table class="kv">
+      <tr><th>Status</th><td>
+        <strong class="status-{{ f.status }}">{{ f.status }}</strong>
+        {% if f.closed_reason %}({{ f.closed_reason }}){% endif %}
+      </td></tr>
+      {% if f.status == 'closed' %}
+        <tr><th>Closed at</th><td>{{ f.closed_at }}</td></tr>
+        <tr><th>Closed by</th><td>{{ f.closed_by }}</td></tr>
+        {% if f.closed_note %}<tr><th>Closed note</th><td>{{ f.closed_note }}</td></tr>{% endif %}
+        {% if f.suppressed_until %}
+          <tr><th>Suppressed until</th><td>{{ f.suppressed_until }}</td></tr>
+        {% endif %}
+      {% endif %}
+      <tr><th>Created at</th><td>{{ f.created_at }}</td></tr>
+      <tr><th>Created by</th><td>{{ f.created_by }}</td></tr>
+      <tr><th>Last seen</th><td>{{ f.last_seen_at }}</td></tr>
+    </table>
+  </section>
+
+  <section class="scope-block">
+    <h2>Scope</h2>
+    <table class="kv">
+      <tr><th>Ticker</th><td>{{ f.ticker or '— (cross-cutting)' }}</td></tr>
+      <tr><th>Vertical</th><td>{{ f.vertical or '— (cross-cutting)' }}</td></tr>
+      <tr><th>Period</th><td>{{ f.fiscal_period_key or '—' }}</td></tr>
+      <tr><th>Source check</th><td><code>{{ f.source_check }}</code></td></tr>
+      <tr><th>Fingerprint</th><td><code class="fingerprint">{{ f.fingerprint }}</code></td></tr>
+    </table>
+  </section>
+
+  {% if f.suggested_action %}
+    <section class="suggested-action">
+      <h2>Suggested action</h2>
+      {% if f.suggested_action.prose %}
+        <p class="prose">{{ f.suggested_action.prose }}</p>
+      {% endif %}
+      {% if f.suggested_action.command %}
+        <pre class="command">{{ f.suggested_action.command }}</pre>
+      {% endif %}
+      {% if f.suggested_action.kind %}
+        <p class="kind">action kind: <code>{{ f.suggested_action.kind }}</code></p>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  <section class="evidence">
+    <h2>Evidence</h2>
+    <pre>{{ f.evidence | tojson(indent=2) }}</pre>
+  </section>
+
+  {% if f.status == 'open' %}
+    <section class="lifecycle-actions">
+      <h2>Actions</h2>
+
+      <form class="action resolve" method="post" action="/findings/{{ f.id }}/resolve">
+        <label>Resolution note (optional)
+          <input type="text" name="note" placeholder="e.g. re-ran ingest, problem cleared">
+        </label>
+        <button type="submit" class="btn btn-resolve">Resolve</button>
+        <p class="hint">Use when the underlying problem is fixed (e.g. you re-ran ingest).</p>
+      </form>
+
+      <form class="action suppress" method="post" action="/findings/{{ f.id }}/suppress">
+        <label>Suppress reason (required)
+          <input type="text" name="reason" required placeholder="e.g. AVGO segment reorg confirmed in 10-Q">
+        </label>
+        <label>Expires (optional, YYYY-MM-DD)
+          <input type="text" name="expires" placeholder="leave blank for permanent">
+        </label>
+        <button type="submit" class="btn btn-suppress">Suppress</button>
+        <p class="hint">Use when the finding is real but not actionable now. Stays suppressed across nightly sweeps.</p>
+      </form>
+
+      <form class="action dismiss" method="post" action="/findings/{{ f.id }}/dismiss">
+        <label>Dismiss note (optional)
+          <input type="text" name="note" placeholder="e.g. false positive — extractor regex was right">
+        </label>
+        <button type="submit" class="btn btn-dismiss">Dismiss</button>
+        <p class="hint">Use when the finding is a false positive (the check is wrong, not the data).</p>
+      </form>
+    </section>
+  {% endif %}
+
+  <section class="history">
+    <h2>History</h2>
+    {% if f.history %}
+      <ol class="history-list">
+        {% for h in f.history %}
+          <li>
+            <span class="at">{{ h.at }}</span>
+            <span class="actor">{{ h.actor }}</span>
+            <span class="action">{{ h.action }}</span>
+            {% if h.note %}<span class="note">— {{ h.note }}</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="empty">No history entries yet.</p>
+    {% endif %}
+  </section>
+</main>
+
+<footer class="bottom">
+  <a href="/findings?status=open">findings inbox</a> &middot;
+  <a href="/">home</a>
+</footer>
+
+</body>
+</html>

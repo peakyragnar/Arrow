@@ -222,3 +222,263 @@ footer.bottom {
 }
 footer.bottom a { color: var(--accent); text-decoration: none; }
 footer.bottom a:hover { text-decoration: underline; }
+
+/* ---------------------------------------------------------------------
+   Steward findings panes
+   --------------------------------------------------------------------- */
+
+.topnav {
+    display: flex;
+    gap: 16px;
+}
+.topnav .navlink {
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 3px;
+}
+.topnav .navlink:hover { color: var(--text); background: var(--bg-alt); }
+.topnav .navlink.current { color: var(--text); background: var(--bg-alt); }
+
+.flag-unresolved { color: var(--neg); text-decoration: none; }
+.flag-unresolved:hover { text-decoration: underline; }
+.flag-accepted { color: var(--text-dim); }
+
+.findings-counts { color: var(--text-dim); }
+.findings-counts .sev-investigate { color: var(--neg); }
+.findings-counts .sev-warning { color: #eab308; }
+.findings-counts .sev-informational { color: var(--text-dim); }
+
+.findings-pane {
+    flex: 1;
+    overflow: auto;
+    padding: 12px 16px;
+}
+
+.findings-filters {
+    display: flex;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+}
+.findings-filters label {
+    display: flex;
+    flex-direction: column;
+    font-size: 11px;
+    color: var(--text-dim);
+    gap: 2px;
+}
+.findings-filters input,
+.findings-filters select {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 3px 6px;
+    font: inherit;
+}
+.findings-filters button {
+    background: var(--accent);
+    color: var(--bg);
+    border: 0;
+    padding: 4px 12px;
+    cursor: pointer;
+    font: inherit;
+}
+.findings-filters .reset {
+    color: var(--text-dim);
+    margin-left: auto;
+}
+
+.findings-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.findings-table th,
+.findings-table td {
+    padding: 6px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+}
+.findings-table th {
+    color: var(--text-dim);
+    font-weight: normal;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.findings-table tr.status-closed { opacity: 0.55; }
+.findings-table .summary { white-space: normal; max-width: 800px; }
+.findings-table .age { text-align: right; color: var(--text-dim); }
+.findings-table .type { color: var(--text-dim); font-size: 11px; }
+
+.sev { font-weight: 600; }
+.sev-investigate { color: var(--neg); }
+.sev-warning { color: #eab308; }
+.sev-informational { color: var(--text-dim); }
+.status-open { color: var(--text); }
+.status-closed { color: var(--text-dim); }
+
+.empty {
+    color: var(--text-dim);
+    padding: 24px;
+    text-align: center;
+}
+
+/* Finding detail */
+
+.finding-detail {
+    flex: 1;
+    overflow: auto;
+    padding: 16px 24px;
+    max-width: 960px;
+}
+.finding-detail .back {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 11px;
+}
+.finding-detail .back:hover { text-decoration: underline; }
+.finding-detail h1 {
+    font-size: 16px;
+    margin: 12px 0 8px 0;
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+}
+.finding-detail h1 .type { color: var(--text-dim); font-weight: normal; }
+.finding-detail h1 .finding-id { color: var(--text-dim); font-weight: normal; margin-left: auto; }
+.finding-detail h2 {
+    font-size: 13px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 24px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+}
+.finding-detail .summary {
+    font-size: 13px;
+    line-height: 1.5;
+    background: var(--bg-alt);
+    border-left: 3px solid var(--accent);
+    padding: 8px 12px;
+    margin: 12px 0;
+}
+.finding-detail table.kv {
+    border-collapse: collapse;
+    width: 100%;
+}
+.finding-detail table.kv th {
+    color: var(--text-dim);
+    font-weight: normal;
+    text-align: left;
+    padding: 4px 12px 4px 0;
+    width: 160px;
+    vertical-align: top;
+}
+.finding-detail table.kv td {
+    padding: 4px 0;
+    vertical-align: top;
+}
+.finding-detail .fingerprint {
+    font-size: 10px;
+    color: var(--text-dim);
+    word-break: break-all;
+}
+.finding-detail .suggested-action .prose {
+    line-height: 1.5;
+    margin: 8px 0;
+}
+.finding-detail .suggested-action .command,
+.finding-detail .evidence pre {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    padding: 10px;
+    overflow-x: auto;
+    font-size: 11.5px;
+    border-radius: 3px;
+    white-space: pre;
+}
+
+/* Lifecycle action forms */
+.lifecycle-actions .action {
+    border: 1px solid var(--border);
+    background: var(--bg-alt);
+    border-radius: 3px;
+    padding: 10px 14px;
+    margin: 10px 0;
+    display: grid;
+    gap: 6px;
+    grid-template-columns: 1fr auto;
+}
+.lifecycle-actions .action label {
+    display: flex;
+    flex-direction: column;
+    font-size: 11px;
+    color: var(--text-dim);
+    gap: 2px;
+    grid-column: 1;
+}
+.lifecycle-actions .action input {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    font: inherit;
+}
+.lifecycle-actions .action button {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: stretch;
+    border: 0;
+    padding: 6px 16px;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+}
+.lifecycle-actions .btn-resolve { background: var(--pos); color: var(--bg); }
+.lifecycle-actions .btn-suppress { background: #eab308; color: var(--bg); }
+.lifecycle-actions .btn-dismiss { background: var(--text-dim); color: var(--bg); }
+.lifecycle-actions .hint {
+    grid-column: 1 / -1;
+    font-size: 10.5px;
+    color: var(--text-dim);
+    margin: 0;
+}
+
+/* History list */
+.history-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.history-list li {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 11.5px;
+}
+.history-list .at { color: var(--text-dim); margin-right: 8px; }
+.history-list .actor { color: var(--accent); margin-right: 8px; }
+.history-list .action { color: var(--text); margin-right: 8px; }
+.history-list .note { color: var(--text-dim); }
+
+.empty-state {
+    flex: 1;
+    overflow: auto;
+    padding: 48px;
+    text-align: center;
+}
+.empty-state h1 {
+    font-size: 18px;
+    color: var(--text-dim);
+    font-weight: normal;
+}
+.empty-state p {
+    color: var(--text-dim);
+}

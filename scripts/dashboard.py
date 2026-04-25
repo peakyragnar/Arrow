@@ -13,20 +13,28 @@ Writes: nothing.
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 import psycopg
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 
 from arrow.db.connection import get_conn
+from arrow.steward.actions import (
+    StewardActionError,
+    dismiss_finding,
+    resolve_finding,
+    suppress_finding,
+)
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 TEMPLATES = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -621,11 +629,72 @@ def index() -> Any:
     with get_conn() as conn:
         tickers = fetch_tickers(conn)
     if not tickers:
-        return HTMLResponse(
-            "<html><body><h1>No companies seeded.</h1>"
-            "<p>Run <code>uv run scripts/ingest_company.py TICKER</code> first.</p></body></html>"
+        # Even the no-data landing should keep the topbar so the
+        # operator can navigate to /findings or /health without
+        # editing the URL bar.
+        return _no_data_response(
+            heading="No companies seeded.",
+            body_html="<p>Run <code>uv run scripts/ingest_company.py TICKER</code> first, "
+                      "then refresh.</p>",
+            tickers=[],
+            current_ticker=None,
         )
     return RedirectResponse(url=f"/t/{tickers[0]}", status_code=307)
+
+
+def _no_data_response(
+    *,
+    heading: str,
+    body_html: str,
+    tickers: list[str],
+    current_ticker: str | None,
+) -> HTMLResponse:
+    """Render an empty-state page that still carries the topbar.
+
+    Pre-V1-step-6 behavior was a bare ``<html><body><h1>...`` snippet
+    with no nav, which left operators stranded if they clicked into
+    a ticker that had no facts ingested. Now they keep the topbar
+    (Findings link, ticker dropdown) and a clear in-pane message.
+    """
+    options = "".join(
+        f'<option value="{t}"{" selected" if t == current_ticker else ""}>{t}</option>'
+        for t in tickers
+    )
+    select_html = (
+        '<form class="ticker-select" method="get" action="/">'
+        '<label for="ticker-dropdown">Ticker:</label>'
+        '<select id="ticker-dropdown" '
+        'onchange="window.location.href = \'/t/\' + this.value;">'
+        '<option value="">— pick —</option>' + options +
+        '</select></form>'
+    )
+    return HTMLResponse(
+        f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Arrow</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">Arrow</div>
+  <nav class="topnav">
+    <a href="/findings?status=open" class="navlink">Findings</a>
+  </nav>
+  {select_html}
+</header>
+<main class="empty-state">
+  <h1>{heading}</h1>
+  {body_html}
+</main>
+<footer class="bottom">
+  <a href="/findings?status=open">findings</a> &middot;
+  <a href="/health">health</a>
+</footer>
+</body>
+</html>"""
+    )
 
 
 @app.get("/t/{ticker}", response_class=HTMLResponse)
@@ -644,10 +713,14 @@ def dashboard(request: Request, ticker: str) -> Any:
         flag_counts = fetch_flag_counts(conn, ticker)
 
     if not quarterly_full:
-        return HTMLResponse(
-            f"<html><body><h1>{ticker}: no facts loaded yet.</h1>"
-            f"<p>Run <code>uv run scripts/ingest_company.py {ticker}</code> first.</p>"
-            "</body></html>"
+        return _no_data_response(
+            heading=f"{ticker}: no facts loaded yet.",
+            body_html=(
+                f"<p>Run <code>uv run scripts/ingest_company.py {ticker}</code>"
+                f" first, then refresh.</p>"
+            ),
+            tickers=tickers,
+            current_ticker=ticker,
         )
 
     # Displayed = the most recent Q_COUNT quarters; quarterly_full keeps
@@ -723,6 +796,241 @@ def dashboard_raw(ticker: str) -> Any:
             "fiscal_years": [_serialize_row(r) for r in fy_rows],
             "ttm_latest": _serialize_row(ttm) if ttm else None,
         }
+    )
+
+
+# ---------------------------------------------------------------------------
+# Steward findings pane
+# ---------------------------------------------------------------------------
+
+
+def _operator_actor() -> str:
+    """Actor recorded for dashboard-initiated state changes.
+
+    Reads $USER (the operator's OS account) so the audit trail captures
+    who actually clicked. Falls back to 'human:dashboard' when $USER is
+    unset. Avoids the prior cheat of hardcoding a specific operator
+    name in shipped code. The ':dashboard' suffix distinguishes
+    dashboard clicks from CLI invocations of `scripts/run_steward.py`
+    (which use 'human:$USER' without the suffix).
+    """
+    user = os.environ.get("USER", "").strip()
+    return f"human:{user}:dashboard" if user else "human:dashboard"
+
+
+_VALID_SEVERITIES = ("informational", "warning", "investigate")
+_VALID_STATUSES = ("open", "closed", "all")
+
+
+@app.get("/findings", response_class=HTMLResponse)
+def findings_list(
+    request: Request,
+    ticker: str | None = None,
+    severity: str | None = None,
+    vertical: str | None = None,
+    status: str = "open",
+) -> Any:
+    """List steward findings with optional filters.
+
+    Status filter defaults to 'open' (the operator inbox). 'closed'
+    shows the historical / resolved trail. 'all' shows both.
+
+    All filters are validated against allow-lists before reaching SQL
+    (no string-formatting of user input into queries). Unknown values
+    are rejected with 400.
+    """
+    if status not in _VALID_STATUSES:
+        raise HTTPException(400, f"invalid status: {status!r}")
+    if severity is not None and severity not in _VALID_SEVERITIES:
+        raise HTTPException(400, f"invalid severity: {severity!r}")
+
+    where_clauses: list[str] = []
+    params: list[Any] = []
+    if status != "all":
+        where_clauses.append("status = %s")
+        params.append(status)
+    if ticker:
+        where_clauses.append("ticker = %s")
+        params.append(ticker.upper())
+    if severity:
+        where_clauses.append("severity = %s")
+        params.append(severity)
+    if vertical:
+        where_clauses.append("vertical = %s")
+        params.append(vertical)
+
+    where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+    sql = f"""
+        SELECT id, fingerprint, finding_type, severity, ticker, vertical,
+               fiscal_period_key, summary, status, closed_reason, closed_at,
+               created_at, last_seen_at,
+               EXTRACT(EPOCH FROM (now() - created_at))/86400 AS age_days
+        FROM data_quality_findings
+        {where_sql}
+        ORDER BY
+            CASE severity
+              WHEN 'investigate' THEN 0
+              WHEN 'warning' THEN 1
+              WHEN 'informational' THEN 2
+              ELSE 3
+            END,
+            created_at DESC
+        LIMIT 500;
+    """
+
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(sql, params)
+        rows = _rows_as_dicts(cur)
+        cur.execute(
+            """
+            SELECT
+                COUNT(*) FILTER (WHERE status = 'open') AS open_count,
+                COUNT(*) FILTER (WHERE status = 'open' AND severity = 'investigate') AS investigate_count,
+                COUNT(*) FILTER (WHERE status = 'open' AND severity = 'warning') AS warning_count,
+                COUNT(*) FILTER (WHERE status = 'open' AND severity = 'informational') AS info_count,
+                COUNT(*) AS total_count
+            FROM data_quality_findings;
+            """
+        )
+        counts = dict(zip([d[0] for d in cur.description], cur.fetchone()))
+        tickers = fetch_tickers(conn)
+
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="findings_list.html.j2",
+        context={
+            "rows": rows,
+            "counts": counts,
+            "tickers": tickers,
+            "filters": {
+                "ticker": ticker.upper() if ticker else None,
+                "severity": severity,
+                "vertical": vertical,
+                "status": status,
+            },
+            "valid_severities": _VALID_SEVERITIES,
+            "valid_statuses": _VALID_STATUSES,
+        },
+    )
+
+
+@app.get("/findings/{finding_id}", response_class=HTMLResponse)
+def finding_detail(request: Request, finding_id: int) -> Any:
+    """Per-finding detail page: full evidence, suggested action, history,
+    and lifecycle action buttons.
+    """
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, fingerprint, finding_type, severity,
+                   company_id, ticker, vertical, fiscal_period_key,
+                   source_check, evidence, summary, suggested_action,
+                   status, closed_reason, closed_at, closed_by, closed_note,
+                   suppressed_until, history,
+                   created_at, created_by, last_seen_at
+            FROM data_quality_findings
+            WHERE id = %s;
+            """,
+            (finding_id,),
+        )
+        row = cur.fetchone()
+        if row is None:
+            raise HTTPException(404, f"finding #{finding_id} not found")
+        finding = dict(zip([d[0] for d in cur.description], row))
+        tickers = fetch_tickers(conn)
+
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="finding_detail.html.j2",
+        context={
+            "f": finding,
+            "tickers": tickers,
+        },
+    )
+
+
+def _lifecycle_action(
+    finding_id: int,
+    fn,
+    *,
+    redirect_to: str = "/findings",
+    **kwargs: Any,
+) -> RedirectResponse:
+    """Shared wrapper for POST lifecycle handlers.
+
+    Calls the action callable with operator actor; surfaces
+    StewardActionError as 400; redirects with 303 (Post/Redirect/Get)
+    so refresh doesn't re-submit.
+    """
+    actor = _operator_actor()
+    try:
+        with get_conn() as conn:
+            fn(conn, finding_id, actor=actor, **kwargs)
+    except StewardActionError as e:
+        raise HTTPException(400, str(e))
+    return RedirectResponse(url=redirect_to, status_code=303)
+
+
+@app.post("/findings/{finding_id}/resolve")
+def http_resolve_finding(
+    finding_id: int,
+    note: str = Form(""),
+) -> Any:
+    return _lifecycle_action(
+        finding_id,
+        resolve_finding,
+        redirect_to=f"/findings/{finding_id}",
+        note=note.strip() or None,
+    )
+
+
+@app.post("/findings/{finding_id}/suppress")
+def http_suppress_finding(
+    finding_id: int,
+    reason: str = Form(...),
+    expires: str = Form(""),
+) -> Any:
+    """Suppress a finding with a required reason and optional expiry date.
+
+    Reason is required (suppressions without reasons rot the inbox).
+    Expires is YYYY-MM-DD; if blank, the suppression has no expiry
+    (permanent until manually reopened).
+    """
+    if not reason.strip():
+        raise HTTPException(400, "suppress requires a non-empty reason")
+
+    expires_date: date | None = None
+    if expires.strip():
+        try:
+            expires_date = date.fromisoformat(expires.strip())
+        except ValueError:
+            raise HTTPException(400, f"invalid expires date: {expires!r} (want YYYY-MM-DD)")
+
+    actor = _operator_actor()
+    try:
+        with get_conn() as conn:
+            suppress_finding(
+                conn,
+                finding_id,
+                actor=actor,
+                reason=reason.strip(),
+                expires=expires_date,
+            )
+    except StewardActionError as e:
+        raise HTTPException(400, str(e))
+    return RedirectResponse(url=f"/findings/{finding_id}", status_code=303)
+
+
+@app.post("/findings/{finding_id}/dismiss")
+def http_dismiss_finding(
+    finding_id: int,
+    note: str = Form(""),
+) -> Any:
+    return _lifecycle_action(
+        finding_id,
+        dismiss_finding,
+        redirect_to=f"/findings/{finding_id}",
+        note=note.strip() or None,
     )
 
 

@@ -9,6 +9,9 @@
 
 <header class="topbar">
   <div class="brand">Arrow</div>
+  <nav class="topnav">
+    <a href="/findings?status=open" class="navlink">Findings</a>
+  </nav>
   <form class="ticker-select" method="get" action="/">
     <label for="ticker-dropdown">Ticker:</label>
     <select id="ticker-dropdown" onchange="window.location.href = '/t/' + this.value;">
@@ -21,7 +24,7 @@
     <span class="period">Latest: {{ latest_period }}</span>
     <span class="flags">
       flags:
-      <span class="flag-unresolved">{{ flag_counts.unresolved }} unresolved</span> ·
+      <a class="flag-unresolved" href="/findings?ticker={{ ticker }}&status=open">{{ flag_counts.unresolved }} unresolved</a> ·
       <span class="flag-accepted">{{ flag_counts.accepted }} accepted</span>
     </span>
   </div>

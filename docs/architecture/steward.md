@@ -386,7 +386,21 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started).
      "why" in detail.
    V1 ships with five deterministic checks total. Tests: 13 new
    integration; full suite 261 → 281.
-6. ⬜ Dashboard `/findings` list + detail + lifecycle POSTs
+6. ✅ Dashboard `/findings` list + detail + lifecycle POSTs.
+   Routes: `GET /findings` (filterable by ticker/severity/vertical/status,
+   defaults to status=open), `GET /findings/{id}` (full detail with
+   evidence, suggested action, history), `POST /findings/{id}/resolve`,
+   `POST /findings/{id}/suppress` (reason required, optional expiry),
+   `POST /findings/{id}/dismiss`. All POSTs return 303 (PRG). All
+   inputs validated against allow-lists; SQL parameterized; action
+   errors surface as 400. Operator actor derived from `$USER` with
+   `:dashboard` suffix (no hardcoded names). Templates duplicate the
+   topbar per the lean default; `_layout.html.j2` refactor still
+   deferred (3 templates now). The pre-existing bare empty-state for
+   `/t/{ticker}` with no data also got a real topbar — operators no
+   longer get stranded without nav. Tests: 20 new integration covering
+   list/detail/lifecycle/validation/PRG/actor-no-leak; full suite
+   284 → 304.
 7. ⬜ Dashboard `/coverage` matrix + per-ticker pane + add/remove ticker
 8. ⬜ `expectations.py` module + `expected_coverage` check (V1.5)
 

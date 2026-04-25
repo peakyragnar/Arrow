@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Arrow · Findings</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">Arrow</div>
+  <nav class="topnav">
+    <a href="/findings?status=open" class="navlink current">Findings</a>
+  </nav>
+  <form class="ticker-select" method="get" action="/">
+    <label for="ticker-dropdown">Ticker:</label>
+    <select id="ticker-dropdown" onchange="window.location.href = '/t/' + this.value;">
+      <option value="">— pick —</option>
+      {% for t in tickers %}
+        <option value="{{ t }}">{{ t }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  <div class="meta">
+    <span class="findings-counts">
+      open:
+      <span class="sev-investigate">{{ counts.investigate_count }} investigate</span> ·
+      <span class="sev-warning">{{ counts.warning_count }} warning</span> ·
+      <span class="sev-informational">{{ counts.info_count }} informational</span>
+    </span>
+  </div>
+</header>
+
+<main class="findings-pane">
+  <form class="findings-filters" method="get" action="/findings">
+    <label>Ticker
+      <input type="text" name="ticker" value="{{ filters.ticker or '' }}" placeholder="any" size="6">
+    </label>
+    <label>Severity
+      <select name="severity">
+        <option value="">any</option>
+        {% for s in valid_severities %}
+          <option value="{{ s }}" {% if filters.severity == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Vertical
+      <input type="text" name="vertical" value="{{ filters.vertical or '' }}" placeholder="any" size="10">
+    </label>
+    <label>Status
+      <select name="status">
+        {% for st in valid_statuses %}
+          <option value="{{ st }}" {% if filters.status == st %}selected{% endif %}>{{ st }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Filter</button>
+    <a href="/findings?status=open" class="reset">reset</a>
+  </form>
+
+  {% if rows %}
+    <table class="findings-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Severity</th>
+          <th>Status</th>
+          <th>Ticker</th>
+          <th>Vertical</th>
+          <th>Period</th>
+          <th>Type</th>
+          <th>Summary</th>
+          <th>Age</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+          <tr class="row-{{ r.severity }} status-{{ r.status }}">
+            <td><a href="/findings/{{ r.id }}">#{{ r.id }}</a></td>
+            <td class="sev sev-{{ r.severity }}">{{ r.severity }}</td>
+            <td class="status">{{ r.status }}{% if r.closed_reason %} ({{ r.closed_reason }}){% endif %}</td>
+            <td>{{ r.ticker or '—' }}</td>
+            <td>{{ r.vertical or '—' }}</td>
+            <td>{{ r.fiscal_period_key or '—' }}</td>
+            <td class="type">{{ r.finding_type }}</td>
+            <td class="summary">{{ r.summary }}</td>
+            <td class="age">{{ '%.1f' | format(r.age_days) }}d</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">
+      {% if filters.status == 'open' %}
+        Inbox empty. No open findings matching the current filters.
+      {% else %}
+        No findings matching the current filters.
+      {% endif %}
+    </p>
+  {% endif %}
+</main>
+
+<footer class="bottom">
+  <a href="/">home</a> &middot;
+  <a href="/findings?status=closed">closed</a> &middot;
+  <a href="/findings?status=all">all</a> &middot;
+  <a href="/health">health</a>
+</footer>
+
+</body>
+</html>
