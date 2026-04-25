@@ -1211,10 +1211,10 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 9. ✅ implement and populate `financial_facts` schema with fiscal, calendar, PIT, and segment-dimension fields (migrations 008, 016; segment ingest built 2026-04-24).
 9.5. ✅ implement FMP ↔ SEC/XBRL audit rail (migrations 010 + 011, built 2026-04-21/22). Preserved for separate audit/reconciliation passes. No longer part of default baseline FMP backfill. Divergences write to `data_quality_flags` when audit is run; amendment-detect remains preserved as later audit functionality rather than default ingest behavior.
 10. ⬜ implement `series` + `series_observations` (unified macro / industry / commodity substrate, vintage-preserving). Build when first real source lands.
-11. ⬜ implement fiscal, calendar-normalized, and PIT derived views
+11. 🚧 implement fiscal, calendar-normalized, and PIT derived views. Current metric view stack exists under `db/queries/` (`v_ff_current`, wide period views, TTM/FY/CY/ROIC metrics, and screenable metric views); true PIT as-of view support remains deferred.
 12. ⬜ implement `prices_daily`
 13. ⬜ implement `company_events`
-14. ⬜ implement analyst runtime retrieval tools and deterministic revenue-driver CLI (PIT-aware; see `docs/architecture/analyst_runtime.md`)
+14. 🚧 implement analyst runtime retrieval tools and deterministic revenue-driver CLI (PIT-aware; see `docs/architecture/analyst_runtime.md`). MVP deterministic revenue-driver CLI exists in `scripts/ask_arrow.py`; broader reusable retrieval tools, richer recipes, and full PIT behavior remain in progress.
 15. ⬜ implement `qa_log` as part of normal analyst flow (with consent flags)
 16. ✅ implement SEC qualitative section + chunk layer (`artifact_sections`, `artifact_section_chunks`) for filing text in migration 014. Transcript-specific chunking remains future work.
 17. ⬜ add section-over-time comparison support
@@ -1222,7 +1222,7 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 19. 🚧 add SEC fast-path ingest for newly dropped filings (recent submissions + raw filing artifacts; 8-K exhibit/press-release text-unit support landed in migration 015; first-class update orchestration remains next)
 20. ⬜ add Massive-backed options ingest later
 21. ⬜ migrate to cloud when durability/reliability justify it
-22. ⬜ metrics platform + analyst surfaces (see `docs/architecture/metrics_platform.md`, `docs/architecture/dashboard.md`). Sub-phases: Phase 0 formulas.md spec tweaks (done) → Phase 1 mapper audit + FMP `historical-employee-count` ingest + next metrics migration → Phase 2 10-year history backfill for existing tickers → Phase 3 view stack (`v_ff_current`, `v_company_period_wide`, `v_rd_*`, `v_ttm_*`, `v_metrics_*`, `v_metric_changes`, `v_dashboard_panel`) → Phase 4 dashboard UI → Phase 5 screener CLI.
+22. 🚧 metrics platform + analyst surfaces (see `docs/architecture/metrics_platform.md`, `docs/architecture/dashboard.md`). Shipped: formula spec tweaks, FMP employee-count ingest, segment-aware facts, core metric view stack, dashboard MVP (`scripts/dashboard.py`), screener MVP (`scripts/screen.py`). Remaining: complete presentation views such as `v_metric_changes` / `v_dashboard_panel` if still desired, full-history production backfill validation, and broader analyst-surface integration.
 
 ✅ also: `companies` schema (migration 007) — implicit prerequisite to step 9, was not in the original numbered list but has to land before any fact references a company.
 

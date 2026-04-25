@@ -1,6 +1,19 @@
 # Analyst Runtime
 
-Status: active design; MVP slice next
+Status: active design; MVP deterministic revenue-driver slice built
+
+Current shipped slice:
+
+- CLI entrypoint: `scripts/ask_arrow.py`
+- Runtime packet / synthesis code: `src/arrow/analysis/company_context.py`
+- Covered question shape: "What drove {TICKER} revenue growth in FY{YEAR}?"
+
+Still pending:
+
+- broader reusable retrieval tool surface
+- multiple recipes and topics
+- durable `qa_log`
+- full PIT as-of behavior across every source family
 
 This document defines the runtime spine for every analyst-facing surface in
 Arrow: CLI questions, chat, saved prompts, dashboard panels, and future

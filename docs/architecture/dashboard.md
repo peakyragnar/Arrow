@@ -199,8 +199,8 @@ None of these require schema changes or view changes; all are UI-layer additions
 ## Status
 
 - Phase 0 (formula spec tweaks): done.
-- Phase 1 (mapper audit + employee ingest): next.
-- Phase 2 (history backfill): after Phase 1.
-- Phase 3 (view stack): after Phase 2.
-- **Phase 4 (this doc's subject)**: after Phase 3.
-- Phase 5 (screener): parallel with Phase 4.
+- Phase 1 (mapper audit + employee ingest): done for the current MVP.
+- Phase 2 (history backfill): operator/data task through the normal ingest path.
+- Phase 3 (view stack): MVP built under `db/queries/`.
+- **Phase 4 (this doc's subject)**: MVP built in `scripts/dashboard.py`, `templates/dashboard.html.j2`, and `static/dashboard.css`.
+- Phase 5 (screener): MVP built in `scripts/screen.py`.
