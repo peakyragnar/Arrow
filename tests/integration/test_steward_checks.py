@@ -93,24 +93,39 @@ def _seed_section(
     fiscal_period_key: str = "FY2024",
     form_family: str = "10-K",
     section_key: str = "item_7_mda",
-    confidence: float = 0.9,
+    confidence: float | None = None,
+    extraction_method: str | None = None,
     created_offset_days: int = 0,
 ) -> int:
-    """Seed an artifact_sections row. extraction_method is derived from
-    section_key + confidence to satisfy the
-    ``artifact_sections_confidence_method_contract`` CHECK:
+    """Seed an artifact_sections row.
+
+    If ``extraction_method`` is given, ``confidence`` is set to a value
+    that satisfies the ``artifact_sections_confidence_method_contract``
+    CHECK for that method (caller can override). Otherwise method is
+    derived from section_key + confidence:
 
       - section_key='unparsed_body' → method='unparsed_fallback', confidence=0.0
       - confidence >= 0.85          → method='deterministic'
       - 0 < confidence < 0.85       → method='repair'
     """
-    if section_key == "unparsed_body":
-        method = "unparsed_fallback"
-        confidence = 0.0
-    elif confidence >= 0.85:
-        method = "deterministic"
+    if extraction_method is not None:
+        method = extraction_method
+        if confidence is None:
+            confidence = {
+                "deterministic": 0.95,
+                "repair": 0.5,
+                "unparsed_fallback": 0.0,
+            }[method]
     else:
-        method = "repair"
+        if confidence is None:
+            confidence = 0.9
+        if section_key == "unparsed_body":
+            method = "unparsed_fallback"
+            confidence = 0.0
+        elif confidence >= 0.85:
+            method = "deterministic"
+        else:
+            method = "repair"
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -367,116 +382,211 @@ def test_unparsed_body_fallback_skips_artifact_with_real_sections() -> None:
 
 
 # ---------------------------------------------------------------------------
-# section_confidence_drift
+# extraction_method_drift
 # ---------------------------------------------------------------------------
 
 
-def test_section_confidence_drift_fires_on_significant_drop() -> None:
-    """Baseline window: stable high confidence (~0.97). Recent window:
-    still deterministic (≥0.85) but lower (~0.86). Drop should exceed
-    2σ and produce a finding.
-
-    Both windows must use extraction_method='deterministic' to satisfy
-    the artifact_sections_confidence_method_contract CHECK and to be
-    seen by the check (which filters on that method).
+def _seed_method_window(
+    conn: psycopg.Connection,
+    *,
+    company_id: int,
+    ticker: str,
+    section_key: str,
+    n_deterministic: int,
+    n_repair: int,
+    n_fallback: int,
+    created_offset_days: int,
+    accession_prefix: str,
+) -> None:
+    """Seed N sections of each extraction_method into one window.
 
     Each section needs its own artifact (UNIQUE on
-    (artifact_id, section_key))."""
+    (artifact_id, section_key)). For unparsed_fallback rows, the
+    section_key MUST be 'unparsed_body' to satisfy the contract CHECK
+    — those sections are excluded from the drift check by design, so
+    seeding them on a different section_key would be wrong anyway.
+    """
+    run_id = _ensure_run(conn)
+    counter = 0
+
+    def _seed_one(method: str, key: str) -> None:
+        nonlocal counter
+        aid = _seed_artifact(
+            conn, run_id=run_id, company_id=company_id, ticker=ticker,
+            form_family="10-K",
+            accession=f"{accession_prefix}-{counter:04d}",
+        )
+        counter += 1
+        _seed_section(
+            conn, artifact_id=aid, company_id=company_id,
+            section_key=key, extraction_method=method,
+            created_offset_days=created_offset_days,
+        )
+
+    for _ in range(n_deterministic):
+        _seed_one("deterministic", section_key)
+    for _ in range(n_repair):
+        _seed_one("repair", section_key)
+    for _ in range(n_fallback):
+        # 'unparsed_fallback' rows must have section_key='unparsed_body'.
+        # The drift check correctly excludes them from the share
+        # calculation (it filters section_key <> 'unparsed_body').
+        # Calling code can still pass n_fallback > 0 — the rows land
+        # outside the check's window.
+        _seed_one("unparsed_fallback", "unparsed_body")
+
+
+def _ensure_run(conn: psycopg.Connection) -> int:
+    """Return any ingest_runs id, creating one if needed."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM ingest_runs LIMIT 1;")
+        row = cur.fetchone()
+        if row is not None:
+            return row[0]
+    return _seed_run(conn)
+
+
+def test_extraction_method_drift_fires_on_share_drop() -> None:
+    """Baseline: 100% deterministic (12 of 12). Recent: 50% (6 of 12).
+    Share drop = 50 points, well above MIN_SHARE_DROP=15. Fires."""
     with get_conn() as conn:
         _reset(conn)
         cid = _seed_company(conn, ticker="TEST")
-        run_id = _seed_run(conn)
 
-        # Baseline: 12 rows tightly clustered around 0.97
-        for i in range(12):
-            aid = _seed_artifact(
-                conn, run_id=run_id, company_id=cid, ticker="TEST",
-                form_family="10-K", accession=f"BASE-{i:04d}",
-            )
-            _seed_section(
-                conn, artifact_id=aid, company_id=cid,
-                section_key="item_1a_risk_factors",
-                confidence=0.97 + (0.001 * (i - 6)),
-                created_offset_days=45,
-            )
-        # Recent: 12 rows around 0.86 — well below baseline_mean - 2*stdev
-        for i in range(12):
-            aid = _seed_artifact(
-                conn, run_id=run_id, company_id=cid, ticker="TEST",
-                form_family="10-K", accession=f"RECENT-{i:04d}",
-            )
-            _seed_section(
-                conn, artifact_id=aid, company_id=cid,
-                section_key="item_1a_risk_factors",
-                confidence=0.86,
-                created_offset_days=5,
-            )
+        _seed_method_window(
+            conn, company_id=cid, ticker="TEST",
+            section_key="item_1a_risk_factors",
+            n_deterministic=12, n_repair=0, n_fallback=0,
+            created_offset_days=45, accession_prefix="BASE",
+        )
+        _seed_method_window(
+            conn, company_id=cid, ticker="TEST",
+            section_key="item_1a_risk_factors",
+            n_deterministic=6, n_repair=6, n_fallback=0,
+            created_offset_days=5, accession_prefix="RECENT",
+        )
 
         run_steward(conn, scope=Scope.universe())
-        rows = _findings(conn, source_check="section_confidence_drift")
+        rows = _findings(conn, source_check="extraction_method_drift")
     assert len(rows) == 1
     r = rows[0]
-    assert r["evidence"]["section_key"] == "item_1a_risk_factors"
-    assert r["evidence"]["recent_n"] == 12
-    assert r["evidence"]["baseline_n"] == 12
-    assert r["evidence"]["recent_mean"] < r["evidence"]["baseline_mean"]
-    assert r["evidence"]["z_score"] >= 2.0
-    assert r["ticker"] is None  # corpus-wide finding
+    assert r["ticker"] is None  # corpus-wide
+    ev = r["evidence"]
+    assert ev["section_key"] == "item_1a_risk_factors"
+    assert ev["recent"]["deterministic"] == 6
+    assert ev["recent"]["repair"] == 6
+    assert ev["baseline"]["deterministic"] == 12
+    assert ev["baseline"]["repair"] == 0
+    assert ev["baseline"]["deterministic_share"] == pytest.approx(1.0)
+    assert ev["recent"]["deterministic_share"] == pytest.approx(0.5)
+    assert ev["share_drop"] == pytest.approx(0.5)
 
 
-def test_section_confidence_drift_skips_when_window_too_small() -> None:
-    """Below MIN_ROWS in either window, the test isn't fired."""
+def test_extraction_method_drift_fires_on_demotion_to_fallback() -> None:
+    """A regression that pushes sections all the way to unparsed_fallback
+    also shows up — the deterministic share still drops because the
+    `total` in the recent window includes the now-non-deterministic
+    sections that stayed in the bucket."""
     with get_conn() as conn:
         _reset(conn)
         cid = _seed_company(conn, ticker="TEST")
-        run_id = _seed_run(conn)
 
-        # Only 5 in each window — below MIN_ROWS=10
-        for i in range(5):
-            aid = _seed_artifact(
-                conn, run_id=run_id, company_id=cid, ticker="TEST",
-                form_family="10-K", accession=f"SMALL-B-{i}",
-            )
-            _seed_section(
-                conn, artifact_id=aid, company_id=cid,
-                section_key="item_7_mda", confidence=0.95,
-                created_offset_days=45,
-            )
-        for i in range(5):
-            aid = _seed_artifact(
-                conn, run_id=run_id, company_id=cid, ticker="TEST",
-                form_family="10-K", accession=f"SMALL-R-{i}",
-            )
-            _seed_section(
-                conn, artifact_id=aid, company_id=cid,
-                section_key="item_7_mda", confidence=0.86,
-                created_offset_days=5,
-            )
+        # Baseline: 12 deterministic.
+        _seed_method_window(
+            conn, company_id=cid, ticker="TEST",
+            section_key="item_7_mda",
+            n_deterministic=12, n_repair=0, n_fallback=0,
+            created_offset_days=45, accession_prefix="BASE",
+        )
+        # Recent: 5 deterministic + 7 repair (deterministic share dropped
+        # from 100% to ~42%). The 7 demoted sections went to repair, not
+        # fallback (fallback rows live on a different section_key and
+        # are excluded by the check).
+        _seed_method_window(
+            conn, company_id=cid, ticker="TEST",
+            section_key="item_7_mda",
+            n_deterministic=5, n_repair=7, n_fallback=0,
+            created_offset_days=5, accession_prefix="RECENT",
+        )
 
         run_steward(conn, scope=Scope.universe())
-        rows = _findings(conn, source_check="section_confidence_drift")
+        rows = _findings(conn, source_check="extraction_method_drift")
+    assert len(rows) == 1
+    ev = rows[0]["evidence"]
+    assert ev["recent"]["deterministic_share"] == pytest.approx(5 / 12)
+    assert ev["share_drop"] >= 0.5
+
+
+def test_extraction_method_drift_skips_small_drop() -> None:
+    """Baseline 100%, recent 90% — share drop is 10 points, below the
+    15-point threshold. Should not fire."""
+    with get_conn() as conn:
+        _reset(conn)
+        cid = _seed_company(conn, ticker="TEST")
+
+        _seed_method_window(
+            conn, company_id=cid, ticker="TEST",
+            section_key="item_7_mda",
+            n_deterministic=20, n_repair=0, n_fallback=0,
+            created_offset_days=45, accession_prefix="BASE",
+        )
+        # 18 of 20 = 90% deterministic; baseline 100%; drop = 10 points.
+        _seed_method_window(
+            conn, company_id=cid, ticker="TEST",
+            section_key="item_7_mda",
+            n_deterministic=18, n_repair=2, n_fallback=0,
+            created_offset_days=5, accession_prefix="RECENT",
+        )
+
+        run_steward(conn, scope=Scope.universe())
+        rows = _findings(conn, source_check="extraction_method_drift")
     assert rows == []
 
 
-def test_section_confidence_drift_skips_when_no_drop() -> None:
+def test_extraction_method_drift_skips_when_window_too_small() -> None:
+    """Below MIN_ROWS=10 in either window, no fire even with a big drop."""
     with get_conn() as conn:
         _reset(conn)
         cid = _seed_company(conn, ticker="TEST")
-        run_id = _seed_run(conn)
 
-        # Both windows: same high confidence, no drift.
-        for offset_label, offset in (("B", 45), ("R", 5)):
-            for i in range(12):
-                aid = _seed_artifact(
-                    conn, run_id=run_id, company_id=cid, ticker="TEST",
-                    form_family="10-K", accession=f"NODRIFT-{offset_label}-{i}",
-                )
-                _seed_section(
-                    conn, artifact_id=aid, company_id=cid,
-                    section_key="item_7_mda", confidence=0.95,
-                    created_offset_days=offset,
-                )
+        # 5 in each window — both below MIN_ROWS=10.
+        _seed_method_window(
+            conn, company_id=cid, ticker="TEST",
+            section_key="item_7_mda",
+            n_deterministic=5, n_repair=0, n_fallback=0,
+            created_offset_days=45, accession_prefix="SMALL-B",
+        )
+        _seed_method_window(
+            conn, company_id=cid, ticker="TEST",
+            section_key="item_7_mda",
+            n_deterministic=0, n_repair=5, n_fallback=0,
+            created_offset_days=5, accession_prefix="SMALL-R",
+        )
 
         run_steward(conn, scope=Scope.universe())
-        rows = _findings(conn, source_check="section_confidence_drift")
+        rows = _findings(conn, source_check="extraction_method_drift")
+    assert rows == []
+
+
+def test_extraction_method_drift_skips_when_no_drop() -> None:
+    """Both windows: same high deterministic share, no regression."""
+    with get_conn() as conn:
+        _reset(conn)
+        cid = _seed_company(conn, ticker="TEST")
+
+        _seed_method_window(
+            conn, company_id=cid, ticker="TEST",
+            section_key="item_7_mda",
+            n_deterministic=12, n_repair=0, n_fallback=0,
+            created_offset_days=45, accession_prefix="STABLE-B",
+        )
+        _seed_method_window(
+            conn, company_id=cid, ticker="TEST",
+            section_key="item_7_mda",
+            n_deterministic=12, n_repair=0, n_fallback=0,
+            created_offset_days=5, accession_prefix="STABLE-R",
+        )
+
+        run_steward(conn, scope=Scope.universe())
+        rows = _findings(conn, source_check="extraction_method_drift")
     assert rows == []

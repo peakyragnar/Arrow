@@ -254,7 +254,7 @@ honest about what's automatable.
 | `sec_artifact_orphans` | human_only | suggest_only | auto_with_review |
 | `unparsed_body_fallback` | human_only | suggest_only | suggest_only |
 | `broken_provenance` | human_only | suggest_only | autonomous |
-| `section_confidence_drift` | human_only | suggest_only | suggest_only |
+| `extraction_method_drift` | human_only | suggest_only | suggest_only |
 | `expected_coverage` | human_only | suggest_only | auto_with_review |
 | `segment_taxonomy_drift` (LLM) | n/a | suggest_only | suggest_only |
 | `extraction_quality_regression` (LLM) | n/a | suggest_only | suggest_only |
@@ -301,9 +301,13 @@ V1 deterministic checks (five):
    `artifact_text_units`
 4. `unparsed_body_fallback` — `artifact_sections.section_key='unparsed_body'`
    grouped per artifact
-5. `section_confidence_drift` — rolling-window check on
-   `artifact_sections.confidence` per `(form_family, section_key)`,
-   filtered to `extraction_method='deterministic'`
+5. `extraction_method_drift` — for each `(form_family, section_key)`,
+   compares the share of sections classified as
+   `extraction_method='deterministic'` between a recent 30-day window
+   and a prior 60-day baseline. Alerts when the deterministic share
+   drops by ≥ 15 percentage points. Catches the realistic regression
+   mode (extractor demoting sections from deterministic → repair →
+   unparsed_fallback) instead of within-bucket confidence drift.
 
 A sixth planned check, `broken_provenance`, was dropped on inspection:
 the schema enforces what it would have checked (NOT NULL +
@@ -366,14 +370,22 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started).
    verbose, actor capture, exit code, unknown check name).
 5. ✅ Four additional deterministic checks
    (`unresolved_flags_aging`, `sec_artifact_orphans`,
-   `unparsed_body_fallback`, `section_confidence_drift`). One planned
-   check (`broken_provenance`) was dropped on inspection: the schema
-   already enforces what it would have checked
-   (`source_raw_response_id` is NOT NULL with `ON DELETE RESTRICT` FK),
-   making both failure modes structurally impossible. Lean default —
-   don't ship code for impossible failure modes. V1 ships with five
-   deterministic checks total. Tests: 11 new integration; full suite
-   261 → 279.
+   `unparsed_body_fallback`, `extraction_method_drift`). Two design
+   corrections made during this step:
+   - One planned check (`broken_provenance`) was dropped on inspection:
+     the schema enforces what it would have checked
+     (`source_raw_response_id` is NOT NULL with `ON DELETE RESTRICT`
+     FK), making both failure modes structurally impossible.
+   - The original `section_confidence_drift` check was replaced with
+     `extraction_method_drift` after a self-review: a within-bucket
+     confidence z-test only catches sections that *stayed*
+     deterministic; the realistic regression mode is sections being
+     *demoted* from deterministic → repair → unparsed_fallback. The
+     replacement measures method-share drift over the same windows
+     and catches that mode directly. See module docstring for the
+     "why" in detail.
+   V1 ships with five deterministic checks total. Tests: 13 new
+   integration; full suite 261 → 281.
 6. ⬜ Dashboard `/findings` list + detail + lifecycle POSTs
 7. ⬜ Dashboard `/coverage` matrix + per-ticker pane + add/remove ticker
 8. ⬜ `expectations.py` module + `expected_coverage` check (V1.5)
