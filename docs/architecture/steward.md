@@ -340,8 +340,13 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started).
    `add_to_coverage`/`remove_from_coverage`/`set_coverage_tier`. Every
    action takes `actor: str` and appends to `history` jsonb. Tests:
    29 new (10 unit + 19 integration); full suite 250/250.
-3. ⬜ `src/arrow/steward/registry.py` + `runner.py` + first check
-   (`zero_row_runs`)
+3. ✅ `src/arrow/steward/registry.py` + `runner.py` + first check
+   (`zero_row_runs`). `Check` ABC, `@register` decorator, `Scope`,
+   `FindingDraft`. Runner orchestrates execution, persists via
+   `open_finding`, auto-resolves cleared findings within run scope,
+   captures per-check error without aborting the whole run. First check
+   surfaces succeeded ingest_runs that wrote 0 across the recognized
+   `OUTPUT_KEYS`. Tests: 11 new integration; full suite 261/261.
 4. ⬜ `scripts/run_steward.py` CLI
 5. ⬜ Remaining five deterministic checks
 6. ⬜ Dashboard `/findings` list + detail + lifecycle POSTs

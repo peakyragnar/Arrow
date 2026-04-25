@@ -38,12 +38,21 @@ from psycopg.types.json import Jsonb
 
 @dataclass(frozen=True)
 class FindingRef:
-    """Reference to a finding row after an action."""
+    """Reference to a finding row after an action.
+
+    ``outcome`` is set by ``open_finding`` and reports what the call did:
+      - ``"created"``    — inserted a new open row
+      - ``"re_observed"``— bumped last_seen_at on an existing open row
+      - ``"suppressed"`` — returned an active closed-suppressed row instead
+                          of opening anything (suppression respected)
+      - ``"transitioned"`` — set by close_finding family
+    """
 
     id: int
     fingerprint: str
     status: str
     closed_reason: str | None
+    outcome: str = "transitioned"
 
 
 @dataclass(frozen=True)
@@ -122,7 +131,10 @@ def open_finding(
         )
         row = cur.fetchone()
         if row is not None:
-            return FindingRef(id=row[0], fingerprint=row[1], status=row[2], closed_reason=row[3])
+            return FindingRef(
+                id=row[0], fingerprint=row[1], status=row[2], closed_reason=row[3],
+                outcome="suppressed",
+            )
 
         # 2. Existing open row? Bump last_seen_at, append history note.
         cur.execute(
@@ -147,7 +159,10 @@ def open_finding(
                 ),
             )
             r = cur.fetchone()
-            return FindingRef(id=r[0], fingerprint=r[1], status=r[2], closed_reason=r[3])
+            return FindingRef(
+                id=r[0], fingerprint=r[1], status=r[2], closed_reason=r[3],
+                outcome="re_observed",
+            )
 
         # 3. Insert new open row with initial history entry.
         initial_history = [
@@ -183,7 +198,10 @@ def open_finding(
             ),
         )
         r = cur.fetchone()
-        return FindingRef(id=r[0], fingerprint=r[1], status=r[2], closed_reason=r[3])
+        return FindingRef(
+            id=r[0], fingerprint=r[1], status=r[2], closed_reason=r[3],
+            outcome="created",
+        )
 
 
 def close_finding(
