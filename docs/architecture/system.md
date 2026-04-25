@@ -475,8 +475,8 @@ Status legend:
 | `alerts` | deferred | — |
 | `watchlists` | deferred | — |
 | `qa_log` | deferred | wired up the moment the analyst flow exists; consent flags must be enforced from the first interaction |
-| `coverage_membership` | deferred | migration 017 — curated coverage universe with tier (`core`/`extended`); steward enforces full quality bar per tier. See `docs/architecture/steward.md`. |
-| `data_quality_findings` | deferred | migration 017 — steward-produced findings with two-state lifecycle (`open` → `closed` with structured `closed_reason`); audit captured in `history` jsonb. Distinct from inline-validation `data_quality_flags`; UNIONed by `v_open_quality_signals` for dashboard. See `docs/architecture/steward.md`. |
+| `coverage_membership` | built | migration 017 — curated coverage universe with tier (`core`/`extended`); steward enforces full quality bar per tier. See `docs/architecture/steward.md`. |
+| `data_quality_findings` | built | migration 017 — steward-produced findings with two-state lifecycle (`open` → `closed` with structured `closed_reason`); audit captured in `history` jsonb. Distinct from inline-validation `data_quality_flags`; UNIONed by `v_open_quality_signals` (`db/queries/15_*.sql`) for dashboard. See `docs/architecture/steward.md`. |
 
 ## Table Intent
 

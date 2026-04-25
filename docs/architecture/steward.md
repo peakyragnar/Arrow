@@ -330,9 +330,10 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started).
 
 ### V1 — deterministic foundation
 
-1. ⏳ migration 017: `coverage_membership` + `data_quality_findings` +
-   `v_open_quality_signals`. Update `system.md` v1 Tables status table; rerun
-   `gen_schema_viz.py`.
+1. ✅ migration 017: `coverage_membership` + `data_quality_findings` +
+   `v_open_quality_signals` (view in `db/queries/15_v_open_quality_signals.sql`).
+   `system.md` v1 Tables status flipped to `built`; `arrow_db_schema.html`
+   regenerated.
 2. ⬜ `src/arrow/steward/actions.py` — action callables + `fingerprint.py`
 3. ⬜ `src/arrow/steward/registry.py` + `runner.py` + first check
    (`zero_row_runs`)
