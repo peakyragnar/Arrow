@@ -227,9 +227,9 @@ No code outside the view stack needs to change for most metric additions.
 
 ## Status
 
-- Phase 0 — formula spec tweaks (15% fallback, R&D partial-history rule, metric 18 source): **done** in this commit.
-- Phase 1 — mapper audit + employee ingest endpoint + next metrics migration: **next**. FMP revenue segment ingest is already available as dimensioned `financial_facts`.
-- Phase 2 — 10-year history backfill for existing tickers: after Phase 1.
-- Phase 3 — view stack (this doc's subject): after Phase 2.
-- Phase 4 — dashboard (see `dashboard.md`): after Phase 3.
-- Phase 5 — screener: after Phase 3 (parallel with Phase 4 possible).
+- Phase 0 - formula spec tweaks (15% fallback, R&D partial-history rule, metric 18 source): **done**.
+- Phase 1 - mapper audit + employee ingest endpoint + segment-aware facts: **done for the current MVP**. FMP revenue segment ingest is available as dimensioned `financial_facts`; FMP employee-count ingest is available.
+- Phase 2 - 10-year history backfill for existing tickers: **operator/data task**, run through the normal ingest path as ticker coverage is expanded.
+- Phase 3 - view stack (this doc's subject): **MVP built** under `db/queries/` through `v_metrics_fy` plus screen SQL. Presentation views originally named here (`v_metric_changes`, `v_dashboard_panel`) remain deferred or subject to replacement by the current dashboard query layer.
+- Phase 4 - dashboard (see `dashboard.md`): **MVP built** in `scripts/dashboard.py`.
+- Phase 5 - screener: **MVP built** in `scripts/screen.py` with SQL files under `db/queries/screens/`.
