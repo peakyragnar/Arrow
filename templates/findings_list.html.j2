@@ -100,6 +100,26 @@
   {% endif %}
 </main>
 
+<script>
+  // Make the entire findings row clickable, not just the #N link.
+  // Standard table-row UX. Skips the click if the user clicked an
+  // existing link/form (e.g. the #N anchor) so we don't double-fire.
+  (function () {
+    document.querySelectorAll('.findings-table tbody tr').forEach(function (row) {
+      var link = row.querySelector('a[href^="/findings/"]');
+      if (!link) return;
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', function (e) {
+        var t = e.target;
+        if (t && (t.tagName === 'A' || t.tagName === 'BUTTON' || t.tagName === 'INPUT' || t.tagName === 'SELECT')) {
+          return;
+        }
+        window.location.href = link.href;
+      });
+    });
+  })();
+</script>
+
 <footer class="bottom">
   <a href="/">home</a> &middot;
   <a href="/findings?status=closed">closed</a> &middot;

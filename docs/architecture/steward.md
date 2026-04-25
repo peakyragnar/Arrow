@@ -506,6 +506,18 @@ Both are belt-and-suspenders. Add when there's time; not blocking.
   batched UPDATE when sweeps grow. Defer until it actually shows up
   in a profile.
 
+- **`/t/{ticker}` cold-render is ~6s on dev DB; mitigated by a 60s
+  per-ticker cache.** The metric view stack
+  (`v_metrics_q`/`ttm`/`roic`/`ttm_yoy`/`fy`) recomputes aggregates
+  over ALL companies before the WHERE-by-ticker filter applies,
+  because the planner can't push the filter through the
+  GroupAggregate. Until the view stack is restructured (parameterized
+  via SQL function or materialized with `REFRESH MATERIALIZED VIEW`
+  on ingest), the dashboard caches each ticker's assembled context
+  for 60 seconds. First click is slow; subsequent clicks are ~10ms
+  (~640× faster). Operator sees fresh data within 60s of any ingest.
+  Real fix is metrics-platform work, out of V1 step 6 scope.
+
 ## Cross-References
 
 - Architecture north star: `docs/architecture/system.md`

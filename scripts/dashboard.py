@@ -42,6 +42,54 @@ TEMPLATES = Jinja2Templates(directory=BASE_DIR / "templates")
 logger = logging.getLogger("arrow.dashboard")
 
 
+# ---------------------------------------------------------------------------
+# Per-ticker TTL cache
+#
+# /t/{ticker} reads four metric views that recompute aggregates over ALL
+# companies before filtering by ticker — the planner can't push the
+# WHERE filter through the GroupAggregate, so a single render is ~6s on
+# the dev DB. The proper fix is materializing the v_metrics_* stack or
+# rewriting the views to be ticker-parameterizable; both are larger
+# changes than V1 step 6 should absorb.
+#
+# In the meantime: cache the assembled per-ticker context dict for
+# CACHE_TTL_S seconds. First click is slow, subsequent clicks are
+# instant. On any data ingest the operator waits at most CACHE_TTL_S
+# for fresh values to surface — acceptable for V1.
+#
+# Recorded as a Known Limitation in docs/architecture/steward.md.
+# ---------------------------------------------------------------------------
+
+import threading
+import time as _time
+
+CACHE_TTL_S = 60.0
+_TICKER_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+_TICKER_CACHE_LOCK = threading.Lock()
+
+
+def _cache_get(key: str) -> dict[str, Any] | None:
+    with _TICKER_CACHE_LOCK:
+        entry = _TICKER_CACHE.get(key)
+        if entry is None:
+            return None
+        ts, value = entry
+        if _time.time() - ts > CACHE_TTL_S:
+            del _TICKER_CACHE[key]
+            return None
+        return value
+
+
+def _cache_put(key: str, value: dict[str, Any]) -> None:
+    with _TICKER_CACHE_LOCK:
+        _TICKER_CACHE[key] = (_time.time(), value)
+
+
+def _cache_invalidate(key: str) -> None:
+    with _TICKER_CACHE_LOCK:
+        _TICKER_CACHE.pop(key, None)
+
+
 def _ensure_views() -> None:
     """Apply the metrics-platform view stack idempotently on startup.
 
@@ -697,14 +745,18 @@ def _no_data_response(
     )
 
 
-@app.get("/t/{ticker}", response_class=HTMLResponse)
-def dashboard(request: Request, ticker: str) -> Any:
-    ticker = ticker.upper()
+def _build_ticker_context(ticker: str) -> dict[str, Any] | None:
+    """Compute the per-ticker context dict (everything except `tickers`).
+
+    Returns None if the ticker has no facts loaded — caller renders the
+    no-data page in that case. Pulled out of the route handler so it
+    can be cached in `_TICKER_CACHE` keyed on ticker.
+
+    Excludes `tickers` (the companies-table dropdown) — that's cheap
+    and changes when companies are added; it stays fresh on every
+    request.
+    """
     with get_conn() as conn:
-        tickers = fetch_tickers(conn)
-        if ticker not in tickers:
-            raise HTTPException(404, f"{ticker} not in companies")
-        # Fetch the extended window (12 = 8 displayed + 4 prior for YoY lookback).
         quarterly_full = fetch_quarterly(conn, ticker, n=Q_FETCH_COUNT)
         fy_rows = fetch_fiscal_years(conn, ticker, n=FY_COUNT)
         fy_end_dates = [r["fy_end"] for r in fy_rows]
@@ -713,18 +765,8 @@ def dashboard(request: Request, ticker: str) -> Any:
         flag_counts = fetch_flag_counts(conn, ticker)
 
     if not quarterly_full:
-        return _no_data_response(
-            heading=f"{ticker}: no facts loaded yet.",
-            body_html=(
-                f"<p>Run <code>uv run scripts/ingest_company.py {ticker}</code>"
-                f" first, then refresh.</p>"
-            ),
-            tickers=tickers,
-            current_ticker=ticker,
-        )
+        return None
 
-    # Displayed = the most recent Q_COUNT quarters; quarterly_full keeps
-    # the full 12-quarter window for YoY prior-year lookups.
     quarterly = quarterly_full[-Q_COUNT:]
 
     headers, rows = build_panel(
@@ -732,12 +774,8 @@ def dashboard(request: Request, ticker: str) -> Any:
         quarterly_full=quarterly_full,
     )
 
-    # Column period-ends for cell-level audit tooltips:
-    #   FY columns → fy_rows[i].fy_end
-    #   TTM column → quarterly[-1].period_end
-    #   Q columns  → quarterly[i].period_end
     col_period_ends: list[str] = []
-    col_labels: list[str] = []  # human label used in tooltips ("FY2024", "TTM", "FY2026 Q3")
+    col_labels: list[str] = []
     for fr in fy_rows:
         col_period_ends.append(fr["fy_end"].isoformat() if fr.get("fy_end") else "")
         col_labels.append(f"FY{fr['fiscal_year']}")
@@ -766,19 +804,45 @@ def dashboard(request: Request, ticker: str) -> Any:
             {"name": row.name, "cells": cells, "is_change": row.is_change_row, "tooltip": row.tooltip}
         )
 
+    return {
+        "ticker": ticker,
+        "headers": headers,
+        "rows": rendered_rows,
+        "flag_counts": flag_counts,
+        "latest_period": quarterly[-1]["fiscal_period_label"] if quarterly else "",
+        "n_fy": len(fy_rows),
+        "n_q": len(quarterly),
+    }
+
+
+@app.get("/t/{ticker}", response_class=HTMLResponse)
+def dashboard(request: Request, ticker: str) -> Any:
+    ticker = ticker.upper()
+    with get_conn() as conn:
+        tickers = fetch_tickers(conn)
+    if ticker not in tickers:
+        raise HTTPException(404, f"{ticker} not in companies")
+
+    cache_key = f"ticker:{ticker}"
+    ctx = _cache_get(cache_key)
+    if ctx is None:
+        ctx = _build_ticker_context(ticker)
+        if ctx is None:
+            return _no_data_response(
+                heading=f"{ticker}: no facts loaded yet.",
+                body_html=(
+                    f"<p>Run <code>uv run scripts/ingest_company.py {ticker}</code>"
+                    f" first, then refresh.</p>"
+                ),
+                tickers=tickers,
+                current_ticker=ticker,
+            )
+        _cache_put(cache_key, ctx)
+
     return TEMPLATES.TemplateResponse(
         request=request,
         name="dashboard.html.j2",
-        context={
-            "ticker": ticker,
-            "tickers": tickers,
-            "headers": headers,
-            "rows": rendered_rows,
-            "flag_counts": flag_counts,
-            "latest_period": quarterly[-1]["fiscal_period_label"] if quarterly else "",
-            "n_fy": len(fy_rows),
-            "n_q": len(quarterly),
-        },
+        context={**ctx, "tickers": tickers},
     )
 
 

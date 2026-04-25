@@ -312,6 +312,9 @@ footer.bottom a:hover { text-decoration: underline; }
     letter-spacing: 0.04em;
 }
 .findings-table tr.status-closed { opacity: 0.55; }
+.findings-table tbody tr:hover {
+    background: var(--bg-alt);
+}
 .findings-table .summary { white-space: normal; max-width: 800px; }
 .findings-table .age { text-align: right; color: var(--text-dim); }
 .findings-table .type { color: var(--text-dim); font-size: 11px; }
