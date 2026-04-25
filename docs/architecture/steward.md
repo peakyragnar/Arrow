@@ -401,7 +401,21 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started).
    longer get stranded without nav. Tests: 20 new integration covering
    list/detail/lifecycle/validation/PRG/actor-no-leak; full suite
    284 → 304.
-7. ⬜ Dashboard `/coverage` matrix + per-ticker pane + add/remove ticker
+7. ✅ Dashboard `/coverage` matrix + per-ticker pane + add/remove/tier ops.
+   New module `src/arrow/steward/coverage.py` with pure SQL helpers:
+   `compute_coverage_matrix(conn)`, `compute_ticker_coverage(conn, ticker)`,
+   `list_unmembered_tickers(conn)`. Five canonical verticals: financials,
+   segments, employees, sec_qual, press_release. Routes:
+   `GET /coverage` (matrix with vertical presence + period/row counts),
+   `GET /coverage/{ticker}` (per-vertical period detail),
+   `POST /coverage/add` (form: ticker + tier + notes — only seeded
+   tickers in dropdown), `POST /coverage/{ticker}/remove` (with JS confirm;
+   never deletes data, only the membership claim),
+   `POST /coverage/{ticker}/tier` (change tier). All POSTs PRG-redirect.
+   Operator actor derived from `$USER:dashboard`. V1 reports presence +
+   counts; expectation-aware classification (complete/partial/missing)
+   lands in step 8 with `expected_coverage`. Tests: 17 new integration;
+   full suite 304 → 321.
 8. ⬜ `expectations.py` module + `expected_coverage` check (V1.5)
 
 ### V2 — LLM as advisor

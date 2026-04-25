@@ -31,9 +31,18 @@ from starlette.requests import Request
 from arrow.db.connection import get_conn
 from arrow.steward.actions import (
     StewardActionError,
+    add_to_coverage,
     dismiss_finding,
+    remove_from_coverage,
     resolve_finding,
+    set_coverage_tier,
     suppress_finding,
+)
+from arrow.steward.coverage import (
+    VERTICALS,
+    compute_coverage_matrix,
+    compute_ticker_coverage,
+    list_unmembered_tickers,
 )
 
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -729,6 +738,7 @@ def _no_data_response(
   <div class="brand">Arrow</div>
   <nav class="topnav">
     <a href="/findings?status=open" class="navlink">Findings</a>
+    <a href="/coverage" class="navlink">Coverage</a>
   </nav>
   {select_html}
 </header>
@@ -1096,6 +1106,140 @@ def http_dismiss_finding(
         redirect_to=f"/findings/{finding_id}",
         note=note.strip() or None,
     )
+
+
+# ---------------------------------------------------------------------------
+# Coverage matrix + membership management
+# ---------------------------------------------------------------------------
+
+
+_VALID_TIERS = ("core", "extended")
+
+
+@app.get("/coverage", response_class=HTMLResponse)
+def coverage_matrix(request: Request) -> Any:
+    """Coverage matrix: tickers in `coverage_membership` × verticals.
+
+    Shows what data Arrow has per (ticker, vertical) — presence + row
+    count + period count. Tickers seeded but not yet in coverage are
+    surfaced separately so the operator can add them via the form.
+
+    V1 reports presence only; V1.5 (after `expectations.py` lands)
+    will overlay an expected-coverage classification (complete /
+    partial / missing) per cell.
+    """
+    with get_conn() as conn:
+        matrix = compute_coverage_matrix(conn)
+        unmembered = list_unmembered_tickers(conn)
+        tickers = fetch_tickers(conn)
+
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="coverage_matrix.html.j2",
+        context={
+            "matrix": matrix,
+            "verticals": VERTICALS,
+            "unmembered": unmembered,
+            "tickers": tickers,
+            "valid_tiers": _VALID_TIERS,
+        },
+    )
+
+
+@app.get("/coverage/{ticker}", response_class=HTMLResponse)
+def coverage_ticker(request: Request, ticker: str) -> Any:
+    """Per-ticker coverage detail: per-vertical period breakdown."""
+    ticker = ticker.upper()
+    with get_conn() as conn:
+        result = compute_ticker_coverage(conn, ticker)
+        tickers = fetch_tickers(conn)
+
+    if result is None:
+        raise HTTPException(
+            404,
+            f"{ticker} is not in coverage_membership. "
+            f"Add it via /coverage first.",
+        )
+    summary, per_vertical_periods = result
+
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="coverage_ticker.html.j2",
+        context={
+            "summary": summary,
+            "verticals": VERTICALS,
+            "per_vertical": per_vertical_periods,
+            "tickers": tickers,
+            "valid_tiers": _VALID_TIERS,
+        },
+    )
+
+
+@app.post("/coverage/add")
+def http_coverage_add(
+    ticker: str = Form(...),
+    tier: str = Form(...),
+    notes: str = Form(""),
+) -> Any:
+    """Add a ticker to coverage_membership.
+
+    The ticker MUST already exist in `companies` (seeded via
+    `scripts/ingest_company.py`). Adding here is a membership claim,
+    not a seeding operation — coupling the two would conflate "we
+    have this data" with "we care about this data."
+    """
+    ticker = ticker.strip().upper()
+    if not ticker:
+        raise HTTPException(400, "ticker is required")
+    if tier not in _VALID_TIERS:
+        raise HTTPException(400, f"invalid tier: {tier!r}")
+
+    actor = _operator_actor()
+    try:
+        with get_conn() as conn:
+            add_to_coverage(
+                conn, ticker=ticker, tier=tier, actor=actor,
+                notes=notes.strip() or None,
+            )
+    except StewardActionError as e:
+        raise HTTPException(400, str(e))
+    return RedirectResponse(url=f"/coverage/{ticker}", status_code=303)
+
+
+@app.post("/coverage/{ticker}/remove")
+def http_coverage_remove(ticker: str) -> Any:
+    """Remove a ticker from coverage_membership. Idempotent.
+
+    Does NOT delete the company from `companies`, related findings,
+    facts, or artifacts — it only removes the membership claim. Open
+    findings against the ticker stay open; the operator decides
+    whether to dismiss them separately. This avoids destructive cascades
+    behind a single dashboard click.
+    """
+    ticker = ticker.strip().upper()
+    actor = _operator_actor()
+    try:
+        with get_conn() as conn:
+            remove_from_coverage(conn, ticker=ticker, actor=actor)
+    except StewardActionError as e:
+        raise HTTPException(400, str(e))
+    return RedirectResponse(url="/coverage", status_code=303)
+
+
+@app.post("/coverage/{ticker}/tier")
+def http_coverage_set_tier(ticker: str, tier: str = Form(...)) -> Any:
+    """Change a ticker's coverage tier."""
+    ticker = ticker.strip().upper()
+    if tier not in _VALID_TIERS:
+        raise HTTPException(400, f"invalid tier: {tier!r}")
+
+    actor = _operator_actor()
+    try:
+        with get_conn() as conn:
+            set_coverage_tier(conn, ticker=ticker, tier=tier, actor=actor)
+    except StewardActionError as e:
+        raise HTTPException(400, str(e))
+    return RedirectResponse(url=f"/coverage/{ticker}", status_code=303)
 
 
 @app.get("/health")

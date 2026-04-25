@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Arrow · Coverage</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">Arrow</div>
+  <nav class="topnav">
+    <a href="/findings?status=open" class="navlink">Findings</a>
+    <a href="/coverage" class="navlink current">Coverage</a>
+  </nav>
+  <form class="ticker-select" method="get" action="/">
+    <label for="ticker-dropdown">Ticker:</label>
+    <select id="ticker-dropdown" onchange="window.location.href = '/t/' + this.value;">
+      <option value="">— pick —</option>
+      {% for t in tickers %}
+        <option value="{{ t }}">{{ t }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  <div class="meta">
+    <span class="findings-counts">
+      coverage: <strong>{{ matrix | length }}</strong> tickers ·
+      <span class="text-dim">{{ unmembered | length }} seeded but unmembered</span>
+    </span>
+  </div>
+</header>
+
+<main class="coverage-pane">
+  {% if matrix %}
+    <table class="coverage-matrix">
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>Name</th>
+          <th>Tier</th>
+          {% for v in verticals %}
+            <th class="vertical-col">{{ v }}</th>
+          {% endfor %}
+          <th>Added</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in matrix %}
+          <tr>
+            <td><a href="/coverage/{{ r.ticker }}">{{ r.ticker }}</a></td>
+            <td class="name">{{ r.name }}</td>
+            <td><span class="tier tier-{{ r.tier }}">{{ r.tier }}</span></td>
+            {% for v in verticals %}
+              {% set cell = r.by_vertical[v] %}
+              <td class="cov-cell {% if cell.has_data %}cov-yes{% else %}cov-no{% endif %}"
+                  title="{{ cell.row_count }} rows across {{ cell.period_count }} periods{% if cell.earliest %} ({{ cell.earliest }} → {{ cell.latest }}){% endif %}">
+                {% if cell.has_data %}
+                  <span class="check">✓</span>
+                  <span class="counts">{{ cell.period_count }}p / {{ cell.row_count }}r</span>
+                {% else %}
+                  <span class="cross">—</span>
+                {% endif %}
+              </td>
+            {% endfor %}
+            <td class="age">{{ r.added_at.strftime('%Y-%m-%d') }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">
+      No tickers in coverage yet. Add one below to get started.
+    </p>
+  {% endif %}
+
+  <section class="add-coverage">
+    <h2>Add ticker to coverage</h2>
+    {% if unmembered %}
+      <form method="post" action="/coverage/add" class="add-form">
+        <label>Ticker
+          <select name="ticker" required>
+            <option value="">— pick —</option>
+            {% for t, name in unmembered %}
+              <option value="{{ t }}">{{ t }} — {{ name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Tier
+          <select name="tier" required>
+            {% for t in valid_tiers %}
+              <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Notes (optional)
+          <input type="text" name="notes" placeholder="e.g. core watchlist, AI infra">
+        </label>
+        <button type="submit" class="btn btn-add">Add to coverage</button>
+      </form>
+      <p class="hint">
+        Only tickers already seeded in <code>companies</code> appear in the
+        dropdown. To seed a new ticker first, run
+        <code>uv run scripts/ingest_company.py TICKER</code>.
+      </p>
+    {% else %}
+      <p class="empty">
+        All seeded tickers are already in coverage.
+        Run <code>uv run scripts/ingest_company.py TICKER</code> to seed a new one.
+      </p>
+    {% endif %}
+  </section>
+</main>
+
+<footer class="bottom">
+  <a href="/findings?status=open">findings</a> &middot;
+  <a href="/health">health</a>
+</footer>
+
+<script>
+  // Whole-row click for coverage matrix (mirrors findings list UX).
+  (function () {
+    document.querySelectorAll('.coverage-matrix tbody tr').forEach(function (row) {
+      var link = row.querySelector('a[href^="/coverage/"]');
+      if (!link) return;
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', function (e) {
+        var t = e.target;
+        if (t && (t.tagName === 'A' || t.tagName === 'BUTTON' ||
+                  t.tagName === 'INPUT' || t.tagName === 'SELECT')) return;
+        window.location.href = link.href;
+      });
+    });
+  })();
+</script>
+
+</body>
+</html>
