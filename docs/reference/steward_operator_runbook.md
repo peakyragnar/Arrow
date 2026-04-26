@@ -259,11 +259,10 @@ When it does fire later:
 
 ## Coverage management
 
-`/coverage` is where you decide which tickers the steward enforces
-expectations against. Coverage is **binary**: a ticker is tracked
-(in `coverage_membership`) or it isn't. There are no tiers. One
-uniform standard applies to every tracked ticker so cross-ticker
-comparisons stay symmetric.
+`/coverage` shows every ticker in the database — every company you've
+ever ingested. **There is no separate membership step.** If a ticker
+is in `companies`, the steward enforces the standard against it.
+Coverage = the database itself.
 
 ### The standard (applied to every tracked ticker)
 
@@ -278,26 +277,31 @@ Some tickers can't meet the standard for real reasons (recent IPO,
 spinoff, vendor doesn't cover it, filer doesn't report segments).
 In those cases, the steward fires a finding and **you suppress with
 a clear reason**. The suppression reason IS the acceptance criteria
-— it lives in the audit trail and becomes V2 training data. This is
-deliberately better than encoding exceptions as Python constants:
-every legitimate exception now has a recorded operator decision +
-rationale, not silent code-side filtering.
+— it lives in the audit trail and becomes V2 training data.
 
 ### Adding a ticker
 
-1. The ticker must already exist in `companies` (seeded via
-   `uv run scripts/ingest_company.py TICKER`). The dropdown only
-   shows seeded but unmembered tickers.
-2. Click **Add to coverage**. Steward will start evaluating it on
-   the next sweep.
+There is no "Add to coverage" button in V1.2+. To track a new ticker:
 
-### Removing a ticker
+```bash
+uv run scripts/ingest_company.py TICKER
+```
 
-`/coverage/{TICKER}` → "Remove from coverage_membership". Confirms
-via JS prompt. **Does NOT delete data, facts, artifacts, or open
-findings** — only the membership claim. Open findings stay open
-until you triage them separately. A misclick shouldn't cascade-
-destroy.
+That seeds the ticker into `companies` (and runs the normal flow:
+backfill financials, segments, employees, SEC filings). The next
+steward sweep automatically evaluates it.
+
+### Stopping tracking on a ticker
+
+Two paths, depending on intent:
+
+- **Common:** suppress its findings with a structured reason like
+  *"PLTR ingested for one-off Q3 lookup; not actively tracking — suppress all `expected_coverage` for this ticker permanently."*
+  The data stays. The audit trail records the decision.
+- **Rare:** delete the ticker from `companies`. This requires
+  deleting all its data first (FK constraints `ON DELETE RESTRICT`
+  block otherwise). Use only when you genuinely don't want the data
+  at all anymore.
 
 ## Operating to teach V2
 

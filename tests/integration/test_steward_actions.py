@@ -22,11 +22,9 @@ from arrow.db.connection import get_conn
 from arrow.db.migrations import apply as apply_migrations
 from arrow.steward.actions import (
     StewardActionError,
-    add_to_coverage,
     close_finding,
     dismiss_finding,
     open_finding,
-    remove_from_coverage,
     resolve_finding,
     suppress_finding,
 )
@@ -390,47 +388,10 @@ def test_close_nonexistent_finding_raises() -> None:
             close_finding(conn, 9999, closed_reason="resolved", actor="human:michael")
 
 
-# ---------------------------------------------------------------------------
-# Coverage membership
-# ---------------------------------------------------------------------------
-
-
-def test_add_to_coverage_inserts_then_idempotent() -> None:
-    with get_conn() as conn:
-        _reset(conn)
-        _seed_company(conn, ticker="TEST")
-
-        first = add_to_coverage(conn, ticker="TEST", actor="human:michael")
-        assert first.ticker == "TEST"
-        # Idempotent: same call returns same row.
-        again = add_to_coverage(conn, ticker="TEST", actor="human:michael")
-        assert again.id == first.id
-
-
-def test_add_to_coverage_unseeded_ticker_raises() -> None:
-    """Ticker must exist in companies first — coverage_membership is a
-    membership claim, not a seeding mechanism."""
-    with get_conn() as conn:
-        _reset(conn)
-        with pytest.raises(StewardActionError):
-            add_to_coverage(conn, ticker="UNSEEDED", actor="human:michael")
-
-
-def test_add_to_coverage_normalizes_ticker_case() -> None:
-    with get_conn() as conn:
-        _reset(conn)
-        _seed_company(conn, ticker="TEST")
-        ref = add_to_coverage(conn, ticker="test", actor="human:michael")
-        assert ref.ticker == "TEST"
-
-
-def test_remove_from_coverage_returns_true_then_false() -> None:
-    with get_conn() as conn:
-        _reset(conn)
-        _seed_company(conn, ticker="TEST")
-        add_to_coverage(conn, ticker="TEST", actor="human:michael")
-        assert remove_from_coverage(conn, ticker="TEST", actor="human:michael") is True
-        assert remove_from_coverage(conn, ticker="TEST", actor="human:michael") is False
+# V1.2 dropped add_to_coverage / remove_from_coverage. The previous
+# coverage_membership concept was replaced with "every ticker in
+# companies is automatically tracked." Tests for the dropped action
+# callables were removed in this pass.
 
 
 # ---------------------------------------------------------------------------

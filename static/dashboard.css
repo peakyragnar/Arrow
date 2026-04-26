@@ -533,6 +533,15 @@ footer.bottom a:hover { text-decoration: underline; }
 .coverage-matrix tbody tr:hover {
     background: var(--bg-alt);
 }
+/* Override browser default :visited so the matrix doesn't show
+   "I've clicked this before" in pink. Operators don't need that
+   signal in a dense table; uniform color reads cleaner. */
+.coverage-matrix a,
+.coverage-matrix a:visited,
+.findings-table a,
+.findings-table a:visited {
+    color: var(--accent);
+}
 .coverage-matrix.inline {
     margin-bottom: 0;
 }

@@ -168,7 +168,9 @@ Functions:
 - `close_finding(id, *, closed_reason, actor, note, suppressed_until)`
 - `resolve_finding(...)`, `suppress_finding(...)`, `dismiss_finding(...)` —
   convenience wrappers
-- `add_to_coverage(ticker, actor, notes=None)`, `remove_from_coverage(...)`
+- (V1.2 dropped `add_to_coverage` / `remove_from_coverage` — every
+  ticker in `companies` is automatically tracked; to add, run
+  `scripts/ingest_company.py TICKER`)
 
 Every action appends to `history` jsonb on the affected row:
 `{at, actor, action, before, after, note}`.
@@ -449,8 +451,30 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started).
   Lifecycle forms switched from plain inputs to textareas with a
   3-line structured template (Action / Cause / Expected) so V2's RAG
   trains on consistent shape and the operator approves rather than
-  authors. Note: V1 build order steps below describe what was shipped
-  in their respective sequence; cumulative state reflects V1.1.
+  authors.
+
+**V1.2 (operator pushback — membership concept dropped):**
+
+- ✅ Drop `coverage_membership` table entirely; every ticker in
+  `companies` is automatically tracked by the steward. Operator
+  reasoning: "we don't ingest random tickers — every entry in
+  companies is something we deliberately ran ingest_company.py on.
+  The steward should evaluate everything we have." The whole
+  add-to-coverage workflow was friction without value.
+  - `coverage_membership` schema dropped (migration 019).
+  - `add_to_coverage` / `remove_from_coverage` action callables
+    removed. `CoverageRef` dataclass removed.
+  - `/coverage/add` and `/coverage/{ticker}/remove` routes removed.
+  - `compute_coverage_matrix` and `compute_ticker_coverage` read
+    `companies` directly. `list_unmembered_tickers` deleted (no
+    such concept).
+  - `expected_coverage` check iterates every company.
+  - Templates: no Add form, no Remove button. Adding = run
+    `scripts/ingest_company.py`. Stopping tracking = suppress
+    findings (or delete from companies, which is rare).
+
+Note: V1 build order steps below describe what was shipped in their
+respective sequence; cumulative state reflects V1.2.
 
 8. ✅ `expectations.py` module + `expected_coverage` check.
    `src/arrow/steward/expectations.py`: `Expectation` dataclass with

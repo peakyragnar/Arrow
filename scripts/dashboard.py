@@ -31,9 +31,7 @@ from starlette.requests import Request
 from arrow.db.connection import get_conn
 from arrow.steward.actions import (
     StewardActionError,
-    add_to_coverage,
     dismiss_finding,
-    remove_from_coverage,
     resolve_finding,
     suppress_finding,
 )
@@ -41,7 +39,6 @@ from arrow.steward.coverage import (
     VERTICALS,
     compute_coverage_matrix,
     compute_ticker_coverage,
-    list_unmembered_tickers,
 )
 
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -1169,20 +1166,15 @@ def http_dismiss_finding(
 
 @app.get("/coverage", response_class=HTMLResponse)
 def coverage_matrix(request: Request) -> Any:
-    """Coverage matrix: tickers in `coverage_membership` × verticals.
+    """Coverage matrix: every ticker in `companies` × verticals.
 
     Shows what data Arrow has per (ticker, vertical) — presence + row
-    count + period count. Tickers seeded but not yet in coverage are
-    surfaced separately so the operator can add them via the form.
-
-    Coverage is binary: tracked or not. The previous core/extended
-    tiers were dropped so cross-ticker comparisons stay symmetric;
-    legitimate exceptions live in suppression notes on findings, not
-    in a different rule set.
+    count + period count. Every company is automatically tracked by
+    the steward — there is no separate membership step. To add a
+    ticker, run `uv run scripts/ingest_company.py TICKER`.
     """
     with get_conn() as conn:
         matrix = compute_coverage_matrix(conn)
-        unmembered = list_unmembered_tickers(conn)
         tickers = fetch_tickers(conn)
 
     return TEMPLATES.TemplateResponse(
@@ -1191,7 +1183,6 @@ def coverage_matrix(request: Request) -> Any:
         context={
             "matrix": matrix,
             "verticals": VERTICALS,
-            "unmembered": unmembered,
             "tickers": tickers,
         },
     )
@@ -1208,8 +1199,8 @@ def coverage_ticker(request: Request, ticker: str) -> Any:
     if result is None:
         raise HTTPException(
             404,
-            f"{ticker} is not in coverage_membership. "
-            f"Add it via /coverage first.",
+            f"{ticker} is not in companies. Run "
+            f"`uv run scripts/ingest_company.py {ticker}` to seed it.",
         )
     summary, per_vertical_periods = result
 
@@ -1223,54 +1214,6 @@ def coverage_ticker(request: Request, ticker: str) -> Any:
             "tickers": tickers,
         },
     )
-
-
-@app.post("/coverage/add")
-def http_coverage_add(
-    ticker: str = Form(...),
-    notes: str = Form(""),
-) -> Any:
-    """Add a ticker to coverage_membership.
-
-    The ticker MUST already exist in `companies` (seeded via
-    `scripts/ingest_company.py`). Adding here is a membership claim,
-    not a seeding operation — coupling the two would conflate "we
-    have this data" with "we care about this data."
-    """
-    ticker = ticker.strip().upper()
-    if not ticker:
-        raise HTTPException(400, "ticker is required")
-
-    actor = _operator_actor()
-    try:
-        with get_conn() as conn:
-            add_to_coverage(
-                conn, ticker=ticker, actor=actor,
-                notes=notes.strip() or None,
-            )
-    except StewardActionError as e:
-        raise HTTPException(400, str(e))
-    return RedirectResponse(url=f"/coverage/{ticker}", status_code=303)
-
-
-@app.post("/coverage/{ticker}/remove")
-def http_coverage_remove(ticker: str) -> Any:
-    """Remove a ticker from coverage_membership. Idempotent.
-
-    Does NOT delete the company from `companies`, related findings,
-    facts, or artifacts — it only removes the membership claim. Open
-    findings against the ticker stay open; the operator decides
-    whether to dismiss them separately. This avoids destructive cascades
-    behind a single dashboard click.
-    """
-    ticker = ticker.strip().upper()
-    actor = _operator_actor()
-    try:
-        with get_conn() as conn:
-            remove_from_coverage(conn, ticker=ticker, actor=actor)
-    except StewardActionError as e:
-        raise HTTPException(400, str(e))
-    return RedirectResponse(url="/coverage", status_code=303)
 
 
 @app.get("/health")

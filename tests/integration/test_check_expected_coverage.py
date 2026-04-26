@@ -1,9 +1,9 @@
 """Integration tests for the expected_coverage check.
 
-Validates the end-to-end loop: coverage_membership row + actual data
-state + expectations → finding-or-no-finding. Covers each rule kind
-both succeeding and failing, plus the per-ticker override path and
-the suppression-respect path.
+Validates the end-to-end loop: a company in `companies` + actual
+data state + the single STANDARD → finding-or-no-finding. Every
+ticker in `companies` is automatically tracked (V1.2 dropped the
+coverage_membership table) so each test just seeds via _seed_company.
 """
 
 from __future__ import annotations
@@ -16,7 +16,6 @@ import pytest
 from arrow.db.connection import get_conn
 from arrow.db.migrations import apply as apply_migrations
 from arrow.steward.actions import (
-    add_to_coverage,
     suppress_finding,
 )
 from arrow.steward.registry import REGISTRY, Scope
@@ -144,14 +143,33 @@ def _findings(conn: psycopg.Connection) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-def test_unmembered_company_yields_no_findings() -> None:
-    """Companies not in coverage_membership are not evaluated."""
+def test_no_companies_yields_no_findings() -> None:
+    """If `companies` is empty, the check produces nothing."""
     with get_conn() as conn:
         _reset(conn)
-        _seed_company(conn, ticker="UNMEMBERED")
 
         run_steward(conn, scope=Scope(check_names=["expected_coverage"]))
         assert _findings(conn) == []
+
+
+def test_seeded_company_is_automatically_evaluated() -> None:
+    """V1.2 regression: every ticker in `companies` is automatically
+    tracked. No add_to_coverage step required. A bare seeded company
+    fires findings for every required vertical."""
+    with get_conn() as conn:
+        _reset(conn)
+        _seed_company(conn, ticker="AUTO")
+
+        run_steward(conn, scope=Scope(check_names=["expected_coverage"]))
+        rows = _findings(conn)
+
+    # AUTO has no facts at all → expected_coverage fires for every
+    # required vertical, automatically.
+    by_vertical = {r["vertical"] for r in rows}
+    assert by_vertical, (
+        "no findings against a seeded company means the check skipped "
+        "it — V1.2 contract violation"
+    )
 
 
 def test_member_with_zero_data_fires_for_each_required_vertical() -> None:
@@ -161,7 +179,6 @@ def test_member_with_zero_data_fires_for_each_required_vertical() -> None:
     with get_conn() as conn:
         _reset(conn)
         _seed_company(conn, ticker="EMPTY")
-        add_to_coverage(conn, ticker="EMPTY", actor="human:test")
 
         run_steward(conn, scope=Scope(check_names=["expected_coverage"]))
         rows = _findings(conn)
@@ -182,7 +199,6 @@ def test_member_with_full_financials_no_financials_finding() -> None:
         cid = _seed_company(conn, ticker="OK")
         _seed_quarterly_facts(conn, company_id=cid, statement="income_statement",
                               concept="revenue", n_periods=20)
-        add_to_coverage(conn, ticker="OK", actor="human:test")
 
         run_steward(conn, scope=Scope(check_names=["expected_coverage"]))
         rows = _findings(conn)
@@ -202,7 +218,6 @@ def test_legitimate_history_gap_fires_finding_for_operator_to_suppress() -> None
         cid = _seed_company(conn, ticker="YOUNG")
         # 5 quarters — below the standard's 20.
         _seed_quarterly_facts(conn, company_id=cid, n_periods=5)
-        add_to_coverage(conn, ticker="YOUNG", actor="human:test")
 
         run_steward(conn, scope=Scope(check_names=["expected_coverage"]))
         rows = _findings(conn)
@@ -222,7 +237,6 @@ def test_missing_entirely_is_investigate_severity() -> None:
     with get_conn() as conn:
         _reset(conn)
         _seed_company(conn, ticker="EMPTY")
-        add_to_coverage(conn, ticker="EMPTY", actor="human:test")
 
         run_steward(conn, scope=Scope(check_names=["expected_coverage"]))
         rows = _findings(conn)
@@ -239,7 +253,6 @@ def test_partial_count_is_warning_severity() -> None:
         cid = _seed_company(conn, ticker="PART")
         # Has financials data but only 5 periods (need 20 for core).
         _seed_quarterly_facts(conn, company_id=cid, n_periods=5)
-        add_to_coverage(conn, ticker="PART", actor="human:test")
 
         run_steward(conn, scope=Scope(check_names=["expected_coverage"]))
         rows = _findings(conn)
@@ -261,7 +274,6 @@ def test_finding_auto_resolves_when_data_lands() -> None:
     with get_conn() as conn:
         _reset(conn)
         cid = _seed_company(conn, ticker="GROW")
-        add_to_coverage(conn, ticker="GROW", actor="human:test")
 
         # First run: financials missing → finding open.
         run_steward(conn, scope=Scope(check_names=["expected_coverage"]))
@@ -282,7 +294,6 @@ def test_suppression_respected_across_sweeps() -> None:
     with get_conn() as conn:
         _reset(conn)
         _seed_company(conn, ticker="SUPP")
-        add_to_coverage(conn, ticker="SUPP", actor="human:test")
 
         run_steward(conn, scope=Scope(check_names=["expected_coverage"]))
         rows = _findings(conn)
@@ -309,8 +320,7 @@ def test_ticker_scoped_run_only_evaluates_in_scope() -> None:
         _reset(conn)
         _seed_company(conn, ticker="A", cik=100)
         _seed_company(conn, ticker="B", cik=200)
-        add_to_coverage(conn, ticker="A", actor="human:test")
-        add_to_coverage(conn, ticker="B", actor="human:test")
+
 
         # Scope to A only — B's findings should NOT appear.
         run_steward(conn, scope=Scope(

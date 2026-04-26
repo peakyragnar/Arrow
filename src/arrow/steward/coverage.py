@@ -2,15 +2,14 @@
 
 Pure SQL helpers that summarize what data Arrow has per (ticker,
 vertical). Two consumers in V1: the dashboard ``/coverage`` matrix
-(one row per ticker in ``coverage_membership``) and the per-ticker
+(one row per ticker in `companies`) and the per-ticker
 ``/coverage/{ticker}`` detail page.
 
-V1 reports presence + counts only — "yes/no, with N rows across
-M periods." It does NOT yet evaluate against expectations
-(``expected_coverage`` check + ``expectations.py`` are step 8).
-Once those land, the matrix gains a "complete vs partial vs missing"
-classification per cell. Until then, presence/count is enough to
-make the dataset legible.
+V1.2 design (commit history): the previous `coverage_membership` table
+was dropped. Every ticker in `companies` is automatically tracked —
+"in the database" IS the universe. This removes the conceptual
+distinction between "data we have" and "data we care about" that
+the operator never wanted in the first place.
 
 Verticals (V1):
   - financials       income_statement, balance_sheet, cash_flow
@@ -24,7 +23,7 @@ Verticals (V1):
 Two patterns recur in the queries below:
   - ``superseded_at IS NULL`` everywhere — only current rows count
   - ``GROUP BY company_id`` so the matrix joins cleanly back to
-    ``coverage_membership``
+    ``companies``
 """
 
 from __future__ import annotations
@@ -65,32 +64,34 @@ class VerticalCoverage:
 class CoverageRow:
     """One row in the coverage matrix.
 
-    No tier field — V1.1 collapsed coverage to a single uniform
-    standard (migration 018 dropped the column).
+    No tier or membership fields — V1.2 collapsed coverage to "every
+    ticker in companies is tracked." The `seeded_at` field reflects
+    when the company was first added to `companies` (typically when
+    `ingest_company.py` first ran for it).
     """
 
     company_id: int
     ticker: str
     name: str
-    added_at: Any
+    seeded_at: Any
     by_vertical: dict[str, VerticalCoverage]
 
 
 def compute_coverage_matrix(conn: psycopg.Connection) -> list[CoverageRow]:
-    """Return one CoverageRow per ticker in ``coverage_membership``,
-    with per-vertical summaries.
+    """Return one CoverageRow per ticker in `companies`, with per-vertical
+    summaries.
 
-    Tickers in ``companies`` but not in ``coverage_membership`` are
-    NOT included — they're surfaced separately so the operator can
-    add them via the form.
+    Every ticker we have data for is in scope — no separate membership
+    step. To remove a ticker from the steward's attention you'd delete
+    it from `companies` (which requires deleting its data first because
+    of FK constraints), or suppress its findings.
     """
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT cm.company_id, c.ticker, c.name, cm.added_at
-            FROM coverage_membership cm
-            JOIN companies c ON c.id = cm.company_id
-            ORDER BY c.ticker;
+            SELECT id, ticker, name, created_at
+            FROM companies
+            ORDER BY ticker;
             """
         )
         members = cur.fetchall()
@@ -107,7 +108,7 @@ def compute_coverage_matrix(conn: psycopg.Connection) -> list[CoverageRow]:
     by_vertical_per_company = _vertical_aggregates(conn, company_ids)
 
     rows: list[CoverageRow] = []
-    for company_id, ticker, name, added_at in members:
+    for company_id, ticker, name, seeded_at in members:
         per_vertical: dict[str, VerticalCoverage] = {}
         for vertical in VERTICALS:
             agg = by_vertical_per_company[vertical].get(
@@ -120,34 +121,17 @@ def compute_coverage_matrix(conn: psycopg.Connection) -> list[CoverageRow]:
             company_id=company_id,
             ticker=ticker,
             name=name,
-            added_at=added_at,
+            seeded_at=seeded_at,
             by_vertical=per_vertical,
         ))
     return rows
-
-
-def list_unmembered_tickers(conn: psycopg.Connection) -> list[tuple[str, str]]:
-    """Return (ticker, name) pairs for companies seeded but not yet in
-    coverage_membership. Powers the dashboard's 'Add to coverage' form
-    so the operator picks from a list instead of typing tickers."""
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT c.ticker, c.name
-            FROM companies c
-            LEFT JOIN coverage_membership cm ON cm.company_id = c.id
-            WHERE cm.id IS NULL
-            ORDER BY c.ticker;
-            """
-        )
-        return [(r[0], r[1]) for r in cur.fetchall()]
 
 
 def compute_ticker_coverage(
     conn: psycopg.Connection, ticker: str
 ) -> tuple[CoverageRow, dict[str, list[dict[str, Any]]]] | None:
     """Detailed per-ticker coverage. Returns (row_summary, per_vertical_periods)
-    or None if the ticker is not in coverage_membership.
+    or None if the ticker is not in `companies`.
 
     ``per_vertical_periods`` maps vertical → list of period summaries
     (one row per period_end / fiscal_period_key with a row count).
@@ -156,17 +140,16 @@ def compute_ticker_coverage(
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT cm.company_id, c.ticker, c.name, cm.added_at
-            FROM coverage_membership cm
-            JOIN companies c ON c.id = cm.company_id
-            WHERE c.ticker = %s;
+            SELECT id, ticker, name, created_at
+            FROM companies
+            WHERE ticker = %s;
             """,
             (ticker,),
         )
         m = cur.fetchone()
         if m is None:
             return None
-    company_id, _ticker, name, added_at = m
+    company_id, _ticker, name, seeded_at = m
 
     aggs = _vertical_aggregates(conn, [company_id])
     by_vertical: dict[str, VerticalCoverage] = {}
@@ -179,7 +162,7 @@ def compute_ticker_coverage(
 
     summary = CoverageRow(
         company_id=company_id, ticker=ticker, name=name,
-        added_at=added_at, by_vertical=by_vertical,
+        seeded_at=seeded_at, by_vertical=by_vertical,
     )
 
     per_vertical_periods: dict[str, list[dict[str, Any]]] = {}

@@ -157,10 +157,8 @@ Each metric cell is hover-sensitive. Tooltip content:
 | `POST /findings/<id>/resolve` | lifecycle | calls `resolve_finding(actor="human:michael")`; redirect | steward V1 |
 | `POST /findings/<id>/suppress` | lifecycle | calls `suppress_finding(actor="human:michael", reason=Form, expires=Form?)`; redirect | steward V1 |
 | `POST /findings/<id>/dismiss` | lifecycle | calls `dismiss_finding(actor="human:michael")`; redirect | steward V1 |
-| `GET /coverage` | coverage matrix | tickers in `coverage_membership` × verticals; cell shows complete/partial/missing | steward V1 |
-| `GET /coverage/<ticker>` | per-ticker coverage | periods × verticals for the chosen ticker | steward V1 |
-| `POST /coverage/add` | add ticker | calls `seed_companies` + `add_to_coverage(actor="human:michael")` + scoped steward sweep | steward V1 |
-| `POST /coverage/<ticker>/remove` | remove ticker | calls `remove_from_coverage(actor="human:michael")` | steward V1 |
+| `GET /coverage` | coverage matrix | every ticker in `companies` × verticals; cell shows presence + counts | steward V1.2 |
+| `GET /coverage/<ticker>` | per-ticker coverage | periods × verticals for the chosen ticker | steward V1.2 |
 | `GET /runs` | ingest run log | recent rows from `ingest_runs` with status, counts, durations | V1.5 |
 | `GET /traces` | analyst trace list | renders JSONL files from `outputs/qa_runs/`; click for detail | V1.5 |
 

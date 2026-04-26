@@ -33,9 +33,9 @@
   </h1>
 
   <section class="status-block">
-    <h2>Membership</h2>
+    <h2>Tracking</h2>
     <table class="kv">
-      <tr><th>Added at</th><td>{{ summary.added_at }}</td></tr>
+      <tr><th>Seeded at</th><td>{{ summary.seeded_at }}</td></tr>
     </table>
   </section>
 
@@ -118,16 +118,10 @@
     {% endif %}
   {% endfor %}
 
-  <section class="lifecycle-actions">
-    <h2>Membership actions</h2>
-    <form class="action" method="post" action="/coverage/{{ summary.ticker }}/remove"
-          onsubmit="return confirm('Remove {{ summary.ticker }} from coverage_membership? Data, facts, artifacts, and any open findings stay in the DB — only the membership claim is removed.');">
-      <label>Remove from coverage_membership
-        <span class="hint">Does not delete data. Findings stay open.</span>
-      </label>
-      <button type="submit" class="btn btn-dismiss">Remove</button>
-    </form>
-  </section>
+  {# V1.2: no Remove button. Every ticker in `companies` is tracked
+     by default; to stop tracking, suppress findings (common path)
+     or delete from companies (rare, blocked by FK constraints
+     while the ticker has data). #}
 </main>
 
 <footer class="bottom">

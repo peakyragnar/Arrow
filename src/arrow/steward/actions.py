@@ -55,17 +55,13 @@ class FindingRef:
     outcome: str = "transitioned"
 
 
-@dataclass(frozen=True)
-class CoverageRef:
-    """Reference to a coverage_membership row after an action.
-
-    Coverage is binary in V1.1+ (migration 018 dropped the tier
-    column); membership is the only state.
-    """
-
-    id: int
-    company_id: int
-    ticker: str
+# V1.2 dropped CoverageRef + add_to_coverage / remove_from_coverage.
+# Every ticker in `companies` is automatically tracked by the steward —
+# there is no separate membership step. To add a ticker, run
+# `scripts/ingest_company.py TICKER`. To remove one, delete from
+# `companies` (which requires deleting its data first via FK
+# constraints) — but the typical pattern is to suppress findings on
+# tickers you no longer want noise about.
 
 
 # ---------------------------------------------------------------------------
@@ -320,90 +316,6 @@ def dismiss_finding(
 ) -> FindingRef:
     """Convenience: close with reason='dismissed' (false positive)."""
     return close_finding(conn, finding_id, closed_reason="dismissed", actor=actor, note=note)
-
-
-# ---------------------------------------------------------------------------
-# Coverage membership
-# ---------------------------------------------------------------------------
-
-
-def add_to_coverage(
-    conn: psycopg.Connection,
-    *,
-    ticker: str,
-    actor: str,
-    notes: str | None = None,
-) -> CoverageRef:
-    """Add a ticker to coverage_membership. Idempotent — calling on an
-    already-membered ticker returns the existing row.
-
-    Coverage is binary in V1.1+: a ticker is tracked or it isn't.
-    Migration 018 dropped the tier column; one uniform standard from
-    expectations.py applies to every member.
-    """
-    _require(actor, "actor")
-    _require(ticker, "ticker")
-    ticker = ticker.upper()
-
-    with conn.cursor() as cur:
-        cur.execute("SELECT id FROM companies WHERE ticker = %s;", (ticker,))
-        company_row = cur.fetchone()
-        if company_row is None:
-            raise StewardActionError(
-                f"ticker {ticker!r} is not in companies. "
-                f"Seed it first via scripts/ingest_company.py or seed_companies()."
-            )
-        company_id = company_row[0]
-
-        cur.execute(
-            "SELECT id FROM coverage_membership WHERE company_id = %s;",
-            (company_id,),
-        )
-        existing = cur.fetchone()
-        if existing is not None:
-            return CoverageRef(
-                id=existing[0], company_id=company_id, ticker=ticker,
-            )
-
-        cur.execute(
-            """
-            INSERT INTO coverage_membership (company_id, added_by, notes)
-            VALUES (%s, %s, %s)
-            RETURNING id;
-            """,
-            (company_id, actor, notes),
-        )
-        new_id = cur.fetchone()[0]
-        return CoverageRef(id=new_id, company_id=company_id, ticker=ticker)
-
-
-def remove_from_coverage(
-    conn: psycopg.Connection,
-    *,
-    ticker: str,
-    actor: str,
-) -> bool:
-    """Remove a ticker from coverage_membership. Returns True if a row
-    was removed, False if the ticker was not in coverage. Idempotent.
-
-    Note: does NOT delete the company from ``companies`` (the data stays).
-    Open findings against the ticker stay open — the operator decides
-    whether to dismiss them.
-    """
-    _require(actor, "actor")
-    _require(ticker, "ticker")
-    ticker = ticker.upper()
-
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            DELETE FROM coverage_membership
-            WHERE company_id = (SELECT id FROM companies WHERE ticker = %s)
-            RETURNING id;
-            """,
-            (ticker,),
-        )
-        return cur.fetchone() is not None
 
 
 # ---------------------------------------------------------------------------

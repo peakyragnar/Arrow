@@ -1,15 +1,17 @@
 """Integration tests for the dashboard /coverage routes.
 
 Covers:
-  - GET /coverage with no members vs with members
+  - GET /coverage with no companies vs with companies
   - GET /coverage/{ticker} detail
-  - POST /coverage/add: success, validation (missing/blank ticker)
-  - POST /coverage/{ticker}/remove: idempotency, no data deletion
-  - Operator actor capture (no hardcoded names)
+  - 404 on tickers that aren't in `companies`
   - Topbar Coverage link present on existing pages
 
-Coverage is binary in V1.1+ — no tier dropdown, no /coverage/{ticker}/tier
-route. The set_coverage_tier action callable was removed.
+V1.2 simplification: every ticker in `companies` is automatically
+tracked. There is no separate membership step, so:
+  - no /coverage/add route or form
+  - no /coverage/{ticker}/remove route
+  - no add_to_coverage / remove_from_coverage action callables
+Tests for the removed routes are not present here.
 """
 
 from __future__ import annotations
@@ -22,7 +24,6 @@ from fastapi.testclient import TestClient
 
 from arrow.db.connection import get_conn
 from arrow.db.migrations import apply as apply_migrations
-from arrow.steward.actions import add_to_coverage
 from scripts.dashboard import app
 
 
@@ -109,23 +110,22 @@ def client():
 # ---------------------------------------------------------------------------
 
 
-def test_coverage_matrix_renders_empty_with_no_members(client) -> None:
+def test_coverage_matrix_renders_empty_with_no_companies(client) -> None:
     with get_conn() as conn:
         _reset(conn)
 
     resp = client.get("/coverage")
     assert resp.status_code == 200
-    assert "No tickers in coverage yet" in resp.text
+    assert "No companies seeded yet" in resp.text
 
 
-def test_coverage_matrix_renders_member_with_vertical_columns(client) -> None:
+def test_coverage_matrix_renders_company_with_vertical_columns(client) -> None:
+    """Every company in the database appears in the matrix automatically."""
     with get_conn() as conn:
         _reset(conn)
         cid = _seed_company(conn, ticker="PLTR", cik=1001)
         _seed_facts(conn, company_id=cid, statement="income_statement",
                     concept="revenue", n_periods=4)
-        add_to_coverage(conn, ticker="PLTR",
-                        actor="human:test")
 
     resp = client.get("/coverage")
     assert resp.status_code == 200
@@ -138,21 +138,31 @@ def test_coverage_matrix_renders_member_with_vertical_columns(client) -> None:
     assert "cov-no" in resp.text  # other verticals are no
 
 
-def test_coverage_matrix_lists_unmembered_tickers_in_add_form(client) -> None:
+def test_coverage_matrix_lists_all_companies_no_membership_step(client) -> None:
+    """Every company in the database appears in the matrix — no opt-in."""
     with get_conn() as conn:
         _reset(conn)
         _seed_company(conn, ticker="AMZN", cik=2001)
         _seed_company(conn, ticker="MSFT", cik=2002)
-        # PLTR is in coverage; AMZN/MSFT are seeded but unmembered.
-        cid = _seed_company(conn, ticker="PLTR", cik=2003)
-        add_to_coverage(conn, ticker="PLTR", actor="human:test")
+        _seed_company(conn, ticker="PLTR", cik=2003)
 
     resp = client.get("/coverage")
-    assert "AMZN" in resp.text
-    assert "MSFT" in resp.text
-    # Form options appear in the dropdown
-    assert 'value="AMZN"' in resp.text
-    assert 'value="MSFT"' in resp.text
+    for t in ("AMZN", "MSFT", "PLTR"):
+        assert t in resp.text
+
+
+def test_coverage_matrix_does_not_show_add_form_or_remove_buttons(client) -> None:
+    """Regression check for V1.2: the previous Add/Remove UI was
+    removed when membership became automatic."""
+    with get_conn() as conn:
+        _reset(conn)
+        _seed_company(conn, ticker="PLTR", cik=1001)
+
+    resp = client.get("/coverage")
+    # No "Add to coverage" form — adding now means seeding via CLI.
+    assert "Add to coverage" not in resp.text
+    # The /coverage/add route shouldn't be referenced anywhere.
+    assert "/coverage/add" not in resp.text
 
 
 # ---------------------------------------------------------------------------
@@ -166,147 +176,32 @@ def test_coverage_ticker_detail_renders(client) -> None:
         cid = _seed_company(conn, ticker="PLTR", cik=1001)
         _seed_facts(conn, company_id=cid, statement="income_statement",
                     concept="revenue", n_periods=4)
-        add_to_coverage(conn, ticker="PLTR", actor="human:test")
 
     resp = client.get("/coverage/PLTR")
     assert resp.status_code == 200
     assert "PLTR" in resp.text
     assert "Vertical summary" in resp.text
-    # Should show the per-vertical detail section for financials with periods
     assert "financials" in resp.text
 
 
-def test_coverage_ticker_detail_404_when_unmembered(client) -> None:
+def test_coverage_ticker_detail_404_when_not_in_companies(client) -> None:
+    """Ticker that isn't seeded yet → 404 with hint to run ingest."""
     with get_conn() as conn:
         _reset(conn)
-        _seed_company(conn, ticker="UNKNOWN", cik=9999)
-        # Note: UNKNOWN is in companies but NOT in coverage_membership.
 
     resp = client.get("/coverage/UNKNOWN")
     assert resp.status_code == 404
 
 
-# ---------------------------------------------------------------------------
-# POST /coverage/add
-# ---------------------------------------------------------------------------
-
-
-def test_coverage_add_success_redirects_to_ticker_detail(client) -> None:
+def test_coverage_ticker_detail_omits_remove_button(client) -> None:
+    """V1.2 regression check: no Remove button on detail page."""
     with get_conn() as conn:
         _reset(conn)
         _seed_company(conn, ticker="PLTR", cik=1001)
 
-    resp = client.post(
-        "/coverage/add",
-        data={"ticker": "pltr", "notes": "watchlist"},
-        follow_redirects=False,
-    )
-    assert resp.status_code == 303
-    assert resp.headers["location"] == "/coverage/PLTR"
-
-    with get_conn() as conn, conn.cursor() as cur:
-        cur.execute(
-            "SELECT added_by, notes FROM coverage_membership "
-            "WHERE company_id = (SELECT id FROM companies WHERE ticker = 'PLTR');"
-        )
-        added_by, notes = cur.fetchone()
-    assert added_by.endswith(":dashboard"), (
-        f"dashboard actor must end in ':dashboard', got {added_by!r}"
-    )
-    assert notes == "watchlist"
-
-
-def test_coverage_add_unseeded_ticker_returns_400(client) -> None:
-    """coverage_membership requires the company to exist first."""
-    with get_conn() as conn:
-        _reset(conn)
-        # No company seeded.
-
-    resp = client.post(
-        "/coverage/add",
-        data={"ticker": "NEVERSEEN", "notes": ""},
-        follow_redirects=False,
-    )
-    assert resp.status_code == 400
-
-
-def test_coverage_add_blank_ticker_rejected(client) -> None:
-    with get_conn() as conn:
-        _reset(conn)
-
-    resp = client.post(
-        "/coverage/add",
-        data={"ticker": "   ", "notes": ""},
-        follow_redirects=False,
-    )
-    assert resp.status_code == 400
-
-
-def test_coverage_add_does_not_hardcode_operator_name(client) -> None:
-    """Regression test for the prior cheat where the CLI hardcoded
-    'human:michael'. Same standard applies to dashboard actions."""
-    with get_conn() as conn:
-        _reset(conn)
-        _seed_company(conn, ticker="PLTR", cik=1001)
-
-    client.post("/coverage/add", data={"ticker": "PLTR"},
-                follow_redirects=False)
-
-    with get_conn() as conn, conn.cursor() as cur:
-        cur.execute(
-            "SELECT added_by FROM coverage_membership WHERE id = (SELECT MAX(id) FROM coverage_membership);"
-        )
-        added_by = cur.fetchone()[0]
-
-    user = os.environ.get("USER", "").strip()
-    expected = f"human:{user}:dashboard" if user else "human:dashboard"
-    assert added_by == expected, (
-        f"actor leak: got {added_by!r}, expected {expected!r}"
-    )
-
-
-# ---------------------------------------------------------------------------
-# POST /coverage/{ticker}/remove
-# ---------------------------------------------------------------------------
-
-
-def test_coverage_remove_succeeds_and_keeps_data(client) -> None:
-    with get_conn() as conn:
-        _reset(conn)
-        cid = _seed_company(conn, ticker="PLTR", cik=1001)
-        _seed_facts(conn, company_id=cid, statement="income_statement",
-                    concept="revenue", n_periods=2)
-        add_to_coverage(conn, ticker="PLTR", actor="human:test")
-
-    resp = client.post("/coverage/PLTR/remove", follow_redirects=False)
-    assert resp.status_code == 303
-    assert resp.headers["location"] == "/coverage"
-
-    with get_conn() as conn, conn.cursor() as cur:
-        # Membership gone
-        cur.execute(
-            "SELECT COUNT(*) FROM coverage_membership "
-            "WHERE company_id = (SELECT id FROM companies WHERE ticker = 'PLTR');"
-        )
-        assert cur.fetchone()[0] == 0
-        # Company stays
-        cur.execute("SELECT COUNT(*) FROM companies WHERE ticker = 'PLTR';")
-        assert cur.fetchone()[0] == 1
-        # Facts stay (no destructive cascade behind the dashboard click)
-        cur.execute("SELECT COUNT(*) FROM financial_facts WHERE company_id = %s;", (cid,))
-        assert cur.fetchone()[0] == 2
-
-
-def test_coverage_remove_is_idempotent(client) -> None:
-    with get_conn() as conn:
-        _reset(conn)
-        _seed_company(conn, ticker="PLTR", cik=1001)
-        # PLTR is NOT in coverage_membership.
-
-    resp = client.post("/coverage/PLTR/remove", follow_redirects=False)
-    # remove_from_coverage returns False (nothing removed); the route
-    # treats this as success (idempotent contract documented in actions.py).
-    assert resp.status_code == 303
+    resp = client.get("/coverage/PLTR")
+    assert "/coverage/PLTR/remove" not in resp.text
+    assert "btn-dismiss" not in resp.text
 
 
 # ---------------------------------------------------------------------------
@@ -315,8 +210,6 @@ def test_coverage_remove_is_idempotent(client) -> None:
 
 
 def test_coverage_link_appears_in_findings_topbar(client) -> None:
-    """The Coverage nav link should appear on every page so operators
-    can navigate to it without typing a URL."""
     with get_conn() as conn:
         _reset(conn)
 
@@ -330,6 +223,5 @@ def test_coverage_link_appears_in_no_data_landing(client) -> None:
         _reset(conn)  # No companies → / lands on the no-data page.
 
     resp = client.get("/", follow_redirects=False)
-    # Either redirects (companies present) or returns 200 with topbar.
     if resp.status_code == 200:
         assert 'href="/coverage"' in resp.text

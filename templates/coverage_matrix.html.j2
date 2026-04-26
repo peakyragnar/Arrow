@@ -24,8 +24,7 @@
   </form>
   <div class="meta">
     <span class="findings-counts">
-      coverage: <strong>{{ matrix | length }}</strong> tickers ·
-      <span class="text-dim">{{ unmembered | length }} seeded but unmembered</span>
+      coverage: <strong>{{ matrix | length }}</strong> companies tracked
     </span>
   </div>
 </header>
@@ -40,7 +39,7 @@
           {% for v in verticals %}
             <th class="vertical-col">{{ v }}</th>
           {% endfor %}
-          <th>Added</th>
+          <th>Seeded</th>
         </tr>
       </thead>
       <tbody>
@@ -60,49 +59,34 @@
                 {% endif %}
               </td>
             {% endfor %}
-            <td class="age">{{ r.added_at.strftime('%Y-%m-%d') }}</td>
+            <td class="age">{{ r.seeded_at.strftime('%Y-%m-%d') }}</td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
   {% else %}
     <p class="empty">
-      No tickers in coverage yet. Add one below to get started.
+      No companies seeded yet. Run
+      <code>uv run scripts/ingest_company.py TICKER</code>
+      to add one — every seeded company is automatically tracked by
+      the steward.
     </p>
   {% endif %}
 
   <section class="add-coverage">
-    <h2>Add ticker to coverage</h2>
-    {% if unmembered %}
-      <form method="post" action="/coverage/add" class="add-form">
-        <label>Ticker
-          <select name="ticker" required>
-            <option value="">— pick —</option>
-            {% for t, name in unmembered %}
-              <option value="{{ t }}">{{ t }} — {{ name }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        {# No tier dropdown — coverage is binary in V1.1+. Single uniform
-           standard applies. Legitimate exceptions live in suppression
-           notes on findings, not in a different rule set. #}
-        {# Notes input deferred per Elon-loop review: schema column
-           (coverage_membership.notes) stays, but the form input was
-           always-empty in practice. Restore when an operator wants
-           a place to leave membership context. #}
-        <button type="submit" class="btn btn-add">Add to coverage</button>
-      </form>
-      <p class="hint">
-        Only tickers already seeded in <code>companies</code> appear in the
-        dropdown. To seed a new ticker first, run
-        <code>uv run scripts/ingest_company.py TICKER</code>.
-      </p>
-    {% else %}
-      <p class="empty">
-        All seeded tickers are already in coverage.
-        Run <code>uv run scripts/ingest_company.py TICKER</code> to seed a new one.
-      </p>
-    {% endif %}
+    <h2>Adding tickers</h2>
+    <p class="hint">
+      To start tracking a new ticker, run
+      <code>uv run scripts/ingest_company.py TICKER</code> from the
+      terminal. The ticker lands in <code>companies</code>, the
+      steward watches it automatically on the next sweep, and any
+      gaps surface in <a href="/findings?status=open">findings</a>.
+    </p>
+    <p class="hint">
+      To stop tracking a ticker: suppress its findings with a clear
+      reason (most common), or delete it from <code>companies</code>
+      entirely (rare; requires deleting its data first).
+    </p>
   </section>
 </main>
 
