@@ -291,6 +291,45 @@ That seeds the ticker into `companies` (and runs the normal flow:
 backfill financials, segments, employees, SEC filings). The next
 steward sweep automatically evaluates it.
 
+#### Hard rule: do NOT ingest foreign filers yet
+
+Foreign filers (companies that file SEC **20-F** annual / **6-K**
+interim instead of 10-K / 10-Q) are not yet supported across Arrow's
+pipeline. Specifically broken or missing for foreign filers:
+
+- **SEC qualitative ingest** doesn't fetch 20-F or 6-K at all (only
+  10-K/10-Q). Operator gets `expected_coverage` finding for empty
+  sec_qual.
+- **Employees ingest** filters `formType != '10-K'` and drops 20-F
+  rows; foreign filers get 0 employee facts written even when FMP
+  has the data.
+- **Financials** load OK, but FMP's TWD/EUR/etc.→USD translation
+  produces more soft flags than US filers (e.g. TSMC ingest produced
+  21 vs META's 4).
+- **`artifacts.artifact_type`** allowed values (`10k`/`10q`/`8k`/
+  `press_release`) don't include 20-F/6-K — extending requires a
+  schema change.
+
+Examples to avoid until foreign filer support lands:
+**TSM** (Taiwan Semiconductor), **ASML**, **TSMC**, **NVO** (Novo
+Nordisk), **TM** (Toyota), **SAP**, **BABA**, **TCEHY**, **SHOP**
+(Shopify is Canadian — files 40-F), **NTES**, **JD**, etc. ADRs
+generally indicate foreign filers; if in doubt, check whether the
+ticker appears under `formType: '20-F'` on
+[sec.gov/cgi-bin/browse-edgar](https://www.sec.gov/cgi-bin/browse-edgar)
+before ingesting.
+
+Foreign filer support is a focused 2–3 day project (extend SEC
+fetcher, add 20-F/6-K artifact types, add 20-F section keys to
+extractor, fix employees-ingest filter) — it's recorded in the
+backlog but not on the immediate path. Doing it piecemeal as bugs
+surface produces an incomplete patchwork; doing it as one project
+later produces clean, complete support.
+
+If a foreign filer was ingested by accident, delete it cleanly via
+the cascade (`financial_facts` → `companies`; CASCADE handles
+findings + flags). Re-ingest after foreign-filer support ships.
+
 ### Stopping tracking on a ticker
 
 Two paths, depending on intent:
