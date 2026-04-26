@@ -256,6 +256,7 @@ honest about what's automatable.
 | `broken_provenance` | human_only | suggest_only | autonomous |
 | `extraction_method_drift` | human_only | suggest_only | suggest_only |
 | `expected_coverage` | human_only | suggest_only | auto_with_review |
+| `expected_coverage` | human_only | suggest_only | auto_with_review |
 | `segment_taxonomy_drift` (LLM) | n/a | suggest_only | suggest_only |
 | `extraction_quality_regression` (LLM) | n/a | suggest_only | suggest_only |
 
@@ -315,8 +316,17 @@ the schema enforces what it would have checked (NOT NULL +
 failure mode structurally impossible. Lean default — don't ship code
 for impossible failure modes.
 
-V1.5 (after `coverage_membership` is populated): sixth check
-`expected_coverage` consumes `expectations.py`.
+**V1.5 sixth check (now shipped):**
+
+6. `expected_coverage` — for each ticker in `coverage_membership`,
+   resolves expectations from `expectations.py` (tier defaults +
+   per-ticker overrides) and yields one finding per unmet
+   expectation. Reuses `compute_coverage_matrix()` for state and
+   `evaluate_expectation()` for assertions. Each finding is tagged
+   with the failing vertical. Three rule kinds: `present` (≥1
+   current row), `min_periods` (≥N distinct periods), `recency`
+   (latest period within N days). Severity: `investigate` when the
+   vertical is missing entirely, `warning` for partial / stale.
 
 ## Working Rules
 
@@ -416,7 +426,24 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started).
    counts; expectation-aware classification (complete/partial/missing)
    lands in step 8 with `expected_coverage`. Tests: 17 new integration;
    full suite 304 → 321.
-8. ⬜ `expectations.py` module + `expected_coverage` check (V1.5)
+8. ✅ `expectations.py` module + `expected_coverage` check.
+   `src/arrow/steward/expectations.py`: `Expectation` dataclass with
+   three rule kinds (`present`, `min_periods`, `recency`),
+   `UNIVERSE_DEFAULTS` per tier (core: 5y financials + segments +
+   employees-recency + 5y sec_qual; extended: 2y financials + sec_qual
+   present), `PER_TICKER_OVERRIDES` for legitimate exceptions
+   (CRWV recent IPO, GEV spinoff), and `expectations_for(ticker, tier)`
+   resolver that layers overrides on top of tier defaults.
+   `src/arrow/steward/checks/expected_coverage.py`: cross-cutting
+   check that reuses `compute_coverage_matrix()` for state and
+   `evaluate_expectation()` for assertions. Yields one finding per
+   unmet expectation, tagged with the relevant vertical so dashboard
+   filters work. Severity: `investigate` for missing-entirely,
+   `warning` for partial. Suggested-action prose names the right
+   re-ingest command per vertical and points operators at
+   `PER_TICKER_OVERRIDES` for legitimate exceptions instead of
+   suppress-spam. Tests: 26 new (16 unit + 10 integration); full
+   suite 321 → 347. **V1 complete.**
 
 ### V2 — LLM as advisor
 

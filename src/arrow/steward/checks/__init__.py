@@ -18,3 +18,4 @@ from arrow.steward.checks import unresolved_flags_aging  # noqa: F401
 from arrow.steward.checks import sec_artifact_orphans  # noqa: F401
 from arrow.steward.checks import unparsed_body_fallback  # noqa: F401
 from arrow.steward.checks import extraction_method_drift  # noqa: F401
+from arrow.steward.checks import expected_coverage  # noqa: F401
