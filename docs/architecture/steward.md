@@ -117,9 +117,9 @@ runner persists them. This keeps checks individually testable.
 
 ### `ExpectationSet`
 
-Per-tier rules describing what each ticker should have. Lives as a Python
-module in V1 (`src/arrow/steward/expectations.py`); promotes to a table when
-rules grow past one file or operator-editable exceptions are needed.
+A single uniform `STANDARD` describing what every covered ticker should
+have. Lives as a Python module (`src/arrow/steward/expectations.py`);
+promotes to a table when rules grow past one file.
 
 ```python
 @dataclass(frozen=True)
@@ -129,8 +129,16 @@ class Expectation:
     params: dict
 ```
 
-The `expected_coverage` check (V1.5) iterates `coverage_membership`,
-resolves expectations for each ticker's tier, queries actual state, and
+V1.1 design (commit c6025f3 + migration 018): coverage is binary —
+tickers are tracked or not. The earlier per-tier system (`core` /
+`extended` with different rule sets) was dropped because it broke
+cross-ticker comparability. Legitimate exceptions (recent IPOs that
+can't reach 5y of history) live in **suppression notes on findings**,
+not in a `PER_TICKER_OVERRIDES` constant — that way every exception
+generates V2 training data instead of being silently filtered in code.
+
+The `expected_coverage` check iterates `coverage_membership`, resolves
+expectations via `expectations_for(ticker)`, queries actual state, and
 yields findings for unmet expectations.
 
 ### `Scope`
@@ -160,7 +168,7 @@ Functions:
 - `close_finding(id, *, closed_reason, actor, note, suppressed_until)`
 - `resolve_finding(...)`, `suppress_finding(...)`, `dismiss_finding(...)` —
   convenience wrappers
-- `add_to_coverage(ticker, tier, actor, ...)`, `remove_from_coverage(...)`
+- `add_to_coverage(ticker, actor, notes=None)`, `remove_from_coverage(...)`
 
 Every action appends to `history` jsonb on the affected row:
 `{at, actor, action, before, after, note}`.
@@ -363,9 +371,11 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started).
 2. ✅ `src/arrow/steward/actions.py` — action callables + `fingerprint.py`.
    Action surface: `open_finding` (idempotent, suppression-respecting),
    `close_finding` + `resolve`/`suppress`/`dismiss` wrappers,
-   `add_to_coverage`/`remove_from_coverage`/`set_coverage_tier`. Every
-   action takes `actor: str` and appends to `history` jsonb. Tests:
-   29 new (10 unit + 19 integration); full suite 250/250.
+   `add_to_coverage`/`remove_from_coverage`. Every action takes
+   `actor: str` and appends to `history` jsonb. Tests: 29 new (10 unit
+   + 19 integration); full suite 250/250.
+   **V1.1 update:** `set_coverage_tier` was removed when migration 018
+   dropped the tier column.
 3. ✅ `src/arrow/steward/registry.py` + `runner.py` + first check
    (`zero_row_runs`). `Check` ABC, `@register` decorator, `Scope`,
    `FindingDraft`. Runner orchestrates execution, persists via
@@ -426,6 +436,22 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started).
    counts; expectation-aware classification (complete/partial/missing)
    lands in step 8 with `expected_coverage`. Tests: 17 new integration;
    full suite 304 → 321.
+**V1.1 (post-self-review):**
+
+- ✅ Drop tiers + per-ticker overrides; collapse to single uniform standard
+  (commit c6025f3 + migration 018). `coverage_membership.tier` column
+  removed. `expectations.py` STANDARD list replaces `UNIVERSE_DEFAULTS`
+  per-tier dict. `PER_TICKER_OVERRIDES` deleted. `set_coverage_tier`
+  action + `/coverage/{ticker}/tier` route removed. Legitimate
+  exceptions now live in suppression notes on findings. Cross-ticker
+  comparisons stay symmetric.
+- ✅ Pre-fill note inputs from `suggested_action.prose` (commit c6025f3).
+  Lifecycle forms switched from plain inputs to textareas with a
+  3-line structured template (Action / Cause / Expected) so V2's RAG
+  trains on consistent shape and the operator approves rather than
+  authors. Note: V1 build order steps below describe what was shipped
+  in their respective sequence; cumulative state reflects V1.1.
+
 8. ✅ `expectations.py` module + `expected_coverage` check.
    `src/arrow/steward/expectations.py`: `Expectation` dataclass with
    three rule kinds (`present`, `min_periods`, `recency`),
@@ -534,11 +560,12 @@ Both are belt-and-suspenders. Add when there's time; not blocking.
 
 ### Audit asymmetries
 
-- **`set_coverage_tier` doesn't capture history.** Findings carry
-  `history jsonb`; coverage_membership doesn't. Tier changes leave no
-  audit trace beyond the current state. Add a `history jsonb` column
-  on `coverage_membership` in a follow-up migration when tier changes
-  become frequent or the agent needs to learn from them.
+- **`coverage_membership` has no `history jsonb` column.** Findings
+  carry full audit history; membership changes (add/remove) leave only
+  the current-state row. Add a `history jsonb` column when membership
+  churn becomes frequent or the agent needs to learn from membership
+  decisions. Removed in V1.1: the previous `set_coverage_tier` action
+  no longer exists (tiers were collapsed in migration 018).
 
 ### Performance
 

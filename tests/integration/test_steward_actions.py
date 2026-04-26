@@ -401,7 +401,7 @@ def test_add_to_coverage_inserts_then_idempotent() -> None:
         _seed_company(conn, ticker="TEST")
 
         first = add_to_coverage(conn, ticker="TEST", actor="human:michael")
-        assert first.tier == "core"
+        assert first.ticker == "TEST"
         # Idempotent: same call returns same row.
         again = add_to_coverage(conn, ticker="TEST", actor="human:michael")
         assert again.id == first.id

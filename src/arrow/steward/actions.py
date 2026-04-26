@@ -57,12 +57,15 @@ class FindingRef:
 
 @dataclass(frozen=True)
 class CoverageRef:
-    """Reference to a coverage_membership row after an action."""
+    """Reference to a coverage_membership row after an action.
+
+    Coverage is binary in V1.1+ (migration 018 dropped the tier
+    column); membership is the only state.
+    """
 
     id: int
     company_id: int
     ticker: str
-    tier: str
 
 
 # ---------------------------------------------------------------------------
@@ -335,12 +338,8 @@ def add_to_coverage(
     already-membered ticker returns the existing row.
 
     Coverage is binary in V1.1+: a ticker is tracked or it isn't.
-    No tier parameter (the previous core/extended tiers were removed
-    so cross-ticker comparisons stay symmetric).
-
-    The transitional ``tier='core'`` literal in the INSERT below
-    satisfies the still-present NOT NULL CHECK on the column; the
-    column is dropped in migration 018.
+    Migration 018 dropped the tier column; one uniform standard from
+    expectations.py applies to every member.
     """
     _require(actor, "actor")
     _require(ticker, "ticker")
@@ -363,21 +362,19 @@ def add_to_coverage(
         existing = cur.fetchone()
         if existing is not None:
             return CoverageRef(
-                id=existing[0], company_id=company_id, ticker=ticker, tier="core",
+                id=existing[0], company_id=company_id, ticker=ticker,
             )
 
-        # tier='core' is transitional — see migration 018 which drops
-        # the column. The action's public API has no tier parameter.
         cur.execute(
             """
-            INSERT INTO coverage_membership (company_id, tier, added_by, notes)
-            VALUES (%s, 'core', %s, %s)
+            INSERT INTO coverage_membership (company_id, added_by, notes)
+            VALUES (%s, %s, %s)
             RETURNING id;
             """,
             (company_id, actor, notes),
         )
         new_id = cur.fetchone()[0]
-        return CoverageRef(id=new_id, company_id=company_id, ticker=ticker, tier="core")
+        return CoverageRef(id=new_id, company_id=company_id, ticker=ticker)
 
 
 def remove_from_coverage(

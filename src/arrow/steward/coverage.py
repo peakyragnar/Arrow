@@ -63,12 +63,15 @@ class VerticalCoverage:
 
 @dataclass(frozen=True)
 class CoverageRow:
-    """One row in the coverage matrix."""
+    """One row in the coverage matrix.
+
+    No tier field — V1.1 collapsed coverage to a single uniform
+    standard (migration 018 dropped the column).
+    """
 
     company_id: int
     ticker: str
     name: str
-    tier: str
     added_at: Any
     by_vertical: dict[str, VerticalCoverage]
 
@@ -84,7 +87,7 @@ def compute_coverage_matrix(conn: psycopg.Connection) -> list[CoverageRow]:
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT cm.company_id, c.ticker, c.name, cm.tier, cm.added_at
+            SELECT cm.company_id, c.ticker, c.name, cm.added_at
             FROM coverage_membership cm
             JOIN companies c ON c.id = cm.company_id
             ORDER BY c.ticker;
@@ -104,7 +107,7 @@ def compute_coverage_matrix(conn: psycopg.Connection) -> list[CoverageRow]:
     by_vertical_per_company = _vertical_aggregates(conn, company_ids)
 
     rows: list[CoverageRow] = []
-    for company_id, ticker, name, tier, added_at in members:
+    for company_id, ticker, name, added_at in members:
         per_vertical: dict[str, VerticalCoverage] = {}
         for vertical in VERTICALS:
             agg = by_vertical_per_company[vertical].get(
@@ -117,7 +120,6 @@ def compute_coverage_matrix(conn: psycopg.Connection) -> list[CoverageRow]:
             company_id=company_id,
             ticker=ticker,
             name=name,
-            tier=tier,
             added_at=added_at,
             by_vertical=per_vertical,
         ))
@@ -154,7 +156,7 @@ def compute_ticker_coverage(
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT cm.company_id, c.ticker, c.name, cm.tier, cm.added_at
+            SELECT cm.company_id, c.ticker, c.name, cm.added_at
             FROM coverage_membership cm
             JOIN companies c ON c.id = cm.company_id
             WHERE c.ticker = %s;
@@ -164,7 +166,7 @@ def compute_ticker_coverage(
         m = cur.fetchone()
         if m is None:
             return None
-    company_id, _ticker, name, tier, added_at = m
+    company_id, _ticker, name, added_at = m
 
     aggs = _vertical_aggregates(conn, [company_id])
     by_vertical: dict[str, VerticalCoverage] = {}
@@ -176,7 +178,7 @@ def compute_ticker_coverage(
         )
 
     summary = CoverageRow(
-        company_id=company_id, ticker=ticker, name=name, tier=tier,
+        company_id=company_id, ticker=ticker, name=name,
         added_at=added_at, by_vertical=by_vertical,
     )
 
