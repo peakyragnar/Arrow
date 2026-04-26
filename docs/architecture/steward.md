@@ -265,6 +265,7 @@ honest about what's automatable.
 | `unparsed_body_fallback` | human_only | suggest_only | suggest_only |
 | `broken_provenance` | human_only | suggest_only | autonomous |
 | `extraction_method_drift` | human_only | suggest_only | suggest_only |
+| `chunk_repair_concentration` | human_only | suggest_only | suggest_only |
 | `expected_coverage` | human_only | suggest_only | auto_with_review |
 | `expected_coverage` | human_only | suggest_only | auto_with_review |
 | `segment_taxonomy_drift` (LLM) | n/a | suggest_only | suggest_only |
@@ -299,7 +300,8 @@ Concretely, V1 delivers:
   `coverage_ticker`
 - Tests: integration tests for actions, runner, each check, dashboard routes
 
-V1 deterministic checks (five):
+V1 deterministic checks (six; #6 added in V1.3 from chunk-quality
+audit-script signal that warranted promotion):
 
 1. `zero_row_runs` — `ingest_runs` succeeded but wrote 0 rows across
    recognized output keys (FMP: `rows_processed`, `*_facts_written`,
@@ -319,6 +321,14 @@ V1 deterministic checks (five):
    drops by ≥ 15 percentage points. Catches the realistic regression
    mode (extractor demoting sections from deterministic → repair →
    unparsed_fallback) instead of within-bucket confidence drift.
+6. `chunk_repair_concentration` — per artifact: alerts when more than
+   half of an artifact's sections fell to `repair` extraction (with
+   ≥3 sections total to avoid noise on tiny / amendment filings).
+   Catches single-filing degradation that the corpus-level
+   `extraction_method_drift` can't see. Calibrated against the live
+   corpus on 2026-04-26: thresholds (`>0.5` repair share, `≥3`
+   sections) match exactly the META FY2025 Q1 10-Q signal — the
+   only artifact in the entire corpus that fits the pattern.
 
 A sixth planned check, `broken_provenance`, was dropped on inspection:
 the schema enforces what it would have checked (NOT NULL +
@@ -326,17 +336,15 @@ the schema enforces what it would have checked (NOT NULL +
 failure mode structurally impossible. Lean default — don't ship code
 for impossible failure modes.
 
-**V1.5 sixth check (now shipped):**
+**Other shipped checks:**
 
-6. `expected_coverage` — for each ticker in `coverage_membership`,
-   resolves expectations from `expectations.py` (tier defaults +
-   per-ticker overrides) and yields one finding per unmet
-   expectation. Reuses `compute_coverage_matrix()` for state and
-   `evaluate_expectation()` for assertions. Each finding is tagged
-   with the failing vertical. Three rule kinds: `present` (≥1
-   current row), `min_periods` (≥N distinct periods), `recency`
-   (latest period within N days). Severity: `investigate` when the
-   vertical is missing entirely, `warning` for partial / stale.
+7. `expected_coverage` — for each ticker in `companies`, resolves
+   expectations from `expectations.py` and yields one finding per
+   unmet expectation. Each finding is tagged with the failing
+   vertical. Three rule kinds: `present` (≥1 current row),
+   `min_periods` (≥N distinct periods), `recency` (latest period
+   within N days). Severity: `investigate` when the vertical is
+   missing entirely, `warning` for partial / stale.
 
 ## Working Rules
 
@@ -452,6 +460,23 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started).
   3-line structured template (Action / Cause / Expected) so V2's RAG
   trains on consistent shape and the operator approves rather than
   authors.
+
+**V1.3 (chunk-quality signal promoted from audit script):**
+
+- ✅ Add `chunk_repair_concentration` check (sixth deterministic
+  check). Surfaces single-filing extraction degradation that the
+  corpus-level `extraction_method_drift` can't see (drift averages
+  across the corpus; a single repair-heavy filing rarely moves
+  averages). Threshold (`>0.5` repair share, `≥3` sections)
+  calibrated against the live corpus before building — the design-
+  check SQL returned exactly the META FY2025 Q1 case we'd already
+  identified manually, confirming the threshold is signal-tuned
+  rather than arbitrary. Two other audit-script signals
+  (`missing_standard_section`, `chunk_size_outlier`) were
+  considered and explicitly deferred / dropped per the elon-loop
+  review (the former needs a per-filing-type expectations layer
+  first; the latter has too-high false-positive rate from
+  legitimate cross-reference cuts).
 
 **V1.2 (operator pushback — membership concept dropped):**
 

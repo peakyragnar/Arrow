@@ -590,3 +590,107 @@ def test_extraction_method_drift_skips_when_no_drop() -> None:
         run_steward(conn, scope=Scope.universe())
         rows = _findings(conn, source_check="extraction_method_drift")
     assert rows == []
+
+
+# ---------------------------------------------------------------------------
+# chunk_repair_concentration
+# ---------------------------------------------------------------------------
+
+
+def test_chunk_repair_concentration_fires_on_majority_repair_artifact() -> None:
+    """An artifact with >50% sections in repair extraction (and ≥3
+    sections total) fires a finding. Mirrors the META FY2025 Q1
+    pattern that surfaced in real data."""
+    with get_conn() as conn:
+        _reset(conn)
+        cid = _seed_company(conn, ticker="TEST")
+        run_id = _seed_run(conn)
+        aid = _seed_artifact(
+            conn, run_id=run_id, company_id=cid, ticker="TEST",
+            artifact_type="10q", form_family="10-Q",
+        )
+        # 5 repair + 1 deterministic on the same artifact = 83% repair share,
+        # 6 total sections — well above thresholds.
+        for sk in ("part1_item2_mda", "part1_item3_market_risk",
+                   "part1_item4_controls", "part2_item1_legal_proceedings",
+                   "part2_item1a_risk_factors"):
+            _seed_section(conn, artifact_id=aid, company_id=cid,
+                          section_key=sk, extraction_method="repair")
+        _seed_section(conn, artifact_id=aid, company_id=cid,
+                      section_key="part2_item5_other_information",
+                      extraction_method="deterministic")
+
+        run_steward(conn, scope=Scope.universe())
+        rows = _findings(conn, source_check="chunk_repair_concentration")
+    assert len(rows) == 1
+    r = rows[0]
+    assert r["ticker"] == "TEST"
+    assert r["evidence"]["repair_count"] == 5
+    assert r["evidence"]["total_sections"] == 6
+    assert r["evidence"]["repair_share"] == pytest.approx(5 / 6)
+
+
+def test_chunk_repair_concentration_skips_artifact_with_minority_repair() -> None:
+    """50% or below repair share should NOT fire."""
+    with get_conn() as conn:
+        _reset(conn)
+        cid = _seed_company(conn, ticker="TEST")
+        run_id = _seed_run(conn)
+        aid = _seed_artifact(
+            conn, run_id=run_id, company_id=cid, ticker="TEST",
+            artifact_type="10q", form_family="10-Q",
+        )
+        # 2 repair + 4 deterministic = 33% repair, below 50% threshold.
+        for sk in ("part1_item2_mda", "part1_item3_market_risk"):
+            _seed_section(conn, artifact_id=aid, company_id=cid,
+                          section_key=sk, extraction_method="repair")
+        for sk in ("part1_item4_controls", "part2_item1_legal_proceedings",
+                   "part2_item1a_risk_factors", "part2_item5_other_information"):
+            _seed_section(conn, artifact_id=aid, company_id=cid,
+                          section_key=sk, extraction_method="deterministic")
+
+        run_steward(conn, scope=Scope.universe())
+        rows = _findings(conn, source_check="chunk_repair_concentration")
+    assert rows == []
+
+
+def test_chunk_repair_concentration_skips_artifact_below_min_sections() -> None:
+    """Tiny artifacts (e.g. amendments with only 1-2 sections) shouldn't
+    fire even with high repair share — the MIN_SECTIONS guard avoids
+    false positives on legitimately-small filings like 10-K/A amendments."""
+    with get_conn() as conn:
+        _reset(conn)
+        cid = _seed_company(conn, ticker="TEST")
+        run_id = _seed_run(conn)
+        aid = _seed_artifact(
+            conn, run_id=run_id, company_id=cid, ticker="TEST",
+            artifact_type="10k", form_family="10-K",
+        )
+        # 2 sections both in repair = 100% repair share but only 2 sections.
+        for sk in ("item_1_business", "item_1a_risk_factors"):
+            _seed_section(conn, artifact_id=aid, company_id=cid,
+                          section_key=sk, extraction_method="repair")
+
+        run_steward(conn, scope=Scope.universe())
+        rows = _findings(conn, source_check="chunk_repair_concentration")
+    assert rows == []
+
+
+def test_chunk_repair_concentration_skips_artifact_with_all_deterministic() -> None:
+    with get_conn() as conn:
+        _reset(conn)
+        cid = _seed_company(conn, ticker="TEST")
+        run_id = _seed_run(conn)
+        aid = _seed_artifact(
+            conn, run_id=run_id, company_id=cid, ticker="TEST",
+            artifact_type="10q", form_family="10-Q",
+        )
+        for sk in ("part1_item2_mda", "part1_item3_market_risk",
+                   "part1_item4_controls", "part2_item1_legal_proceedings",
+                   "part2_item1a_risk_factors"):
+            _seed_section(conn, artifact_id=aid, company_id=cid,
+                          section_key=sk, extraction_method="deterministic")
+
+        run_steward(conn, scope=Scope.universe())
+        rows = _findings(conn, source_check="chunk_repair_concentration")
+    assert rows == []
