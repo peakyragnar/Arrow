@@ -1,0 +1,28 @@
+-- Drop coverage_membership table.
+--
+-- V1.2 (operator-driven): the membership concept was a layer that
+-- didn't earn its keep. Every ticker in `companies` was deliberately
+-- ingested via scripts/ingest_company.py — making operators repeat
+-- that decision via a separate "Add to coverage" form is friction
+-- without value. The steward now evaluates every ticker in
+-- `companies` automatically.
+--
+-- Application code stopped reading or writing this table in commit
+-- a60d0ee (V1.2 step 1). This migration removes the table itself.
+--
+-- Dependencies:
+--   - No views reference coverage_membership (verified).
+--   - No tables FK to it.
+--   - Findings reference companies(id) directly, never
+--     coverage_membership.
+--   - Open data_quality_findings against any ticker stay open;
+--     they never depended on the membership table.
+--
+-- Stopping tracking on a ticker (V1.2 model):
+--   - Suppress the ticker's findings with a structured reason
+--     (common path; data and audit trail stay intact).
+--   - Or DELETE FROM companies WHERE ticker = X (rare; requires
+--     deleting all the ticker's facts and artifacts first because
+--     of FK ON DELETE RESTRICT).
+
+DROP TABLE coverage_membership;

@@ -475,7 +475,7 @@ Status legend:
 | `alerts` | deferred | — |
 | `watchlists` | deferred | — |
 | `qa_log` | deferred | wired up the moment the analyst flow exists; consent flags must be enforced from the first interaction |
-| `coverage_membership` | built | migrations 017+018 — curated coverage universe; binary membership (a ticker is tracked or not). One uniform standard from `src/arrow/steward/expectations.py` applies to every member; tier column dropped in 018. See `docs/architecture/steward.md`. |
+| `coverage_membership` | withdrawn | added in migration 017, dropped in migration 019. The membership concept was an opt-in layer over `companies` that didn't earn its keep — every seeded ticker should be tracked by the steward by default. The steward now reads `companies` directly. See `docs/architecture/steward.md` § V1.2. |
 | `data_quality_findings` | built | migration 017 — steward-produced findings with two-state lifecycle (`open` → `closed` with structured `closed_reason`); audit captured in `history` jsonb. Distinct from inline-validation `data_quality_flags`; UNIONed by `v_open_quality_signals` (`db/queries/15_*.sql`) for dashboard. See `docs/architecture/steward.md`. |
 
 ## Table Intent
