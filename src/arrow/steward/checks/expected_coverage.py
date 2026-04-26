@@ -71,15 +71,7 @@ class ExpectedCoverage(Check):
             if scope_tickers is not None and row.ticker not in scope_tickers:
                 continue
 
-            try:
-                expectations = expectations_for(row.ticker, row.tier)
-            except ValueError:
-                # Unknown tier — schema CHECK should prevent this, but if it
-                # ever happens, surface a finding rather than crashing the run.
-                yield self._unknown_tier_finding(row)
-                continue
-
-            for exp in expectations:
+            for exp in expectations_for(row.ticker):
                 cell = row.by_vertical[exp.vertical]
                 latest_age_days = self._age_days(cell.latest, now)
                 result = evaluate_expectation(
@@ -134,7 +126,7 @@ class ExpectedCoverage(Check):
         )
 
         summary = (
-            f"{row.ticker} ({row.tier}) — {exp.vertical} fails {exp.rule}: "
+            f"{row.ticker} — {exp.vertical} fails {exp.rule}: "
             f"{result.detail}"
         )
 
@@ -149,7 +141,6 @@ class ExpectedCoverage(Check):
             vertical=exp.vertical,
             fiscal_period_key=None,
             evidence={
-                "tier": row.tier,
                 "rule": exp.rule,
                 "rule_params": exp.params,
                 "actual": result.actual,
@@ -186,31 +177,31 @@ class ExpectedCoverage(Check):
         if not cell.has_data:
             prose = (
                 f"{ticker} has no current rows in the {v!r} vertical. The "
-                f"{row.tier!r} tier expects this data to be present. "
-                f"Most likely cause: ingest for this vertical hasn't run for "
-                f"{ticker}. Run the suggested command to fetch and load it. "
-                f"If {ticker} legitimately has no {v} data (e.g. recent IPO, "
-                f"vendor doesn't cover it), suppress with reason; if the "
-                f"tier expectation itself is wrong for this ticker, edit "
-                f"`PER_TICKER_OVERRIDES` in src/arrow/steward/expectations.py."
+                f"standard expects this data to be present. Most likely "
+                f"cause: ingest for this vertical hasn't run for {ticker}. "
+                f"Run the suggested command to fetch and load it. If "
+                f"{ticker} legitimately has no {v} data (recent IPO, vendor "
+                f"doesn't cover it), suppress with a reason — the suppression "
+                f"reason IS the acceptance criteria and lives in the audit "
+                f"trail."
             )
         elif rule == "min_periods":
             prose = (
                 f"{ticker} has {result.actual} period(s) of {v} data; the "
-                f"{row.tier!r} tier expects at least {result.expected}. "
-                f"Likely cause: backfill window was narrower than the "
-                f"expectation. Re-run with a wider --since date. If the "
-                f"vendor truly doesn't have older data for this ticker "
-                f"(IPO date, spinoff date), add a per-ticker override in "
-                f"expectations.py rather than suppressing repeatedly."
+                f"standard expects at least {result.expected}. Likely cause: "
+                f"backfill window was narrower than the standard. Re-run with "
+                f"a wider --since date. If the vendor genuinely doesn't have "
+                f"older data for this ticker (IPO date, spinoff date), "
+                f"suppress with a reason and an expiry pointing at when the "
+                f"ticker should have enough history to revisit."
             )
         elif rule == "recency":
             prose = (
                 f"{ticker}'s most-recent {v} data is {result.actual} days old; "
-                f"the {row.tier!r} tier expects refreshes within {result.expected} "
-                f"days. Likely cause: scheduled refresh hasn't run, or the "
-                f"vendor hasn't published a newer value yet. Re-run the "
-                f"suggested command."
+                f"the standard expects refreshes within {result.expected} days. "
+                f"Likely cause: scheduled refresh hasn't run, or the vendor "
+                f"hasn't published a newer value yet. Re-run the suggested "
+                f"command."
             )
         else:
             prose = f"{v} fails {rule}: {result.detail}"
@@ -221,31 +212,3 @@ class ExpectedCoverage(Check):
             "command": cmd,
             "prose": prose,
         }
-
-    def _unknown_tier_finding(self, row) -> FindingDraft:
-        fp = fingerprint(
-            self.name,
-            scope={"ticker": row.ticker, "vertical": "_meta", "rule": "unknown_tier"},
-            rule_params={"tier": row.tier},
-        )
-        return FindingDraft(
-            fingerprint=fp,
-            finding_type=self.name,
-            severity="investigate",
-            company_id=row.company_id,
-            ticker=row.ticker,
-            vertical=None,
-            fiscal_period_key=None,
-            evidence={"tier": row.tier},
-            summary=f"{row.ticker} has unrecognized tier {row.tier!r} — no expectations defined.",
-            suggested_action={
-                "kind": "fix_membership",
-                "params": {"ticker": row.ticker, "tier": row.tier},
-                "command": f"# Update tier via the dashboard or:\nuv run python -c \"...\"",
-                "prose": (
-                    f"Tier {row.tier!r} is not in UNIVERSE_DEFAULTS. Either add "
-                    f"the tier to expectations.py or change this membership to a "
-                    f"known tier."
-                ),
-            },
-        )

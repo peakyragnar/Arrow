@@ -28,7 +28,6 @@ from arrow.steward.actions import (
     open_finding,
     remove_from_coverage,
     resolve_finding,
-    set_coverage_tier,
     suppress_finding,
 )
 from arrow.steward.fingerprint import fingerprint
@@ -401,22 +400,11 @@ def test_add_to_coverage_inserts_then_idempotent() -> None:
         _reset(conn)
         _seed_company(conn, ticker="TEST")
 
-        first = add_to_coverage(conn, ticker="TEST", tier="core", actor="human:michael")
+        first = add_to_coverage(conn, ticker="TEST", actor="human:michael")
         assert first.tier == "core"
         # Idempotent: same call returns same row.
-        again = add_to_coverage(conn, ticker="TEST", tier="core", actor="human:michael")
+        again = add_to_coverage(conn, ticker="TEST", actor="human:michael")
         assert again.id == first.id
-
-
-def test_add_to_coverage_rejects_silent_tier_change() -> None:
-    """A user calling add_to_coverage with a different tier should raise,
-    not silently change. Tier change is set_coverage_tier()."""
-    with get_conn() as conn:
-        _reset(conn)
-        _seed_company(conn, ticker="TEST")
-        add_to_coverage(conn, ticker="TEST", tier="core", actor="human:michael")
-        with pytest.raises(StewardActionError):
-            add_to_coverage(conn, ticker="TEST", tier="extended", actor="human:michael")
 
 
 def test_add_to_coverage_unseeded_ticker_raises() -> None:
@@ -425,14 +413,14 @@ def test_add_to_coverage_unseeded_ticker_raises() -> None:
     with get_conn() as conn:
         _reset(conn)
         with pytest.raises(StewardActionError):
-            add_to_coverage(conn, ticker="UNSEEDED", tier="core", actor="human:michael")
+            add_to_coverage(conn, ticker="UNSEEDED", actor="human:michael")
 
 
 def test_add_to_coverage_normalizes_ticker_case() -> None:
     with get_conn() as conn:
         _reset(conn)
         _seed_company(conn, ticker="TEST")
-        ref = add_to_coverage(conn, ticker="test", tier="core", actor="human:michael")
+        ref = add_to_coverage(conn, ticker="test", actor="human:michael")
         assert ref.ticker == "TEST"
 
 
@@ -440,26 +428,9 @@ def test_remove_from_coverage_returns_true_then_false() -> None:
     with get_conn() as conn:
         _reset(conn)
         _seed_company(conn, ticker="TEST")
-        add_to_coverage(conn, ticker="TEST", tier="core", actor="human:michael")
+        add_to_coverage(conn, ticker="TEST", actor="human:michael")
         assert remove_from_coverage(conn, ticker="TEST", actor="human:michael") is True
         assert remove_from_coverage(conn, ticker="TEST", actor="human:michael") is False
-
-
-def test_set_coverage_tier_changes_tier() -> None:
-    with get_conn() as conn:
-        _reset(conn)
-        _seed_company(conn, ticker="TEST")
-        add_to_coverage(conn, ticker="TEST", tier="core", actor="human:michael")
-        ref = set_coverage_tier(conn, ticker="TEST", tier="extended", actor="human:michael")
-        assert ref.tier == "extended"
-
-
-def test_set_coverage_tier_for_unmembered_ticker_raises() -> None:
-    with get_conn() as conn:
-        _reset(conn)
-        _seed_company(conn, ticker="TEST")
-        with pytest.raises(StewardActionError):
-            set_coverage_tier(conn, ticker="TEST", tier="extended", actor="human:michael")
 
 
 # ---------------------------------------------------------------------------

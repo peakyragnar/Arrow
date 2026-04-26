@@ -92,27 +92,27 @@
       <h2>Actions</h2>
 
       <form class="action resolve" method="post" action="/findings/{{ f.id }}/resolve">
-        <label>Resolution note (optional)
-          <input type="text" name="note" placeholder="e.g. re-ran ingest, problem cleared">
+        <label>Resolution note
+          <textarea name="note" rows="3" cols="80">{{ note_prefill.resolve }}</textarea>
         </label>
         <button type="submit" class="btn btn-resolve">Resolve</button>
-        <p class="hint">Use when the underlying problem is fixed (e.g. you re-ran ingest).</p>
+        <p class="hint">Use when you fixed the underlying problem (e.g. re-ran ingest). Pre-filled with a 3-line structured template — edit the specifics, keep the Action/Cause/Expected shape so V2 trains on consistent data.</p>
       </form>
 
       <form class="action suppress" method="post" action="/findings/{{ f.id }}/suppress">
         <label>Suppress reason (required)
-          <input type="text" name="reason" required placeholder="e.g. AVGO segment reorg confirmed in 10-Q">
+          <textarea name="reason" rows="3" cols="80" required>{{ note_prefill.suppress }}</textarea>
         </label>
         <label>Expires (optional, YYYY-MM-DD)
           <input type="text" name="expires" placeholder="leave blank for permanent">
         </label>
         <button type="submit" class="btn btn-suppress">Suppress</button>
-        <p class="hint">Use when the finding is real but not actionable now. Stays suppressed across nightly sweeps.</p>
+        <p class="hint">Use when the finding is real but not actionable now. Replace the bracketed [operator: …] hints with your actual reasoning.</p>
       </form>
 
       <form class="action dismiss" method="post" action="/findings/{{ f.id }}/dismiss">
-        <label>Dismiss note (optional)
-          <input type="text" name="note" placeholder="e.g. false positive — extractor regex was right">
+        <label>Dismiss note
+          <textarea name="note" rows="3" cols="80">{{ note_prefill.dismiss }}</textarea>
         </label>
         <button type="submit" class="btn btn-dismiss">Dismiss</button>
         <p class="hint">Use when the finding is a false positive (the check is wrong, not the data).</p>

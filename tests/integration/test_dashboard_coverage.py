@@ -3,11 +3,13 @@
 Covers:
   - GET /coverage with no members vs with members
   - GET /coverage/{ticker} detail
-  - POST /coverage/add: success, validation (bad tier, missing ticker)
+  - POST /coverage/add: success, validation (missing/blank ticker)
   - POST /coverage/{ticker}/remove: idempotency, no data deletion
-  - POST /coverage/{ticker}/tier: tier change
   - Operator actor capture (no hardcoded names)
   - Topbar Coverage link present on existing pages
+
+Coverage is binary in V1.1+ — no tier dropdown, no /coverage/{ticker}/tier
+route. The set_coverage_tier action callable was removed.
 """
 
 from __future__ import annotations
@@ -122,7 +124,7 @@ def test_coverage_matrix_renders_member_with_vertical_columns(client) -> None:
         cid = _seed_company(conn, ticker="PLTR", cik=1001)
         _seed_facts(conn, company_id=cid, statement="income_statement",
                     concept="revenue", n_periods=4)
-        add_to_coverage(conn, ticker="PLTR", tier="core",
+        add_to_coverage(conn, ticker="PLTR",
                         actor="human:test")
 
     resp = client.get("/coverage")
@@ -134,8 +136,6 @@ def test_coverage_matrix_renders_member_with_vertical_columns(client) -> None:
     # PLTR has financials → cell should be a "yes" cell with check + counts.
     assert "cov-yes" in resp.text
     assert "cov-no" in resp.text  # other verticals are no
-    # Tier badge.
-    assert "tier-core" in resp.text
 
 
 def test_coverage_matrix_lists_unmembered_tickers_in_add_form(client) -> None:
@@ -145,7 +145,7 @@ def test_coverage_matrix_lists_unmembered_tickers_in_add_form(client) -> None:
         _seed_company(conn, ticker="MSFT", cik=2002)
         # PLTR is in coverage; AMZN/MSFT are seeded but unmembered.
         cid = _seed_company(conn, ticker="PLTR", cik=2003)
-        add_to_coverage(conn, ticker="PLTR", tier="core", actor="human:test")
+        add_to_coverage(conn, ticker="PLTR", actor="human:test")
 
     resp = client.get("/coverage")
     assert "AMZN" in resp.text
@@ -166,7 +166,7 @@ def test_coverage_ticker_detail_renders(client) -> None:
         cid = _seed_company(conn, ticker="PLTR", cik=1001)
         _seed_facts(conn, company_id=cid, statement="income_statement",
                     concept="revenue", n_periods=4)
-        add_to_coverage(conn, ticker="PLTR", tier="core", actor="human:test")
+        add_to_coverage(conn, ticker="PLTR", actor="human:test")
 
     resp = client.get("/coverage/PLTR")
     assert resp.status_code == 200
@@ -198,7 +198,7 @@ def test_coverage_add_success_redirects_to_ticker_detail(client) -> None:
 
     resp = client.post(
         "/coverage/add",
-        data={"ticker": "pltr", "tier": "core", "notes": "tier-1 watchlist"},
+        data={"ticker": "pltr", "notes": "watchlist"},
         follow_redirects=False,
     )
     assert resp.status_code == 303
@@ -206,28 +206,14 @@ def test_coverage_add_success_redirects_to_ticker_detail(client) -> None:
 
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
-            "SELECT tier, added_by, notes FROM coverage_membership "
+            "SELECT added_by, notes FROM coverage_membership "
             "WHERE company_id = (SELECT id FROM companies WHERE ticker = 'PLTR');"
         )
-        tier, added_by, notes = cur.fetchone()
-    assert tier == "core"
+        added_by, notes = cur.fetchone()
     assert added_by.endswith(":dashboard"), (
         f"dashboard actor must end in ':dashboard', got {added_by!r}"
     )
-    assert notes == "tier-1 watchlist"
-
-
-def test_coverage_add_invalid_tier_rejected(client) -> None:
-    with get_conn() as conn:
-        _reset(conn)
-        _seed_company(conn, ticker="PLTR", cik=1001)
-
-    resp = client.post(
-        "/coverage/add",
-        data={"ticker": "PLTR", "tier": "premium", "notes": ""},
-        follow_redirects=False,
-    )
-    assert resp.status_code == 400
+    assert notes == "watchlist"
 
 
 def test_coverage_add_unseeded_ticker_returns_400(client) -> None:
@@ -238,7 +224,7 @@ def test_coverage_add_unseeded_ticker_returns_400(client) -> None:
 
     resp = client.post(
         "/coverage/add",
-        data={"ticker": "NEVERSEEN", "tier": "core", "notes": ""},
+        data={"ticker": "NEVERSEEN", "notes": ""},
         follow_redirects=False,
     )
     assert resp.status_code == 400
@@ -250,7 +236,7 @@ def test_coverage_add_blank_ticker_rejected(client) -> None:
 
     resp = client.post(
         "/coverage/add",
-        data={"ticker": "   ", "tier": "core", "notes": ""},
+        data={"ticker": "   ", "notes": ""},
         follow_redirects=False,
     )
     assert resp.status_code == 400
@@ -263,7 +249,7 @@ def test_coverage_add_does_not_hardcode_operator_name(client) -> None:
         _reset(conn)
         _seed_company(conn, ticker="PLTR", cik=1001)
 
-    client.post("/coverage/add", data={"ticker": "PLTR", "tier": "core"},
+    client.post("/coverage/add", data={"ticker": "PLTR"},
                 follow_redirects=False)
 
     with get_conn() as conn, conn.cursor() as cur:
@@ -290,7 +276,7 @@ def test_coverage_remove_succeeds_and_keeps_data(client) -> None:
         cid = _seed_company(conn, ticker="PLTR", cik=1001)
         _seed_facts(conn, company_id=cid, statement="income_statement",
                     concept="revenue", n_periods=2)
-        add_to_coverage(conn, ticker="PLTR", tier="core", actor="human:test")
+        add_to_coverage(conn, ticker="PLTR", actor="human:test")
 
     resp = client.post("/coverage/PLTR/remove", follow_redirects=False)
     assert resp.status_code == 303
@@ -321,61 +307,6 @@ def test_coverage_remove_is_idempotent(client) -> None:
     # remove_from_coverage returns False (nothing removed); the route
     # treats this as success (idempotent contract documented in actions.py).
     assert resp.status_code == 303
-
-
-# ---------------------------------------------------------------------------
-# POST /coverage/{ticker}/tier
-# ---------------------------------------------------------------------------
-
-
-def test_coverage_set_tier_changes_tier(client) -> None:
-    with get_conn() as conn:
-        _reset(conn)
-        _seed_company(conn, ticker="PLTR", cik=1001)
-        add_to_coverage(conn, ticker="PLTR", tier="core", actor="human:test")
-
-    resp = client.post(
-        "/coverage/PLTR/tier",
-        data={"tier": "extended"},
-        follow_redirects=False,
-    )
-    assert resp.status_code == 303
-
-    with get_conn() as conn, conn.cursor() as cur:
-        cur.execute(
-            "SELECT tier FROM coverage_membership "
-            "WHERE company_id = (SELECT id FROM companies WHERE ticker = 'PLTR');"
-        )
-        tier = cur.fetchone()[0]
-    assert tier == "extended"
-
-
-def test_coverage_set_tier_unmembered_returns_400(client) -> None:
-    with get_conn() as conn:
-        _reset(conn)
-        _seed_company(conn, ticker="NOTHERE", cik=1001)
-        # NOTHERE not in coverage_membership.
-
-    resp = client.post(
-        "/coverage/NOTHERE/tier",
-        data={"tier": "extended"},
-        follow_redirects=False,
-    )
-    assert resp.status_code == 400
-
-
-def test_coverage_set_tier_invalid_value_returns_400(client) -> None:
-    with get_conn() as conn:
-        _reset(conn)
-        _seed_company(conn, ticker="PLTR", cik=1001)
-        add_to_coverage(conn, ticker="PLTR", tier="core", actor="human:test")
-
-    resp = client.post(
-        "/coverage/PLTR/tier",
-        data={"tier": "premium"},
-        follow_redirects=False,
-    )
-    assert resp.status_code == 400
 
 
 # ---------------------------------------------------------------------------

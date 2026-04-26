@@ -37,7 +37,6 @@
         <tr>
           <th>Ticker</th>
           <th>Name</th>
-          <th>Tier</th>
           {% for v in verticals %}
             <th class="vertical-col">{{ v }}</th>
           {% endfor %}
@@ -49,7 +48,6 @@
           <tr>
             <td><a href="/coverage/{{ r.ticker }}">{{ r.ticker }}</a></td>
             <td class="name">{{ r.name }}</td>
-            <td><span class="tier tier-{{ r.tier }}">{{ r.tier }}</span></td>
             {% for v in verticals %}
               {% set cell = r.by_vertical[v] %}
               <td class="cov-cell {% if cell.has_data %}cov-yes{% else %}cov-no{% endif %}"
@@ -85,13 +83,9 @@
             {% endfor %}
           </select>
         </label>
-        <label>Tier
-          <select name="tier" required>
-            {% for t in valid_tiers %}
-              <option value="{{ t }}">{{ t }}</option>
-            {% endfor %}
-          </select>
-        </label>
+        {# No tier dropdown — coverage is binary in V1.1+. Single uniform
+           standard applies. Legitimate exceptions live in suppression
+           notes on findings, not in a different rule set. #}
         {# Notes input deferred per Elon-loop review: schema column
            (coverage_membership.notes) stays, but the form input was
            always-empty in practice. Restore when an operator wants

@@ -428,12 +428,20 @@ footer.bottom a:hover { text-decoration: underline; }
     gap: 2px;
     grid-column: 1;
 }
-.lifecycle-actions .action input {
+.lifecycle-actions .action input,
+.lifecycle-actions .action textarea {
     background: var(--bg);
     color: var(--text);
     border: 1px solid var(--border);
     padding: 4px 8px;
     font: inherit;
+    width: 100%;
+    box-sizing: border-box;
+}
+.lifecycle-actions .action textarea {
+    resize: vertical;
+    font-family: inherit;
+    line-height: 1.4;
 }
 .lifecycle-actions .action button {
     grid-column: 2;

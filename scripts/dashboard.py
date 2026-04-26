@@ -35,7 +35,6 @@ from arrow.steward.actions import (
     dismiss_finding,
     remove_from_coverage,
     resolve_finding,
-    set_coverage_tier,
     suppress_finding,
 )
 from arrow.steward.coverage import (
@@ -896,6 +895,56 @@ _VALID_SEVERITIES = ("informational", "warning", "investigate")
 _VALID_STATUSES = ("open", "closed", "all")
 
 
+def _build_note_template(
+    finding: dict[str, Any],
+    *,
+    action_kind: str,
+) -> str:
+    """Pre-fill text for the note input on a lifecycle action form.
+
+    Three labeled lines — Action / Cause / Expected — derived from the
+    finding's existing ``suggested_action``. The format is structured
+    enough that V2's RAG can key on it; the operator can edit any line
+    or accept as-is. Either way the audit trail captures structured,
+    consistent training data instead of hand-waved free text.
+
+    action_kind: one of 'resolve' | 'suppress' | 'dismiss'.
+    """
+    sa = finding.get("suggested_action") or {}
+    command = sa.get("command", "").strip()
+    finding_type = finding.get("finding_type", "")
+    ticker = finding.get("ticker") or "—"
+    summary = finding.get("summary", "")
+
+    # Compress the suggested-action prose to a one-line cause hint.
+    short_cause = summary if summary else f"{finding_type} fired on {ticker}"
+
+    if action_kind == "resolve":
+        first_command_line = command.split("\n")[0].strip() if command else "[describe what was done]"
+        return (
+            f"Action: ran `{first_command_line}`\n"
+            f"Cause: {short_cause}\n"
+            f"Expected: finding auto-resolves on next sweep when fingerprint stops surfacing"
+        )
+
+    if action_kind == "suppress":
+        return (
+            f"Action: suppressed\n"
+            f"Cause: [operator: explain the legitimate exception "
+            f"— recent IPO, vendor gap, known taxonomy change, etc.]\n"
+            f"Expected: revisit when [operator: name the condition that would change this]"
+        )
+
+    if action_kind == "dismiss":
+        return (
+            f"Action: dismissed (false positive)\n"
+            f"Cause: [operator: explain what was wrong about the check or evidence]\n"
+            f"Expected: tune check threshold or evidence collection if pattern recurs"
+        )
+
+    return ""
+
+
 @app.get("/findings", response_class=HTMLResponse)
 def findings_list(
     request: Request,
@@ -1019,6 +1068,11 @@ def finding_detail(request: Request, finding_id: int) -> Any:
         context={
             "f": finding,
             "tickers": tickers,
+            "note_prefill": {
+                "resolve": _build_note_template(finding, action_kind="resolve"),
+                "suppress": _build_note_template(finding, action_kind="suppress"),
+                "dismiss": _build_note_template(finding, action_kind="dismiss"),
+            },
         },
     )
 
@@ -1113,9 +1167,6 @@ def http_dismiss_finding(
 # ---------------------------------------------------------------------------
 
 
-_VALID_TIERS = ("core", "extended")
-
-
 @app.get("/coverage", response_class=HTMLResponse)
 def coverage_matrix(request: Request) -> Any:
     """Coverage matrix: tickers in `coverage_membership` × verticals.
@@ -1124,9 +1175,10 @@ def coverage_matrix(request: Request) -> Any:
     count + period count. Tickers seeded but not yet in coverage are
     surfaced separately so the operator can add them via the form.
 
-    V1 reports presence only; V1.5 (after `expectations.py` lands)
-    will overlay an expected-coverage classification (complete /
-    partial / missing) per cell.
+    Coverage is binary: tracked or not. The previous core/extended
+    tiers were dropped so cross-ticker comparisons stay symmetric;
+    legitimate exceptions live in suppression notes on findings, not
+    in a different rule set.
     """
     with get_conn() as conn:
         matrix = compute_coverage_matrix(conn)
@@ -1141,7 +1193,6 @@ def coverage_matrix(request: Request) -> Any:
             "verticals": VERTICALS,
             "unmembered": unmembered,
             "tickers": tickers,
-            "valid_tiers": _VALID_TIERS,
         },
     )
 
@@ -1170,7 +1221,6 @@ def coverage_ticker(request: Request, ticker: str) -> Any:
             "verticals": VERTICALS,
             "per_vertical": per_vertical_periods,
             "tickers": tickers,
-            "valid_tiers": _VALID_TIERS,
         },
     )
 
@@ -1178,7 +1228,6 @@ def coverage_ticker(request: Request, ticker: str) -> Any:
 @app.post("/coverage/add")
 def http_coverage_add(
     ticker: str = Form(...),
-    tier: str = Form(...),
     notes: str = Form(""),
 ) -> Any:
     """Add a ticker to coverage_membership.
@@ -1191,14 +1240,12 @@ def http_coverage_add(
     ticker = ticker.strip().upper()
     if not ticker:
         raise HTTPException(400, "ticker is required")
-    if tier not in _VALID_TIERS:
-        raise HTTPException(400, f"invalid tier: {tier!r}")
 
     actor = _operator_actor()
     try:
         with get_conn() as conn:
             add_to_coverage(
-                conn, ticker=ticker, tier=tier, actor=actor,
+                conn, ticker=ticker, actor=actor,
                 notes=notes.strip() or None,
             )
     except StewardActionError as e:
@@ -1224,22 +1271,6 @@ def http_coverage_remove(ticker: str) -> Any:
     except StewardActionError as e:
         raise HTTPException(400, str(e))
     return RedirectResponse(url="/coverage", status_code=303)
-
-
-@app.post("/coverage/{ticker}/tier")
-def http_coverage_set_tier(ticker: str, tier: str = Form(...)) -> Any:
-    """Change a ticker's coverage tier."""
-    ticker = ticker.strip().upper()
-    if tier not in _VALID_TIERS:
-        raise HTTPException(400, f"invalid tier: {tier!r}")
-
-    actor = _operator_actor()
-    try:
-        with get_conn() as conn:
-            set_coverage_tier(conn, ticker=ticker, tier=tier, actor=actor)
-    except StewardActionError as e:
-        raise HTTPException(400, str(e))
-    return RedirectResponse(url=f"/coverage/{ticker}", status_code=303)
 
 
 @app.get("/health")

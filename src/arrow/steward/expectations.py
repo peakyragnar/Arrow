@@ -1,19 +1,30 @@
 """Coverage expectations.
 
-Per-tier rules describing what each ticker SHOULD have, by vertical.
+Single uniform standard applied to any ticker in `coverage_membership`.
 Read by the ``expected_coverage`` check to compare expected vs. actual
 and surface gaps as findings.
 
-Design note (lean default applied):
-  Lives as a Python module in V1, NOT a database table. Promotes to
-  a ``coverage_expectations`` table when one of these is true:
-    - Rules grow past what one file holds comfortably (>~50 lines)
-    - Operator wants to edit exceptions through the dashboard
-    - Per-period or PIT expectations need real history
-  Until then: edit this file, restart the dashboard / re-run the
-  steward, the new rules take effect on the next sweep. Cheap and
-  honest. See `docs/architecture/steward.md` § ExpectationSet for
-  the rationale.
+Design (post-V1.1 simplification, see commit history):
+  Earlier V1 had two tiers (`core` / `extended`) and a
+  `PER_TICKER_OVERRIDES` constant for legitimate exceptions (recent
+  IPOs, spinoffs). Both were dropped because:
+
+    1. Tiers prevented cross-ticker comparison — different depths in
+       the same coverage universe meant analyses couldn't trust
+       symmetric history. The right binary is "tracked or not,"
+       not "tracked at what strictness."
+    2. PER_TICKER_OVERRIDES encoded operator judgment in code,
+       silently filtering findings before the operator could see
+       them. Legitimate exceptions (CRWV recent IPO) ARE the
+       operator's acceptance criteria — they belong in the suppress
+       reason on a finding, not in a Python constant. That way
+       every exception lives in the audit trail and becomes V2
+       training data.
+
+  When a tracked ticker can't meet the standard for legitimate
+  reasons, the steward fires a finding. The operator suppresses it
+  with a clear note. The note is the acceptance criteria; the
+  audit trail records the decision.
 
 Three rule kinds in V1:
   - ``present``     vertical has at least 1 current row
@@ -23,12 +34,6 @@ Three rule kinds in V1:
 Adding a rule kind: define it here, add an evaluator branch in
 ``evaluate_expectation`` below, and add a corresponding suggested-
 action prose in the check.
-
-Per-ticker overrides exist for legitimate exceptions (recent IPOs,
-spinoffs) where the tier-default would always fail. Permanent
-suppression of a single finding is a separate lever (suppress that
-finding via the dashboard); use overrides only when the tier rule
-itself doesn't apply to the ticker.
 """
 
 from __future__ import annotations
@@ -39,7 +44,7 @@ from typing import Any
 
 @dataclass(frozen=True)
 class Expectation:
-    """One expectation for one (tier-implied) (ticker, vertical) pair.
+    """One expectation for one (ticker, vertical) pair.
 
     The vertical is the one the rule applies to. The rule + params
     define the assertion.
@@ -50,80 +55,33 @@ class Expectation:
     params: dict[str, Any]
 
 
-#: Default expectations per coverage tier. Apply unless overridden in
-#: PER_TICKER_OVERRIDES below.
-UNIVERSE_DEFAULTS: dict[str, list[Expectation]] = {
-    "core": [
-        # 5 years of quarterly financials (the dashboard's audit horizon).
-        Expectation("financials", "min_periods", {"count": 20}),
-        # Some segment data. (Quarterly segments are expected; some filers
-        # only report annually — handled via per-ticker overrides if needed.)
-        Expectation("segments", "present", {}),
-        # Employee count refreshed within the last ~14 months. FMP's
-        # historical-employee-count is annual, so 400d covers the
-        # last completed FY plus refresh slop.
-        Expectation("employees", "recency", {"max_age_days": 400}),
-        # 5 years of qualitative SEC filings (≈25: 5 10-K + 20 10-Q,
-        # but distinct fiscal_period_key works out to ~20).
-        Expectation("sec_qual", "min_periods", {"count": 20}),
-    ],
-    "extended": [
-        # Lighter quality bar: 2 years of quarterly financials.
-        Expectation("financials", "min_periods", {"count": 8}),
-        # Some SEC qualitative present (recency check would also be
-        # reasonable; keeping it 'present' to avoid noise on extended).
-        Expectation("sec_qual", "present", {}),
-    ],
-}
+#: The single uniform standard applied to any ticker in coverage.
+#: 5 years of quarterly data (or whatever exists), 5 years of SEC
+#: filings (or whatever exists), employees within the last fiscal
+#: year, segments where the company reports them.
+STANDARD: list[Expectation] = [
+    # 5 years of quarterly financials (the dashboard's audit horizon).
+    Expectation("financials", "min_periods", {"count": 20}),
+    # Some segment data. Filers that don't report segments will
+    # surface findings the operator can suppress with a clear note.
+    Expectation("segments", "present", {}),
+    # Employee count refreshed within the last ~14 months. FMP's
+    # historical-employee-count is annual.
+    Expectation("employees", "recency", {"max_age_days": 400}),
+    # 5 years of qualitative SEC filings (≈20 distinct fiscal periods).
+    Expectation("sec_qual", "min_periods", {"count": 20}),
+]
 
 
-#: Per-ticker overrides. Replaces the corresponding tier default's
-#: ``params`` (NOT the rule). Use for tickers where the default rule
-#: APPLIES but the threshold is wrong (recent IPO with short history,
-#: spinoff with no pre-spin data).
-#:
-#: To remove a vertical entirely from a ticker's expectations, set
-#: ``params={"count": 0}`` for ``min_periods`` or simply suppress
-#: the resulting finding through the dashboard.
-PER_TICKER_OVERRIDES: dict[str, dict[str, dict[str, Any]]] = {
-    # CoreWeave IPO'd 2025-03-28 — only ~1 year of public quarterly history.
-    "CRWV": {
-        "financials": {"count": 4},   # don't expect 5y of quarters yet
-        "sec_qual":   {"count": 4},
-    },
-    # GE Vernova spun off from GE on 2024-04-02 — 2 years of public history.
-    "GEV": {
-        "financials": {"count": 8},
-        "sec_qual":   {"count": 8},
-    },
-}
+def expectations_for(ticker: str) -> list[Expectation]:
+    """Resolve effective expectations for a ticker.
 
-
-def expectations_for(ticker: str, tier: str) -> list[Expectation]:
-    """Resolve effective expectations for a ticker, applying any
-    per-ticker overrides on top of the tier defaults.
-
-    Returns a list of Expectation instances with effective params.
+    Single uniform standard — `ticker` is currently unused but kept
+    in the signature so per-ticker rules CAN be added later via the
+    audit trail (suppression policies, dynamic adjustments) without
+    rewriting callers.
     """
-    ticker = ticker.upper()
-    if tier not in UNIVERSE_DEFAULTS:
-        raise ValueError(f"unknown tier: {tier!r}")
-
-    defaults = UNIVERSE_DEFAULTS[tier]
-    overrides = PER_TICKER_OVERRIDES.get(ticker, {})
-
-    out: list[Expectation] = []
-    for exp in defaults:
-        params = overrides.get(exp.vertical)
-        if params is not None:
-            out.append(Expectation(
-                vertical=exp.vertical,
-                rule=exp.rule,
-                params={**exp.params, **params},
-            ))
-        else:
-            out.append(exp)
-    return out
+    return list(STANDARD)
 
 
 @dataclass(frozen=True)

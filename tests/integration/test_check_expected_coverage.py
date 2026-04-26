@@ -154,83 +154,63 @@ def test_unmembered_company_yields_no_findings() -> None:
         assert _findings(conn) == []
 
 
-def test_core_member_with_zero_data_fires_for_each_required_vertical() -> None:
-    """A bare core member has no facts → fires for every required
-    vertical: financials, segments, employees, sec_qual.
+def test_member_with_zero_data_fires_for_each_required_vertical() -> None:
+    """A bare member has no facts → fires for every required vertical:
+    financials, segments, employees, sec_qual.
     """
     with get_conn() as conn:
         _reset(conn)
         _seed_company(conn, ticker="EMPTY")
-        add_to_coverage(conn, ticker="EMPTY", tier="core", actor="human:test")
+        add_to_coverage(conn, ticker="EMPTY", actor="human:test")
 
         run_steward(conn, scope=Scope(check_names=["expected_coverage"]))
         rows = _findings(conn)
 
     by_vertical = {r["vertical"] for r in rows}
-    # All four core verticals should have at least one finding.
     assert "financials" in by_vertical
     assert "segments" in by_vertical
     assert "employees" in by_vertical
     assert "sec_qual" in by_vertical
 
 
-def test_core_member_with_full_financials_no_financials_finding() -> None:
+def test_member_with_full_financials_no_financials_finding() -> None:
     """20 quarterly periods of financials clears the financials
     expectation. Other verticals still fire (no segment / employee /
     sec_qual data seeded), but financials is gone."""
     with get_conn() as conn:
         _reset(conn)
         cid = _seed_company(conn, ticker="OK")
-        # Need 20+ distinct period_end values. Seed all three statements
-        # to make COUNT(DISTINCT period_end) ≥ 20.
         _seed_quarterly_facts(conn, company_id=cid, statement="income_statement",
                               concept="revenue", n_periods=20)
-        add_to_coverage(conn, ticker="OK", tier="core", actor="human:test")
+        add_to_coverage(conn, ticker="OK", actor="human:test")
 
         run_steward(conn, scope=Scope(check_names=["expected_coverage"]))
         rows = _findings(conn)
 
     verticals_failing = {r["vertical"] for r in rows}
     assert "financials" not in verticals_failing
-    # Other verticals still fail because no data was seeded for them.
     assert "segments" in verticals_failing
 
 
-def test_extended_member_lighter_threshold() -> None:
-    """Extended tier expects only 8 quarterly periods. Seed 10 → no
-    financials finding."""
+def test_legitimate_history_gap_fires_finding_for_operator_to_suppress() -> None:
+    """A young company (e.g. recent IPO) has < standard periods. The
+    standard fires; the operator's job is to suppress with a reason
+    explaining why fewer-than-standard is acceptable. The decision
+    lives in the audit trail (history jsonb), not in code."""
     with get_conn() as conn:
         _reset(conn)
-        cid = _seed_company(conn, ticker="EXT")
-        _seed_quarterly_facts(conn, company_id=cid, n_periods=10)
-        add_to_coverage(conn, ticker="EXT", tier="extended", actor="human:test")
-
-        run_steward(conn, scope=Scope(check_names=["expected_coverage"]))
-        rows = _findings(conn)
-
-    verticals_failing = {r["vertical"] for r in rows}
-    # Extended tier defaults: financials min_periods=8, sec_qual present.
-    # 10 periods → financials passes.
-    assert "financials" not in verticals_failing
-    # sec_qual not seeded → present check fails.
-    assert "sec_qual" in verticals_failing
-
-
-def test_per_ticker_override_relaxes_threshold() -> None:
-    """CRWV's override sets financials min_periods=4 (vs core default 20).
-    With 5 periods it passes; without override it would fail."""
-    with get_conn() as conn:
-        _reset(conn)
-        cid = _seed_company(conn, ticker="CRWV", cik=4242)
+        cid = _seed_company(conn, ticker="YOUNG")
+        # 5 quarters — below the standard's 20.
         _seed_quarterly_facts(conn, company_id=cid, n_periods=5)
-        add_to_coverage(conn, ticker="CRWV", tier="core", actor="human:test")
+        add_to_coverage(conn, ticker="YOUNG", actor="human:test")
 
         run_steward(conn, scope=Scope(check_names=["expected_coverage"]))
         rows = _findings(conn)
 
-    verticals_failing = {r["vertical"] for r in rows}
-    # CRWV's financials override (count=4) means 5 ≥ 4 → financials passes.
-    assert "financials" not in verticals_failing
+    fin = next((r for r in rows if r["vertical"] == "financials"), None)
+    assert fin is not None, "expected a financials finding for under-standard ticker"
+    assert fin["evidence"]["actual"] == 5
+    assert fin["evidence"]["expected"] == 20
 
 
 # ---------------------------------------------------------------------------
@@ -242,7 +222,7 @@ def test_missing_entirely_is_investigate_severity() -> None:
     with get_conn() as conn:
         _reset(conn)
         _seed_company(conn, ticker="EMPTY")
-        add_to_coverage(conn, ticker="EMPTY", tier="core", actor="human:test")
+        add_to_coverage(conn, ticker="EMPTY", actor="human:test")
 
         run_steward(conn, scope=Scope(check_names=["expected_coverage"]))
         rows = _findings(conn)
@@ -259,7 +239,7 @@ def test_partial_count_is_warning_severity() -> None:
         cid = _seed_company(conn, ticker="PART")
         # Has financials data but only 5 periods (need 20 for core).
         _seed_quarterly_facts(conn, company_id=cid, n_periods=5)
-        add_to_coverage(conn, ticker="PART", tier="core", actor="human:test")
+        add_to_coverage(conn, ticker="PART", actor="human:test")
 
         run_steward(conn, scope=Scope(check_names=["expected_coverage"]))
         rows = _findings(conn)
@@ -281,7 +261,7 @@ def test_finding_auto_resolves_when_data_lands() -> None:
     with get_conn() as conn:
         _reset(conn)
         cid = _seed_company(conn, ticker="GROW")
-        add_to_coverage(conn, ticker="GROW", tier="core", actor="human:test")
+        add_to_coverage(conn, ticker="GROW", actor="human:test")
 
         # First run: financials missing → finding open.
         run_steward(conn, scope=Scope(check_names=["expected_coverage"]))
@@ -302,7 +282,7 @@ def test_suppression_respected_across_sweeps() -> None:
     with get_conn() as conn:
         _reset(conn)
         _seed_company(conn, ticker="SUPP")
-        add_to_coverage(conn, ticker="SUPP", tier="core", actor="human:test")
+        add_to_coverage(conn, ticker="SUPP", actor="human:test")
 
         run_steward(conn, scope=Scope(check_names=["expected_coverage"]))
         rows = _findings(conn)
@@ -329,8 +309,8 @@ def test_ticker_scoped_run_only_evaluates_in_scope() -> None:
         _reset(conn)
         _seed_company(conn, ticker="A", cik=100)
         _seed_company(conn, ticker="B", cik=200)
-        add_to_coverage(conn, ticker="A", tier="core", actor="human:test")
-        add_to_coverage(conn, ticker="B", tier="core", actor="human:test")
+        add_to_coverage(conn, ticker="A", actor="human:test")
+        add_to_coverage(conn, ticker="B", actor="human:test")
 
         # Scope to A only — B's findings should NOT appear.
         run_steward(conn, scope=Scope(

@@ -30,22 +30,11 @@
   <h1>
     <span>{{ summary.ticker }}</span>
     <span class="type">{{ summary.name }}</span>
-    <span class="finding-id"><span class="tier tier-{{ summary.tier }}">{{ summary.tier }}</span></span>
   </h1>
 
   <section class="status-block">
     <h2>Membership</h2>
     <table class="kv">
-      <tr><th>Tier</th><td>
-        <form method="post" action="/coverage/{{ summary.ticker }}/tier" class="inline-form">
-          <select name="tier">
-            {% for t in valid_tiers %}
-              <option value="{{ t }}" {% if t == summary.tier %}selected{% endif %}>{{ t }}</option>
-            {% endfor %}
-          </select>
-          <button type="submit" class="btn-small">change</button>
-        </form>
-      </td></tr>
       <tr><th>Added at</th><td>{{ summary.added_at }}</td></tr>
     </table>
   </section>

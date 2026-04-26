@@ -236,6 +236,44 @@ def test_finding_detail_404_when_missing(client) -> None:
     assert resp.status_code == 404
 
 
+def test_finding_detail_prefills_note_inputs_for_each_lifecycle_action(client) -> None:
+    """The Resolve / Suppress / Dismiss forms must pre-fill their note
+    inputs with structured Action / Cause / Expected templates derived
+    from the finding's suggested_action.prose.
+
+    Why this matters for V2 training:
+      The operator isn't expected to author technical notes from blank
+      inputs (they've stated they rely on Claude for the database
+      depth). Pre-fill turns 'authoring' into 'approving' — the
+      operator reads, optionally edits, clicks. The audit trail still
+      captures them as the actor; V2 trains on consistent structured
+      notes instead of empty / hand-wave free text.
+
+    This test would have failed against the prior implementation
+    (plain text inputs with placeholder='', empty value).
+    """
+    with get_conn() as conn:
+        _reset(conn)
+        cid = _seed_company(conn, ticker="PLTR")
+        fid = _seed_finding(conn, company_id=cid, ticker="PLTR",
+                            summary="prefill check", fp_seed="prefill1")
+
+    resp = client.get(f"/findings/{fid}")
+    assert resp.status_code == 200
+    # All three lifecycle forms should have textareas (not bare inputs)
+    # with non-empty pre-filled content following the Action/Cause/Expected
+    # shape.
+    for marker in ("Action:", "Cause:", "Expected:"):
+        # Each marker should appear at least three times: once per
+        # lifecycle form (resolve / suppress / dismiss).
+        assert resp.text.count(marker) >= 3, (
+            f"{marker!r} appears {resp.text.count(marker)}× — expected ≥3 "
+            f"(one per lifecycle form). Pre-fill regression."
+        )
+    # Verify structured templates landed in textareas, not plain inputs.
+    assert "<textarea" in resp.text
+
+
 def test_finding_detail_omits_action_buttons_when_closed(client) -> None:
     with get_conn() as conn:
         _reset(conn)

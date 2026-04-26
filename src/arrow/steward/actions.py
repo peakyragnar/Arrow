@@ -328,20 +328,22 @@ def add_to_coverage(
     conn: psycopg.Connection,
     *,
     ticker: str,
-    tier: str,
     actor: str,
     notes: str | None = None,
 ) -> CoverageRef:
-    """Add a ticker to coverage_membership at ``tier``. Idempotent.
+    """Add a ticker to coverage_membership. Idempotent — calling on an
+    already-membered ticker returns the existing row.
 
-    If the ticker is already in coverage at the same tier, returns the
-    existing row. If the tier differs, raises (tier change is a separate
-    explicit action — see ``set_coverage_tier``).
+    Coverage is binary in V1.1+: a ticker is tracked or it isn't.
+    No tier parameter (the previous core/extended tiers were removed
+    so cross-ticker comparisons stay symmetric).
+
+    The transitional ``tier='core'`` literal in the INSERT below
+    satisfies the still-present NOT NULL CHECK on the column; the
+    column is dropped in migration 018.
     """
     _require(actor, "actor")
     _require(ticker, "ticker")
-    if tier not in ("core", "extended"):
-        raise StewardActionError(f"invalid tier: {tier!r}")
     ticker = ticker.upper()
 
     with conn.cursor() as cur:
@@ -355,34 +357,27 @@ def add_to_coverage(
         company_id = company_row[0]
 
         cur.execute(
-            """
-            SELECT id, tier FROM coverage_membership WHERE company_id = %s;
-            """,
+            "SELECT id FROM coverage_membership WHERE company_id = %s;",
             (company_id,),
         )
         existing = cur.fetchone()
         if existing is not None:
-            existing_id, existing_tier = existing
-            if existing_tier != tier:
-                raise StewardActionError(
-                    f"ticker {ticker} is already in coverage at tier "
-                    f"{existing_tier!r}; will not silently change to {tier!r}. "
-                    f"Use set_coverage_tier() if a tier change is intentional."
-                )
             return CoverageRef(
-                id=existing_id, company_id=company_id, ticker=ticker, tier=existing_tier
+                id=existing[0], company_id=company_id, ticker=ticker, tier="core",
             )
 
+        # tier='core' is transitional — see migration 018 which drops
+        # the column. The action's public API has no tier parameter.
         cur.execute(
             """
             INSERT INTO coverage_membership (company_id, tier, added_by, notes)
-            VALUES (%s, %s, %s, %s)
+            VALUES (%s, 'core', %s, %s)
             RETURNING id;
             """,
-            (company_id, tier, actor, notes),
+            (company_id, actor, notes),
         )
         new_id = cur.fetchone()[0]
-        return CoverageRef(id=new_id, company_id=company_id, ticker=ticker, tier=tier)
+        return CoverageRef(id=new_id, company_id=company_id, ticker=ticker, tier="core")
 
 
 def remove_from_coverage(
@@ -412,39 +407,6 @@ def remove_from_coverage(
             (ticker,),
         )
         return cur.fetchone() is not None
-
-
-def set_coverage_tier(
-    conn: psycopg.Connection,
-    *,
-    ticker: str,
-    tier: str,
-    actor: str,
-) -> CoverageRef:
-    """Change a ticker's coverage tier. Raises if the ticker is not in
-    coverage."""
-    _require(actor, "actor")
-    _require(ticker, "ticker")
-    if tier not in ("core", "extended"):
-        raise StewardActionError(f"invalid tier: {tier!r}")
-    ticker = ticker.upper()
-
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            UPDATE coverage_membership
-            SET tier = %s
-            WHERE company_id = (SELECT id FROM companies WHERE ticker = %s)
-            RETURNING id, company_id, tier;
-            """,
-            (tier, ticker),
-        )
-        row = cur.fetchone()
-        if row is None:
-            raise StewardActionError(
-                f"ticker {ticker} is not in coverage; use add_to_coverage() first."
-            )
-        return CoverageRef(id=row[0], company_id=row[1], ticker=ticker, tier=row[2])
 
 
 # ---------------------------------------------------------------------------

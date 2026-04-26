@@ -115,18 +115,51 @@ suggester reads similar past findings + their notes to propose
 actions on new ones. The quality of its suggestions is bounded by
 the quality of your notes.
 
+### The dashboard pre-fills the structure for you
+
+When you click any lifecycle button, the note input is **already
+populated** with a 3-line structured template derived from the
+finding's `suggested_action.prose`:
+
+```
+Action: ran `uv run scripts/backfill_fmp.py PLTR`
+Cause: financials below 5y standard (12 of 20 periods)
+Expected: finding auto-resolves on next sweep when fingerprint stops surfacing
+```
+
+You don't have to author this from scratch. You **read it, edit
+the specifics, and click**. If it's accurate as-is, accept it. If
+the cause is wrong (you actually re-ran with different args, or
+the cause was a vendor issue not a backfill window), edit that
+line. If the action you took was different from what the
+suggested_action proposed, edit Action.
+
+The Action / Cause / Expected shape is the load-bearing structure.
+Keep it. V2 trains on `(finding_evidence, action_kind,
+structured_note)` tuples and the labels make it parseable. If you
+strip the labels and just write free prose, V2 has to guess at
+which clause is the cause vs the expected outcome.
+
 ### Good notes look like
 
-- **Resolve:** `"Re-ran backfill_fmp.py with --since 2018-01-01;
-  AMD financials now have 28 quarters."` — names the action and
-  the observed effect.
-- **Suppress:** `"FMP genuinely has no pre-2024 employee count
-  for CRWV (private until IPO Mar 2025). Permanent suppression."`
-  — names the upstream cause and explains why it's not actionable.
-- **Dismiss:** `"section_confidence_drift fired on a 4-row window
-  during a holiday backfill; not a real regression. Threshold may
-  need tuning if this recurs."` — names what actually happened
-  and what would change the verdict.
+- **Resolve:**
+  ```
+  Action: ran `uv run scripts/backfill_fmp.py AMD --since 2018-01-01`
+  Cause: financials below 5y standard (16 of 20 periods); backfill window was set to 2020 originally
+  Expected: 28 quarters present, finding auto-resolves on next sweep
+  ```
+- **Suppress:**
+  ```
+  Action: suppressed (no expiry)
+  Cause: CRWV IPO 2025-03-28; only 4 quarters of public history exist
+  Expected: revisit when CRWV has ≥20 quarters (~2030)
+  ```
+- **Dismiss:**
+  ```
+  Action: dismissed (false positive)
+  Cause: extraction_method_drift fired on 4-row window during holiday backfill — not real regression
+  Expected: tune MIN_ROWS threshold if this recurs in next 30 days
+  ```
 
 ### Bad notes that produce bad training
 
@@ -134,6 +167,8 @@ the quality of your notes.
 - `"ok"` — same.
 - `"fixed"` — fixed *what*, *how*?
 - Empty — at least Resolve takes an empty note; don't.
+- Free-form prose without the Action/Cause/Expected labels — V2
+  has to infer where each piece of meaning is.
 
 ### A useful test for your note
 
@@ -225,19 +260,35 @@ When it does fire later:
 ## Coverage management
 
 `/coverage` is where you decide which tickers the steward enforces
-expectations against.
+expectations against. Coverage is **binary**: a ticker is tracked
+(in `coverage_membership`) or it isn't. There are no tiers. One
+uniform standard applies to every tracked ticker so cross-ticker
+comparisons stay symmetric.
+
+### The standard (applied to every tracked ticker)
+
+- **Financials:** 5 years of quarterly data (≥20 distinct periods)
+- **Segments:** must be present
+- **Employees:** latest count within the last ~14 months
+- **SEC qualitative:** ≥20 distinct fiscal periods of 10-K/10-Q
+
+### Legitimate exceptions live in suppression notes, not in code
+
+Some tickers can't meet the standard for real reasons (recent IPO,
+spinoff, vendor doesn't cover it, filer doesn't report segments).
+In those cases, the steward fires a finding and **you suppress with
+a clear reason**. The suppression reason IS the acceptance criteria
+— it lives in the audit trail and becomes V2 training data. This is
+deliberately better than encoding exceptions as Python constants:
+every legitimate exception now has a recorded operator decision +
+rationale, not silent code-side filtering.
 
 ### Adding a ticker
 
 1. The ticker must already exist in `companies` (seeded via
    `uv run scripts/ingest_company.py TICKER`). The dropdown only
    shows seeded but unmembered tickers.
-2. Pick a tier:
-   - **`core`** — full quality bar. 5y financials, segments,
-     employees recency, 5y SEC qual.
-   - **`extended`** — lighter bar. 2y financials, SEC qual present.
-3. Optional notes (e.g. "Q4 watchlist", "AI infra deep dive").
-4. Click **Add to coverage**. Steward will start evaluating it on
+2. Click **Add to coverage**. Steward will start evaluating it on
    the next sweep.
 
 ### Removing a ticker
@@ -245,15 +296,8 @@ expectations against.
 `/coverage/{TICKER}` → "Remove from coverage_membership". Confirms
 via JS prompt. **Does NOT delete data, facts, artifacts, or open
 findings** — only the membership claim. Open findings stay open
-until you triage them separately. This is intentional: a misclick
-shouldn't cascade-destroy.
-
-### Changing tier
-
-`/coverage/{TICKER}` → tier dropdown in the Membership block →
-"change". Reapplies expectations on the next sweep; existing
-findings against the old tier auto-resolve and new findings
-against the new tier open as appropriate.
+until you triage them separately. A misclick shouldn't cascade-
+destroy.
 
 ## Operating to teach V2
 
