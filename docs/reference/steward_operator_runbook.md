@@ -186,16 +186,6 @@ Extractor fell back to `unparsed_body`.
 - **Suppress** path: one-off filing with a layout you don't want to
   invest in handling. Note the layout pattern.
 
-### `extraction_method_drift`
-
-Share of `deterministic` extractions dropped >15 points.
-
-- **Investigate first** — pull the demoted rows with the suggested
-  command. Identify the common pattern (new filer? new template?).
-- **Resolve** path: fix the extractor, re-extract.
-- **Suppress** path: drift was caused by a one-time burst of
-  off-pattern filings (acquisition flurry, etc.) and won't recur.
-
 ### `expected_coverage`
 
 Coverage member missing data per its tier expectations.
@@ -207,6 +197,30 @@ Coverage member missing data per its tier expectations.
   add a `PER_TICKER_OVERRIDES` entry in
   `src/arrow/steward/expectations.py` so the rule itself is right.
   See the CRWV / GEV examples already there.
+
+## Aspirational checks (need a mature corpus before they fire usefully)
+
+A few V1 checks are built and registered but won't produce
+actionable signal until the underlying data has accumulated. Don't
+let them confuse early triage; revisit when the relevant corpus is
+~3+ months old.
+
+### `extraction_method_drift`
+
+Compares the share of `deterministic` SEC extractions in the recent
+30 days vs the prior 60 days. **Requires ≥10 sections in EACH
+window** (per `(form_family, section_key)`) for the test to fire.
+On a young corpus or after a backfill burst, the seasonality of
+ingest can superficially look like drift. Treat any early findings
+from this check as exploratory until the corpus is steady-state
+(≥90 days of organic ingest at a consistent cadence).
+
+When it does fire later:
+- **Investigate first** — pull the demoted rows with the suggested
+  command. Identify the common pattern (new filer? new template?).
+- **Resolve** path: fix the extractor, re-extract.
+- **Suppress** path: drift was caused by a one-time burst of
+  off-pattern filings (acquisition flurry, etc.) and won't recur.
 
 ## Coverage management
 

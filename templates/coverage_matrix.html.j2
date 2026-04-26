@@ -92,9 +92,10 @@
             {% endfor %}
           </select>
         </label>
-        <label>Notes (optional)
-          <input type="text" name="notes" placeholder="e.g. core watchlist, AI infra">
-        </label>
+        {# Notes input deferred per Elon-loop review: schema column
+           (coverage_membership.notes) stays, but the form input was
+           always-empty in practice. Restore when an operator wants
+           a place to leave membership context. #}
         <button type="submit" class="btn btn-add">Add to coverage</button>
       </form>
       <p class="hint">
