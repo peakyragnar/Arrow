@@ -13,6 +13,7 @@ Start here. Read only the next doc you need.
 - Metrics platform (view stack; shared by dashboard, screener, analyst agent): `docs/architecture/metrics_platform.md`
 - Analyst runtime (chat, retrieval recipes, evidence packets, tracing): `docs/architecture/analyst_runtime.md`
 - Steward runtime (data trust: findings, coverage, expectations, three-agent split, V1→V3 LLM trajectory): `docs/architecture/steward.md`
+- Steward operator runbook (how to use it day-to-day + how to operate so V2 trains well): `docs/reference/steward_operator_runbook.md`
 - Driver analysis ingest plan (growth/margin/cash driver substrate): `docs/architecture/driver_analysis_ingest_plan.md`
 - Dashboard UI surface: `docs/architecture/dashboard.md`
 - SEC qualitative layer (filings → sections → chunks, amendments, FTS): `docs/architecture/sec_qualitative_layer.md`

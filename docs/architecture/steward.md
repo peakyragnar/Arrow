@@ -561,6 +561,8 @@ Both are belt-and-suspenders. Add when there's time; not blocking.
 
 ## Cross-References
 
+- **Operator runbook (read this to actually use it):**
+  `docs/reference/steward_operator_runbook.md`
 - Architecture north star: `docs/architecture/system.md`
 - Analyst runtime (sibling): `docs/architecture/analyst_runtime.md`
 - Dashboard surface: `docs/architecture/dashboard.md`
