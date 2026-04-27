@@ -85,6 +85,8 @@ def _seed_anchor_fact(
     fiscal_year: int = 2025,
     fiscal_quarter: int = 2,
     period_end: date = date(2024, 7, 28),
+    statement: str = "income_statement",
+    extraction_version: str = "fixture-v1",
 ) -> None:
     run_id = _seed_run(conn)
     raw_id = _seed_raw(conn, run_id)
@@ -97,25 +99,33 @@ def _seed_anchor_fact(
                 period_end, period_type,
                 calendar_year, calendar_quarter, calendar_period_label,
                 value, unit, source_raw_response_id, extraction_version,
-                published_at
+                published_at,
+                dimension_type, dimension_key, dimension_label, dimension_source
             ) VALUES (
-                %s, %s, 'income_statement', 'revenue',
+                %s, %s, %s, 'revenue',
                 %s, %s, %s,
                 %s, 'quarter',
                 2024, 3, 'CY2024 Q3',
-                100.0, 'usd', %s, 'fixture-v1',
-                %s
+                100.0, 'usd', %s, %s,
+                %s,
+                %s, %s, %s, %s
             );
             """,
             (
                 run_id,
                 company_id,
+                statement,
                 fiscal_year,
                 fiscal_quarter,
                 f"FY{fiscal_year} Q{fiscal_quarter}",
                 period_end,
                 raw_id,
+                extraction_version,
                 datetime(2024, 8, 28, tzinfo=timezone.utc),
+                "product" if statement == "segment" else None,
+                "data_center" if statement == "segment" else None,
+                "Data Center" if statement == "segment" else None,
+                "fmp:fixture" if statement == "segment" else None,
             ),
         )
 
@@ -260,6 +270,44 @@ def test_normalize_uses_fact_period_end_for_two_clock_truth() -> None:
         assert period_end == date(2024, 7, 28)
         assert cal_year == 2024
         assert cal_quarter == 3
+
+
+def test_normalize_ignores_segment_period_end_when_statement_facts_agree() -> None:
+    with get_conn() as conn:
+        _reset(conn)
+        company = _seed_company(conn)
+        _seed_anchor_fact(
+            conn,
+            company_id=company.id,
+            period_end=date(2024, 7, 28),
+            statement="income_statement",
+            extraction_version="fixture-is-v1",
+        )
+        _seed_anchor_fact(
+            conn,
+            company_id=company.id,
+            period_end=date(2024, 7, 28),
+            statement="balance_sheet",
+            extraction_version="fixture-bs-v1",
+        )
+        _seed_anchor_fact(
+            conn,
+            company_id=company.id,
+            period_end=date(2024, 7, 27),
+            statement="segment",
+            extraction_version="fixture-segment-v1",
+        )
+        run_id = _seed_run(conn)
+
+        _normalize_one(
+            conn,
+            company=company,
+            fetched=_fetch(content=_content("first")),
+            ingest_run_id=run_id,
+        )
+
+        rows = _artifact_rows(conn)
+        assert rows[0][3] == date(2024, 7, 28)
 
 
 def test_normalize_falls_back_to_unparsed_unit_when_parser_fails() -> None:

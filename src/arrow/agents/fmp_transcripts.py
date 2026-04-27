@@ -317,6 +317,7 @@ def _resolve_period_end(
               AND fiscal_year = %s
               AND fiscal_quarter = %s
               AND period_type = 'quarter'
+              AND statement IN ('income_statement', 'balance_sheet', 'cash_flow')
               AND superseded_at IS NULL
             ORDER BY period_end;
             """,
