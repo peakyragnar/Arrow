@@ -506,3 +506,56 @@ def test_intel_style_standalone_headings_beat_toc_page_lists() -> None:
     assert "part1_item3_market_risk" in by_key
     assert "part1_item4_controls" in by_key
     assert "part2_item1a_risk_factors" in by_key
+
+
+def test_extract_10k_sections_with_em_dash_separator() -> None:
+    """Regression: DELL filings use em-dash (—, U+2014) between item number
+    and title (e.g. 'ITEM 1A — RISK FACTORS'), not the period that the
+    standard tech-corpus templates use ('Item 1A. Risk Factors'). Without
+    em-dash in the heading separator class, all DELL 10-K/10-Q sections
+    fell to unparsed_fallback. With em-dash + en-dash added to the class,
+    extraction is deterministic again.
+    """
+    # b"\xe2\x80\x94" = em-dash (—) in UTF-8; bytes literals can't hold non-ASCII.
+    html = (
+        "<html><body>"
+        "<p>PART I</p>"
+        "<p>ITEM 1A — RISK FACTORS</p>"
+        "<p>Our business is subject to risks. We disclose them here.</p>"
+        "<p>ITEM 7 — MANAGEMENT'S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION"
+        " AND RESULTS OF OPERATIONS</p>"
+        "<p>Revenue grew. Expenses also grew. Margins held.</p>"
+        "<p>ITEM 9A — CONTROLS AND PROCEDURES</p>"
+        "<p>Disclosure controls and procedures are effective.</p>"
+        "</body></html>"
+    ).encode("utf-8")
+    normalized = normalize_filing_body(html, "text/html")
+    sections = extract_sections("10-K", normalized)
+    keys = {s.section_key for s in sections}
+    assert "item_1a_risk_factors" in keys
+    assert "item_7_mda" in keys
+    assert "item_9a_controls" in keys
+    # Should not fall back to unparsed_fallback (the broken pre-fix behavior).
+    # Repair extraction may still occur for sections with minimal body content.
+    for s in sections:
+        assert s.extraction_method != "unparsed_fallback", (
+            f"{s.section_key} fell to unparsed_fallback"
+        )
+
+
+def test_extract_10k_sections_with_en_dash_separator() -> None:
+    """En-dash (–, U+2013) is also accepted alongside em-dash."""
+    html = (
+        "<html><body>"
+        "<p>PART I</p>"
+        "<p>Item 1A – Risk Factors</p>"
+        "<p>Body of risk factors.</p>"
+        "<p>Item 7 – Management's Discussion and Analysis of Financial Condition</p>"
+        "<p>MD&A body.</p>"
+        "</body></html>"
+    ).encode("utf-8")
+    normalized = normalize_filing_body(html, "text/html")
+    sections = extract_sections("10-K", normalized)
+    keys = {s.section_key for s in sections}
+    assert "item_1a_risk_factors" in keys
+    assert "item_7_mda" in keys

@@ -35,12 +35,12 @@ _TOC_DOTS_PATTERN = re.compile(r"\.{2,}\s*\d+$")
 _TOC_SUFFIX_PATTERN = re.compile(r"(?i)\s+table\s+of\s+conten\s*t\s*s\s*$")
 _PART_HEADING_PATTERN = re.compile(r"(?i)^\s*part\s+(i|ii)\b")
 _TEN_Q_ITEM_HEADING_PATTERN = re.compile(
-    r"(?i)^\s*(?:part\s+(?P<part>i|ii)\s*[\.\-:]*\s*)?"
-    r"item\s+(?P<item>\d+[a-z]?)(?:\s*[\.\-:]\s*|\s+)"
+    r"(?i)^\s*(?:part\s+(?P<part>i|ii)\s*[\.\-:—–]*\s*)?"
+    r"item\s+(?P<item>\d+[a-z]?)(?:\s*[\.\-:—–]\s*|\s+)"
 )
 _TEN_K_ITEM_HEADING_PATTERN = re.compile(
-    r"(?i)^\s*(?:part\s+[ivx]+\s*[\.\-:]*\s*)?"
-    r"item\s+(?P<item>\d+[a-z]?)(?:\s*[\.\-:]\s*|\s+)"
+    r"(?i)^\s*(?:part\s+[ivx]+\s*[\.\-:—–]*\s*)?"
+    r"item\s+(?P<item>\d+[a-z]?)(?:\s*[\.\-:—–]\s*|\s+)"
 )
 _STANDALONE_MDA_HEADING_RE = re.compile(
     r"(?i)^management(?:['’]s)?\s+discussion\s+and\s+analysis"
@@ -169,22 +169,22 @@ _PRESS_RELEASE_UNIT_MARKERS: tuple[tuple[str, str, re.Pattern[str]], ...] = (
 )
 
 _TEN_K_SECTIONS: list[tuple[str, str, str]] = [
-    ("item_1_business", "Item 1", r"item\s+1(?:\s*[\.\-:]\s*|\s+)business\b"),
-    ("item_1a_risk_factors", "Item 1A", r"item\s+1a(?:\s*[\.\-:]\s*|\s+)risk\s+factors\b"),
-    ("item_1c_cybersecurity", "Item 1C", r"item\s+1c(?:\s*[\.\-:]\s*|\s+)cybersecurity\b"),
-    ("item_3_legal_proceedings", "Item 3", r"item\s+3(?:\s*[\.\-:]\s*|\s+)legal\s+proceedings\b"),
+    ("item_1_business", "Item 1", r"item\s+1(?:\s*[\.\-:—–]\s*|\s+)business\b"),
+    ("item_1a_risk_factors", "Item 1A", r"item\s+1a(?:\s*[\.\-:—–]\s*|\s+)risk\s+factors\b"),
+    ("item_1c_cybersecurity", "Item 1C", r"item\s+1c(?:\s*[\.\-:—–]\s*|\s+)cybersecurity\b"),
+    ("item_3_legal_proceedings", "Item 3", r"item\s+3(?:\s*[\.\-:—–]\s*|\s+)legal\s+proceedings\b"),
     (
         "item_7_mda",
         "Item 7",
-        r"item\s+7(?:\s*[\.\-:]\s*|\s+)management(?:['’]s)?\s+discussion\s+and\s+analysis\b",
+        r"item\s+7(?:\s*[\.\-:—–]\s*|\s+)management(?:['’]s)?\s+discussion\s+and\s+analysis\b",
     ),
     (
         "item_7a_market_risk",
         "Item 7A",
-        r"item\s+7a(?:\s*[\.\-:]\s*|\s+)quantitative\s+and\s+qualitative\s+disclosures\s+about\s+market\s+risk\b",
+        r"item\s+7a(?:\s*[\.\-:—–]\s*|\s+)quantitative\s+and\s+qualitative\s+disclosures\s+about\s+market\s+risk\b",
     ),
-    ("item_9a_controls", "Item 9A", r"item\s+9a(?:\s*[\.\-:]\s*|\s+)controls\s+and\s+procedures\b"),
-    ("item_9b_other_information", "Item 9B", r"item\s+9b(?:\s*[\.\-:]\s*|\s+)other\s+information\b"),
+    ("item_9a_controls", "Item 9A", r"item\s+9a(?:\s*[\.\-:—–]\s*|\s+)controls\s+and\s+procedures\b"),
+    ("item_9b_other_information", "Item 9B", r"item\s+9b(?:\s*[\.\-:—–]\s*|\s+)other\s+information\b"),
 ]
 
 _TEN_Q_SECTIONS: list[tuple[str, str, str, str]] = [
@@ -192,32 +192,32 @@ _TEN_Q_SECTIONS: list[tuple[str, str, str, str]] = [
         "part1_item2_mda",
         "Part I",
         "Item 2",
-        r"item\s+2(?:\s*[\.\-:]\s*|\s+)management(?:['’]s)?\s+discussion\s+and\s+analysis\b",
+        r"item\s+2(?:\s*[\.\-:—–]\s*|\s+)management(?:['’]s)?\s+discussion\s+and\s+analysis\b",
     ),
     (
         "part1_item3_market_risk",
         "Part I",
         "Item 3",
-        r"item\s+3(?:\s*[\.\-:]\s*|\s+)quantitative\s+and\s+qualitative\s+disclosures\s+about\s+market\s+risk\b",
+        r"item\s+3(?:\s*[\.\-:—–]\s*|\s+)quantitative\s+and\s+qualitative\s+disclosures\s+about\s+market\s+risk\b",
     ),
-    ("part1_item4_controls", "Part I", "Item 4", r"item\s+4(?:\s*[\.\-:]\s*|\s+)controls\s+and\s+procedures\b"),
+    ("part1_item4_controls", "Part I", "Item 4", r"item\s+4(?:\s*[\.\-:—–]\s*|\s+)controls\s+and\s+procedures\b"),
     (
         "part2_item1_legal_proceedings",
         "Part II",
         "Item 1",
-        r"item\s+1(?:\s*[\.\-:]\s*|\s+)legal\s+proceedings\b",
+        r"item\s+1(?:\s*[\.\-:—–]\s*|\s+)legal\s+proceedings\b",
     ),
     (
         "part2_item1a_risk_factors",
         "Part II",
         "Item 1A",
-        r"item\s+1a(?:\s*[\.\-:]\s*|\s+)risk\s+factors\b",
+        r"item\s+1a(?:\s*[\.\-:—–]\s*|\s+)risk\s+factors\b",
     ),
     (
         "part2_item5_other_information",
         "Part II",
         "Item 5",
-        r"item\s+5(?:\s*[\.\-:]\s*|\s+)other\s+information\b",
+        r"item\s+5(?:\s*[\.\-:—–]\s*|\s+)other\s+information\b",
     ),
 ]
 _TEN_Q_BOUNDARY_ITEMS = {
