@@ -4,6 +4,7 @@ Usage:
     uv run scripts/ingest_company.py NVDA [MSFT ...]
     uv run scripts/ingest_company.py --since 2018-01-01 --scoped NVDA
     uv run scripts/ingest_company.py --sec-limit 3 NVDA
+    uv run scripts/ingest_company.py --no-xbrl-audit NVDA   # skip Layer 5 audit
 
 Normal flow:
   1. seed company from SEC
@@ -11,7 +12,10 @@ Normal flow:
   3. ingest FMP revenue segments
   4. ingest FMP employee counts
   5. ingest FMP earnings-call transcripts
-  6. backfill SEC `10-K` / `10-Q` qualitative filings
+  6. audit FMP vs SEC XBRL anchors; auto-promote safe corruption-bucket
+     divergences. Unsafe divergences surface via the
+     ``xbrl_audit_unresolved`` steward check for analyst review.
+  7. backfill SEC `10-K` / `10-Q` qualitative filings
      (5 fiscal years, complete first FY, primary docs only)
 """
 
@@ -24,6 +28,7 @@ from arrow.agents.fmp_employees import backfill_fmp_employees
 from arrow.agents.fmp_ingest import DEFAULT_SINCE_DATE, backfill_fmp_statements
 from arrow.agents.fmp_segments import backfill_fmp_segments
 from arrow.agents.fmp_transcripts import ingest_transcripts
+from arrow.agents.xbrl_audit import audit_and_promote_xbrl
 from arrow.db.connection import get_conn
 from arrow.ingest.sec.bootstrap import seed_companies
 from arrow.ingest.sec.filings import DEFAULT_QUAL_SINCE_DATE, ingest_sec_filings
@@ -88,6 +93,11 @@ def main() -> int:
         sec_limit = int(args[i + 1])
         args = args[:i] + args[i + 2 :]
 
+    skip_xbrl_audit = False
+    if "--no-xbrl-audit" in args:
+        skip_xbrl_audit = True
+        args = [a for a in args if a != "--no-xbrl-audit"]
+
     if not args:
         print(_usage(), file=sys.stderr)
         return 2
@@ -129,6 +139,11 @@ def main() -> int:
             segment_counts = backfill_fmp_segments(conn, tickers, **fmp_kwargs)
             employee_counts = backfill_fmp_employees(conn, tickers)
             transcript_counts = ingest_transcripts(conn, tickers, actor="operator:ingest_company")
+            xbrl_audit_counts = (
+                audit_and_promote_xbrl(conn, tickers, actor="operator:ingest_company")
+                if not skip_xbrl_audit
+                else None
+            )
             sec_counts = ingest_sec_filings(conn, tickers, **sec_kwargs)
     except VerificationFailed as e:
         print(f"FAILED: Layer 1 IS validation — {e}", file=sys.stderr)
@@ -184,6 +199,28 @@ def main() -> int:
             "facts_written": employee_counts["facts_written"],
         },
     )
+    if xbrl_audit_counts is not None:
+        _print_section(
+            "FMP-vs-XBRL audit",
+            {
+                "audit_run_id": xbrl_audit_counts["ingest_run_id"],
+                "anchors_matched": (
+                    xbrl_audit_counts["is_anchors_matched"]
+                    + xbrl_audit_counts["bs_anchors_matched"]
+                    + xbrl_audit_counts["cf_anchors_matched"]
+                ),
+                "anchors_checked": (
+                    xbrl_audit_counts["is_anchors_checked"]
+                    + xbrl_audit_counts["bs_anchors_checked"]
+                    + xbrl_audit_counts["cf_anchors_checked"]
+                ),
+                "divergences_total": xbrl_audit_counts["divergences_total"],
+                "divergences_promoted": xbrl_audit_counts["divergences_promoted"],
+                "divergences_left_for_review": xbrl_audit_counts["divergences_left_for_review"],
+                "promotion_run_ids": xbrl_audit_counts["promotion_run_ids"],
+            },
+        )
+
     _print_section(
         "FMP transcripts",
         {

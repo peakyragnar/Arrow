@@ -25,3 +25,4 @@ from arrow.steward.checks import quarterly_value_duplication  # noqa: F401
 from arrow.steward.checks import q4_period_end_consistency  # noqa: F401
 from arrow.steward.checks import cross_endpoint_period_end_consistency  # noqa: F401
 from arrow.steward.checks import quarterly_sum_to_annual_drift  # noqa: F401
+from arrow.steward.checks import xbrl_audit_unresolved  # noqa: F401
