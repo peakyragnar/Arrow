@@ -35,12 +35,25 @@ from arrow.steward.registry import Check, FindingDraft, Scope, register
 #: the most material gaps; the rest are still queryable via ingest_runs.
 MAX_FINDINGS_PER_TICKER_YEAR = 3
 
-#: Suppress findings below both thresholds — small drifts not worth analyst
-#: time on the steward queue. Calibrated 2026-04-27: with the auto-promote
-#: layer handling small recent restatements, a residual divergence that's
-#: under both $50M and 5% is almost always rounding / minor reclassification.
+#: Surface only divergences with absolute gap ≥ $50M. Below that floor,
+#: even large relative gaps (e.g., $9M on $81M = 11%) aren't materially
+#: actionable for analyst review at our universe scale. Calibrated
+#: 2026-04-27.
 MIN_ABSOLUTE_GAP_TO_SURFACE = 50_000_000
-MIN_RELATIVE_GAP_TO_SURFACE = 0.05
+
+#: Concepts where FMP↔XBRL gaps are systematically definitional (NCI,
+#: lease/accrual treatment, unusual-items inclusion, equivalents-vs-
+#: investments boundary). Documented as mappings in
+#: `arrow.reconcile.xbrl_concepts`. Don't surface as analyst findings —
+#: these are vendor-mapping differences, not corruption.
+DEFINITIONAL_CONCEPTS = frozenset({
+    "total_equity",
+    "total_liabilities",
+    "ebt_incl_unusual",
+    "cash_and_equivalents",
+    "total_liabilities_and_equity",
+    "total_assets",
+})
 
 
 @register
@@ -87,13 +100,25 @@ class XbrlAuditUnresolved(Check):
             for d in sorted_divs:
                 if self._is_resolved(conn, company_id=company_id, divergence=d):
                     continue
-                # Materiality filter — both thresholds must trip for a gap to
-                # count as analyst-worthy. Small absolute + small relative =
-                # rounding / restatement noise.
+                # Skip audit-side derivation artifacts entirely. The audit
+                # derives Q4 as XBRL annual − 9M YTD; for filers with mid-year
+                # discontinued ops or restatement (DELL post-VMWare canonical
+                # case), the bases differ between annual and 9M YTD, making the
+                # derived XBRL value unreliable. We never want these on the
+                # analyst queue; suppressing them post-hoc just wastes cap slots.
+                if d.get("derivation") == "q4_derived_fy_minus_9m":
+                    continue
+                # Skip definitional-prone concepts. These are XBRL ↔ FMP tag
+                # mapping differences (NCI / lease / unusual-items /
+                # equivalents-vs-investments), documented in
+                # arrow.reconcile.xbrl_concepts. They're not corruption.
+                if d.get("concept") in DEFINITIONAL_CONCEPTS:
+                    continue
+                # Absolute-magnitude materiality floor. Below $50M, even large
+                # relative gaps are below analyst-actionable threshold for our
+                # universe scale.
                 abs_delta = abs(float(d.get("delta", 0)))
-                xbrl = float(d.get("xbrl_value", 0))
-                rel_gap = abs_delta / abs(xbrl) if xbrl else 0.0
-                if abs_delta < MIN_ABSOLUTE_GAP_TO_SURFACE and rel_gap < MIN_RELATIVE_GAP_TO_SURFACE:
+                if abs_delta < MIN_ABSOLUTE_GAP_TO_SURFACE:
                     continue
                 key = (ticker, d["fiscal_year"])
                 if per_ticker_year_count.get(key, 0) >= MAX_FINDINGS_PER_TICKER_YEAR:
