@@ -1,10 +1,16 @@
-"""Supersede a corrupted Q4 IS row with values derived from annual − (Q1+Q2+Q3).
+"""Supersede a corrupted quarterly IS row with values derived from
+annual − (sum of the other three fiscal quarters).
 
-Use when FMP's quarterly endpoint shipped a fabricated Q4 row whose
-values disagree wildly with the annual filing. Concretely: the Q4
+Use when FMP's quarterly endpoint shipped a fabricated quarterly row
+whose values disagree wildly with the annual filing. Concretely: the
 quarter row for one fiscal year fails the Q1+Q2+Q3+Q4 = annual
 reconciliation across most flow concepts (revenue, COGS, gross_profit,
 rd, sga, etc.).
+
+The flagged quarter is most often Q4 (FMP often derives Q4 = annual −
+prior quarters with one input on the wrong basis), but the same
+fabrication pattern can land in any quarter. Use ``--fiscal-quarter``
+to target the outlier quarter; default is 4.
 
 Empirical case (2026-04-27): DELL FY2022 Q4 IS — every flow concept
 fails the reconciliation. Public DELL Q4 FY22 revenue was ~$28B; FMP
@@ -14,20 +20,21 @@ Q3 FY22.
 
 The fix supersedes each affected ``fmp-is-v1`` row with reason
 ``fmp_corrupt_value`` and inserts a replacement row at extraction
-version ``arrow-derived-q4-v1`` carrying ``annual − (Q1+Q2+Q3)`` for
-each summable flow concept whose Q1+Q2+Q3 is non-zero. Concepts that
-are reported only at the annual level for the filer
-(``general_and_admin_expense``, ``selling_and_marketing_expense`` for
-some filers) are skipped — their FMP quarterly placeholder of 0 stays.
-Per-share / weighted-average concepts (eps_*, shares_*) are not
-derived from a sum.
+version ``arrow-derived-q4-v1`` carrying ``annual − (sum of the
+other three quarters)`` for each summable flow concept whose
+other-quarter sum is non-zero. Concepts that are reported only at the
+annual level for the filer (``general_and_admin_expense``,
+``selling_and_marketing_expense`` for some filers) are skipped — their
+FMP quarterly placeholder of 0 stays. Per-share / weighted-average
+concepts (eps_*, shares_*) are not derived from a sum.
 
-Idempotent: if the current Q4 row is already at extraction version
-``arrow-derived-q4-v1``, the script reports no work and exits.
+Idempotent: if the current target-quarter row is already at extraction
+version ``arrow-derived-q4-v1``, the script reports no work and exits.
 
 Usage:
     uv run scripts/correct_corrupted_q4_is.py --ticker DELL --fiscal-year 2022
     uv run scripts/correct_corrupted_q4_is.py --ticker DELL --fiscal-year 2022 --apply
+    uv run scripts/correct_corrupted_q4_is.py --ticker INTC --fiscal-year 2025 --fiscal-quarter 2 --apply
 """
 
 from __future__ import annotations
@@ -92,9 +99,12 @@ def fetch_annual_and_priors(
     *,
     company_id: int,
     fiscal_year: int,
-) -> tuple[dict[str, Decimal], dict[str, Decimal], int | None, int | None]:
-    """Return (annual_by_concept, sum_q1q2q3_by_concept,
-    annual_raw_response_id, annual_published_at_marker)."""
+    target_quarter: int,
+) -> tuple[dict[str, Decimal], dict[str, Decimal], int | None]:
+    """Return (annual_by_concept, sum_other_quarters_by_concept,
+    annual_raw_response_id). The "other quarters" are the three quarters
+    that are NOT the target — these are assumed correct, and the target
+    quarter's value is derived as ``annual − sum(other quarters)``."""
     annual: dict[str, Decimal] = {}
     annual_raw_response_id: int | None = None
     with conn.cursor() as cur:
@@ -116,6 +126,7 @@ def fetch_annual_and_priors(
             annual[concept] = value
             annual_raw_response_id = raw_id  # all annual rows share one raw payload
 
+    other_quarters = [q for q in (1, 2, 3, 4) if q != target_quarter]
     sums: dict[str, Decimal] = {}
     with conn.cursor() as cur:
         cur.execute(
@@ -125,26 +136,27 @@ def fetch_annual_and_priors(
             WHERE company_id = %s
               AND fiscal_year = %s
               AND period_type = 'quarter'
-              AND fiscal_quarter IN (1, 2, 3)
+              AND fiscal_quarter = ANY(%s)
               AND statement = 'income_statement'
               AND extraction_version = %s
               AND superseded_at IS NULL
               AND dimension_type IS NULL
             GROUP BY concept
             """,
-            (company_id, fiscal_year, SOURCE_EXTRACTION_VERSION),
+            (company_id, fiscal_year, other_quarters, SOURCE_EXTRACTION_VERSION),
         )
         for concept, total in cur.fetchall():
             sums[concept] = total
 
-    return annual, sums, annual_raw_response_id, None
+    return annual, sums, annual_raw_response_id
 
 
-def fetch_current_q4_rows(
+def fetch_current_target_q_rows(
     conn: psycopg.Connection,
     *,
     company_id: int,
     fiscal_year: int,
+    target_quarter: int,
 ) -> list[dict]:
     with conn.cursor() as cur:
         cur.execute(
@@ -156,14 +168,14 @@ def fetch_current_q4_rows(
             FROM financial_facts
             WHERE company_id = %s
               AND fiscal_year = %s
-              AND fiscal_quarter = 4
+              AND fiscal_quarter = %s
               AND period_type = 'quarter'
               AND statement = 'income_statement'
               AND superseded_at IS NULL
               AND dimension_type IS NULL
             ORDER BY concept
             """,
-            (company_id, fiscal_year),
+            (company_id, fiscal_year, target_quarter),
         )
         cols = [d[0] for d in cur.description]
         return [dict(zip(cols, r)) for r in cur.fetchall()]
@@ -173,33 +185,37 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ticker", required=True)
     parser.add_argument("--fiscal-year", type=int, required=True)
+    parser.add_argument("--fiscal-quarter", type=int, default=4, choices=(1, 2, 3, 4),
+                        help="Quarter to derive (default 4).")
     parser.add_argument("--apply", action="store_true",
                         help="Write the corrections; default is a dry-run preview.")
     args = parser.parse_args()
 
     ticker = args.ticker.upper()
     fiscal_year = args.fiscal_year
+    target_q = args.fiscal_quarter
+    other_q_label = "+".join(f"Q{q}" for q in (1, 2, 3, 4) if q != target_q)
 
     with get_conn() as conn:
         company_id, fye_md = fetch_company(conn, ticker)
-        annual, sums, annual_raw, _ = fetch_annual_and_priors(
-            conn, company_id=company_id, fiscal_year=fiscal_year,
+        annual, sums, annual_raw = fetch_annual_and_priors(
+            conn, company_id=company_id, fiscal_year=fiscal_year, target_quarter=target_q,
         )
         if not annual:
             print(f"No annual IS rows found for {ticker} FY{fiscal_year}.")
             return
 
-        current_q4 = fetch_current_q4_rows(
-            conn, company_id=company_id, fiscal_year=fiscal_year,
+        current_q = fetch_current_target_q_rows(
+            conn, company_id=company_id, fiscal_year=fiscal_year, target_quarter=target_q,
         )
-        if not current_q4:
-            print(f"No current Q4 IS rows found for {ticker} FY{fiscal_year}.")
+        if not current_q:
+            print(f"No current Q{target_q} IS rows found for {ticker} FY{fiscal_year}.")
             return
 
-        already_derived = [r for r in current_q4 if r["extraction_version"] == DERIVED_EXTRACTION_VERSION]
+        already_derived = [r for r in current_q if r["extraction_version"] == DERIVED_EXTRACTION_VERSION]
         if already_derived:
             print(
-                f"{ticker} FY{fiscal_year} Q4 already at "
+                f"{ticker} FY{fiscal_year} Q{target_q} already at "
                 f"{DERIVED_EXTRACTION_VERSION} ({len(already_derived)} rows). "
                 "Nothing to do."
             )
@@ -207,24 +223,24 @@ def main() -> None:
 
         # Build the corrected row plan
         plan: list[dict] = []
-        for row in current_q4:
+        for row in current_q:
             concept = row["concept"]
             if concept not in SUMMABLE_FLOW_CONCEPTS:
                 continue
-            prior_sum = sums.get(concept, Decimal(0))
-            if prior_sum == 0:
+            other_sum = sums.get(concept, Decimal(0))
+            if other_sum == 0:
                 # Concept not actively reported quarterly for this filer
                 continue
             annual_val = annual.get(concept)
             if annual_val is None:
                 continue
-            derived = Decimal(annual_val) - Decimal(prior_sum)
+            derived = Decimal(annual_val) - Decimal(other_sum)
             plan.append({
                 "old_id": row["id"],
                 "concept": concept,
                 "old_value": row["value"],
                 "annual": annual_val,
-                "prior_sum": prior_sum,
+                "other_sum": other_sum,
                 "derived": derived,
                 "period_end": row["period_end"],
                 "fiscal_period_label": row["fiscal_period_label"],
@@ -237,17 +253,20 @@ def main() -> None:
             })
 
         if not plan:
-            print("No correctable concepts found (no Q1+Q2+Q3 sums to derive from).")
+            print(f"No correctable concepts found (no {other_q_label} sums to derive from).")
             return
 
-        print(f"{ticker} FY{fiscal_year} Q4 IS corrections:\n")
-        print(f"{'concept':<35}{'old_value':>20}{'annual':>20}{'sum_q1_3':>20}{'derived_q4':>20}")
+        print(f"{ticker} FY{fiscal_year} Q{target_q} IS corrections:\n")
+        print(
+            f"{'concept':<35}{'old_value':>20}{'annual':>20}"
+            f"{'sum_'+other_q_label:>20}{'derived_q'+str(target_q):>20}"
+        )
         for p in plan:
             print(
                 f"{p['concept']:<35}"
                 f"{float(p['old_value']):>20,.0f}"
                 f"{float(p['annual']):>20,.0f}"
-                f"{float(p['prior_sum']):>20,.0f}"
+                f"{float(p['other_sum']):>20,.0f}"
                 f"{float(p['derived']):>20,.0f}"
             )
 
@@ -285,13 +304,13 @@ def main() -> None:
                         extraction_version, supersedes_fact_id, supersession_reason
                     )
                     VALUES (%s, %s, 'income_statement', %s, %s, %s,
-                            %s, 4, %s, %s, 'quarter',
+                            %s, %s, %s, %s, 'quarter',
                             %s, %s, %s, %s, %s,
                             %s, %s, %s)
                     """,
                     (
                         run_id, company_id, p["concept"], p["derived"], p["unit"],
-                        fiscal_year, p["fiscal_period_label"],
+                        fiscal_year, target_q, p["fiscal_period_label"],
                         p["period_end"],
                         p["calendar_year"], p["calendar_quarter"], p["calendar_period_label"],
                         p["published_at"], p["source_raw_response_id"],
@@ -306,6 +325,7 @@ def main() -> None:
                 "is_facts_superseded": len(plan),
                 "ticker": ticker,
                 "fiscal_year": fiscal_year,
+                "fiscal_quarter": target_q,
             },
         )
         print(f"\nWrote {len(plan)} derived rows; superseded {len(plan)} corrupt rows. Run id={run_id}.")
