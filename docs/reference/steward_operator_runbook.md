@@ -9,15 +9,13 @@ covers the runtime design and V1→V3 trajectory.
 
 - **Steward V1.3:** complete. Operating mode — ingest companies,
   triage findings, accumulate notes for V2 training corpus.
-  Status: 13 companies tracked, 0 open findings, 9 closed (5
-  distinct patterns). Next steward milestone (V2 LLM suggester)
-  needs ~50 closed findings; no urgent steward work.
-- **Active development:** **FMP transcript ingest** — see
-  [`system.md` Build Order step 8](../architecture/system.md). This
-  is the major missing US-filer analytical vertical. Per the
-  "new verticals ship with their checks" working rule, transcripts
-  ships with its expectations + steward checks in the same commit
-  series.
+  Next steward milestone (V2 LLM suggester) needs ~50 closed
+  findings; no urgent steward work.
+- **Active development:** **analyst transcript evidence retrieval** —
+  FMP transcript ingest is shipped and backfilled. The current analyst
+  step is making those transcript chunks callable through
+  `src/arrow/retrieval/transcripts.py` and inspectable through
+  `scripts/analyst_transcript_brief.py`.
 - **Hard rule still in effect:** no foreign-filer ingestion (TSM,
   ASML, BABA, etc.) — see § "Hard rule: do NOT ingest foreign
   filers yet" below.

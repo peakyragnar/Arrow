@@ -7,10 +7,12 @@ Current shipped slice:
 - CLI entrypoint: `scripts/ask_arrow.py`
 - Runtime packet / synthesis code: `src/arrow/analysis/company_context.py`
 - Covered question shape: "What drove {TICKER} revenue growth in FY{YEAR}?"
+- Transcript retrieval primitives: `src/arrow/retrieval/transcripts.py`
+- Transcript evidence CLI: `scripts/analyst_transcript_brief.py`
 
 Still pending:
 
-- broader reusable retrieval tool surface
+- broader reusable retrieval tool surface beyond transcripts
 - multiple recipes and topics
 - durable `qa_log`
 - full PIT as-of behavior across every source family
@@ -205,6 +207,10 @@ they can be called by both scripted recipes and future LLM tool-use loops:
 - `read_document_section(document_id, section_key)`
 - `read_chunk(chunk_id)`
 - `sql_query(sql, params, asof=None)`
+- `get_latest_transcripts(ticker, n=4, asof=None)`
+- `search_transcript_turns(ticker, query, fiscal_period_key=None, asof=None)`
+- `get_transcript_context(ticker, fiscal_period_key, asof=None)`
+- `compare_transcript_mentions(ticker, terms, periods=8, asof=None)`
 
 Rules:
 
@@ -431,5 +437,5 @@ questions before adding LLM synthesis.
 - no embeddings
 - no monitoring
 - no generic SQL agent
-- no transcript-specific logic until current SEC/FMP retrieval failures are
-  observed
+- no speaker-role classifier or Q&A boundary logic for transcripts until a
+  concrete analyst question requires it

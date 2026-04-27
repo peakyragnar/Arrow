@@ -771,6 +771,9 @@ Trace -> Channel`) used by CLI, chat, saved prompts, and future monitoring.
 - `search_documents(query, filters)`
 - `read_document(id)`
 - `read_document_section(id, section)`
+- `get_latest_transcripts(ticker, n=4, asof=None)`
+- `search_transcript_turns(ticker, query, fiscal_period_key=None, asof=None)`
+- `get_transcript_context(ticker, fiscal_period_key, asof=None)`
 - `sql_query(...)`
 - `get_macro_series(series_id, date_range, asof=None)`   — PIT-aware
 - `get_financial_fact(ticker, concept, period, asof=None)` — PIT-aware
@@ -1222,21 +1225,22 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 5. ✅ define training-trace requirements clearly (this doc, § qa_log + § Training-Ready By Design)
 6. ✅ implement `raw_responses` + `ingest_runs` (migrations 002, 003)
 7. ✅ implement `artifacts` (migration 004, with double-hash). SEC qualitative filing identity extensions landed in migration 014.
-8. 🚧 implement FMP ingest for historical filings and transcripts.
-   Historical financials and revenue segmentation are built (✅);
-   **transcripts is the active focus as of 2026-04-27**. Sub-steps:
-   - 🚧 FMP earnings transcript endpoint client + raw-response cache
+8. ✅ implement FMP ingest for historical filings and transcripts.
+   Historical financials, revenue segmentation, and FMP earnings-call
+   transcripts are built and backfilled for the active US-filer universe.
+   Transcript sub-steps:
+   - ✅ FMP earnings transcript endpoint client + raw-response cache
      (mirror `src/arrow/ingest/fmp/income_statement.py` shape;
      deterministic cache path `data/raw/fmp/earning-call-transcript/{TICKER}/FY{YYYY}-Qn.json`).
-   - 🚧 Normalize transcripts into `artifacts` (artifact_type
+   - ✅ Normalize transcripts into `artifacts` (artifact_type
      `'transcript'`, with speaker turns in `artifact_text_units` per the
      existing text_units pattern from migration 015; transcript unit type
      added in migration 020).
-   - 🚧 Wire into `scripts/ingest_company.py` normal flow so every
+   - ✅ Wire into `scripts/ingest_company.py` normal flow so every
      subsequent ingest includes transcripts automatically.
-   - ⬜ Backfill transcripts across the existing active companies
+   - ✅ Backfill transcripts across the existing active companies
      (one-time operational pass).
-   - 🚧 Per the working rule "new verticals ship with their checks":
+   - ✅ Per the working rule "new verticals ship with their checks":
      add transcript-vertical expectations to
      `src/arrow/steward/expectations.py` + add steward checks
      (presence, recency, orphan detection) for the new vertical.
@@ -1250,9 +1254,9 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 11. 🚧 implement fiscal, calendar-normalized, and PIT derived views. Current metric view stack exists under `db/queries/` (`v_ff_current`, wide period views, TTM/FY/CY/ROIC metrics, and screenable metric views); true PIT as-of view support remains deferred.
 12. ⬜ implement `prices_daily`
 13. ⬜ implement `company_events`
-14. 🚧 implement analyst runtime retrieval tools and deterministic revenue-driver CLI (PIT-aware; see `docs/architecture/analyst_runtime.md`). MVP deterministic revenue-driver CLI exists in `scripts/ask_arrow.py`; broader reusable retrieval tools, richer recipes, and full PIT behavior remain in progress.
+14. 🚧 implement analyst runtime retrieval tools and deterministic revenue-driver CLI (PIT-aware; see `docs/architecture/analyst_runtime.md`). MVP deterministic revenue-driver CLI exists in `scripts/ask_arrow.py`; transcript retrieval primitives and the transcript evidence CLI exist in `src/arrow/retrieval/transcripts.py` + `scripts/analyst_transcript_brief.py`. Broader reusable retrieval tools, richer recipes, and full PIT behavior remain in progress.
 15. ⬜ implement `qa_log` as part of normal analyst flow (with consent flags)
-16. ✅ implement SEC qualitative section + chunk layer (`artifact_sections`, `artifact_section_chunks`) for filing text in migration 014. Transcript-specific chunking remains future work.
+16. ✅ implement SEC qualitative section + chunk layer (`artifact_sections`, `artifact_section_chunks`) for filing text in migration 014. Generic text-unit chunking for press releases and transcripts uses `artifact_text_units` / `artifact_text_chunks` from migration 015.
 17. ⬜ add section-over-time comparison support
 18. ⬜ add `signals` + `alerts`
 19. 🚧 add SEC fast-path ingest for newly dropped filings (recent submissions + raw filing artifacts; 8-K exhibit/press-release text-unit support landed in migration 015; first-class update orchestration remains next)
