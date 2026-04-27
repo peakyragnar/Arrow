@@ -461,7 +461,7 @@ Status legend:
 | `financial_facts` | built | migration 008; segment dimension identity added in migration 016 |
 | `artifact_sections` | built | migration 014; canonical extracted filing sections (`10-K`, `10-Q`) |
 | `artifact_section_chunks` | built | migration 014; standardized retrieval chunks derived from `artifact_sections` |
-| `artifact_text_units` | built | migration 015; generic extracted text units for non-10-K/Q artifacts, starting with earnings press releases |
+| `artifact_text_units` | built | migration 015; generic extracted text units for non-10-K/Q artifacts, starting with earnings press releases; transcript unit type added in migration 020 |
 | `artifact_text_chunks` | built | migration 015; standardized retrieval chunks derived from `artifact_text_units` |
 | `artifact_chunks` | withdrawn | migration 005 added it; migration 006 dropped it. Re-add when chunking has real documents to operate on. ADR-0008 captures the prior design. |
 | `prices_daily` | deferred | — |
@@ -1225,19 +1225,18 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 8. 🚧 implement FMP ingest for historical filings and transcripts.
    Historical financials and revenue segmentation are built (✅);
    **transcripts is the active focus as of 2026-04-27**. Sub-steps:
-   - ⏳ FMP earnings transcript endpoint client + raw-response cache
+   - 🚧 FMP earnings transcript endpoint client + raw-response cache
      (mirror `src/arrow/ingest/fmp/income_statement.py` shape;
-     deterministic cache path `data/raw/fmp/earning-call-transcript/{TICKER}/{YYYY-Qn}.json`).
-   - ⬜ Normalize transcripts into `artifacts` (artifact_type
-     `'transcript'`, with speaker turns + timestamps in
-     `artifact_text_units` per the existing text_units pattern from
-     migration 015). Likely needs a new `artifact_type` allowed
-     value via small migration.
-   - ⬜ Wire into `scripts/ingest_company.py` normal flow so every
+     deterministic cache path `data/raw/fmp/earning-call-transcript/{TICKER}/FY{YYYY}-Qn.json`).
+   - 🚧 Normalize transcripts into `artifacts` (artifact_type
+     `'transcript'`, with speaker turns in `artifact_text_units` per the
+     existing text_units pattern from migration 015; transcript unit type
+     added in migration 020).
+   - 🚧 Wire into `scripts/ingest_company.py` normal flow so every
      subsequent ingest includes transcripts automatically.
-   - ⬜ Backfill transcripts across the existing 13 companies
+   - ⬜ Backfill transcripts across the existing active companies
      (one-time operational pass).
-   - ⬜ Per the working rule "new verticals ship with their checks":
+   - 🚧 Per the working rule "new verticals ship with their checks":
      add transcript-vertical expectations to
      `src/arrow/steward/expectations.py` + add steward checks
      (presence, recency, orphan detection) for the new vertical.

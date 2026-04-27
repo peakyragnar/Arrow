@@ -19,6 +19,7 @@ Verticals (V1):
                      and concept = 'total_employees'
   - sec_qual         artifacts where artifact_type IN ('10k', '10q')
   - press_release    artifacts where artifact_type = 'press_release'
+  - transcript       artifacts where artifact_type = 'transcript'
 
 Two patterns recur in the queries below:
   - ``superseded_at IS NULL`` everywhere — only current rows count
@@ -41,6 +42,7 @@ VERTICALS: tuple[str, ...] = (
     "employees",
     "sec_qual",
     "press_release",
+    "transcript",
 )
 
 
@@ -247,6 +249,20 @@ def compute_ticker_coverage(
         )
         per_vertical_periods["press_release"] = _rows_as_dicts(cur)
 
+        cur.execute(
+            """
+            SELECT artifact_type, fiscal_period_key, period_end,
+                   source_document_id, published_at
+            FROM artifacts
+            WHERE company_id = %s
+              AND artifact_type = 'transcript'
+              AND superseded_at IS NULL
+            ORDER BY published_at DESC NULLS LAST;
+            """,
+            (company_id,),
+        )
+        per_vertical_periods["transcript"] = _rows_as_dicts(cur)
+
     return summary, per_vertical_periods
 
 
@@ -364,6 +380,26 @@ def _vertical_aggregates(
         for cid, rows, periods, earliest, latest in cur.fetchall():
             out["press_release"][cid] = VerticalCoverage(
                 vertical="press_release", row_count=rows, period_count=periods,
+                earliest=earliest, latest=latest,
+            )
+
+        # FMP earnings-call transcripts
+        cur.execute(
+            """
+            SELECT company_id, COUNT(*),
+                   COUNT(DISTINCT fiscal_period_key),
+                   MIN(published_at), MAX(published_at)
+            FROM artifacts
+            WHERE company_id = ANY(%s)
+              AND artifact_type = 'transcript'
+              AND superseded_at IS NULL
+            GROUP BY company_id;
+            """,
+            (company_ids,),
+        )
+        for cid, rows, periods, earliest, latest in cur.fetchall():
+            out["transcript"][cid] = VerticalCoverage(
+                vertical="transcript", row_count=rows, period_count=periods,
                 earliest=earliest, latest=latest,
             )
 

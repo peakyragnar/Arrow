@@ -174,7 +174,7 @@ def test_seeded_company_is_automatically_evaluated() -> None:
 
 def test_member_with_zero_data_fires_for_each_required_vertical() -> None:
     """A bare member has no facts → fires for every required vertical:
-    financials, segments, employees, sec_qual.
+    financials, segments, employees, sec_qual, transcript.
     """
     with get_conn() as conn:
         _reset(conn)
@@ -188,6 +188,7 @@ def test_member_with_zero_data_fires_for_each_required_vertical() -> None:
     assert "segments" in by_vertical
     assert "employees" in by_vertical
     assert "sec_qual" in by_vertical
+    assert "transcript" in by_vertical
 
 
 def test_member_with_full_financials_no_financials_finding() -> None:

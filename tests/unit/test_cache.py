@@ -7,6 +7,7 @@ Raw Cache Layout. Pure path construction; no filesystem writes.
 from __future__ import annotations
 
 from arrow.ingest.common.cache import RAW_DIR, cache_path
+from arrow.ingest.fmp.paths import fmp_transcript_dates_path, fmp_transcript_path
 
 
 def test_path_is_rooted_at_data_raw() -> None:
@@ -39,3 +40,13 @@ def test_deterministic_for_identical_inputs() -> None:
     a = cache_path("fmp", "balance-sheet-statement/NVDA/quarter.json")
     b = cache_path("fmp", "balance-sheet-statement/NVDA/quarter.json")
     assert a == b
+
+
+def test_fmp_transcript_dates_path() -> None:
+    p = fmp_transcript_dates_path("nvda")
+    assert p.parts[-3:] == ("fmp", "earning-call-transcript-dates", "NVDA.json")
+
+
+def test_fmp_transcript_path() -> None:
+    p = fmp_transcript_path("nvda", 2025, 2)
+    assert p.parts[-4:] == ("fmp", "earning-call-transcript", "NVDA", "FY2025-Q2.json")

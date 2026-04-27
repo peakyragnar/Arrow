@@ -15,6 +15,8 @@ Surveyed real shapes (2026-04-25):
          *_facts_superseded, segments_processed, *_flags_written
   - SEC: raw_responses, artifacts_written, documents_fetched,
          sections_written, text_units_written, files_fetched
+  - FMP transcripts: raw_responses, transcripts_fetched, artifacts_inserted,
+         text_units_inserted, text_chunks_inserted
 
 We define "wrote something" as: the sum of any recognized OUTPUT keys
 in ``OUTPUT_KEYS`` is > 0. If all of those keys are absent or zero, the
@@ -81,6 +83,9 @@ OUTPUT_KEYS = (
     "documents_fetched",
     "sections_written",
     "text_units_written",
+    "text_chunks_inserted",
+    "transcripts_fetched",
+    "artifacts_inserted",
     "files_fetched",
 )
 

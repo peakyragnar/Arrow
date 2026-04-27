@@ -70,6 +70,12 @@ STANDARD: list[Expectation] = [
     Expectation("employees", "recency", {"max_age_days": 400}),
     # 5 years of qualitative SEC filings (≈20 distinct fiscal periods).
     Expectation("sec_qual", "min_periods", {"count": 20}),
+    # 5 years of quarterly earnings-call transcripts, refreshed shortly
+    # after each quarterly call. Recent IPO/spinoff exceptions are handled
+    # through finding suppressions, not per-ticker code overrides.
+    Expectation("transcript", "present", {}),
+    Expectation("transcript", "min_periods", {"count": 20}),
+    Expectation("transcript", "recency", {"max_age_days": 150}),
 ]
 
 

@@ -20,3 +20,4 @@ from arrow.steward.checks import unparsed_body_fallback  # noqa: F401
 from arrow.steward.checks import extraction_method_drift  # noqa: F401
 from arrow.steward.checks import chunk_repair_concentration  # noqa: F401
 from arrow.steward.checks import expected_coverage  # noqa: F401
+from arrow.steward.checks import transcript_artifact_orphans  # noqa: F401

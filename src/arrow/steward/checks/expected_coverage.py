@@ -15,7 +15,7 @@ Why this matters:
   show "0 issues" while the dataset is materially incomplete.
 
 Vertical: each finding is tagged with the vertical it's about
-(financials / segments / employees / sec_qual / press_release) so
+(financials / segments / employees / sec_qual / press_release / transcript) so
 the dashboard's vertical filter works as expected.
 
 Scope behavior:
@@ -171,6 +171,7 @@ class ExpectedCoverage(Check):
             "employees":     f"uv run scripts/ingest_employees.py {ticker}",
             "sec_qual":      f"uv run scripts/fetch_sec_filings.py {ticker}",
             "press_release": f"uv run scripts/ingest_company.py {ticker}",
+            "transcript":    f"uv run scripts/ingest_transcripts.py {ticker}",
         }
         cmd = commands_by_vertical.get(v, f"# inspect {v} ingest path for {ticker}")
 

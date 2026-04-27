@@ -52,9 +52,20 @@ These are the starting conventions. Add a row when you introduce a new type; ext
 | Key | Type | Notes |
 |---|---|---|
 | `call_type` | string | `"earnings"` / `"guidance_update"` / `"investor_day"` / `"conference"` |
-| `speakers` | array | `[{role: "ceo" | "cfo" | "analyst" | "operator" | "other", name: string, title: string, affiliation?: string}]` |
-| `fmp_transcript_id` | string | FMP's own transcript id |
 | `runtime_minutes` | integer | Call duration if known |
+
+V1 FMP earnings-call transcript ingest omits `call_type` because the
+`source='fmp'` + `source_document_id` endpoint identity already implies an
+earnings call. It also omits speaker metadata; speaker names are stored on
+`artifact_text_units.unit_title` for each transcript turn. Add structured
+speaker roles/titles only when a real classifier ships.
+
+FMP may republish corrected transcripts under the same `source_document_id`.
+Transcript ingest writes artifacts through `write_artifact`: an identical
+re-fetch is a no-op, while a same-document re-fetch with different hashes
+inserts a new artifact with `supersedes` set and stamps the prior current row's
+`superseded_at`. Old text units remain historical evidence; current queries
+filter `artifacts.superseded_at IS NULL`.
 
 ### `press_release`
 

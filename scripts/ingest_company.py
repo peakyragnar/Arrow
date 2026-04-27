@@ -10,7 +10,8 @@ Normal flow:
   2. backfill baseline FMP financials
   3. ingest FMP revenue segments
   4. ingest FMP employee counts
-  5. backfill SEC `10-K` / `10-Q` qualitative filings
+  5. ingest FMP earnings-call transcripts
+  6. backfill SEC `10-K` / `10-Q` qualitative filings
      (5 fiscal years, complete first FY, primary docs only)
 """
 
@@ -22,6 +23,7 @@ from typing import Any
 from arrow.agents.fmp_employees import backfill_fmp_employees
 from arrow.agents.fmp_ingest import DEFAULT_SINCE_DATE, backfill_fmp_statements
 from arrow.agents.fmp_segments import backfill_fmp_segments
+from arrow.agents.fmp_transcripts import ingest_transcripts
 from arrow.db.connection import get_conn
 from arrow.ingest.sec.bootstrap import seed_companies
 from arrow.ingest.sec.filings import DEFAULT_QUAL_SINCE_DATE, ingest_sec_filings
@@ -126,6 +128,7 @@ def main() -> int:
             fmp_counts = backfill_fmp_statements(conn, tickers, **fmp_kwargs)
             segment_counts = backfill_fmp_segments(conn, tickers, **fmp_kwargs)
             employee_counts = backfill_fmp_employees(conn, tickers)
+            transcript_counts = ingest_transcripts(conn, tickers, actor="operator:ingest_company")
             sec_counts = ingest_sec_filings(conn, tickers, **sec_kwargs)
     except VerificationFailed as e:
         print(f"FAILED: Layer 1 IS validation — {e}", file=sys.stderr)
@@ -182,6 +185,22 @@ def main() -> int:
         },
     )
     _print_section(
+        "FMP transcripts",
+        {
+            "ingest_run_id": transcript_counts["ingest_run_id"],
+            "transcript_dates_seen": transcript_counts["transcript_dates_seen"],
+            "transcripts_requested": transcript_counts["transcripts_requested"],
+            "transcripts_fetched": transcript_counts["transcripts_fetched"],
+            "transcripts_missing": transcript_counts["transcripts_missing"],
+            "raw_responses": transcript_counts["raw_responses"],
+            "artifacts_inserted": transcript_counts["artifacts_inserted"],
+            "artifacts_existing": transcript_counts["artifacts_existing"],
+            "artifacts_superseded": transcript_counts["artifacts_superseded"],
+            "text_units_inserted": transcript_counts["text_units_inserted"],
+            "text_chunks_inserted": transcript_counts["text_chunks_inserted"],
+        },
+    )
+    _print_section(
         "SEC filings",
         {
             "ingest_run_id": sec_counts["ingest_run_id"],
@@ -197,7 +216,7 @@ def main() -> int:
             "text_units_written": sec_counts.get("text_units_written", 0),
         },
     )
-    print("Status: PASS — baseline facts + SEC qualitative filings stored.")
+    print("Status: PASS — baseline facts + transcripts + SEC qualitative filings stored.")
     return 0
 
 

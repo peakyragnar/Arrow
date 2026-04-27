@@ -79,7 +79,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         metavar="VERTICAL",
         help=(
             "Scope to a vertical (financials | segments | employees | "
-            "sec_qual | press_release). Cross-cutting checks always run "
+            "sec_qual | press_release | transcript). Cross-cutting checks always run "
             "regardless of this filter."
         ),
     )
