@@ -148,3 +148,46 @@ def test_verified_ties_hold_on_real_nvda_row() -> None:
         facts["net_income"].value
         == facts["continuing_ops_after_tax"].value + facts["discontinued_ops"].value
     )
+
+
+def test_dell_fy2017_q2_missing_decomposition_uses_parent_ni_as_net_income() -> None:
+    """Regression: DELL FY2017 Q2 (Dell pre-EMC merger; Dell Software Group
+    sale period). FMP shipped netIncomeFromContinuingOperations=0 AND
+    netIncomeFromDiscontinuedOperations=0 while netIncome=$573M was real.
+
+    Without the guard, the mapper would derive net_income = 0 + 0 = 0
+    (corrupting the bottom line) AND minority_interest = 0 - 573M = -573M
+    (a phantom NCI). With the guard, missing decomposition is detected
+    and net_income falls back to parent_ni; minority_interest is omitted.
+    """
+    row = {
+        "date": "2016-07-29",
+        "period": "Q2",
+        "fiscalYear": "2017",
+        "symbol": "DELL",
+        "reportedCurrency": "USD",
+        "revenue": 13_071_000_000,
+        "costOfRevenue": 10_744_000_000,
+        "grossProfit": 2_336_000_000,
+        "operatingExpenses": 2_269_000_000,
+        "operatingIncome": 67_000_000,
+        "incomeBeforeTax": -286_000_000,
+        "incomeTaxExpense": -22_000_000,
+        "netIncomeFromContinuingOperations": 0,  # FMP missing
+        "netIncomeFromDiscontinuedOperations": 0,  # FMP missing
+        "netIncome": 573_000_000,  # filer-reported total — correct
+        "eps": 0.7281,
+        "epsDiluted": 0.403,
+        "weightedAverageShsOut": 787_000_000,
+        "weightedAverageShsOutDil": 787_000_000,
+    }
+    facts = _by_concept(map_income_statement_row(row))
+    # The directly-mapped continuing/disc are still present (FMP-reported,
+    # caller can decide what to do with them via soft flags).
+    assert facts["continuing_ops_after_tax"].value == Decimal("0")
+    assert facts["discontinued_ops"].value == Decimal("0")
+    assert facts["net_income_attributable_to_parent"].value == Decimal("573000000")
+    # net_income falls back to parent_ni — NOT the broken sum.
+    assert facts["net_income"].value == Decimal("573000000")
+    # No phantom NCI — minority_interest omitted entirely.
+    assert "minority_interest" not in facts

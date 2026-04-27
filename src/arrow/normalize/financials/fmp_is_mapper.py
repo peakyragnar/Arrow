@@ -119,6 +119,16 @@ def map_income_statement_row(row: dict[str, Any]) -> list[MappedFact]:
     Skips the derived pair if either component is absent (preserves the
     Layer-1 component-guard contract: ties are suppressed rather than
     failed when components are missing).
+
+    Vendor-quality guard: when FMP ships continuing_ops_after_tax=0
+    AND discontinued_ops=0 BUT net_income_attributable_to_parent is
+    non-zero, the breakdown is missing and trusting the derivation
+    would store net_income=0 and a phantom minority_interest=-parent_ni.
+    Empirical: DELL FY2017 Q2 had this exact shape (Dell pre-EMC merger,
+    Dell Software Group sale; FMP didn't decompose the discontinued
+    operations gain). Fall back to using parent_ni as net_income and
+    omit the minority_interest derivation — fewer wrong values is
+    better than confidently-wrong derived ones.
     """
     out: list[MappedFact] = []
     for concept, fmp_field, unit in _IS_BUCKETS:
@@ -140,6 +150,18 @@ def map_income_statement_row(row: dict[str, Any]) -> list[MappedFact]:
 
     if continuing is not None and disc is not None:
         net_income = continuing + disc
+        # Guard: missing-decomposition case. If both components are 0 but
+        # the filer-reported parent net income is non-zero, the components
+        # don't actually represent the breakdown — they're FMP placeholders.
+        # Use parent_ni as net_income, no minority_interest derivation.
+        if (
+            net_income == 0
+            and parent_ni is not None
+            and parent_ni != 0
+        ):
+            out.append(MappedFact(concept="net_income", value=parent_ni, unit="USD"))
+            return out
+
         out.append(MappedFact(concept="net_income", value=net_income, unit="USD"))
 
         if parent_ni is not None:
