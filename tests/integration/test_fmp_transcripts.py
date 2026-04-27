@@ -462,6 +462,77 @@ class _FakeFMPClient:
         )
 
 
+class _MultiQuarterFakeFMPClient:
+    """Fake client that ships transcripts for two quarters; the test seeds
+    a financial anchor for only one of them so the orchestrator must skip
+    the other (mirrors DELL pre-IPO transcripts that have no anchor)."""
+
+    def get(self, endpoint: str, **params):
+        if endpoint == "earning-call-transcript-dates":
+            body = json.dumps([
+                {"quarter": 4, "fiscalYear": 2014, "date": "2014-12-15"},
+                {"quarter": 2, "fiscalYear": 2025, "date": "2024-08-28"},
+            ]).encode("utf-8")
+        elif endpoint == "earning-call-transcript":
+            year = params.get("year")
+            quarter = params.get("quarter")
+            body = json.dumps([
+                {
+                    "symbol": params["symbol"],
+                    "period": f"Q{quarter}",
+                    "year": year,
+                    "date": "2014-12-15" if year == 2014 else "2024-08-28",
+                    "content": _content("fetcher"),
+                }
+            ]).encode("utf-8")
+        else:
+            raise AssertionError(endpoint)
+        return Response(
+            status=200,
+            headers={"content-type": "application/json"},
+            body=body,
+            content_type="application/json",
+            url=f"https://example.test/{endpoint}",
+        )
+
+
+def test_ingest_transcripts_skips_transcripts_without_fiscal_anchor() -> None:
+    """When FMP ships a transcript for a period that has no financial
+    anchor (e.g., DELL pre-IPO years), the orchestrator must skip it
+    silently — counted in `transcripts_skipped_no_anchor` — rather than
+    aborting the whole transaction. The anchored transcript still loads."""
+    ticker = "DLLTST"
+    dates_path = fmp_transcript_dates_path(ticker)
+    paths_to_clean = [
+        dates_path,
+        fmp_transcript_path(ticker, 2014, 4),
+        fmp_transcript_path(ticker, 2025, 2),
+    ]
+    try:
+        with get_conn() as conn:
+            _reset(conn)
+            company = _seed_company(conn, ticker=ticker)
+            # Anchor only FY2025 Q2 — FY2014 Q4 will be unanchored.
+            _seed_anchor_fact(conn, company_id=company.id)
+
+            counts = ingest_transcripts(
+                conn,
+                [ticker],
+                client=_MultiQuarterFakeFMPClient(),  # type: ignore[arg-type]
+            )
+
+            assert counts["transcripts_fetched"] == 2
+            assert counts["transcripts_skipped_no_anchor"] == 1
+            assert counts["artifacts_inserted"] == 1
+    finally:
+        for p in paths_to_clean:
+            p.unlink(missing_ok=True)
+        for p in paths_to_clean:
+            ticker_dir = p.parent
+            if ticker_dir.exists() and not any(ticker_dir.iterdir()):
+                ticker_dir.rmdir()
+
+
 def test_ingest_transcripts_fetches_raw_cache_and_nonzero_counts() -> None:
     ticker = "ZZTST"
     dates_path = fmp_transcript_dates_path(ticker)

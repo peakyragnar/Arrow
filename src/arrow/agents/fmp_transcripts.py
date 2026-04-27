@@ -90,6 +90,7 @@ def ingest_transcripts(
         "transcripts_requested": 0,
         "transcripts_missing": 0,
         "transcripts_fetched": 0,
+        "transcripts_skipped_no_anchor": 0,
         "artifacts_inserted": 0,
         "artifacts_existing": 0,
         "artifacts_superseded": 0,
@@ -136,12 +137,21 @@ def ingest_transcripts(
                         continue
 
                     counts["transcripts_fetched"] += 1
-                    result = _normalize_one(
-                        conn,
-                        company=company,
-                        fetched=fetched,
-                        ingest_run_id=run_id,
-                    )
+                    try:
+                        result = _normalize_one(
+                            conn,
+                            company=company,
+                            fetched=fetched,
+                            ingest_run_id=run_id,
+                        )
+                    except MissingFiscalAnchor:
+                        # FMP shipped a transcript for a period we don't have
+                        # financial facts for (common: pre-IPO transcripts when
+                        # the company was private — DELL FY2014 Q4 etc.).
+                        # Skip it; the counter surfaces in the run summary so
+                        # the operator sees how many were skipped.
+                        counts["transcripts_skipped_no_anchor"] += 1
+                        continue
                     if result.created:
                         counts["artifacts_inserted"] += 1
                     else:

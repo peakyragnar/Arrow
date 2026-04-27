@@ -192,6 +192,7 @@ def main() -> int:
             "transcripts_requested": transcript_counts["transcripts_requested"],
             "transcripts_fetched": transcript_counts["transcripts_fetched"],
             "transcripts_missing": transcript_counts["transcripts_missing"],
+            "transcripts_skipped_no_anchor": transcript_counts["transcripts_skipped_no_anchor"],
             "raw_responses": transcript_counts["raw_responses"],
             "artifacts_inserted": transcript_counts["artifacts_inserted"],
             "artifacts_existing": transcript_counts["artifacts_existing"],
