@@ -31,7 +31,7 @@ Usage (library):
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any
 
@@ -39,6 +39,15 @@ import psycopg
 
 from arrow.agents.fmp_reconcile import reconcile_fmp_vs_xbrl
 from arrow.ingest.common.runs import close_succeeded, open_run
+from arrow.normalize.financials.verify_bs import (
+    verify_bs_hard_ties,
+    verify_bs_soft_ties,
+)
+from arrow.normalize.financials.verify_cf import (
+    verify_cf_hard_ties,
+    verify_cf_soft_ties,
+)
+from arrow.normalize.financials.verify_is import verify_is_ties
 
 
 STATEMENT_TO_AMENDMENT_VERSION = {
@@ -82,6 +91,11 @@ DEFAULT_REQUIRE_DIRECT = True
 DEFAULT_MIN_FISCAL_YEAR = 2022
 DEFAULT_MAX_RELATIVE_GAP = 0.25
 DEFAULT_MIN_ABSOLUTE_GAP = 10_000_000
+
+#: Flag type written to data_quality_flags when an XBRL promotion leaves
+#: a Layer 1 tie broken (cross-statement arithmetic inconsistency between
+#: the new XBRL anchor and the still-FMP-sourced component values).
+TIE_BREAK_FLAG_TYPE = "xbrl_promotion_tie_break"
 
 
 def _is_safe_for_auto_promotion(
@@ -235,6 +249,195 @@ def _promote_one(
     return True
 
 
+def _fetch_current_values_for_period(
+    conn: psycopg.Connection,
+    *,
+    company_id: int,
+    period_end: date,
+    period_type: str,
+    statement: str,
+) -> tuple[dict[str, Decimal], int | None, int | None, str | None]:
+    """Pull the current value for each concept in a (statement, period).
+
+    Includes both fmp-* and xbrl-amendment-* current rows; if both
+    coexist somehow, the lower extraction_version-rank wins (xbrl-amendment
+    over fmp). Returns (values_by_concept, fiscal_year, fiscal_quarter, fiscal_period_label).
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT concept, value, fiscal_year, fiscal_quarter, fiscal_period_label,
+                   extraction_version
+            FROM financial_facts
+            WHERE company_id = %s
+              AND statement = %s
+              AND period_end = %s
+              AND period_type = %s
+              AND superseded_at IS NULL
+              AND dimension_type IS NULL
+            """,
+            (company_id, statement, period_end, period_type),
+        )
+        rows = cur.fetchall()
+
+    if not rows:
+        return {}, None, None, None
+
+    # Rank lower = preferred (matches v_company_period_wide rule)
+    def rank(ev: str) -> int:
+        if ev.startswith("human-verified"):
+            return 1
+        if ev.startswith("xbrl-amendment-"):
+            return 2
+        if ev.startswith("fmp-"):
+            return 3
+        return 9
+
+    by_concept: dict[str, tuple[int, Decimal]] = {}
+    fiscal_year = fiscal_quarter = fiscal_period_label = None
+    for concept, value, fy, fq, fpl, ev in rows:
+        r = rank(ev)
+        cur_best = by_concept.get(concept)
+        if cur_best is None or r < cur_best[0]:
+            by_concept[concept] = (r, value)
+        if fiscal_year is None:
+            fiscal_year, fiscal_quarter, fiscal_period_label = fy, fq, fpl
+    return ({c: v for c, (_, v) in by_concept.items()}, fiscal_year, fiscal_quarter, fiscal_period_label)
+
+
+def _write_tie_break_flag(
+    conn: psycopg.Connection,
+    *,
+    company_id: int,
+    statement: str,
+    fiscal_year: int,
+    fiscal_quarter: int | None,
+    period_end: date,
+    period_type: str,
+    failure: Any,
+    promotion_run_id: int,
+) -> None:
+    """Write a soft data_quality_flag when an XBRL promotion leaves a tie broken.
+
+    Idempotent: same (company, statement, period_end, period_type, flag_type, tie)
+    won't double-write because we check first. We don't have a unique
+    constraint on data_quality_flags so this is a SELECT-then-INSERT pattern.
+    """
+    tie = getattr(failure, "tie", "?")
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT 1 FROM data_quality_flags
+            WHERE company_id = %s
+              AND statement = %s
+              AND period_end = %s
+              AND period_type = %s
+              AND flag_type = %s
+              AND context->>'tie' = %s
+              AND resolved_at IS NULL
+            LIMIT 1
+            """,
+            (company_id, statement, period_end, period_type,
+             TIE_BREAK_FLAG_TYPE, tie),
+        )
+        if cur.fetchone():
+            return  # already flagged
+
+        reason = (
+            f"XBRL anchor promotion left this tie broken: {tie}. "
+            f"Filer-reported (post-promotion) value vs computed-from-components "
+            f"differ by {failure.delta} (tolerance {failure.tolerance}). "
+            f"Likely cause: an XBRL-amended anchor (e.g. operating_income) no "
+            f"longer matches the still-FMP-sourced component values that "
+            f"originally tied to the FMP-anchor. Investigate which side to "
+            f"trust for cross-statement consistency."
+        )
+        cur.execute(
+            """
+            INSERT INTO data_quality_flags (
+                company_id, statement, concept,
+                fiscal_year, fiscal_quarter, period_end, period_type,
+                flag_type, severity,
+                expected_value, computed_value, delta, tolerance,
+                reason, context, source_run_id
+            ) VALUES (
+                %s, %s, NULL,
+                %s, %s, %s, %s,
+                %s, 'warning',
+                %s, %s, %s, %s,
+                %s, %s::jsonb, %s
+            );
+            """,
+            (
+                company_id, statement,
+                fiscal_year, fiscal_quarter, period_end, period_type,
+                TIE_BREAK_FLAG_TYPE,
+                failure.filer, failure.computed, failure.delta, failure.tolerance,
+                reason,
+                f'{{"tie": "{tie}"}}',
+                promotion_run_id,
+            ),
+        )
+
+
+def verify_period_after_promotion(
+    conn: psycopg.Connection,
+    *,
+    company_id: int,
+    period_end: date,
+    period_type: str,
+    promotion_run_id: int,
+    statements: tuple[str, ...] = ("income_statement", "balance_sheet", "cash_flow"),
+) -> dict[str, int]:
+    """Re-run Layer 1 ties for the statements actually promoted in this period.
+
+    Writes a soft data_quality_flag for each new tie failure. Doesn't raise
+    on hard-tie failures — promotion is already committed and we want the
+    analyst to see the inconsistency, not roll back.
+
+    Pass ``statements`` to limit verification to only the statements that
+    had XBRL-amendments in this period (avoids attributing pre-existing
+    FMP drift to a promotion that didn't touch that statement).
+
+    Returns counts of failures per statement.
+    """
+    counts = {"is_failures": 0, "bs_failures": 0, "cf_failures": 0}
+
+    verifier_map = {
+        "income_statement": (verify_is_ties,),
+        "balance_sheet": (verify_bs_soft_ties, verify_bs_hard_ties),
+        "cash_flow": (verify_cf_soft_ties, verify_cf_hard_ties),
+    }
+    for statement in statements:
+        verifiers = verifier_map.get(statement)
+        if verifiers is None:
+            continue
+        values, fy, fq, _fpl = _fetch_current_values_for_period(
+            conn, company_id=company_id, period_end=period_end,
+            period_type=period_type, statement=statement,
+        )
+        if not values or fy is None:
+            continue
+        failures: list = []
+        for verify_fn in verifiers:
+            failures.extend(verify_fn(values))
+        for failure in failures:
+            _write_tie_break_flag(
+                conn,
+                company_id=company_id, statement=statement,
+                fiscal_year=fy, fiscal_quarter=fq,
+                period_end=period_end, period_type=period_type,
+                failure=failure, promotion_run_id=promotion_run_id,
+            )
+        if statement == "income_statement":
+            counts["is_failures"] = len(failures)
+        elif statement == "balance_sheet":
+            counts["bs_failures"] = len(failures)
+        elif statement == "cash_flow":
+            counts["cf_failures"] = len(failures)
+    return counts
+
+
 def audit_and_promote_xbrl(
     conn: psycopg.Connection,
     tickers: list[str],
@@ -318,6 +521,11 @@ def audit_and_promote_xbrl(
         )
         promotion_run_ids.append(promotion_run_id)
         ticker_promoted = 0
+        # (period_end, period_type) -> set of statements that were promoted.
+        # We only re-verify the statements that actually got an XBRL anchor
+        # promotion to avoid attributing pre-existing FMP drift to today's
+        # promotion when the broken tie is in a statement we didn't touch.
+        affected: dict[tuple[date, str], set[str]] = defaultdict(set)
         with conn.transaction():
             for d in ticker_divs:
                 applied = _promote_one(
@@ -329,8 +537,30 @@ def audit_and_promote_xbrl(
                 )
                 if applied:
                     ticker_promoted += 1
+                    pe = (date.fromisoformat(d["period_end"])
+                          if isinstance(d["period_end"], str) else d["period_end"])
+                    affected[(pe, d["period_type"])].add(d["statement"])
                 else:
                     skipped_no_fmp_row += 1
+
+        # Post-promotion Layer 1 tie verification — runs in its own transaction
+        # so any writes commit independently of the promotion writes (which
+        # already committed via the with-block above). Scoped to the
+        # statements actually promoted in each period.
+        tie_break_counts = {"is_failures": 0, "bs_failures": 0, "cf_failures": 0}
+        for (period_end, period_type), promoted_statements in affected.items():
+            with conn.transaction():
+                pc = verify_period_after_promotion(
+                    conn,
+                    company_id=company_id,
+                    period_end=period_end,
+                    period_type=period_type,
+                    promotion_run_id=promotion_run_id,
+                    statements=tuple(promoted_statements),
+                )
+                for k, v in pc.items():
+                    tie_break_counts[k] += v
+
         close_succeeded(
             conn, promotion_run_id,
             counts={
@@ -340,6 +570,9 @@ def audit_and_promote_xbrl(
                 "is_facts_superseded": ticker_promoted,
                 "ticker": ticker,
                 "audit_run_id": audit_run_id,
+                "tie_break_flags_is": tie_break_counts["is_failures"],
+                "tie_break_flags_bs": tie_break_counts["bs_failures"],
+                "tie_break_flags_cf": tie_break_counts["cf_failures"],
             },
         )
         promoted += ticker_promoted
