@@ -1222,7 +1222,29 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 5. ✅ define training-trace requirements clearly (this doc, § qa_log + § Training-Ready By Design)
 6. ✅ implement `raw_responses` + `ingest_runs` (migrations 002, 003)
 7. ✅ implement `artifacts` (migration 004, with double-hash). SEC qualitative filing identity extensions landed in migration 014.
-8. ⏳ implement FMP ingest for historical filings and transcripts. Historical financials and revenue segmentation are built; transcripts remain next.
+8. 🚧 implement FMP ingest for historical filings and transcripts.
+   Historical financials and revenue segmentation are built (✅);
+   **transcripts is the active focus as of 2026-04-27**. Sub-steps:
+   - ⏳ FMP earnings transcript endpoint client + raw-response cache
+     (mirror `src/arrow/ingest/fmp/income_statement.py` shape;
+     deterministic cache path `data/raw/fmp/earning-call-transcript/{TICKER}/{YYYY-Qn}.json`).
+   - ⬜ Normalize transcripts into `artifacts` (artifact_type
+     `'transcript'`, with speaker turns + timestamps in
+     `artifact_text_units` per the existing text_units pattern from
+     migration 015). Likely needs a new `artifact_type` allowed
+     value via small migration.
+   - ⬜ Wire into `scripts/ingest_company.py` normal flow so every
+     subsequent ingest includes transcripts automatically.
+   - ⬜ Backfill transcripts across the existing 13 companies
+     (one-time operational pass).
+   - ⬜ Per the working rule "new verticals ship with their checks":
+     add transcript-vertical expectations to
+     `src/arrow/steward/expectations.py` + add steward checks
+     (presence, recency, orphan detection) for the new vertical.
+     Calibrate thresholds against live data before coding (per
+     `feedback_calibrate_thresholds_first` memory).
+   - Estimated effort: ~1 day for ingest + normalize + wire,
+     ~half day for steward checks + tests.
 9. ✅ implement and populate `financial_facts` schema with fiscal, calendar, PIT, and segment-dimension fields (migrations 008, 016; segment ingest built 2026-04-24).
 9.5. ✅ implement FMP ↔ SEC/XBRL audit rail (migrations 010 + 011, built 2026-04-21/22). Preserved for separate audit/reconciliation passes. No longer part of default baseline FMP backfill. Divergences write to `data_quality_flags` when audit is run; amendment-detect remains preserved as later audit functionality rather than default ingest behavior.
 10. ⬜ implement `series` + `series_observations` (unified macro / industry / commodity substrate, vintage-preserving). Build when first real source lands.

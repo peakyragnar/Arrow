@@ -1,9 +1,26 @@
 # Steward Operator Runbook
 
-Status: V1 in operation. This is the working manual for using the
+Status: V1.3 in operation. This is the working manual for using the
 steward day-to-day. It complements (does not replace)
 [`docs/architecture/steward.md`](../architecture/steward.md), which
 covers the runtime design and V1→V3 trajectory.
+
+## Current focus (2026-04-27)
+
+- **Steward V1.3:** complete. Operating mode — ingest companies,
+  triage findings, accumulate notes for V2 training corpus.
+  Status: 13 companies tracked, 0 open findings, 9 closed (5
+  distinct patterns). Next steward milestone (V2 LLM suggester)
+  needs ~50 closed findings; no urgent steward work.
+- **Active development:** **FMP transcript ingest** — see
+  [`system.md` Build Order step 8](../architecture/system.md). This
+  is the major missing US-filer analytical vertical. Per the
+  "new verticals ship with their checks" working rule, transcripts
+  ships with its expectations + steward checks in the same commit
+  series.
+- **Hard rule still in effect:** no foreign-filer ingestion (TSM,
+  ASML, BABA, etc.) — see § "Hard rule: do NOT ingest foreign
+  filers yet" below.
 
 There are two audiences for this doc:
 

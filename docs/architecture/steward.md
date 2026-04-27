@@ -522,24 +522,126 @@ respective sequence; cumulative state reflects V1.2.
 
 ### V2 — LLM as advisor
 
-9. ⬜ Triage suggester: RAG over closed findings + dashboard suggestion chip
-   + confirm/override flow
+**Entry criteria:** ~50 closed findings with substantive notes
+covering ≥8 distinct triage patterns. Variety dominates volume —
+RAG learns from pattern variety. As of 2026-04-26 we have 9 closed
+across 5 patterns. Realistic timeline: 2–3 months of organic
+operation (5–15 findings/week steady state).
+
+9.  ⬜ Triage suggester: RAG over closed findings + dashboard suggestion
+    chip + confirm/override flow. The agent embeds new findings,
+    pulls 3–5 similar past closed findings, sends evidence + similar
+    precedents to the LLM, writes `agent_suggestion` jsonb on the
+    finding row. Operator clicks confirm or override; overrides
+    captured as next-tier training signal. **Effort: ~1 week.**
 10. ⬜ `LLMCheck` infrastructure + first two LLM checks
-    (`segment_taxonomy_drift`, `extraction_quality_regression`)
-11. ⬜ Investigator tool: on-demand button, agent uses retrieval primitives
-12. ⬜ Rubber-stamping detection: weekly sampled review pane
+    (`segment_taxonomy_drift`, `extraction_quality_regression`).
+    New check class, same registry. Deterministic prefilter narrows
+    candidates; LLM judges; structured finding emerges.
+    **Effort: ~1 week.**
+11. ⬜ Investigator tool: on-demand "Investigate" button per finding.
+    Agent uses retrieval primitives (`get_financial_fact`,
+    `read_chunk`, `list_documents`, `sql_query`) to investigate +
+    write a one-paragraph summary into `agent_investigation` field.
+    **Effort: ~3 days.**
+12. ⬜ Rubber-stamping detection: weekly sampled review pane that
+    shows agent-confirmed closures the operator might have approved
+    without thinking. Mitigates the V2 failure mode where the
+    suggester gets things right often enough that confirm-clicks
+    become reflex. **Effort: ~2 days.**
 
 ### V3 — autonomy on proven check types
 
-13. ⬜ `automation_policy` table (replaces Python constant default)
-14. ⬜ Activity feed dashboard view (replaces inbox as primary)
-15. ⬜ Revert button (24h window on agent-executed actions)
-16. ⬜ Drift detection runner (weekly sample re-judgment + auto-demote)
+**Entry criteria:** ~30 consecutive correct suggestions per check
+type from V2 + operator confidence to promote per-check automation.
+Per-check, not global. Some checks (mechanical: `zero_row_runs`,
+`unresolved_flags_aging`) likely promote within weeks of V2;
+others (`segment_taxonomy_drift`, `extraction_method_drift`) may
+stay at suggest_only indefinitely.
+
+13. ⬜ `automation_policy` table (replaces V2's Python constant).
+    One row per check_type with level (`human_only` /
+    `suggest_only` / `auto_with_review` / `autonomous`). Promotion
+    requires explicit operator action; demotion is one click.
+    **Effort: ~1 week including UI.**
+14. ⬜ Activity feed dashboard view (replaces inbox as primary).
+    Daily roll-up of agent-handled findings + exception list for
+    operator attention. **Effort: ~1 week.**
+15. ⬜ Revert button (24h window on agent-executed actions). Lets
+    operator un-do an agent's auto-resolution if spotted soon
+    enough. The reverted finding becomes a new training example.
+    **Effort: ~3 days.**
+16. ⬜ Drift detection runner (weekly sample re-judgment +
+    auto-demote). Catches model drift, prompt regressions, changes
+    in finding distribution. **Effort: ~3 days.**
 
 ### V4+ (Year 2+)
 
-17. ⬜ Specialized fine-tune of an open base model on accumulated
-    `(finding, decision, override?, outcome)` corpus
+**Entry criteria:** ~5,000+ closed findings with high-quality
+notes. Realistic timeline: 12+ months of operation post-V2.
+
+17. ⬜ Specialized fine-tune of an open base model (Qwen / Llama /
+    DeepSeek) on accumulated `(finding, decision, override?,
+    outcome)` corpus. Replaces frontier-LLM in suggester role for
+    well-shaped check types. Cost drops 10–100×, latency drops
+    5–10×, quality goes up because it's specialized.
+    **Effort: weeks for the fine-tune; ongoing for model versioning.**
+
+### Built but NOT Promoted
+
+These are signals the audit script (`scripts/audit_sec_qualitative.py`)
+catches but were intentionally NOT built into the steward, with
+reasoning so a future operator doesn't re-propose them without
+new information.
+
+| Signal | Status | Why |
+|---|---|---|
+| `missing_standard_section` (e.g. 10-K missing Item 1) | Deferred | Needs per-filing-type expectations layer (10-K vs 10-K/A vs 20-F treat sections differently). Bigger than a check. Promote when that infrastructure lands. |
+| `chunk_size_outlier` (chunks under N chars) | Dropped | High false-positive rate from legitimate cross-reference cuts. Promoting would teach V2 "always dismiss size outliers." Stays in audit script as exploratory. |
+| Live SEC.gov ↔ stored count comparison | Deferred | Audit script does it on demand with `--db-only` flag absent. Promoting requires HTTP calls from steward sweeps; on-demand is the correct shape. |
+| `broken_provenance` (financial_facts with NULL or dangling source_raw_response_id) | Permanently dropped | Schema's NOT NULL + ON DELETE RESTRICT make both failure modes structurally impossible. Don't write code for impossible failure modes. |
+
+### Explicitly NOT Planned
+
+These came up during V1 design discussion and were rejected with
+reasoning. Listed here so a future operator (or a fresh context)
+doesn't re-litigate them.
+
+- **Foreign-filer support piecemeal.** TSM ingest revealed that
+  20-F / 6-K filers need work across multiple layers (SEC fetcher,
+  artifact_type allowed values, employees filter, qualitative
+  extractor). Doing it as one focused 2–3 day project later, never
+  piecemeal. Hard rule documented in operator runbook §
+  "Hard rule: do NOT ingest foreign filers yet."
+- **Automated remediation.** Steward never mutates source data.
+  Surfaces and proposes; operator (or V3 autonomous-promoted check)
+  executes via existing ingest paths or action callables. Silent
+  fixes lose the thread of what's true.
+- **Operator-action automation buttons** (re-ingest from UI, etc.)
+  in V1. Operator-reviewed actions stay V1; agent-executed actions
+  are V3. The button-shaped bridge is exactly the place V2's
+  suggester pattern fits.
+- **News-scanning monitoring agent** before chat/CLI runtime
+  produces trustworthy answers (per `analyst_runtime.md` §
+  Surfaces). Otherwise the monitor publishes ungrounded answers.
+- **`pgvector` / embeddings for retrieval** until a concrete
+  question fails under FTS + metadata + SQL (per `system.md`).
+- **Adding more steward checks speculatively.** Only when real
+  signal demands them. The current 6 catch the patterns we've
+  actually seen. Future checks ride along with new verticals (per
+  the working rule "new verticals ship with their checks").
+
+### Marker convention
+
+- ✅ **done** — shipped + tested + on `main`
+- 🚧 **in progress** — actively being built; commits in flight
+- ⏳ **next** — explicitly queued as the next thing to start
+- ⬜ **not started** — known requirement, no work begun
+- (no marker) — historical narrative only
+
+When starting work on an item, flip its marker to 🚧 in the same
+commit that introduces the first implementation file. When
+shipping, flip to ✅ and add the commit SHA inline.
 
 ## Non-Goals For V1
 
