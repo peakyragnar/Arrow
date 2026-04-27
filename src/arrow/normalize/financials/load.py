@@ -27,7 +27,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from typing import Any
+from typing import Any, Mapping
 
 import psycopg
 
@@ -305,6 +305,35 @@ def _write_bs_soft_tie_flag(
     )
 
 
+def _canonical_q4_period_end(
+    period_end: date,
+    period_type: str,
+    fiscal_year: int,
+    fiscal_quarter: int | None,
+    q4_period_end_by_fy: Mapping[int, date] | None,
+) -> date:
+    """Snap Q4 quarterly period_end to the FY annual filing's date.
+
+    FMP's quarterly endpoint stamps Q4 with a calendar-month-end
+    approximation (e.g. DELL FY2024 Q4 = 2024-01-31), while the annual
+    endpoint carries the actual fiscal year-end (2024-02-02). Both come
+    from the same 10-K filing — `filingDate` and `acceptedDate` match
+    exactly. Snapping the Q4 quarterly date keeps (FY, Q4) joinable to
+    the FY annual row on `period_end`, which downstream consumers
+    (dashboard FY panel, ROIC view) rely on. No-op when no override map
+    is supplied or when the FMP date already matches.
+    """
+    if (
+        period_type == "quarter"
+        and fiscal_quarter == 4
+        and q4_period_end_by_fy is not None
+    ):
+        canonical = q4_period_end_by_fy.get(fiscal_year)
+        if canonical is not None and canonical != period_end:
+            return canonical
+    return period_end
+
+
 def _parse_published_at(row: dict[str, Any]) -> datetime:
     """FMP's acceptedDate ('YYYY-MM-DD HH:MM:SS') is preferred; filingDate as fallback.
 
@@ -331,6 +360,7 @@ def load_fmp_is_rows(
     ingest_run_id: int,
     min_fiscal_year: int | None = None,
     max_fiscal_year: int | None = None,
+    q4_period_end_by_fy: Mapping[int, date] | None = None,
 ) -> LoadResult:
     """Load every row in one FMP IS payload. Caller owns transaction.
 
@@ -339,6 +369,11 @@ def load_fmp_is_rows(
     period arithmetic and Q4 XBRL derivation have all the periods they
     need. Rows outside the window are counted in rows_processed but not
     written to financial_facts.
+
+    q4_period_end_by_fy: optional {fiscal_year: annual_period_end} map.
+    When set and the row is Q4 quarterly, snap period_end to the annual
+    filing's date so Q4 quarterly and FY annual rows share the same
+    period_end downstream. See `_canonical_q4_period_end`.
 
     IS subtotal drift is non-blocking. Rows load verbatim and unresolved
     caveats are written to `data_quality_flags`.
@@ -367,6 +402,12 @@ def load_fmp_is_rows(
                 continue
             if max_fiscal_year is not None and fiscal.fiscal_year > max_fiscal_year:
                 continue
+
+            period_end = _canonical_q4_period_end(
+                period_end, period_type,
+                fiscal.fiscal_year, fiscal.fiscal_quarter,
+                q4_period_end_by_fy,
+            )
 
             calendar = derive_calendar_period(period_end)
 
@@ -478,6 +519,7 @@ def load_fmp_bs_rows(
     ingest_run_id: int,
     min_fiscal_year: int | None = None,
     max_fiscal_year: int | None = None,
+    q4_period_end_by_fy: Mapping[int, date] | None = None,
 ) -> LoadResult:
     """Mirror of load_fmp_is_rows for the balance sheet.
 
@@ -485,6 +527,8 @@ def load_fmp_bs_rows(
     fact per mapped canonical bucket at `period_end` (same date semantics
     as IS). Layer 3 period arithmetic doesn't apply (stocks don't sum
     across quarters).
+
+    q4_period_end_by_fy: see load_fmp_is_rows.
 
     HARD BS balance-identity failures still abort the transaction.
     SOFT BS subtotal-component drift loads the row verbatim and writes one
@@ -509,6 +553,12 @@ def load_fmp_bs_rows(
                 continue
             if max_fiscal_year is not None and fiscal.fiscal_year > max_fiscal_year:
                 continue
+
+            period_end = _canonical_q4_period_end(
+                period_end, period_type,
+                fiscal.fiscal_year, fiscal.fiscal_quarter,
+                q4_period_end_by_fy,
+            )
 
             calendar = derive_calendar_period(period_end)
 
@@ -619,6 +669,7 @@ def load_fmp_cf_rows(
     ingest_run_id: int,
     min_fiscal_year: int | None = None,
     max_fiscal_year: int | None = None,
+    q4_period_end_by_fy: Mapping[int, date] | None = None,
 ) -> LoadResult:
     """Mirror of load_fmp_is_rows / load_fmp_bs_rows for cash flow.
 
@@ -657,6 +708,12 @@ def load_fmp_cf_rows(
                 continue
             if max_fiscal_year is not None and fiscal.fiscal_year > max_fiscal_year:
                 continue
+
+            period_end = _canonical_q4_period_end(
+                period_end, period_type,
+                fiscal.fiscal_year, fiscal.fiscal_quarter,
+                q4_period_end_by_fy,
+            )
 
             calendar = derive_calendar_period(period_end)
 

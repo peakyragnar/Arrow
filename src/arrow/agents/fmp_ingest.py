@@ -32,7 +32,7 @@ new callers should use backfill_fmp_statements.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 import psycopg
@@ -86,6 +86,24 @@ def _get_company(conn: psycopg.Connection, ticker: str) -> CompanyRow:
     return CompanyRow(id=row[0], cik=row[1], ticker=row[2], fiscal_year_end_md=row[3])
 
 
+def _annual_q4_period_end_map(rows: list[dict[str, Any]]) -> dict[int, date]:
+    """Build {fiscal_year: annual_period_end} from an FMP annual payload.
+
+    Used to canonicalize Q4 quarterly period_end downstream — see
+    `_canonical_q4_period_end` in normalize/financials/load.py.
+    """
+    out: dict[int, date] = {}
+    for r in rows:
+        if r.get("period") != "FY":
+            continue
+        fy = r.get("fiscalYear")
+        d = r.get("date")
+        if fy is None or d is None:
+            continue
+        out[int(fy)] = datetime.strptime(d, "%Y-%m-%d").date()
+    return out
+
+
 def _load_is_period(
     conn: psycopg.Connection,
     *,
@@ -95,7 +113,8 @@ def _load_is_period(
     max_fiscal_year: int | None,
     ingest_run_id: int,
     client: FMPClient,
-) -> LoadResult:
+    q4_period_end_by_fy: dict[int, date] | None = None,
+) -> tuple[LoadResult, dict[int, date]]:
     fetched = fetch_income_statement(
         conn,
         ticker=company.ticker,
@@ -103,7 +122,8 @@ def _load_is_period(
         ingest_run_id=ingest_run_id,
         client=client,
     )
-    return load_fmp_is_rows(
+    fy_pe_map = _annual_q4_period_end_map(fetched.rows) if period == "annual" else {}
+    result = load_fmp_is_rows(
         conn,
         company_id=company.id,
         company_fiscal_year_end_md=company.fiscal_year_end_md,
@@ -112,7 +132,9 @@ def _load_is_period(
         ingest_run_id=ingest_run_id,
         min_fiscal_year=min_fiscal_year,
         max_fiscal_year=max_fiscal_year,
+        q4_period_end_by_fy=q4_period_end_by_fy,
     )
+    return result, fy_pe_map
 
 
 def _load_bs_period(
@@ -124,7 +146,8 @@ def _load_bs_period(
     max_fiscal_year: int | None,
     ingest_run_id: int,
     client: FMPClient,
-) -> LoadResult:
+    q4_period_end_by_fy: dict[int, date] | None = None,
+) -> tuple[LoadResult, dict[int, date]]:
     fetched = fetch_balance_sheet(
         conn,
         ticker=company.ticker,
@@ -132,7 +155,8 @@ def _load_bs_period(
         ingest_run_id=ingest_run_id,
         client=client,
     )
-    return load_fmp_bs_rows(
+    fy_pe_map = _annual_q4_period_end_map(fetched.rows) if period == "annual" else {}
+    result = load_fmp_bs_rows(
         conn,
         company_id=company.id,
         company_fiscal_year_end_md=company.fiscal_year_end_md,
@@ -141,7 +165,9 @@ def _load_bs_period(
         ingest_run_id=ingest_run_id,
         min_fiscal_year=min_fiscal_year,
         max_fiscal_year=max_fiscal_year,
+        q4_period_end_by_fy=q4_period_end_by_fy,
     )
+    return result, fy_pe_map
 
 
 def _load_cf_period(
@@ -153,7 +179,8 @@ def _load_cf_period(
     max_fiscal_year: int | None,
     ingest_run_id: int,
     client: FMPClient,
-) -> LoadResult:
+    q4_period_end_by_fy: dict[int, date] | None = None,
+) -> tuple[LoadResult, dict[int, date]]:
     fetched = fetch_cash_flow(
         conn,
         ticker=company.ticker,
@@ -161,7 +188,8 @@ def _load_cf_period(
         ingest_run_id=ingest_run_id,
         client=client,
     )
-    return load_fmp_cf_rows(
+    fy_pe_map = _annual_q4_period_end_map(fetched.rows) if period == "annual" else {}
+    result = load_fmp_cf_rows(
         conn,
         company_id=company.id,
         company_fiscal_year_end_md=company.fiscal_year_end_md,
@@ -170,7 +198,9 @@ def _load_cf_period(
         ingest_run_id=ingest_run_id,
         min_fiscal_year=min_fiscal_year,
         max_fiscal_year=max_fiscal_year,
+        q4_period_end_by_fy=q4_period_end_by_fy,
     )
+    return result, fy_pe_map
 
 
 def _resolve_flags_superseded_by_reingest(
@@ -302,8 +332,13 @@ def backfill_fmp_statements(
                 )
 
                 # --- IS ingest (Layer 1 IS inline) ---
-                for period in ("quarter", "annual"):
-                    result = _load_is_period(
+                # Annual first so its FY-end date map can canonicalize Q4
+                # quarterly period_end on the second pass (FMP stamps Q4
+                # quarterly with a calendar-month-end approximation; the
+                # annual row carries the actual fiscal year-end).
+                is_q4_pe_by_fy: dict[int, date] = {}
+                for period in ("annual", "quarter"):
+                    result, fy_pe_map = _load_is_period(
                         conn,
                         company=company,
                         period=period,
@@ -311,7 +346,10 @@ def backfill_fmp_statements(
                         max_fiscal_year=ticker_max_fy,
                         ingest_run_id=run_id,
                         client=client,
+                        q4_period_end_by_fy=is_q4_pe_by_fy if period == "quarter" else None,
                     )
+                    if period == "annual":
+                        is_q4_pe_by_fy = fy_pe_map
                     ticker_counts["raw_responses"] += 1
                     ticker_counts["rows_processed"] += result.rows_processed
                     ticker_counts["is_facts_written"] += result.facts_written
@@ -319,8 +357,9 @@ def backfill_fmp_statements(
                     ticker_counts["is_flags_written"] += result.flags_written
 
                 # --- BS ingest (Layer 1 BS inline) ---
-                for period in ("quarter", "annual"):
-                    result = _load_bs_period(
+                bs_q4_pe_by_fy: dict[int, date] = {}
+                for period in ("annual", "quarter"):
+                    result, fy_pe_map = _load_bs_period(
                         conn,
                         company=company,
                         period=period,
@@ -328,7 +367,10 @@ def backfill_fmp_statements(
                         max_fiscal_year=ticker_max_fy,
                         ingest_run_id=run_id,
                         client=client,
+                        q4_period_end_by_fy=bs_q4_pe_by_fy if period == "quarter" else None,
                     )
+                    if period == "annual":
+                        bs_q4_pe_by_fy = fy_pe_map
                     ticker_counts["raw_responses"] += 1
                     ticker_counts["rows_processed"] += result.rows_processed
                     ticker_counts["bs_facts_written"] += result.facts_written
@@ -336,8 +378,9 @@ def backfill_fmp_statements(
                     ticker_counts["bs_flags_written"] += result.flags_written
 
                 # --- CF ingest (Layer 1 CF inline) ---
-                for period in ("quarter", "annual"):
-                    result = _load_cf_period(
+                cf_q4_pe_by_fy: dict[int, date] = {}
+                for period in ("annual", "quarter"):
+                    result, fy_pe_map = _load_cf_period(
                         conn,
                         company=company,
                         period=period,
@@ -345,7 +388,10 @@ def backfill_fmp_statements(
                         max_fiscal_year=ticker_max_fy,
                         ingest_run_id=run_id,
                         client=client,
+                        q4_period_end_by_fy=cf_q4_pe_by_fy if period == "quarter" else None,
                     )
+                    if period == "annual":
+                        cf_q4_pe_by_fy = fy_pe_map
                     ticker_counts["raw_responses"] += 1
                     ticker_counts["rows_processed"] += result.rows_processed
                     ticker_counts["cf_facts_written"] += result.facts_written
