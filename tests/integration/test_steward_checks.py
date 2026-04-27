@@ -694,3 +694,216 @@ def test_chunk_repair_concentration_skips_artifact_with_all_deterministic() -> N
         run_steward(conn, scope=Scope.universe())
         rows = _findings(conn, source_check="chunk_repair_concentration")
     assert rows == []
+
+
+# ---------------------------------------------------------------------------
+# quarterly_value_duplication
+# ---------------------------------------------------------------------------
+
+
+def _seed_raw_response(conn: psycopg.Connection, *, run_id: int) -> int:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO raw_responses (
+                ingest_run_id, vendor, endpoint, params, params_hash,
+                request_url, http_status, content_type,
+                body_jsonb, raw_hash, canonical_hash
+            ) VALUES (
+                %s, 'test', '/x', '{}'::jsonb, decode(repeat('00',32),'hex'),
+                'https://test', 200, 'application/json',
+                '{}'::jsonb, decode(repeat('00',32),'hex'), decode(repeat('00',32),'hex')
+            ) RETURNING id;
+            """,
+            (run_id,),
+        )
+        return cur.fetchone()[0]
+
+
+def _seed_fact(
+    conn: psycopg.Connection,
+    *,
+    run_id: int,
+    raw_id: int,
+    company_id: int,
+    statement: str,
+    concept: str,
+    fiscal_year: int,
+    fiscal_quarter: int,
+    value: float,
+    period_end: str = "2019-06-30",
+) -> int:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO financial_facts (
+                ingest_run_id, company_id, statement, concept, value, unit,
+                fiscal_year, fiscal_quarter, fiscal_period_label,
+                period_end, period_type,
+                calendar_year, calendar_quarter, calendar_period_label,
+                published_at, source_raw_response_id, extraction_version
+            )
+            VALUES (%s, %s, %s, %s, %s, 'USD',
+                    %s, %s, %s,
+                    %s, 'quarter',
+                    %s, %s, %s,
+                    now(), %s, 'fmp-test-v1')
+            RETURNING id;
+            """,
+            (run_id, company_id, statement, concept, value,
+             fiscal_year, fiscal_quarter, f"FY{fiscal_year} Q{fiscal_quarter}",
+             period_end,
+             fiscal_year, fiscal_quarter, f"CY{fiscal_year} Q{fiscal_quarter}",
+             raw_id),
+        )
+        return cur.fetchone()[0]
+
+
+def test_quarterly_value_duplication_fires_on_pltr_shaped_h1_split() -> None:
+    """16 non-zero CF concepts where 14 have IDENTICAL values across Q1
+    and Q2 = 87.5% duplication (above 50% threshold). Mirrors PLTR
+    FY2019 Q1/Q2 H1-split fabrication that surfaced in real data."""
+    with get_conn() as conn:
+        _reset(conn)
+        cid = _seed_company(conn, ticker="TEST")
+        run_id = _seed_run(conn)
+        raw_id = _seed_raw_response(conn, run_id=run_id)
+        # 14 concepts duplicated, 2 differing — 16 non-zero concepts total
+        duplicated = [
+            ("cfo", -170_161_000), ("cfi", -3_641_000), ("cff", 49_860_500),
+            ("capital_expenditures", -3_641_000), ("dna_cf", 3_194_500),
+            ("sbc", 56_443_500), ("change_accounts_receivable", -27_085_500),
+            ("change_other_working_capital", 63_521_500),
+            ("deferred_income_tax", -29_358_000),
+            ("fx_effect_on_cash", -307_500), ("other_financing", 53_233_500),
+            ("stock_repurchase", -3_373_000),
+            ("net_change_in_cash", -124_249_000),
+            ("cash_end_of_period", -124_249_000),
+        ]
+        differing = [
+            ("net_income_start", -140_229_500, -134_066_000),
+            ("other_noncash", -62_484_000, -68_647_500),
+        ]
+        for concept, val in duplicated:
+            _seed_fact(conn, run_id=run_id, raw_id=raw_id, company_id=cid,
+                       statement="cash_flow", concept=concept,
+                       fiscal_year=2019, fiscal_quarter=1, value=val,
+                       period_end="2019-03-31")
+            _seed_fact(conn, run_id=run_id, raw_id=raw_id, company_id=cid,
+                       statement="cash_flow", concept=concept,
+                       fiscal_year=2019, fiscal_quarter=2, value=val,
+                       period_end="2019-06-30")
+        for concept, q1_val, q2_val in differing:
+            _seed_fact(conn, run_id=run_id, raw_id=raw_id, company_id=cid,
+                       statement="cash_flow", concept=concept,
+                       fiscal_year=2019, fiscal_quarter=1, value=q1_val,
+                       period_end="2019-03-31")
+            _seed_fact(conn, run_id=run_id, raw_id=raw_id, company_id=cid,
+                       statement="cash_flow", concept=concept,
+                       fiscal_year=2019, fiscal_quarter=2, value=q2_val,
+                       period_end="2019-06-30")
+
+        run_steward(conn, scope=Scope.universe())
+        rows = _findings(conn, source_check="quarterly_value_duplication")
+
+    assert len(rows) == 1
+    r = rows[0]
+    assert r["ticker"] == "TEST"
+    assert r["evidence"]["statement"] == "cash_flow"
+    assert r["evidence"]["fiscal_year"] == 2019
+    assert r["evidence"]["q_a"] == 1 and r["evidence"]["q_b"] == 2
+    assert r["evidence"]["nonzero_concepts"] == 16
+    assert r["evidence"]["duplicated_nonzero"] == 14
+    assert r["evidence"]["duplication_share"] == pytest.approx(14 / 16)
+
+
+def test_quarterly_value_duplication_skips_normal_quarterly_data() -> None:
+    """Real reported quarterly data has distinct Q1 vs Q2 values across
+    nearly every concept. Should not fire."""
+    with get_conn() as conn:
+        _reset(conn)
+        cid = _seed_company(conn, ticker="TEST")
+        run_id = _seed_run(conn)
+        raw_id = _seed_raw_response(conn, run_id=run_id)
+        # 8 concepts, all differing Q1 vs Q2
+        for i, concept in enumerate(
+            ["cfo", "cfi", "cff", "capital_expenditures", "dna_cf", "sbc",
+             "change_accounts_receivable", "net_change_in_cash"]
+        ):
+            _seed_fact(conn, run_id=run_id, raw_id=raw_id, company_id=cid,
+                       statement="cash_flow", concept=concept,
+                       fiscal_year=2024, fiscal_quarter=1,
+                       value=1_000_000 * (i + 1),
+                       period_end="2024-03-31")
+            _seed_fact(conn, run_id=run_id, raw_id=raw_id, company_id=cid,
+                       statement="cash_flow", concept=concept,
+                       fiscal_year=2024, fiscal_quarter=2,
+                       value=1_500_000 * (i + 1),
+                       period_end="2024-06-30")
+
+        run_steward(conn, scope=Scope.universe())
+        rows = _findings(conn, source_check="quarterly_value_duplication")
+    assert rows == []
+
+
+def test_quarterly_value_duplication_skips_below_min_nonzero_concepts() -> None:
+    """A pair with only 4 non-zero concepts (below MIN_NONZERO_CONCEPTS=5)
+    shouldn't fire even if all are duplicated. Avoids noise on companies
+    with mostly-zero cash flow statements."""
+    with get_conn() as conn:
+        _reset(conn)
+        cid = _seed_company(conn, ticker="TEST")
+        run_id = _seed_run(conn)
+        raw_id = _seed_raw_response(conn, run_id=run_id)
+        # 4 duplicated concepts only — below threshold
+        for concept, val in [("cfo", 1_000_000), ("cfi", -500_000),
+                             ("cff", 250_000), ("net_change_in_cash", 750_000)]:
+            _seed_fact(conn, run_id=run_id, raw_id=raw_id, company_id=cid,
+                       statement="cash_flow", concept=concept,
+                       fiscal_year=2019, fiscal_quarter=1, value=val,
+                       period_end="2019-03-31")
+            _seed_fact(conn, run_id=run_id, raw_id=raw_id, company_id=cid,
+                       statement="cash_flow", concept=concept,
+                       fiscal_year=2019, fiscal_quarter=2, value=val,
+                       period_end="2019-06-30")
+
+        run_steward(conn, scope=Scope.universe())
+        rows = _findings(conn, source_check="quarterly_value_duplication")
+    assert rows == []
+
+
+def test_quarterly_value_duplication_ignores_zero_values() -> None:
+    """Concepts that are zero in BOTH quarters (legitimately absent —
+    no acquisitions, no preferred dividends, etc.) shouldn't count
+    toward the duplication share. Otherwise companies with sparse CF
+    would falsely fire."""
+    with get_conn() as conn:
+        _reset(conn)
+        cid = _seed_company(conn, ticker="TEST")
+        run_id = _seed_run(conn)
+        raw_id = _seed_raw_response(conn, run_id=run_id)
+        # 6 concepts: 5 zero-in-both (legitimately absent), 1 non-zero
+        # but distinct. Non-zero pool = 1, well below MIN.
+        for concept in ["acquisitions", "purchases_of_investments",
+                        "common_dividends_paid", "preferred_dividends_paid",
+                        "stock_issuance"]:
+            _seed_fact(conn, run_id=run_id, raw_id=raw_id, company_id=cid,
+                       statement="cash_flow", concept=concept,
+                       fiscal_year=2024, fiscal_quarter=1, value=0,
+                       period_end="2024-03-31")
+            _seed_fact(conn, run_id=run_id, raw_id=raw_id, company_id=cid,
+                       statement="cash_flow", concept=concept,
+                       fiscal_year=2024, fiscal_quarter=2, value=0,
+                       period_end="2024-06-30")
+        _seed_fact(conn, run_id=run_id, raw_id=raw_id, company_id=cid,
+                   statement="cash_flow", concept="cfo",
+                   fiscal_year=2024, fiscal_quarter=1, value=1_000_000,
+                   period_end="2024-03-31")
+        _seed_fact(conn, run_id=run_id, raw_id=raw_id, company_id=cid,
+                   statement="cash_flow", concept="cfo",
+                   fiscal_year=2024, fiscal_quarter=2, value=1_500_000,
+                   period_end="2024-06-30")
+
+        run_steward(conn, scope=Scope.universe())
+        rows = _findings(conn, source_check="quarterly_value_duplication")
+    assert rows == []
