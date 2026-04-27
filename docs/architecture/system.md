@@ -21,13 +21,13 @@ Build Arrow into a searchable, replayable, time-aware company-intelligence syste
 
 If you are new to the repo, keep this distinction hard:
 
-- **normal flow** = FMP baseline facts + SEC documents + FMP transcripts
-- **audit flow** = optional comparison/reconciliation; flags only
+- **normal flow** = FMP baseline facts + SEC documents + FMP transcripts + FMP↔XBRL audit (auto-promotes safe corrections, surfaces the rest)
+- **standalone audit** = `scripts/reconcile_fmp_vs_xbrl.py` — re-run anytime against already-stored facts
 
 Short version:
-- baseline financial source of truth: FMP
-- SEC role: `8-K` / `10-Q` / `10-K` documents, freshness, filing text
-- audit role: separate side rail; does not block or rewrite baseline facts
+- baseline financial source of truth: FMP, with continuous XBRL verification
+- SEC role: `8-K` / `10-Q` / `10-K` documents, freshness, filing text, **and** XBRL anchor values for FMP correctness checking
+- audit role: integrated into normal flow as a soft gate — auto-promotes XBRL on safe-bucket corruption (direct-tagged, FY≥2022, gap<25%, unambiguous concept) with full provenance via `supersedes_fact_id` + `xbrl-amendment-{is|bs|cf}-v1` extraction_version. Unsafe-bucket divergences don't auto-rewrite — they land in the steward queue (`xbrl_audit_unresolved`) for analyst adjudication.
 
 For the shortest version, read:
 - `docs/architecture/normal_vs_audit.md`
@@ -57,7 +57,7 @@ Do:
 - search-first retrieval
 - FMP = primary source for historical ingest and normal operation
 - SEC direct = narrow low-latency path only for newly dropped filings
-- SEC/XBRL = audit rail and amendment rail, not automatic winner on every mismatch
+- SEC/XBRL = audit rail and amendment rail; auto-promotes only on the unambiguous corruption bucket (direct-tagged anchors, recent FY, moderate gap, primary IS/CF concepts). Unsafe-bucket divergences surface for analyst review rather than rewriting baseline.
 - Massive = planned options vendor later; deferred until paid
 - macro data is first-class and time-aligned to company data
 - raw responses cached and replayable
@@ -120,7 +120,11 @@ Important:
 - `scripts/ingest_segments.py` — FMP product/geography revenue segment refresh only
 - `scripts/ingest_employees.py` — employee metric refresh only
 - `scripts/fetch_sec_filings.py` — SEC `10-K` / `10-Q` qualitative backfill only (default 5-year window, primary docs only)
-- `scripts/reconcile_fmp_vs_xbrl.py` — audit side rail only
+- `scripts/reconcile_fmp_vs_xbrl.py` — standalone audit; same logic that runs automatically in `ingest_company.py`. Use to re-audit a ticker on demand.
+- `scripts/promote_xbrl_for_corruption.py` — apply XBRL supersession with safety filters; same library function the normal flow uses (`arrow.agents.xbrl_audit.audit_and_promote_xbrl`). Use for backfill / re-promotion outside the normal flow.
+- `scripts/triage_xbrl_divergences.py` — classify divergences from past audit runs into definitional / corruption / ambiguous buckets; supports filtering by ticker or bucket.
+- `scripts/correct_corrupted_q4_is.py` — manual override for FMP Q-fabrication corruption that auto-promote can't safely fix (e.g., entire Q row corrupt, derive from `annual − sum(other quarters)`).
+- `scripts/backfill_q4_period_end.py`, `scripts/backfill_cross_endpoint_period_end.py` — one-shot backfills for the date-stamping classes of bug; idempotent.
 
 ## Foundational Schema Rule: Two Clocks Always
 
@@ -258,9 +262,9 @@ Rule:
 - prefer FMP later where normalized structure is better
 - keep SEC as first-seen source and provenance anchor
 
-### FMP baseline ingest; SEC audit side rail
+### FMP baseline ingest with XBRL audit gate
 
-Historical `financial_facts` are FMP-first.
+Historical `financial_facts` are FMP-first, then XBRL-verified.
 
 Default historical ingest:
 - fetch FMP
@@ -270,20 +274,36 @@ Default historical ingest:
   - hard: IS subtotal ties, BS balance identity, CF cash roll-forward
   - soft: BS/CF subtotal-component drift -> `data_quality_flags`
 - preserve PIT/vendor revision history
+- **run FMP↔XBRL anchor reconciliation** (`arrow.agents.xbrl_audit.audit_and_promote_xbrl`)
+  - auto-promote safe-bucket divergences: direct-tagged XBRL value,
+    fiscal_year ≥ 2022, gap < 25%, primary IS/CF concept
+    (revenue, gross_profit, operating_income, net_income, cfo/cfi/cff)
+  - promotion writes a new row at extraction_version
+    `xbrl-amendment-{is|bs|cf}-v1` and supersedes the FMP row with
+    `supersession_reason='xbrl-disagrees: accn ...'`. The wide view
+    preferences `xbrl-amendment-*` over `fmp-*` so the corrected value
+    wins downstream automatically.
+  - unsafe-bucket divergences (audit-derived Q4, definitional-prone
+    concepts like total_equity / ebt_incl_unusual, large gaps,
+    pre-2022 years) stay in `ingest_runs.error_details` and surface as
+    `xbrl_audit_unresolved` steward findings for analyst review.
 
-Default historical ingest does **not**:
-- reconcile against SEC/XBRL inline
-- adjudicate amendments inline
-- rewrite baseline facts from audit results
+The audit step CAN be skipped with `--no-xbrl-audit` for bandwidth-
+constrained or no-network re-ingests, but the default is on.
 
 SEC remains active for:
 - fresh filing arrival
 - raw `8-K` earnings releases
 - raw `10-Q` / `10-K` documents
-- filing-text extraction later
-- optional audit/reconciliation later
+- filing-text extraction
+- XBRL anchor values for FMP correctness verification (above)
+- amendment detection (separate codepath in `arrow.agents.amendment_detect`)
 
-Audit stays in-repo, but as a side rail. It can compare FMP against SEC/XBRL and write `data_quality_flags`, but it does not own the baseline financial ingest path.
+Manual audit-and-promote tooling (`scripts/reconcile_fmp_vs_xbrl.py`,
+`scripts/promote_xbrl_for_corruption.py`,
+`scripts/triage_xbrl_divergences.py`) lets operators re-audit on
+demand and override safety filters when an analyst has manually
+verified a divergence against the actual filing.
 
 ### Massive later
 
@@ -1249,7 +1269,7 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
    - Estimated effort: ~1 day for ingest + normalize + wire,
      ~half day for steward checks + tests.
 9. ✅ implement and populate `financial_facts` schema with fiscal, calendar, PIT, and segment-dimension fields (migrations 008, 016; segment ingest built 2026-04-24).
-9.5. ✅ implement FMP ↔ SEC/XBRL audit rail (migrations 010 + 011, built 2026-04-21/22). Preserved for separate audit/reconciliation passes. No longer part of default baseline FMP backfill. Divergences write to `data_quality_flags` when audit is run; amendment-detect remains preserved as later audit functionality rather than default ingest behavior.
+9.5. ✅ implement FMP ↔ SEC/XBRL audit rail (migrations 010 + 011, built 2026-04-21/22). **Activated in normal flow on 2026-04-27** via `arrow.agents.xbrl_audit.audit_and_promote_xbrl`, called from `scripts/ingest_company.py` after FMP backfill. Auto-promotes safe-bucket corruption with `xbrl-amendment-{is|bs|cf}-v1` extraction_version and full supersession provenance; unsafe-bucket divergences land in the steward queue via `xbrl_audit_unresolved` for analyst adjudication. Companion tooling: `scripts/reconcile_fmp_vs_xbrl.py` (standalone audit), `scripts/promote_xbrl_for_corruption.py` (manual promotion override), `scripts/triage_xbrl_divergences.py` (bucket classifier). Three new structural integrity checks landed alongside: `q4_period_end_consistency`, `cross_endpoint_period_end_consistency`, `quarterly_sum_to_annual_drift`. Amendment-detect remains a separate codepath under `arrow.agents.amendment_detect`.
 10. ⬜ implement `series` + `series_observations` (unified macro / industry / commodity substrate, vintage-preserving). Build when first real source lands.
 11. 🚧 implement fiscal, calendar-normalized, and PIT derived views. Current metric view stack exists under `db/queries/` (`v_ff_current`, wide period views, TTM/FY/CY/ROIC metrics, and screenable metric views); true PIT as-of view support remains deferred.
 12. ⬜ implement `prices_daily`

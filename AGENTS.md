@@ -72,7 +72,7 @@ Important:
 - System of record: PostgreSQL
 - `financial_facts` baseline truth: FMP
 - SEC active role: raw `8-K` / `10-Q` / `10-K` documents + low-latency fresh filing path
-- Audit/reconciliation: side rail only; does not block or rewrite baseline facts
+- Audit/reconciliation: runs automatically in normal flow (after FMP backfill). Auto-promotes XBRL values for the safe corruption bucket (direct-tagged, recent FY, unambiguous concept, moderate gap); the rest surface in the steward queue via `xbrl_audit_unresolved` for analyst adjudication. Never silently rewrites without provenance — every supersession carries `supersedes_fact_id` + accession reference.
 - Retrieval: search-first, SQL + FTS, not naive RAG
 - Preserve fiscal truth and calendar normalization
 - Preserve point-in-time semantics where revisions/restatements exist

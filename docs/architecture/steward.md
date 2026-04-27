@@ -300,8 +300,10 @@ Concretely, V1 delivers:
   `coverage_ticker`
 - Tests: integration tests for actions, runner, each check, dashboard routes
 
-V1 deterministic checks (seven; #6 added in V1.3 from chunk-quality
-audit-script signal; #7 added in V1.4 from PLTR pre-IPO ingest):
+V1 deterministic checks (eleven; #6 added in V1.3 from chunk-quality
+audit-script signal; #7 added in V1.4 from PLTR pre-IPO ingest;
+#8–#11 added in V1.5 alongside FMP↔XBRL audit-rail activation
+on 2026-04-27):
 
 1. `zero_row_runs` — `ingest_runs` succeeded but wrote 0 rows across
    recognized output keys (FMP: `rows_processed`, `*_facts_written`,
@@ -342,6 +344,40 @@ audit-script signal; #7 added in V1.4 from PLTR pre-IPO ingest):
    `≥5` non-zero concepts) match exactly the PLTR FY2019 Q1/Q2
    cash_flow signal at 87.5% duplication and zero false positives
    across the rest of the 13-ticker corpus.
+8. `q4_period_end_consistency` (V1.5) — guards against the
+   FMP date-stamping pattern where Q4 quarterly `period_end`
+   diverges from the FY annual filing's `period_end` for the
+   same fiscal year (calendar-month-end approximation vs. real
+   fiscal year-end). Both come from the same 10-K. The ingest
+   layer canonicalizes Q4 quarterly to the annual date; this
+   check catches regressions. Applies to `fmp-is-v1`,
+   `fmp-bs-v1`, `fmp-cf-v1`. Suggested-action: re-run
+   `scripts/backfill_q4_period_end.py`.
+9. `cross_endpoint_period_end_consistency` (V1.5) — guards the
+   companion bug where IS/BS/CF endpoints stamp a calendar
+   approximation while employees/segments use the actual
+   fiscal date. Snaps IS/BS/CF to the trusted-endpoint
+   period_end. Suggested-action: re-run
+   `scripts/backfill_cross_endpoint_period_end.py`.
+10. `quarterly_sum_to_annual_drift` (V1.5) — flags
+    (company, fiscal_year, concept) where Q1+Q2+Q3+Q4 ≠ annual
+    within tolerance (≥$50M absolute AND ≥5% relative).
+    Surfaces FMP-fabricated quarter rows where the broader
+    pattern doesn't match the obvious-sign-flip archetype that
+    `correct_corrupted_q4_is.py` handles. Calibrated 2026-04-27:
+    catches the DELL FY2022 archetype it was trained on plus the
+    rest of the live universe's residual fabrication. Most
+    findings need analyst adjudication against the actual
+    filing — this is an inventory, not an auto-fix surface.
+11. `xbrl_audit_unresolved` (V1.5) — the analyst-facing surface
+    for FMP↔XBRL divergences that the audit auto-promote layer
+    deferred (audit-derived Q4 values, definitional-prone
+    concepts, large gaps, pre-2022 years). Reads the most recent
+    reconciliation run per ticker, finds divergences without an
+    `xbrl-amendment-*` resolution, emits a finding per residual
+    (capped at 3 per (ticker, fiscal_year), filtered to gaps
+    ≥ $50M OR ≥ 5%). Materially-relevant FMP-vs-XBRL
+    disagreements that need filing-level review.
 
 A sixth planned check, `broken_provenance`, was dropped on inspection:
 the schema enforces what it would have checked (NOT NULL +
