@@ -6,8 +6,9 @@ Current shipped slice:
 
 - CLI entrypoint: `scripts/ask_arrow.py`
 - Runtime packet / synthesis code: `src/arrow/analysis/company_context.py`
-- Covered question shape: "What drove {TICKER} revenue growth in FY{YEAR}?"
-- Revenue-driver packet now includes Q4 transcript evidence when available.
+- Covered question shapes: "What drove {TICKER} revenue growth in FY{YEAR}?"
+  and "What drove {TICKER} revenue growth in FY{YEAR} Q{N}?"
+- Revenue-driver packet includes transcript evidence when available.
 - Transcript retrieval primitives: `src/arrow/retrieval/transcripts.py`
 - Transcript evidence CLI: `scripts/analyst_transcript_brief.py`
 
@@ -258,7 +259,7 @@ the intended tool calls before retrieval starts. A recipe is a named sequence
 of tool calls that produces source-native retrieval results; Ground then turns
 those results into a packet.
 
-MVP recipe:
+MVP annual recipe:
 
 ```text
 single_period_driver(intent)
@@ -268,6 +269,19 @@ single_period_driver(intent)
   -> get MD&A chunks for the fiscal year
   -> get exact annual or FY-end Q4 earnings-release chunks
   -> search FY-end Q4 transcript turns for revenue-driver commentary
+  -> build RevenueDriverPacket
+```
+
+MVP quarterly recipe:
+
+```text
+quarterly_revenue_driver(intent)
+  -> get current quarter metrics
+  -> get same-quarter-prior-year metrics
+  -> get same-quarter segment revenue facts
+  -> get 10-Q MD&A chunks for Q1-Q3 when available
+  -> get same-quarter earnings-release chunks
+  -> search same-quarter transcript turns for revenue-driver commentary
   -> build RevenueDriverPacket
 ```
 
@@ -413,7 +427,7 @@ Build the first vertical strip:
 - mode: `single_company_period`
 - topic: `revenue_growth`
 - parser: deterministic
-- recipe: revenue facts + YoY + segment revenue + MD&A + earnings release + Q4 transcript evidence
+- recipe: revenue facts + YoY + segment revenue + MD&A where period-aligned + earnings release + transcript evidence
 - synthesizer: deterministic
 - verifier: structural + numeric checks
 - trace: JSONL
@@ -424,6 +438,7 @@ Question shape:
 
 ```text
 What drove {TICKER} revenue growth in FY{YEAR}?
+What drove {TICKER} revenue growth in FY{YEAR} Q{N}?
 ```
 
 The benchmark pass should run the deterministic output across roughly 20

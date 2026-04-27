@@ -89,11 +89,19 @@ def _seed_annual_fact(
     statement: str,
     value: int,
     fiscal_year: int,
+    fiscal_quarter: int | None = None,
+    period_type: str = "annual",
     period_end: date,
     run_id: int,
     raw_id: int,
 ) -> int:
     published_at = datetime(fiscal_year + 1, 2, 25, tzinfo=timezone.utc)
+    fiscal_period_label = (
+        f"FY{fiscal_year}"
+        if fiscal_quarter is None
+        else f"FY{fiscal_year} Q{fiscal_quarter}"
+    )
+    calendar_quarter = (period_end.month - 1) // 3 + 1
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -106,18 +114,19 @@ def _seed_annual_fact(
                 ingest_run_id
             ) VALUES (
                 %s, %s, %s, %s, 'USD',
-                %s, NULL, %s,
-                %s, 'annual',
-                %s, 4, %s,
+                %s, %s, %s,
+                %s, %s,
+                %s, %s, %s,
                 %s, %s, 'fmp-test-v1', %s
             )
             RETURNING id;
             """,
             (
                 company_id, statement, concept, value,
-                fiscal_year, f"FY{fiscal_year}",
+                fiscal_year, fiscal_quarter, fiscal_period_label,
                 period_end,
-                period_end.year, f"CY{period_end.year} Q4",
+                period_type,
+                period_end.year, calendar_quarter, f"CY{period_end.year} Q{calendar_quarter}",
                 published_at, raw_id, run_id,
             ),
         )
@@ -129,6 +138,8 @@ def _seed_segment_fact(
     *,
     company_id: int,
     fiscal_year: int,
+    fiscal_quarter: int | None = None,
+    period_type: str = "annual",
     period_end: date,
     dimension_type: str,
     dimension_key: str,
@@ -138,6 +149,12 @@ def _seed_segment_fact(
     raw_id: int,
 ) -> int:
     published_at = datetime(fiscal_year + 1, 2, 25, tzinfo=timezone.utc)
+    fiscal_period_label = (
+        f"FY{fiscal_year}"
+        if fiscal_quarter is None
+        else f"FY{fiscal_year} Q{fiscal_quarter}"
+    )
+    calendar_quarter = (period_end.month - 1) // 3 + 1
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -151,9 +168,9 @@ def _seed_segment_fact(
                 dimension_type, dimension_key, dimension_label, dimension_source
             ) VALUES (
                 %s, 'segment', 'revenue', %s, 'USD',
-                %s, NULL, %s,
-                %s, 'annual',
-                %s, 4, %s,
+                %s, %s, %s,
+                %s, %s,
+                %s, %s, %s,
                 %s, %s, 'fmp-test-v1', %s,
                 %s, %s, %s, 'fmp:revenue-product-segmentation'
             )
@@ -161,9 +178,10 @@ def _seed_segment_fact(
             """,
             (
                 company_id, value,
-                fiscal_year, f"FY{fiscal_year}",
+                fiscal_year, fiscal_quarter, fiscal_period_label,
                 period_end,
-                period_end.year, f"CY{period_end.year} Q4",
+                period_type,
+                period_end.year, calendar_quarter, f"CY{period_end.year} Q{calendar_quarter}",
                 published_at, raw_id, run_id,
                 dimension_type, dimension_key, dimension_label,
             ),
@@ -245,17 +263,97 @@ def _seed_10k_with_mda(
     return artifact_id, section_id, chunk_id
 
 
+def _seed_10q_with_mda(
+    conn: psycopg.Connection,
+    *,
+    company_id: int,
+    ticker: str,
+    fiscal_year: int,
+    fiscal_quarter: int,
+    period_end: date,
+    run_id: int,
+    mda_text: str,
+) -> tuple[int, int, int]:
+    published_at = datetime(fiscal_year, period_end.month, min(period_end.day, 25), tzinfo=timezone.utc)
+    fiscal_period_key = f"FY{fiscal_year} Q{fiscal_quarter}"
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO artifacts (
+                ingest_run_id, artifact_type, source, raw_hash, canonical_hash,
+                ticker, fiscal_year, fiscal_quarter, fiscal_period_label, period_type, period_end,
+                published_at, company_id, fiscal_period_key, form_family,
+                cik, accession_number
+            ) VALUES (
+                %s, '10q', 'sec', %s, %s,
+                %s, %s, %s, %s, 'quarter', %s,
+                %s, %s, %s, '10-Q',
+                %s, %s
+            )
+            RETURNING id;
+            """,
+            (
+                run_id, _hash_for(f"10q-{ticker}-{fiscal_year}-{fiscal_quarter}"),
+                _hash_for(f"10q-{ticker}-{fiscal_year}-{fiscal_quarter}-c"),
+                ticker, fiscal_year, fiscal_quarter, fiscal_period_key, period_end,
+                published_at, company_id, fiscal_period_key,
+                str(9999999), f"0000000000-{fiscal_year}-{fiscal_quarter:06d}",
+            ),
+        )
+        artifact_id = cur.fetchone()[0]
+
+        cur.execute(
+            """
+            INSERT INTO artifact_sections (
+                artifact_id, company_id, fiscal_period_key, form_family,
+                section_key, section_title, text,
+                start_offset, end_offset, extractor_version, confidence,
+                extraction_method
+            ) VALUES (
+                %s, %s, %s, '10-Q',
+                'part1_item2_mda', 'Management Discussion and Analysis', %s,
+                0, %s, 'sec-extractor-test-v1', 0.95,
+                'deterministic'
+            )
+            RETURNING id;
+            """,
+            (artifact_id, company_id, fiscal_period_key, mda_text, len(mda_text)),
+        )
+        section_id = cur.fetchone()[0]
+
+        cur.execute(
+            """
+            INSERT INTO artifact_section_chunks (
+                section_id, chunk_ordinal, text, search_text, heading_path,
+                start_offset, end_offset, chunker_version
+            ) VALUES (
+                %s, 1, %s, %s,
+                ARRAY['Part I Item 2', 'Revenue']::text[],
+                0, %s, 'chunker-test-v1'
+            )
+            RETURNING id;
+            """,
+            (section_id, mda_text, mda_text.lower(), len(mda_text)),
+        )
+        chunk_id = cur.fetchone()[0]
+    return artifact_id, section_id, chunk_id
+
+
 def _seed_press_release(
     conn: psycopg.Connection,
     *,
     company_id: int,
     ticker: str,
     fiscal_year: int,
+    fiscal_quarter: int = 4,
     period_end: date,
     run_id: int,
     pr_text: str,
+    unit_fiscal_period_key: str | None = None,
 ) -> tuple[int, int, int]:
     published_at = datetime(fiscal_year + 1, 2, 26, tzinfo=timezone.utc)
+    artifact_period_key = f"FY{fiscal_year} Q{fiscal_quarter}"
+    unit_period_key = unit_fiscal_period_key or f"FY{fiscal_year}"
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -267,7 +365,7 @@ def _seed_press_release(
                 cik, accession_number
             ) VALUES (
                 %s, 'press_release', 'sec', %s, %s,
-                %s, %s, 4, %s,
+                %s, %s, %s, %s,
                 'quarter', %s,
                 %s, %s, %s,
                 %s, %s
@@ -277,8 +375,8 @@ def _seed_press_release(
             (
                 run_id, _hash_for(f"pr-{ticker}-{fiscal_year}"),
                 _hash_for(f"pr-{ticker}-{fiscal_year}-c"),
-                ticker, fiscal_year, f"FY{fiscal_year} Q4", period_end,
-                published_at, company_id, f"FY{fiscal_year} Q4",
+                ticker, fiscal_year, fiscal_quarter, artifact_period_key, period_end,
+                published_at, company_id, artifact_period_key,
                 str(9999999), f"0000000000-{fiscal_year}-000002",
             ),
         )
@@ -299,7 +397,7 @@ def _seed_press_release(
             )
             RETURNING id;
             """,
-            (artifact_id, company_id, f"FY{fiscal_year}", pr_text, len(pr_text)),
+            (artifact_id, company_id, unit_period_key, pr_text, len(pr_text)),
         )
         unit_id = cur.fetchone()[0]
 
@@ -436,6 +534,15 @@ _HAPPY_PR_TEXT = (
     "primarily due to customer expansion. Growth was driven by data center "
     "deployments and commercial customer count expansion."
 )
+_HAPPY_Q_MDA_TEXT = (
+    "Revenue for the quarter grew 30% year over year, driven by "
+    "commercial customer demand and government expansion. Data center "
+    "deployments contributed to quarterly revenue growth."
+)
+_HAPPY_Q_PR_TEXT = (
+    "Quarterly revenue grew 30% year over year, driven by commercial "
+    "demand, government customers, and data center deployments."
+)
 
 
 def _seed_happy_path_company(conn: psycopg.Connection) -> dict:
@@ -535,6 +642,116 @@ def _seed_happy_path_company(conn: psycopg.Connection) -> dict:
     }
 
 
+def _seed_quarterly_happy_path_company(conn: psycopg.Connection) -> dict:
+    company_id = _seed_company(conn, ticker="ARRQ")
+    run_id, raw_id = _seed_run_and_raw(conn)
+
+    q_facts: dict[str, dict[str, int]] = {}
+    for fy, period_end, multiplier in (
+        (2024, date(2024, 9, 30), 1.0),
+        (2025, date(2025, 9, 30), 1.30),
+    ):
+        ids: dict[str, int] = {}
+        common = {
+            "company_id": company_id,
+            "fiscal_year": fy,
+            "fiscal_quarter": 3,
+            "period_type": "quarter",
+            "period_end": period_end,
+            "run_id": run_id,
+            "raw_id": raw_id,
+        }
+        ids["revenue"] = _seed_annual_fact(
+            conn, concept="revenue", statement="income_statement",
+            value=int(550_000_000 * multiplier), **common,
+        )
+        ids["cogs"] = _seed_annual_fact(
+            conn, concept="cogs", statement="income_statement",
+            value=int(110_000_000 * multiplier), **common,
+        )
+        ids["gross_profit"] = _seed_annual_fact(
+            conn, concept="gross_profit", statement="income_statement",
+            value=int(440_000_000 * multiplier), **common,
+        )
+        ids["operating_income"] = _seed_annual_fact(
+            conn, concept="operating_income", statement="income_statement",
+            value=int(80_000_000 * multiplier), **common,
+        )
+        ids["cfo"] = _seed_annual_fact(
+            conn, concept="cfo", statement="cash_flow",
+            value=int(170_000_000 * multiplier), **common,
+        )
+        ids["capex"] = _seed_annual_fact(
+            conn, concept="capital_expenditures", statement="cash_flow",
+            value=int(-20_000_000 * multiplier), **common,
+        )
+        ids["seg_commercial"] = _seed_segment_fact(
+            conn,
+            dimension_type="operating_segment",
+            dimension_key="commercial",
+            dimension_label="Commercial",
+            value=int(300_000_000 * multiplier),
+            **common,
+        )
+        ids["seg_government"] = _seed_segment_fact(
+            conn,
+            dimension_type="operating_segment",
+            dimension_key="government",
+            dimension_label="Government",
+            value=int(250_000_000 * multiplier),
+            **common,
+        )
+        q_facts[f"FY{fy} Q3"] = ids
+
+    q_artifact_id, _, q_mda_chunk_id = _seed_10q_with_mda(
+        conn,
+        company_id=company_id,
+        ticker="ARRQ",
+        fiscal_year=2025,
+        fiscal_quarter=3,
+        period_end=date(2025, 9, 30),
+        run_id=run_id,
+        mda_text=_HAPPY_Q_MDA_TEXT,
+    )
+    pr_artifact_id, _, pr_chunk_id = _seed_press_release(
+        conn,
+        company_id=company_id,
+        ticker="ARRQ",
+        fiscal_year=2025,
+        fiscal_quarter=3,
+        period_end=date(2025, 9, 30),
+        run_id=run_id,
+        pr_text=_HAPPY_Q_PR_TEXT,
+        unit_fiscal_period_key="FY2025 Q3",
+    )
+    transcript_artifact_id, transcript_chunk_ids = _seed_transcript(
+        conn,
+        company_id=company_id,
+        ticker="ARRQ",
+        fiscal_year=2025,
+        fiscal_quarter=3,
+        period_end=date(2025, 9, 30),
+        run_id=run_id,
+        turns=[
+            (
+                "CEO",
+                "Quarter revenue growth was driven by commercial demand, "
+                "government customers, and data center deployments.",
+            ),
+        ],
+    )
+    return {
+        "company_id": company_id,
+        "q_facts": q_facts,
+        "q_artifact_id": q_artifact_id,
+        "q_mda_chunk_id": q_mda_chunk_id,
+        "pr_artifact_id": pr_artifact_id,
+        "pr_chunk_id": pr_chunk_id,
+        "transcript_artifact_id": transcript_artifact_id,
+        "transcript_chunk_ids": transcript_chunk_ids,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -554,7 +771,9 @@ def test_revenue_driver_recipe_happy_path() -> None:
     # Intent
     assert intent.ticker == "ARRW"
     assert intent.fiscal_year == 2024
+    assert intent.fiscal_quarter is None
     assert intent.fiscal_period_key == "FY2024"
+    assert intent.period_type == "annual"
     assert intent.topic == "revenue_growth"
     assert intent.mode == "single_company_period"
     assert intent.asof is None  # day-1 seam: field present, MVP value None
@@ -562,7 +781,7 @@ def test_revenue_driver_recipe_happy_path() -> None:
     # Readiness
     assert packet.readiness.status in ("PASS", "SOFT_GAP")
     assert any("PASS v_metrics_fy" in c for c in packet.readiness.checks)
-    assert any("PASS annual artifact" in c for c in packet.readiness.checks)
+    assert any("PASS period artifact" in c for c in packet.readiness.checks)
 
     # Retrieval populated
     assert packet.current_metrics is not None
@@ -594,6 +813,47 @@ def test_revenue_driver_recipe_happy_path() -> None:
     assert any(f"[T:{seeded['transcript_chunk_ids'][0]}]" in c for c in answer.citations)
 
 
+def test_quarterly_revenue_driver_recipe_happy_path() -> None:
+    with get_conn() as conn:
+        _reset(conn)
+        seeded = _seed_quarterly_happy_path_company(conn)
+        trace = RuntimeTrace.start(source_question="dummy")
+        intent = parse_revenue_driver_intent(
+            conn, "What drove ARRQ revenue growth in FY2025 Q3?", trace,
+        )
+        packet = build_revenue_driver_packet(conn, intent, trace, limit_chunks=2)
+        answer = synthesize_revenue_driver_answer(packet, trace)
+
+    assert intent.ticker == "ARRQ"
+    assert intent.fiscal_year == 2025
+    assert intent.fiscal_quarter == 3
+    assert intent.fiscal_period_key == "FY2025 Q3"
+    assert intent.period_type == "quarter"
+    assert trace.recipe_name == "quarterly_revenue_driver"
+
+    assert packet.readiness.status in ("PASS", "SOFT_GAP")
+    assert any("PASS v_metrics_q" in c for c in packet.readiness.checks)
+    assert any("PASS period artifact" in c for c in packet.readiness.checks)
+    assert len(packet.segment_facts) == 2
+    assert len(packet.mda_chunks) >= 1
+    assert len(packet.earnings_chunks) >= 1
+    assert len(packet.transcript_turns) >= 1
+
+    assert seeded["q_mda_chunk_id"] in packet.provenance.chunk_ids
+    assert seeded["pr_chunk_id"] in packet.provenance.chunk_ids
+    assert seeded["transcript_chunk_ids"][0] in packet.provenance.chunk_ids
+    assert seeded["q_facts"]["FY2025 Q3"]["revenue"] in packet.provenance.fact_ids
+    assert seeded["q_facts"]["FY2024 Q3"]["revenue"] in packet.provenance.fact_ids
+
+    assert answer.verification_status == "verified"
+    assert "ARRQ" in answer.summary
+    assert "FY2025 Q3" in answer.summary
+    assert "30.0%" in answer.summary
+    assert "$715.00M" in answer.summary
+    assert "$550.00M" in answer.summary
+    assert any(f"[T:{seeded['transcript_chunk_ids'][0]}]" in c for c in answer.citations)
+
+
 def test_revenue_driver_recipe_hard_fails_on_missing_period() -> None:
     """Readiness check must hard-fail when v_metrics_fy has no row for the period."""
     with get_conn() as conn:
@@ -608,13 +868,31 @@ def test_revenue_driver_recipe_hard_fails_on_missing_period() -> None:
 
     assert packet.readiness.status == "HARD_FAIL"
     assert any("FAIL no v_metrics_fy row" in c for c in packet.readiness.checks)
-    assert any("FAIL no annual artifact" in c for c in packet.readiness.checks)
+    assert any("FAIL no period artifact" in c for c in packet.readiness.checks)
     assert packet.current_metrics is None
     assert packet.prior_metrics is None
     assert packet.segment_facts == []
     assert packet.mda_chunks == []
     assert packet.earnings_chunks == []
     assert packet.transcript_turns == []
+
+
+def test_quarterly_revenue_driver_hard_fails_on_missing_period() -> None:
+    with get_conn() as conn:
+        _reset(conn)
+        _seed_company(conn, ticker="QEMP")
+        trace = RuntimeTrace.start(source_question="dummy")
+        intent = parse_revenue_driver_intent(
+            conn, "What drove QEMP revenue growth in FY2025 Q3?", trace,
+        )
+        packet = build_revenue_driver_packet(conn, intent, trace, limit_chunks=2)
+
+    assert packet.readiness.status == "HARD_FAIL"
+    assert any("FAIL no v_metrics_q row" in c for c in packet.readiness.checks)
+    assert any("FAIL no period artifact" in c for c in packet.readiness.checks)
+    assert packet.current_metrics is None
+    assert packet.transcript_turns == []
+
 
 
 def test_intent_parser_rejects_questions_without_fiscal_year() -> None:

@@ -2,9 +2,11 @@
 
 MVP scope:
     What drove {TICKER} revenue growth in FY{YEAR}?
+    What drove {TICKER} revenue growth in FY{YEAR} Q{N}?
 
 Usage:
     uv run scripts/ask_arrow.py "What drove PLTR revenue growth in FY2024?"
+    uv run scripts/ask_arrow.py "What drove NVDA revenue growth in FY2026 Q4?"
 """
 
 from __future__ import annotations

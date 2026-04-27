@@ -70,7 +70,9 @@ class Intent:
     ticker: str
     company_id: int
     fiscal_year: int
+    fiscal_quarter: int | None
     fiscal_period_key: str
+    period_type: str
     topic: str
     mode: str
     source_question: str
@@ -305,7 +307,7 @@ def _search_transcript_revenue_turns(
     *,
     limit: int,
 ) -> list[TranscriptTurn]:
-    fiscal_period_key = f"FY{intent.fiscal_year} Q4"
+    fiscal_period_key = _transcript_evidence_period_key(intent)
     started = time.perf_counter()
     turns = search_transcript_turns(
         conn,
@@ -317,7 +319,7 @@ def _search_transcript_revenue_turns(
     duration_ms = (time.perf_counter() - started) * 1000
     trace.actions.append(
         TraceAction(
-            label="search_q4_transcript_turns",
+            label="search_transcript_turns",
             params_hash=_param_hash(
                 {
                     "ticker": intent.ticker,
@@ -336,6 +338,30 @@ def _search_transcript_revenue_turns(
         )
     )
     return turns
+
+
+def _period_label(fiscal_year: int, fiscal_quarter: int | None) -> str:
+    if fiscal_quarter is None:
+        return f"FY{fiscal_year}"
+    return f"FY{fiscal_year} Q{fiscal_quarter}"
+
+
+def _prior_period_label(intent: Intent) -> str:
+    return _period_label(intent.fiscal_year - 1, intent.fiscal_quarter)
+
+
+def _metrics_view_name(intent: Intent) -> str:
+    return "v_metrics_q" if intent.period_type == "quarter" else "v_metrics_fy"
+
+
+def _transcript_evidence_period_key(intent: Intent) -> str:
+    if intent.period_type == "quarter":
+        return intent.fiscal_period_key
+    return f"FY{intent.fiscal_year} Q4"
+
+
+def _expects_mda_evidence(intent: Intent) -> bool:
+    return not (intent.period_type == "quarter" and intent.fiscal_quarter == 4)
 
 
 def _one(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -428,6 +454,55 @@ def _company(row: dict[str, Any] | None) -> Company | None:
     return Company(**row)
 
 
+def _metrics_sql(intent: Intent) -> str:
+    if intent.period_type == "quarter":
+        return """
+            SELECT
+                ticker,
+                company_id,
+                fiscal_year,
+                fiscal_period_label,
+                period_end AS fy_end,
+                revenue AS revenue_fy,
+                gross_margin AS gross_margin_fy,
+                operating_margin AS operating_margin_fy,
+                cfo AS cfo_fy,
+                capital_expenditures AS capital_expenditures_fy,
+                cfo + capital_expenditures AS fcf_fy
+            FROM v_metrics_q
+            WHERE company_id = %s
+              AND fiscal_year = %s
+              AND fiscal_quarter = %s
+            ORDER BY period_end DESC
+            LIMIT 1;
+        """
+    return """
+        SELECT
+            ticker,
+            company_id,
+            fiscal_year,
+            fiscal_period_label,
+            fy_end,
+            revenue_fy,
+            gross_margin_fy,
+            operating_margin_fy,
+            cfo_fy,
+            capital_expenditures_fy,
+            cfo_fy + capital_expenditures_fy AS fcf_fy
+        FROM v_metrics_fy
+        WHERE company_id = %s
+          AND fiscal_year = %s
+        ORDER BY fy_end DESC
+        LIMIT 1;
+    """
+
+
+def _metrics_params(intent: Intent, *, fiscal_year: int) -> tuple[Any, ...]:
+    if intent.period_type == "quarter":
+        return (intent.company_id, fiscal_year, intent.fiscal_quarter)
+    return (intent.company_id, fiscal_year)
+
+
 def _growth(current: Decimal | None, prior: Decimal | None) -> Decimal | None:
     if current is None or prior is None or prior == 0:
         return None
@@ -447,6 +522,11 @@ def parse_revenue_driver_intent(
         word in lowered for word in ("drive", "drove", "driver", "drivers", "growth", "grew")
     ):
         raise IntentError("v1 only supports revenue growth driver questions.")
+
+    quarter_match = re.search(r"\bQ\s*([1-4])\b", question, re.I)
+    fiscal_quarter = int(quarter_match.group(1)) if quarter_match else None
+    period_type = "quarter" if fiscal_quarter is not None else "annual"
+    fiscal_period_key = _period_label(fiscal_year, fiscal_quarter)
 
     ticker_candidates = [
         token
@@ -479,14 +559,20 @@ def parse_revenue_driver_intent(
         ticker=company["ticker"],
         company_id=company["id"],
         fiscal_year=fiscal_year,
-        fiscal_period_key=f"FY{fiscal_year}",
+        fiscal_quarter=fiscal_quarter,
+        fiscal_period_key=fiscal_period_key,
+        period_type=period_type,
         topic="revenue_growth",
         mode="single_company_period",
         source_question=question,
         asof=None,
     )
     trace.intent = asdict(intent)
-    trace.recipe_name = "single_period_driver"
+    trace.recipe_name = (
+        "quarterly_revenue_driver"
+        if intent.period_type == "quarter"
+        else "single_period_driver"
+    )
     return intent
 
 
@@ -518,27 +604,9 @@ def build_revenue_driver_packet(
             _query(
                 conn,
                 trace,
-                label="get_current_fy_metrics",
-                sql="""
-                    SELECT
-                        ticker,
-                        company_id,
-                        fiscal_year,
-                        fiscal_period_label,
-                        fy_end,
-                        revenue_fy,
-                        gross_margin_fy,
-                        operating_margin_fy,
-                        cfo_fy,
-                        capital_expenditures_fy,
-                        cfo_fy + capital_expenditures_fy AS fcf_fy
-                    FROM v_metrics_fy
-                    WHERE company_id = %s
-                      AND fiscal_year = %s
-                    ORDER BY fy_end DESC
-                    LIMIT 1;
-                """,
-                params=(intent.company_id, intent.fiscal_year),
+                label=f"get_current_{intent.period_type}_metrics",
+                sql=_metrics_sql(intent),
+                params=_metrics_params(intent, fiscal_year=intent.fiscal_year),
             )
         )
     )
@@ -547,27 +615,9 @@ def build_revenue_driver_packet(
             _query(
                 conn,
                 trace,
-                label="get_prior_fy_metrics",
-                sql="""
-                    SELECT
-                        ticker,
-                        company_id,
-                        fiscal_year,
-                        fiscal_period_label,
-                        fy_end,
-                        revenue_fy,
-                        gross_margin_fy,
-                        operating_margin_fy,
-                        cfo_fy,
-                        capital_expenditures_fy,
-                        cfo_fy + capital_expenditures_fy AS fcf_fy
-                    FROM v_metrics_fy
-                    WHERE company_id = %s
-                      AND fiscal_year = %s
-                    ORDER BY fy_end DESC
-                    LIMIT 1;
-                """,
-                params=(intent.company_id, intent.fiscal_year - 1),
+                label=f"get_prior_{intent.period_type}_metrics",
+                sql=_metrics_sql(intent),
+                params=_metrics_params(intent, fiscal_year=intent.fiscal_year - 1),
             )
         )
     )
@@ -589,13 +639,19 @@ def build_revenue_driver_packet(
                 FROM financial_facts
                 WHERE company_id = %s
                   AND fiscal_year = %s
-                  AND period_type = 'annual'
+                  AND fiscal_quarter IS NOT DISTINCT FROM %s
+                  AND period_type = %s
                   AND dimension_type IS NULL
                   AND concept IN ('revenue', 'gross_profit', 'operating_income', 'cfo', 'capital_expenditures')
                   AND superseded_at IS NULL
                 ORDER BY concept;
             """,
-            params=(intent.company_id, intent.fiscal_year),
+            params=(
+                intent.company_id,
+                intent.fiscal_year,
+                intent.fiscal_quarter,
+                intent.period_type,
+            ),
             selected_id_keys=("fact_id",),
         )
     ]
@@ -617,13 +673,19 @@ def build_revenue_driver_packet(
                 FROM financial_facts
                 WHERE company_id = %s
                   AND fiscal_year = %s
-                  AND period_type = 'annual'
+                  AND fiscal_quarter IS NOT DISTINCT FROM %s
+                  AND period_type = %s
                   AND dimension_type IS NULL
                   AND concept IN ('revenue', 'gross_profit', 'operating_income', 'cfo', 'capital_expenditures')
                   AND superseded_at IS NULL
                 ORDER BY concept;
             """,
-            params=(intent.company_id, intent.fiscal_year - 1),
+            params=(
+                intent.company_id,
+                intent.fiscal_year - 1,
+                intent.fiscal_quarter,
+                intent.period_type,
+            ),
             selected_id_keys=("fact_id",),
         )
     ]
@@ -646,15 +708,24 @@ def build_revenue_driver_packet(
                     a.accession_number
                 FROM artifacts a
                 WHERE a.company_id = %s
-                  AND a.fiscal_year = %s
-                  AND a.artifact_type IN ('10k', '10q', '8k', 'press_release')
+                  AND (
+                        (%s = 'annual' AND a.fiscal_year = %s)
+                        OR (%s = 'quarter' AND a.fiscal_period_key = %s)
+                  )
+                  AND a.artifact_type IN ('10k', '10q', '8k', 'press_release', 'transcript')
                   AND a.superseded_at IS NULL
                 ORDER BY
                     CASE WHEN a.period_type = 'annual' THEN 0 ELSE 1 END,
                     a.published_at DESC NULLS LAST,
                     a.id DESC;
             """,
-            params=(intent.company_id, intent.fiscal_year),
+            params=(
+                intent.company_id,
+                intent.period_type,
+                intent.fiscal_year,
+                intent.period_type,
+                intent.fiscal_period_key,
+            ),
             selected_id_keys=("artifact_id",),
         )
     ]
@@ -674,13 +745,19 @@ def build_revenue_driver_packet(
             FROM financial_facts
             WHERE company_id = %s
               AND fiscal_year = %s
-              AND period_type = 'annual'
+              AND fiscal_quarter IS NOT DISTINCT FROM %s
+              AND period_type = %s
               AND statement = 'segment'
               AND concept = 'revenue'
               AND superseded_at IS NULL
             ORDER BY dimension_type, value DESC;
         """,
-        params=(intent.company_id, intent.fiscal_year),
+        params=(
+            intent.company_id,
+            intent.fiscal_year,
+            intent.fiscal_quarter,
+            intent.period_type,
+        ),
         selected_id_keys=("fact_id",),
     )
     prior_segment_rows = _query(
@@ -695,12 +772,18 @@ def build_revenue_driver_packet(
             FROM financial_facts
             WHERE company_id = %s
               AND fiscal_year = %s
-              AND period_type = 'annual'
+              AND fiscal_quarter IS NOT DISTINCT FROM %s
+              AND period_type = %s
               AND statement = 'segment'
               AND concept = 'revenue'
               AND superseded_at IS NULL;
         """,
-        params=(intent.company_id, intent.fiscal_year - 1),
+        params=(
+            intent.company_id,
+            intent.fiscal_year - 1,
+            intent.fiscal_quarter,
+            intent.period_type,
+        ),
     )
     prior_segments = {
         (row["dimension_type"], row["dimension_key"]): row["value"]
@@ -788,6 +871,8 @@ def build_revenue_driver_packet(
                   AND (
                         COALESCE(u.fiscal_period_key, a.fiscal_period_key) = %s
                         OR (
+                            %s = 'annual'
+                            AND
                             a.period_type = 'quarter'
                             AND a.fiscal_year = %s
                             AND a.fiscal_quarter = 4
@@ -809,6 +894,7 @@ def build_revenue_driver_packet(
                 intent.company_id,
                 intent.company_id,
                 intent.fiscal_period_key,
+                intent.period_type,
                 intent.fiscal_year,
                 fy_end,
                 intent.fiscal_period_key,
@@ -858,7 +944,7 @@ def build_revenue_driver_packet(
         fact_ids=sorted(fact_ids),
         chunk_ids=sorted(chunk_ids),
         artifact_ids=artifact_ids,
-        view_names=["v_metrics_fy"],
+        view_names=[_metrics_view_name(intent)],
         planned_actions=[action.label for action in trace.actions],
     )
     return RevenueDriverPacket(
@@ -903,7 +989,10 @@ def _ground_gaps(
     gaps: list[str] = []
     hard_fail = False
     if current_metrics is None:
-        checks.append(f"FAIL no v_metrics_fy row for {intent.ticker} {intent.fiscal_period_key}")
+        checks.append(
+            f"FAIL no {_metrics_view_name(intent)} row for "
+            f"{intent.ticker} {intent.fiscal_period_key}"
+        )
         hard_fail = True
     elif current_metrics.fiscal_period_label != intent.fiscal_period_key:
         checks.append(
@@ -912,28 +1001,36 @@ def _ground_gaps(
         )
         hard_fail = True
     else:
-        checks.append(f"PASS v_metrics_fy row exists for {intent.fiscal_period_key}")
+        checks.append(f"PASS {_metrics_view_name(intent)} row exists for {intent.fiscal_period_key}")
 
-    annual_artifacts = [
+    period_artifacts = [
         row for row in artifact_periods
-        if row.period_type == "annual" and row.fiscal_period_key == intent.fiscal_period_key
+        if (
+            row.period_type == "annual" and row.fiscal_period_key == intent.fiscal_period_key
+        ) or (
+            intent.period_type == "quarter"
+            and row.fiscal_period_key == intent.fiscal_period_key
+        )
     ]
-    if annual_artifacts:
-        checks.append(f"PASS annual artifact exists for {intent.fiscal_period_key}")
+    if period_artifacts:
+        checks.append(f"PASS period artifact exists for {intent.fiscal_period_key}")
     else:
-        checks.append(f"FAIL no annual artifact for {intent.fiscal_period_key}")
+        checks.append(f"FAIL no period artifact for {intent.fiscal_period_key}")
         hard_fail = True
 
     if hard_fail:
         return ReadinessResult("HARD_FAIL", checks, gaps), gaps
 
     if prior_metrics is None:
-        gaps.append(f"Prior FY metrics missing for FY{intent.fiscal_year - 1}; YoY growth suppressed.")
+        gaps.append(
+            f"Prior-year period metrics missing for {_prior_period_label(intent)}; "
+            "YoY growth suppressed."
+        )
     if not segment_facts:
         gaps.append("Plan requested segment revenue facts, but none were found.")
     elif not any(segment.prior_value is not None for segment in segment_facts):
         gaps.append("Segment facts found, but no prior-year segment matches were found.")
-    if not mda_chunks:
+    if not mda_chunks and _expects_mda_evidence(intent):
         if mda_candidate_count:
             gaps.append(
                 "Plan requested MD&A revenue-driver evidence, but no chunks cleared "
@@ -942,7 +1039,7 @@ def _ground_gaps(
             )
         else:
             gaps.append("Plan requested MD&A evidence, but no period-aligned MD&A chunks were found.")
-    elif (score := _best_evidence_score(mda_chunks)) is not None and score < WEAK_EVIDENCE_SCORE:
+    elif mda_chunks and (score := _best_evidence_score(mda_chunks)) is not None and score < WEAK_EVIDENCE_SCORE:
         gaps.append(
             "Plan requested MD&A revenue-driver evidence, but top ranked chunks were weak "
             f"(best_score={score}, candidates={mda_candidate_count})."
@@ -965,8 +1062,8 @@ def _ground_gaps(
         )
     if not transcript_turns:
         gaps.append(
-            "Plan requested Q4 transcript revenue-driver evidence, but no matching "
-            "speaker turns were found."
+            "Plan requested transcript revenue-driver evidence for "
+            f"{_transcript_evidence_period_key(intent)}, but no matching speaker turns were found."
         )
     status = "PASS" if not gaps else "SOFT_GAP"
     return ReadinessResult(status, checks, gaps), gaps
@@ -989,14 +1086,19 @@ def synthesize_revenue_driver_answer(packet: RevenueDriverPacket, trace: Runtime
     current_revenue_cite = (
         f"[F:{revenue_fact_ids[intent.fiscal_period_key]}]"
         if intent.fiscal_period_key in revenue_fact_ids
-        else "[M:v_metrics_fy]"
+        else f"[M:{_metrics_view_name(intent)}]"
     )
-    prior_key = f"FY{intent.fiscal_year - 1}"
+    prior_key = _prior_period_label(intent)
     prior_revenue_cite = (
-        f"[F:{revenue_fact_ids[prior_key]}]" if prior_key in revenue_fact_ids else "[M:v_metrics_fy]"
+        f"[F:{revenue_fact_ids[prior_key]}]"
+        if prior_key in revenue_fact_ids
+        else f"[M:{_metrics_view_name(intent)}]"
     )
     if current is None:
-        summary = f"{intent.ticker} {intent.fiscal_period_key} cannot be answered because FY metrics are missing."
+        summary = (
+            f"{intent.ticker} {intent.fiscal_period_key} cannot be answered "
+            f"because period metrics are missing."
+        )
     elif prior is None or revenue_growth is None:
         summary = (
             f"{intent.ticker} {intent.fiscal_period_key} revenue was "
@@ -1126,16 +1228,16 @@ def render_answer(answer: Answer, packet: RevenueDriverPacket) -> str:
     current = packet.current_metrics
     prior = packet.prior_metrics
     if current is None:
-        lines.append("- current FY metrics: missing")
+        lines.append("- current period metrics: missing")
     else:
-        lines.append(f"- FY revenue: {_money(current.revenue_fy)}")
+        lines.append(f"- revenue: {_money(current.revenue_fy)}")
         lines.append(f"- gross margin: {_pct(current.gross_margin_fy)}")
         lines.append(f"- operating margin: {_pct(current.operating_margin_fy)}")
         lines.append(f"- CFO: {_money(current.cfo_fy)}")
         lines.append(f"- capex: {_money(current.capital_expenditures_fy)}")
         lines.append(f"- FCF (CFO + signed capex): {_money(current.fcf_fy)}")
     if prior is not None and current is not None:
-        lines.append(f"- prior FY revenue: {_money(prior.revenue_fy)}")
+        lines.append(f"- prior-year period revenue: {_money(prior.revenue_fy)}")
         lines.append(f"- revenue YoY growth: {_pct(_growth(current.revenue_fy, prior.revenue_fy))}")
     lines.extend(["", "Driver Details"])
     lines.extend(answer.details)
