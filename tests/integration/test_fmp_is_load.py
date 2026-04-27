@@ -659,22 +659,29 @@ def test_bs_subtotal_drift_loads_and_writes_flag() -> None:
 
 
 def test_hard_failure_rolls_back_entire_ticker() -> None:
+    """A BS hard-tie failure (the real balance identity TA == TLE) must
+    abort ingest and roll back every artifact, fact, and flag for the
+    ticker. The CF cash-roll-forward and BS vendor-consistency checks are
+    SOFT (vendor-driven failure modes), so the only remaining hard path
+    is the BS balance identity itself.
+    """
     from arrow.agents.fmp_ingest import backfill_fmp_statements
-    from arrow.normalize.financials.load import CFVerificationFailed
+    from arrow.normalize.financials.load import BSVerificationFailed
 
-    def _cf_hard_failure_get(self, endpoint: str, **params) -> Response:  # noqa: ARG001
+    def _bs_hard_failure_get(self, endpoint: str, **params) -> Response:  # noqa: ARG001
         if endpoint == "income-statement":
             rows = [_q4_row() if params.get("period") == "quarter" else _fy_row()]
         elif endpoint == "balance-sheet-statement":
-            row = _bs_q4_row()
+            row = dict(_bs_q4_row())
+            # Break TA == TLE by inflating totalAssets.
+            row["totalAssets"] += 20_000_000_000
             if params.get("period") == "annual":
-                row = dict(row)
                 row["period"] = "FY"
             rows = [row]
         elif endpoint == "cash-flow-statement":
-            row = dict(_cf_q4_row())
-            row["netChangeInCash"] += 20_000_000
+            row = _cf_q4_row()
             if params.get("period") == "annual":
+                row = dict(row)
                 row["period"] = "FY"
             rows = [row]
         else:
@@ -692,8 +699,8 @@ def test_hard_failure_rolls_back_entire_ticker() -> None:
         _reset(conn)
         company_id = _seed_nvda(conn)
 
-        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_cf_hard_failure_get):
-            with pytest.raises(CFVerificationFailed):
+        with patch("arrow.ingest.fmp.client.FMPClient.get", new=_bs_hard_failure_get):
+            with pytest.raises(BSVerificationFailed):
                 backfill_fmp_statements(conn, ["NVDA"])
 
         with conn.cursor() as cur:
@@ -714,7 +721,7 @@ def test_hard_failure_rolls_back_entire_ticker() -> None:
             )
             status, error_message = cur.fetchone()
             assert status == "failed"
-            assert "CF verification failed" in error_message
+            assert "BS verification failed" in error_message
 
 
 def test_reingest_auto_resolves_stale_soft_flags() -> None:

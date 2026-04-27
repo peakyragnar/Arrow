@@ -153,3 +153,28 @@ def test_balance_identity_failure_is_hard() -> None:
     values["total_assets"] = values["total_assets"] + Decimal("10000000000")
     hard = verify_bs_hard_ties(values)
     assert any("total_assets == total_liabilities_and_equity" in f.tie for f in hard)
+
+
+def test_mu_fy2020_q3_vendor_inconsistency_is_soft() -> None:
+    """FMP populated totalLiabilitiesAndTotalEquity inconsistently for MU
+    FY2020 Q3: it equals totalLiabilities + stockholders' equity (excl. NCI)
+    rather than totalLiabilities + totalEquity (incl. NCI). The 98M delta is
+    the noncontrolling interest from Micron's IM Flash JV with Intel.
+
+    Real balance identity (TA == TLE) still holds, so ingest must NOT abort.
+    The TLE == TL + TE check fires as a soft flag → routes to steward.
+    """
+    values: dict[str, Decimal] = {
+        "total_assets": Decimal("52005000000"),
+        "total_liabilities": Decimal("14185000000"),
+        "total_equity": Decimal("37918000000"),  # includes NCI of 98M
+        "noncontrolling_interest": Decimal("98000000"),
+        "total_liabilities_and_equity": Decimal("52005000000"),  # FMP excluded NCI here
+    }
+    hard = verify_bs_hard_ties(values)
+    soft = verify_bs_soft_ties(values)
+    assert hard == [], f"balance identity must still hold; got {hard}"
+    assert any(
+        "total_liabilities_and_equity == total_liabilities + total_equity" in f.tie
+        for f in soft
+    ), f"vendor-consistency tie should fire as soft; got {soft}"

@@ -1,21 +1,22 @@
 """Cash-flow subtotal-tie verification (verification.md § 2.3).
 
-The CF ties split into two classes by what they actually prove:
+When FMP is the source, every CF tie is a vendor-consistency check, not
+a filer-integrity check. The filer's actual 10-Q is always internally
+consistent; FMP's normalized row can break any tie by sourcing the three
+values (begin / end / netChange / section subtotals) from different
+positions in its data model, or by mis-deriving Q4 as FY−9M.
 
-HARD ties — filer-level integrity. Failure means the cash-flow statement
-itself is broken. Block ingest.
-  - net_change_in_cash == cfo + cfi + cff + fx
-  - net_change_in_cash == cash_end_of_period - cash_begin_of_period
+Empirically, MU FY2017 Q4 (Q4-derived netChange off by $3.94B from the
+cash-position delta) and MU FY2022 Q3 (chained begin/end values that
+don't match the prior-period close) demonstrate the cash roll-forward
+breaks just like the section-sum tie. Both are FMP normalization defects,
+not filer issues.
 
-SOFT ties — vendor bucketing consistency. Failure means FMP's reported
-subtotal and FMP's reported components disagree inside a single row
-(FMP's own normalization dropped or misbucketed some item). The filer's
-own 10-Q is typically internally consistent; the defect lives in FMP.
-Do not block — write a `data_quality_flags` row so the analyst can
-review and `accept_as_is`, and keep loading.
-  - cfo == sum of non-cash adjustments + working capital changes
-  - cfi == sum of investing components
-  - cff == sum of financing components
+All CF ties are SOFT in the FMP-source path: write a
+`data_quality_flags` row per failing tie and keep loading. A genuinely
+hard CF integrity check would require SEC XBRL direct ingest where
+filer-level identities could be enforced. Until then, the cash
+roll-forward and section-sum ties both route through the steward.
 
 All CF buckets are stored with CASH-IMPACT SIGN per concepts.md § 2.2.
 Subtotals are straight sums of their detail components (no per-item sign
@@ -133,13 +134,9 @@ _CF_SOFT_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
         ],
     ),
     (
-        # This tie is SOFT rather than HARD because the failure mode is
-        # vendor-decomposition/Q4-derivation, not filer integrity. A real
-        # filer-level CF inconsistency would also break the HARD cash
-        # roll-forward tie (cash_end - cash_begin == net_change_in_cash),
-        # which remains HARD. Empirical: AMD FY2017 Q4 and similar Q4
-        # rows that FMP derives as FY − 9M can show a section-sum ≠
-        # net-change mismatch while cash_end - cash_begin ties perfectly.
+        # Failure mode is vendor-decomposition/Q4-derivation, not filer
+        # integrity. Empirical: AMD FY2017 Q4 and similar Q4 rows that
+        # FMP derives as FY − 9M show section-sum ≠ net-change mismatches.
         "net_change_in_cash == cfo + cfi + cff + fx",
         "net_change_in_cash",
         [
@@ -151,13 +148,14 @@ _CF_SOFT_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
             ("fx_effect_on_cash", +1),
         ],
     ),
-]
-
-# HARD ties — filer-level integrity. A cash-flow statement that fails
-# this is literally impossible for the filer to ship: the cash
-# roll-forward is definitional. Block ingest on failure.
-_CF_HARD_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
     (
+        # Cash roll-forward is the definitional CF identity for the FILER's
+        # 10-Q, but FMP's row can break it because its three values come
+        # from different sources. Empirical (audited 60 MU quarters):
+        # FY2017 Q4 off by $3.94B (Q4 = FY − 9M derivation gone wrong),
+        # FY2022 Q3 off by $4M (chained begin/end values that don't
+        # match prior-period close — Q2 ends 9,224M, Q3 begins 9,116M).
+        # Treat as vendor consistency; route through steward.
         "net_change_in_cash == cash_end_of_period - cash_begin_of_period",
         "net_change_in_cash",
         [
@@ -166,6 +164,13 @@ _CF_HARD_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
         ],
     ),
 ]
+
+# HARD ties — currently empty in the FMP-source path. A genuine filer-
+# integrity CF check would require SEC XBRL direct ingest where the
+# values come from a single internally-consistent source. Kept as a
+# stable export so callers (load.py, amendment_detect.py) and tests
+# don't need a conditional branch.
+_CF_HARD_TIES: list[tuple[str, str, list[tuple[str, int]]]] = []
 
 
 def _check_ties(

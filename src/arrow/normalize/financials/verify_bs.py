@@ -138,6 +138,25 @@ _BS_SOFT_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
             ("other_noncurrent_liabilities", +1),
         ],
     ),
+    # FMP's three reported subtotals should be self-consistent:
+    # totalLiabilitiesAndTotalEquity == totalLiabilities + totalEquity.
+    # Empirically not always true. MU FY2020 Q3 returns
+    # totalLiabilitiesAndTotalEquity = totalLiabilities + totalStockholdersEquity
+    # (i.e., FMP populated the field as if it excludes NCI, which contradicts
+    # Arrow's naming convention that totalEquity includes NCI). The delta equals
+    # the noncontrolling_interest value exactly — IM Flash JV with Intel.
+    # Treat as vendor-data drift (soft flag, route to steward) rather than
+    # blocking ingest, because the real balance identity below
+    # (total_assets == total_liabilities_and_equity) still holds and is the
+    # accounting check that matters.
+    (
+        "total_liabilities_and_equity == total_liabilities + total_equity",
+        "total_liabilities_and_equity",
+        [
+            ("total_liabilities", +1),
+            ("total_equity", +1),
+        ],
+    ),
     # total_equity component sum. NOTE ON TREASURY SIGN:
     # concepts.md § 5.5 describes treasury_stock as "positive magnitude —
     # subtracted in the formula." fmp_mapping.md § 5.2 CLAIMED FMP stores
@@ -165,15 +184,10 @@ _BS_SOFT_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
 ]
 
 _BS_HARD_TIES: list[tuple[str, str, list[tuple[str, int]]]] = [
-    (
-        "total_liabilities_and_equity == total_liabilities + total_equity",
-        "total_liabilities_and_equity",
-        [
-            ("total_liabilities", +1),
-            ("total_equity", +1),
-        ],
-    ),
     # THE BALANCE — the identity that gives the balance sheet its name.
+    # The vendor-consistency tie (TLE == TL + TE) lives in _BS_SOFT_TIES
+    # because FMP's three reported subtotals are not always internally
+    # consistent (see the comment block above tie #6 in _BS_SOFT_TIES).
     (
         "total_assets == total_liabilities_and_equity",
         "total_assets",
