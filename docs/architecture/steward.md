@@ -266,7 +266,7 @@ honest about what's automatable.
 | `broken_provenance` | human_only | suggest_only | autonomous |
 | `extraction_method_drift` | human_only | suggest_only | suggest_only |
 | `chunk_repair_concentration` | human_only | suggest_only | suggest_only |
-| `expected_coverage` | human_only | suggest_only | auto_with_review |
+| `quarterly_value_duplication` | human_only | suggest_only | auto_with_review |
 | `expected_coverage` | human_only | suggest_only | auto_with_review |
 | `segment_taxonomy_drift` (LLM) | n/a | suggest_only | suggest_only |
 | `extraction_quality_regression` (LLM) | n/a | suggest_only | suggest_only |
@@ -300,8 +300,8 @@ Concretely, V1 delivers:
   `coverage_ticker`
 - Tests: integration tests for actions, runner, each check, dashboard routes
 
-V1 deterministic checks (six; #6 added in V1.3 from chunk-quality
-audit-script signal that warranted promotion):
+V1 deterministic checks (seven; #6 added in V1.3 from chunk-quality
+audit-script signal; #7 added in V1.4 from PLTR pre-IPO ingest):
 
 1. `zero_row_runs` — `ingest_runs` succeeded but wrote 0 rows across
    recognized output keys (FMP: `rows_processed`, `*_facts_written`,
@@ -329,6 +329,19 @@ audit-script signal that warranted promotion):
    corpus on 2026-04-26: thresholds (`>0.5` repair share, `≥3`
    sections) match exactly the META FY2025 Q1 10-Q signal — the
    only artifact in the entire corpus that fits the pattern.
+7. `quarterly_value_duplication` — per (company, statement,
+   fiscal_year) consecutive-quarter pair: alerts when more than
+   half of non-zero concepts have IDENTICAL values across the two
+   consecutive quarters (with ≥5 non-zero concepts compared).
+   Detects vendor-fabricated quarterly facts where FMP populated
+   quarterly rows for a period the filer disclosed only as an
+   interim subtotal (H1 in S-1 prospectus, 9-month, etc.) by
+   splitting the subtotal evenly across constituent quarters —
+   most common for pre-IPO periods. Calibrated against the live
+   corpus on 2026-04-27: thresholds (`>0.5` duplication share,
+   `≥5` non-zero concepts) match exactly the PLTR FY2019 Q1/Q2
+   cash_flow signal at 87.5% duplication and zero false positives
+   across the rest of the 13-ticker corpus.
 
 A sixth planned check, `broken_provenance`, was dropped on inspection:
 the schema enforces what it would have checked (NOT NULL +
@@ -477,6 +490,38 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started).
   review (the former needs a per-filing-type expectations layer
   first; the latter has too-high false-positive rate from
   legitimate cross-reference cuts).
+
+**V1.4 (vendor fabrication detection from MU/PLTR ingest):**
+
+- ✅ Add `quarterly_value_duplication` check (seventh deterministic
+  check). Surfaces vendor-fabricated quarterly facts where FMP
+  splits a multi-period interim disclosure into evenly-divided
+  constituent quarters. Discovered during PLTR FY2019 ingest
+  (pre-IPO; only H1 disclosed in S-1 prospectus): 14 of 16
+  non-zero CF concepts had IDENTICAL Q1 vs Q2 values — impossible
+  for real reported quarterly data. Threshold (`>0.5` duplication
+  share, `≥5` non-zero concepts) calibrated against the live
+  corpus before building — the design-check SQL returned exactly
+  the PLTR FY2019 Q1/Q2 cash_flow case at 87.5% duplication and
+  zero false positives across the other 12 tickers. Threshold
+  sensitivity stable from 30%-87%.
+- ✅ PLTR FY2019 Q1/Q2 cash_flow facts cleaned up via supersession
+  (64 H1-split-identical rows + 4 derived companion rows;
+  `supersession_reason='fmp_fabricated_h1_split'`). IS data
+  retained — distinct Q1 vs Q2 values support legitimate origin
+  in the S-1/A Selected Quarterly Data tables. Pattern is also a
+  **labeled training-corpus entry** (situation → action → reasoning)
+  for the V2 RAG suggester.
+- ✅ Companion `verify_bs.py` / `verify_cf.py` fix: demoted the
+  `total_liabilities_and_equity == total_liabilities + total_equity`
+  BS tie and the `net_change_in_cash == cash_end - cash_begin` CF
+  tie from HARD to SOFT after MU FY2017/FY2020/FY2022 ingest
+  surfaced FMP vendor inconsistencies at those periods (NCI
+  attribution, Q4-derivation defect, chained begin/end inconsistency).
+  These are vendor-side failures, not filer integrity failures —
+  the right place is the soft-flag → steward path. Real BS
+  balance identity (`TA == TLE`) stays HARD as the only remaining
+  filer-integrity check on the FMP-source path.
 
 **V1.2 (operator pushback — membership concept dropped):**
 
