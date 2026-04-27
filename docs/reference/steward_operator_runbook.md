@@ -13,9 +13,9 @@ covers the runtime design and V1→V3 trajectory.
   findings; no urgent steward work.
 - **Active development:** **analyst transcript evidence retrieval** —
   FMP transcript ingest is shipped and backfilled. The current analyst
-  step is making those transcript chunks callable through
-  `src/arrow/retrieval/transcripts.py` and inspectable through
-  `scripts/analyst_transcript_brief.py`.
+  step is making those transcript chunks useful in analyst answers:
+  `src/arrow/retrieval/transcripts.py`, `scripts/analyst_transcript_brief.py`,
+  and the `scripts/ask_arrow.py` revenue-driver packet.
 - **Hard rule still in effect:** no foreign-filer ingestion (TSM,
   ASML, BABA, etc.) — see § "Hard rule: do NOT ingest foreign
   filers yet" below.

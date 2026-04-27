@@ -321,6 +321,101 @@ def _seed_press_release(
     return artifact_id, unit_id, chunk_id
 
 
+def _seed_transcript(
+    conn: psycopg.Connection,
+    *,
+    company_id: int,
+    ticker: str,
+    fiscal_year: int,
+    fiscal_quarter: int,
+    period_end: date,
+    run_id: int,
+    turns: list[tuple[str, str]],
+) -> tuple[int, list[int]]:
+    published_at = datetime(fiscal_year + 1, 2, 27, tzinfo=timezone.utc)
+    fiscal_period_key = f"FY{fiscal_year} Q{fiscal_quarter}"
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO artifacts (
+                ingest_run_id, artifact_type, source, source_document_id,
+                raw_hash, canonical_hash, ticker, fiscal_year, fiscal_quarter,
+                fiscal_period_label, period_type, period_end,
+                published_at, company_id, fiscal_period_key
+            ) VALUES (
+                %s, 'transcript', 'fmp', %s,
+                %s, %s, %s, %s, %s,
+                %s, 'quarter', %s,
+                %s, %s, %s
+            )
+            RETURNING id;
+            """,
+            (
+                run_id,
+                f"fmp:earning-call-transcript:{ticker}:FY{fiscal_year}-Q{fiscal_quarter}",
+                _hash_for(f"transcript-{ticker}-{fiscal_year}-{fiscal_quarter}"),
+                _hash_for(f"transcript-{ticker}-{fiscal_year}-{fiscal_quarter}-c"),
+                ticker,
+                fiscal_year,
+                fiscal_quarter,
+                fiscal_period_key,
+                period_end,
+                published_at,
+                company_id,
+                fiscal_period_key,
+            ),
+        )
+        artifact_id = cur.fetchone()[0]
+        chunk_ids: list[int] = []
+        offset = 0
+        for ordinal, (speaker, text) in enumerate(turns, start=1):
+            full_text = f"{speaker}: {text}"
+            cur.execute(
+                """
+                INSERT INTO artifact_text_units (
+                    artifact_id, company_id, fiscal_period_key,
+                    unit_ordinal, unit_type, unit_key, unit_title, text,
+                    start_offset, end_offset, extractor_version, confidence,
+                    extraction_method
+                ) VALUES (
+                    %s, %s, %s,
+                    %s, 'transcript', %s, %s, %s,
+                    %s, %s, 'test-transcript-v1', 0.9,
+                    'deterministic'
+                )
+                RETURNING id;
+                """,
+                (
+                    artifact_id,
+                    company_id,
+                    fiscal_period_key,
+                    ordinal,
+                    f"turn:{ordinal:03d}",
+                    speaker,
+                    full_text,
+                    offset,
+                    offset + len(full_text),
+                ),
+            )
+            unit_id = cur.fetchone()[0]
+            cur.execute(
+                """
+                INSERT INTO artifact_text_chunks (
+                    text_unit_id, chunk_ordinal, text, search_text, heading_path,
+                    start_offset, end_offset, chunker_version
+                ) VALUES (
+                    %s, 1, %s, %s, ARRAY[%s]::text[],
+                    0, %s, 'chunker-test-v1'
+                )
+                RETURNING id;
+                """,
+                (unit_id, full_text, full_text.lower(), speaker, len(full_text)),
+            )
+            chunk_ids.append(cur.fetchone()[0])
+            offset += len(full_text) + 1
+    return artifact_id, chunk_ids
+
+
 def _hash_for(seed: str) -> bytes:
     import hashlib
     return hashlib.sha256(seed.encode()).digest()
@@ -408,6 +503,26 @@ def _seed_happy_path_company(conn: psycopg.Connection) -> dict:
         fiscal_year=2024, period_end=date(2024, 12, 31),
         run_id=run_id, pr_text=_HAPPY_PR_TEXT,
     )
+    transcript_artifact_id, transcript_chunk_ids = _seed_transcript(
+        conn,
+        company_id=company_id,
+        ticker="ARRW",
+        fiscal_year=2024,
+        fiscal_quarter=4,
+        period_end=date(2024, 12, 31),
+        run_id=run_id,
+        turns=[
+            (
+                "CEO",
+                "Revenue growth was driven by strong commercial demand, "
+                "government customers, and data center deployments.",
+            ),
+            (
+                "CFO",
+                "Year over year revenue growth reflected customer expansion.",
+            ),
+        ],
+    )
     return {
         "company_id": company_id,
         "fy_facts": fy_facts,
@@ -415,6 +530,8 @@ def _seed_happy_path_company(conn: psycopg.Connection) -> dict:
         "mda_chunk_id": chunk_id,
         "pr_artifact_id": pr_artifact_id,
         "pr_chunk_id": pr_chunk_id,
+        "transcript_artifact_id": transcript_artifact_id,
+        "transcript_chunk_ids": transcript_chunk_ids,
     }
 
 
@@ -456,10 +573,12 @@ def test_revenue_driver_recipe_happy_path() -> None:
     assert all(s.prior_value is not None for s in packet.segment_facts)
     assert len(packet.mda_chunks) >= 1
     assert len(packet.earnings_chunks) >= 1
+    assert len(packet.transcript_turns) >= 1
 
     # Provenance — every cited fact/chunk traces back to a seeded ID.
     assert seeded["mda_chunk_id"] in packet.provenance.chunk_ids
     assert seeded["pr_chunk_id"] in packet.provenance.chunk_ids
+    assert seeded["transcript_chunk_ids"][0] in packet.provenance.chunk_ids
     assert seeded["fy_facts"][2024]["revenue"] in packet.provenance.fact_ids
     assert seeded["fy_facts"][2023]["revenue"] in packet.provenance.fact_ids
 
@@ -472,6 +591,7 @@ def test_revenue_driver_recipe_happy_path() -> None:
     assert "$2.20B" in answer.summary  # prior revenue
     assert any(f"[F:{seeded['fy_facts'][2024]['revenue']}]" in c for c in answer.citations)
     assert any(f"[S:{seeded['mda_chunk_id']}]" in c for c in answer.citations)
+    assert any(f"[T:{seeded['transcript_chunk_ids'][0]}]" in c for c in answer.citations)
 
 
 def test_revenue_driver_recipe_hard_fails_on_missing_period() -> None:
@@ -494,6 +614,7 @@ def test_revenue_driver_recipe_hard_fails_on_missing_period() -> None:
     assert packet.segment_facts == []
     assert packet.mda_chunks == []
     assert packet.earnings_chunks == []
+    assert packet.transcript_turns == []
 
 
 def test_intent_parser_rejects_questions_without_fiscal_year() -> None:

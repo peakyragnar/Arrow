@@ -7,6 +7,7 @@ Current shipped slice:
 - CLI entrypoint: `scripts/ask_arrow.py`
 - Runtime packet / synthesis code: `src/arrow/analysis/company_context.py`
 - Covered question shape: "What drove {TICKER} revenue growth in FY{YEAR}?"
+- Revenue-driver packet now includes Q4 transcript evidence when available.
 - Transcript retrieval primitives: `src/arrow/retrieval/transcripts.py`
 - Transcript evidence CLI: `scripts/analyst_transcript_brief.py`
 
@@ -157,7 +158,7 @@ Shared fields:
 Mode-specific packet examples:
 
 - `RevenueDriverPacket`: revenue facts, YoY comparison, segment/geography facts,
-  MD&A chunks, earnings-release chunks, later transcript chunks
+  MD&A chunks, earnings-release chunks, Q4 transcript turns
 - `TrendPacket`: time series plus commentary timeline
 - `EventReactionPacket`: event metadata, price window, related commentary
 - `GuidancePacket`: guidance statements, actuals, walk-forward comparison
@@ -266,6 +267,7 @@ single_period_driver(intent)
   -> get segment revenue facts
   -> get MD&A chunks for the fiscal year
   -> get exact annual or FY-end Q4 earnings-release chunks
+  -> search FY-end Q4 transcript turns for revenue-driver commentary
   -> build RevenueDriverPacket
 ```
 
@@ -411,7 +413,7 @@ Build the first vertical strip:
 - mode: `single_company_period`
 - topic: `revenue_growth`
 - parser: deterministic
-- recipe: revenue facts + YoY + segment revenue + MD&A + earnings release
+- recipe: revenue facts + YoY + segment revenue + MD&A + earnings release + Q4 transcript evidence
 - synthesizer: deterministic
 - verifier: structural + numeric checks
 - trace: JSONL

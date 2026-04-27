@@ -16,8 +16,14 @@ from uuid import uuid4
 import psycopg
 from psycopg.rows import dict_row
 
+from arrow.retrieval.transcripts import TranscriptTurn, search_transcript_turns
+
 
 MDA_SECTION_KEYS = ("item_7_mda", "part1_item2_mda")
+TRANSCRIPT_REVENUE_QUERY = (
+    '"revenue growth" OR "year over year" OR "driven by" OR demand '
+    'OR customers OR commercial OR government OR "data center"'
+)
 REVENUE_SIGNAL_WEIGHTS = (
     (r"\bgrowth was driven\b|\bgrowth .* driven by\b|\bdriven by\b", 12),
     (r"\bprimarily due to\b|\battributable to\b", 7),
@@ -210,6 +216,7 @@ class RevenueDriverPacket:
     artifact_periods: list[ArtifactPeriod]
     mda_chunks: list[EvidenceChunk]
     earnings_chunks: list[EvidenceChunk]
+    transcript_turns: list[TranscriptTurn]
     readiness: ReadinessResult
     gaps: list[str]
     provenance: Provenance
@@ -291,6 +298,46 @@ def _query(
     return rows
 
 
+def _search_transcript_revenue_turns(
+    conn: psycopg.Connection,
+    trace: RuntimeTrace,
+    intent: Intent,
+    *,
+    limit: int,
+) -> list[TranscriptTurn]:
+    fiscal_period_key = f"FY{intent.fiscal_year} Q4"
+    started = time.perf_counter()
+    turns = search_transcript_turns(
+        conn,
+        intent.ticker,
+        TRANSCRIPT_REVENUE_QUERY,
+        fiscal_period_key=fiscal_period_key,
+        limit=limit,
+    )
+    duration_ms = (time.perf_counter() - started) * 1000
+    trace.actions.append(
+        TraceAction(
+            label="search_q4_transcript_turns",
+            params_hash=_param_hash(
+                {
+                    "ticker": intent.ticker,
+                    "query": TRANSCRIPT_REVENUE_QUERY,
+                    "fiscal_period_key": fiscal_period_key,
+                    "limit": limit,
+                }
+            ),
+            row_count=len(turns),
+            duration_ms=round(duration_ms, 2),
+            selected_ids=[
+                f"chunk_id:{turn.chunk_id}"
+                for turn in turns
+                if turn.chunk_id is not None
+            ],
+        )
+    )
+    return turns
+
+
 def _one(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
     return rows[0] if rows else None
 
@@ -319,6 +366,10 @@ def _clean_text(value: str, *, max_chars: int = 360) -> str:
     if len(text) <= max_chars:
         return text
     return text[: max_chars - 3].rstrip() + "..."
+
+
+def _turn_body(turn: TranscriptTurn) -> str:
+    return re.sub(rf"^{re.escape(turn.speaker)}:\s*", "", turn.text).strip()
 
 
 def _evidence_score(chunk: EvidenceChunk) -> int:
@@ -767,6 +818,12 @@ def build_revenue_driver_packet(
         )
     ]
     earnings_chunks = _rank_evidence_chunks(earnings_candidates, limit=limit_chunks)
+    transcript_turns = _search_transcript_revenue_turns(
+        conn,
+        trace,
+        intent,
+        limit=limit_chunks,
+    )
     readiness, gaps = _ground_gaps(
         intent=intent,
         current_metrics=current_metrics,
@@ -775,6 +832,7 @@ def build_revenue_driver_packet(
         segment_facts=segment_facts,
         mda_chunks=mda_chunks,
         earnings_chunks=earnings_chunks,
+        transcript_turns=transcript_turns,
         mda_candidate_count=len(mda_candidates),
         earnings_candidate_count=len(earnings_candidates),
         mda_best_candidate_score=_best_evidence_score(mda_candidates),
@@ -785,13 +843,16 @@ def build_revenue_driver_packet(
     fact_ids = [fact.fact_id for fact in current_facts + prior_facts] + [
         segment.fact_id for segment in segment_facts
     ]
-    chunk_ids = [chunk.chunk_id for chunk in mda_chunks + earnings_chunks]
+    chunk_ids = [chunk.chunk_id for chunk in mda_chunks + earnings_chunks] + [
+        turn.chunk_id for turn in transcript_turns if turn.chunk_id is not None
+    ]
     artifact_ids = sorted(
         {
             row.artifact_id
             for row in artifact_periods
         }
         | {chunk.artifact_id for chunk in mda_chunks + earnings_chunks}
+        | {turn.artifact_id for turn in transcript_turns}
     )
     provenance = Provenance(
         fact_ids=sorted(fact_ids),
@@ -811,6 +872,7 @@ def build_revenue_driver_packet(
         artifact_periods=artifact_periods,
         mda_chunks=mda_chunks,
         earnings_chunks=earnings_chunks,
+        transcript_turns=transcript_turns,
         readiness=readiness,
         gaps=gaps,
         provenance=provenance,
@@ -831,6 +893,7 @@ def _ground_gaps(
     segment_facts: list[SegmentFact],
     mda_chunks: list[EvidenceChunk],
     earnings_chunks: list[EvidenceChunk],
+    transcript_turns: list[TranscriptTurn],
     mda_candidate_count: int,
     earnings_candidate_count: int,
     mda_best_candidate_score: int | None,
@@ -899,6 +962,11 @@ def _ground_gaps(
         gaps.append(
             "Plan requested earnings-release revenue-driver evidence, but top ranked chunks were weak "
             f"(best_score={score}, candidates={earnings_candidate_count})."
+        )
+    if not transcript_turns:
+        gaps.append(
+            "Plan requested Q4 transcript revenue-driver evidence, but no matching "
+            "speaker turns were found."
         )
     status = "PASS" if not gaps else "SOFT_GAP"
     return ReadinessResult(status, checks, gaps), gaps
@@ -973,7 +1041,18 @@ def synthesize_revenue_driver_answer(packet: RevenueDriverPacket, trace: Runtime
     else:
         details.append("Earnings-release evidence: none found.")
 
-    citations = sorted(set(re.findall(r"\[[FS]:[^\]]+\]|\[M:[^\]]+\]", "\n".join([summary, *details]))))
+    if packet.transcript_turns:
+        details.append("Transcript evidence:")
+        for turn in packet.transcript_turns[:2]:
+            citation = "T:unknown" if turn.chunk_id is None else f"T:{turn.chunk_id}"
+            details.append(
+                f"- {turn.fiscal_period_label} {turn.speaker}: "
+                f"{_clean_text(_turn_body(turn))} [{citation}]"
+            )
+    else:
+        details.append("Transcript evidence: none found.")
+
+    citations = sorted(set(re.findall(r"\[[FST]:[^\]]+\]|\[M:[^\]]+\]", "\n".join([summary, *details]))))
     answer = Answer(
         intent=intent,
         summary=summary,
@@ -1005,7 +1084,7 @@ def verify_answer(answer: Answer, packet: RevenueDriverPacket) -> VerificationRe
     for fact_id in re.findall(r"\[F:(\d+)\]", text):
         if int(fact_id) not in allowed_fact_ids:
             issues.append(f"Fact citation {fact_id} was not in packet provenance.")
-    for chunk_id in re.findall(r"\[S:(\d+)\]", text):
+    for chunk_id in re.findall(r"\[[ST]:(\d+)\]", text):
         if int(chunk_id) not in allowed_chunk_ids:
             issues.append(f"Chunk citation {chunk_id} was not in packet provenance.")
     for gap in packet.gaps:

@@ -1254,7 +1254,7 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started). Wh
 11. 🚧 implement fiscal, calendar-normalized, and PIT derived views. Current metric view stack exists under `db/queries/` (`v_ff_current`, wide period views, TTM/FY/CY/ROIC metrics, and screenable metric views); true PIT as-of view support remains deferred.
 12. ⬜ implement `prices_daily`
 13. ⬜ implement `company_events`
-14. 🚧 implement analyst runtime retrieval tools and deterministic revenue-driver CLI (PIT-aware; see `docs/architecture/analyst_runtime.md`). MVP deterministic revenue-driver CLI exists in `scripts/ask_arrow.py`; transcript retrieval primitives and the transcript evidence CLI exist in `src/arrow/retrieval/transcripts.py` + `scripts/analyst_transcript_brief.py`. Broader reusable retrieval tools, richer recipes, and full PIT behavior remain in progress.
+14. 🚧 implement analyst runtime retrieval tools and deterministic revenue-driver CLI (PIT-aware; see `docs/architecture/analyst_runtime.md`). MVP deterministic revenue-driver CLI exists in `scripts/ask_arrow.py`; transcript retrieval primitives and the transcript evidence CLI exist in `src/arrow/retrieval/transcripts.py` + `scripts/analyst_transcript_brief.py`; the revenue-driver packet now includes FY-end Q4 transcript evidence. Broader reusable retrieval tools, richer recipes, and full PIT behavior remain in progress.
 15. ⬜ implement `qa_log` as part of normal analyst flow (with consent flags)
 16. ✅ implement SEC qualitative section + chunk layer (`artifact_sections`, `artifact_section_chunks`) for filing text in migration 014. Generic text-unit chunking for press releases and transcripts uses `artifact_text_units` / `artifact_text_chunks` from migration 015.
 17. ⬜ add section-over-time comparison support
