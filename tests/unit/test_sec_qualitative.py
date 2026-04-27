@@ -202,6 +202,50 @@ def test_normalize_filing_body_strips_conservative_filing_tail_page_numbers() ->
     assert "The company had no customer over 10%. 2024" in normalized
 
 
+def test_chunking_terminates_on_section_with_oversized_single_unit() -> None:
+    """Regression: DELL FY2026 10-K (accession 0001571996-26-000008) hung
+    the chunker for 5+ minutes at 100% CPU. Root cause: a section
+    containing a single content unit larger than _TARGET_MAX_WORDS (1500
+    words) would cause the overlap-carry-forward to keep returning that
+    same giant unit, so current_words + unit_words > MAX stayed true
+    forever and the loop never advanced idx.
+
+    The guard in build_chunks drops the overlap when it's already too
+    large to leave room for the next unit. Test: build a section with a
+    single ~3,000-word paragraph followed by additional units. Without
+    the guard, this would never return.
+    """
+    import threading
+
+    giant_paragraph = " ".join(
+        f"Word{i}" for i in range(3000)  # 3000 words, well above MAX (1500)
+    )
+    normalized = normalize_filing_body(
+        (
+            "<html><body>"
+            "<h2>Item 1A. Risk Factors</h2>"
+            f"<p>{giant_paragraph}</p>"
+            "<p>Followup paragraph one with several short sentences for context.</p>"
+            "<p>Followup paragraph two also with several short sentences.</p>"
+            "</body></html>"
+        ).encode(),
+        "text/html",
+    )
+    section = extract_sections("10-K", normalized)[0]
+
+    result: dict = {}
+
+    def _run() -> None:
+        result["chunks"] = build_chunks(section)
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(timeout=10.0)  # generous; without the guard this loops forever
+    assert not t.is_alive(), "build_chunks did not terminate within 10s"
+    assert "chunks" in result
+    assert len(result["chunks"]) >= 1
+
+
 def test_chunking_preserves_heading_path_and_sentence_overlap() -> None:
     normalized = normalize_filing_body(
         (

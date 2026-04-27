@@ -573,6 +573,19 @@ def build_chunks(section: ExtractedSection) -> list[ChunkRow]:
                 overlap_units = _sentence_overlap(current)
                 current = list(overlap_units)
                 current_words = sum(_word_count(item.text) for item in current)
+                # Guard against infinite loop: if the just-taken overlap is
+                # itself large enough that current_words + unit_words still
+                # exceeds MAX, the next iteration would re-emit, take the
+                # same overlap, and loop forever on the same unit. Happens
+                # when a section contains a single giant content unit (e.g.
+                # a huge table flattened to one text block). Drop the
+                # overlap and let the unit start a fresh chunk.
+                # Empirical: DELL FY2026 10-K (accession 0001571996-26-000008)
+                # surfaced this; ran 5+ minutes at 100% CPU before the guard.
+                if current_words + unit_words > _TARGET_MAX_WORDS:
+                    current = []
+                    current_words = 0
+                    overlap_units = []
                 continue
 
         current.append(unit)
