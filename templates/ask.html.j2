@@ -5,10 +5,17 @@
   <title>Arrow · Ask</title>
   <link rel="stylesheet" href="/static/dashboard.css">
   <style>
+    /* Override dashboard.css's table-anchored body layout — the chat page
+       needs the document to scroll naturally so long answers and stacked
+       evidence cards stay reachable. */
+    html, body {
+      height: auto;
+      overflow: auto;
+    }
     .ask-container {
       max-width: 1200px;
       margin: 24px auto;
-      padding: 0 16px;
+      padding: 0 16px 48px 16px;
       display: grid;
       grid-template-columns: 1fr 360px;
       grid-gap: 24px;
@@ -370,24 +377,27 @@
   }
 
   async function loadEvidence(kind, body) {
-    if (!['F', 'T', 'S'].includes(kind)) {
-      // Comma-joined (defensive); split and load first.
-      const first = body.split(',')[0].trim();
-      if (first.includes(':')) {
-        const [k2, b2] = first.split(':');
-        loadEvidence(k2, b2);
-        return;
+    const supported = ['F', 'T', 'S', 'M'];
+    if (!supported.includes(kind)) {
+      const card = document.createElement('div');
+      card.className = 'evidence-card';
+      card.innerHTML = `<div class="ev-header">[${kind}:${escapeHtml(body)}]</div>` +
+        `<div class="ev-meta">No popup yet for ${kind}-citations.</div>`;
+      evidencePanel.prepend(card);
+      if (evidencePanel.querySelector('.empty')) {
+        evidencePanel.querySelector('.empty').remove();
       }
+      return;
     }
     const card = document.createElement('div');
     card.className = 'evidence-card';
-    card.innerHTML = `<div class="ev-header">[${kind}:${body}]</div><div class="ev-meta">loading...</div>`;
+    card.innerHTML = `<div class="ev-header">[${kind}:${escapeHtml(body)}]</div><div class="ev-meta">loading...</div>`;
     evidencePanel.prepend(card);
     if (evidencePanel.querySelector('.empty')) {
       evidencePanel.querySelector('.empty').remove();
     }
     try {
-      const resp = await fetch(`/evidence/${kind}/${body}`);
+      const resp = await fetch(`/evidence/${kind}/${encodeURIComponent(body)}`);
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
         card.querySelector('.ev-meta').textContent = `error: ${err.detail || resp.status}`;
@@ -424,6 +434,29 @@
     } else if (kind === 'S') {
       metaText = `${row.ticker || ''} ${row.fiscal_period_label || ''} · ${row.artifact_type || ''} ${row.section_title || row.section_key || ''}`;
       bodyHtml = `<div style="margin-top:6px; white-space:pre-wrap">${escapeHtml(row.text || '')}</div>`;
+    } else if (kind === 'M') {
+      const view = row._view || 'metric view';
+      if (row._window) {
+        const start = row._period_start;
+        const end = row._period_end;
+        const n = row._n_rows;
+        metaText = `${(row.rows[0] && row.rows[0].ticker) || ''} window · ${view} · ${start} → ${end} (${n} rows)`;
+        bodyHtml = renderMetricWindowTable(row.rows);
+      } else {
+        const period = row._period || '';
+        metaText = `${row.ticker || ''} ${period} · ${view}`;
+        const display = {};
+        for (const [k, v] of Object.entries(row)) {
+          if (k === '_view' || k === '_period' || k === '_window') continue;
+          if (v === null || v === '' || v === undefined) continue;
+          if (typeof v === 'string' && /^-?\d+(\.\d+)?$/.test(v)) {
+            display[k] = formatMetricValue(k, parseFloat(v));
+          } else {
+            display[k] = v;
+          }
+        }
+        bodyHtml = renderKvTable(display);
+      }
     }
 
     card.querySelector('.ev-meta').textContent = metaText;
@@ -438,6 +471,49 @@
       .filter(([_, v]) => v !== null && v !== undefined && v !== '')
       .map(([k, v]) => `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(String(v))}</td></tr>`);
     return `<table>${rows.join('')}</table>`;
+  }
+
+  function renderMetricWindowTable(rows) {
+    if (!rows || rows.length === 0) return '<div>(no rows)</div>';
+    // Pick the columns that have at least one non-null value across rows,
+    // dropping ticker/company_id which we already showed in the header.
+    const skip = new Set(['ticker', 'company_id', '_view', '_period', '_window']);
+    const cols = [];
+    for (const k of Object.keys(rows[0])) {
+      if (skip.has(k)) continue;
+      if (rows.some(r => r[k] !== null && r[k] !== undefined && r[k] !== '')) {
+        cols.push(k);
+      }
+    }
+    const header = '<tr>' + cols.map(c => `<th>${escapeHtml(c)}</th>`).join('') + '</tr>';
+    const body = rows.map(r => {
+      const cells = cols.map(c => {
+        const v = r[c];
+        if (v === null || v === undefined || v === '') return '<td></td>';
+        if (typeof v === 'string' && /^-?\d+(\.\d+)?$/.test(v)) {
+          return `<td>${escapeHtml(formatMetricValue(c, parseFloat(v)))}</td>`;
+        }
+        return `<td>${escapeHtml(String(v))}</td>`;
+      });
+      return '<tr>' + cells.join('') + '</tr>';
+    }).join('');
+    return `<table style="font-size:11px"><thead>${header}</thead><tbody>${body}</tbody></table>`;
+  }
+
+  function formatMetricValue(key, n) {
+    // Margins / ROIC etc. are stored as fractions (0.235 = 23.5%).
+    if (/_margin|^roic$|^roiic$|_pct|_rate/.test(key)) {
+      return (n * 100).toFixed(1) + '%';
+    }
+    // Money-ish columns.
+    if (/^revenue|^cogs|^gross_profit|^operating_income|^net_income|^cfo|^capital_expenditures|^rd|^sbc|^net_debt|^total_assets|^total_equity|^cash|^accounts_|^inventory|^acquisitions|^tax|^ebt|^adjusted_/.test(key)) {
+      const abs = Math.abs(n);
+      if (abs >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
+      if (abs >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+      return '$' + n.toLocaleString();
+    }
+    // Fallback: integers as-is, floats to 2 decimals.
+    return Number.isInteger(n) ? String(n) : n.toFixed(2);
   }
 
   function escapeHtml(s) {

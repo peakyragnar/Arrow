@@ -136,6 +136,119 @@ def _fetch_transcript_chunk(conn, chunk_id: int) -> dict[str, Any] | None:
     return row
 
 
+_METRIC_VIEW_KEY_FIELDS = {
+    "v_metrics_fy": ("fiscal_period_label",),
+    "v_metrics_q": ("fiscal_period_label",),
+    "v_metrics_roic": ("period_end",),
+    "v_metrics_cy": ("calendar_period_label",),
+    "v_metrics_ttm": ("period_end",),
+    "v_metrics_ttm_yoy": ("period_end",),
+}
+
+# Columns to surface in the popup, per view. Keep this tight — full row
+# would render dozens of fields.
+_METRIC_VIEW_DISPLAY_COLS: dict[str, tuple[str, ...]] = {
+    "v_metrics_fy": (
+        "ticker", "fiscal_year", "fiscal_period_label", "fy_end",
+        "revenue_fy", "gross_margin_fy", "operating_margin_fy", "net_margin_fy",
+        "cfo_fy", "capital_expenditures_fy", "rd_fy", "sbc_fy",
+        "total_employees_fy",
+    ),
+    "v_metrics_q": (
+        "ticker", "fiscal_period_label", "period_end",
+        "revenue", "gross_margin", "operating_margin", "net_margin",
+        "cfo", "capital_expenditures",
+    ),
+    "v_metrics_roic": (
+        "ticker", "period_end", "roic", "roiic",
+        "adjusted_nopat_ttm", "adjusted_ic_q",
+    ),
+}
+
+
+def _row_to_safe(row: dict[str, Any]) -> dict[str, Any]:
+    safe: dict[str, Any] = {}
+    for k, v in row.items():
+        if v is None:
+            safe[k] = None
+        elif hasattr(v, "isoformat"):
+            safe[k] = v.isoformat()
+        else:
+            safe[k] = str(v) if not isinstance(v, (int, str, float, bool)) else v
+    return safe
+
+
+def _fetch_metric_view_row(conn, body: str) -> dict[str, Any] | None:
+    """Look up metric-view evidence for a citation body.
+
+    Body shapes (decoded — colons preserved):
+      v_metrics_fy:<company_id>:FY2024                  single annual row
+      v_metrics_q:<company_id>:FY2024 Q3                single quarterly row
+      v_metrics_roic:<company_id>:<period_end_iso>      single ROIC row
+      v_metrics_roic:<company_id>:<start>_to_<end>      window of rows
+                                                        (from screen_companies)
+    """
+    parts = body.split(":", 2)
+    if len(parts) != 3:
+        return None
+    view, company_part, period_part = parts
+    if view not in _METRIC_VIEW_KEY_FIELDS:
+        return None
+    try:
+        company_id = int(company_part)
+    except ValueError:
+        return None
+    period_field = _METRIC_VIEW_KEY_FIELDS[view][0]
+    cols = _METRIC_VIEW_DISPLAY_COLS.get(view)
+    select_clause = ", ".join(cols) if cols else "*"
+
+    if "_to_" in period_part:
+        start, end = period_part.split("_to_", 1)
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                f"""
+                SELECT {select_clause}
+                FROM {view}
+                WHERE company_id = %s
+                  AND {period_field}::text BETWEEN %s AND %s
+                ORDER BY {period_field};
+                """,
+                (company_id, start, end),
+            )
+            rows = list(cur.fetchall())
+        if not rows:
+            return None
+        return {
+            "_view": view,
+            "_period": period_part,
+            "_window": True,
+            "_period_start": start,
+            "_period_end": end,
+            "_n_rows": len(rows),
+            "rows": [_row_to_safe(r) for r in rows],
+        }
+
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(
+            f"""
+            SELECT {select_clause}
+            FROM {view}
+            WHERE company_id = %s
+              AND {period_field}::text = %s
+            LIMIT 1;
+            """,
+            (company_id, period_part),
+        )
+        row = cur.fetchone()
+    if row is None:
+        return None
+    safe = _row_to_safe(row)
+    safe["_view"] = view
+    safe["_period"] = period_part
+    safe["_window"] = False
+    return safe
+
+
 def _fetch_section_chunk(conn, chunk_id: int) -> dict[str, Any] | None:
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
@@ -171,25 +284,32 @@ def _fetch_section_chunk(conn, chunk_id: int) -> dict[str, Any] | None:
     return row
 
 
-@router.get("/evidence/{kind}/{evidence_id}")
+@router.get("/evidence/{kind}/{evidence_id:path}")
 def get_evidence(kind: str, evidence_id: str):
     """Return the raw row for a citation popup.
 
-    ``kind`` is one of: F (financial_fact), T (transcript chunk),
-    S (filing section chunk). M (metric view) and A (artifact) are not
-    implemented yet — the citation just shows the ID for now.
+    ``kind`` is one of:
+      F (financial_fact), T (transcript chunk), S (filing section chunk),
+      M (metric-view row, body is ``view:company_id:period``).
+
+    A (artifact) is not implemented yet; cite just renders as text.
     """
     kind = kind.upper()
-    if kind not in {"F", "T", "S"}:
+    if kind not in {"F", "T", "S", "M"}:
         raise HTTPException(
             status_code=400,
-            detail=f"unsupported evidence kind '{kind}'. Supported: F, T, S.",
+            detail=f"unsupported evidence kind '{kind}'. Supported: F, T, S, M.",
         )
-    try:
-        eid = int(evidence_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="evidence id must be an integer")
     with get_conn() as conn:
+        if kind == "M":
+            row = _fetch_metric_view_row(conn, evidence_id)
+            if row is None:
+                raise HTTPException(status_code=404, detail=f"no metric row for id '{evidence_id}'")
+            return {"kind": "M", "id": evidence_id, "row": row}
+        try:
+            eid = int(evidence_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="evidence id must be an integer for F/T/S")
         if kind == "F":
             row = _fetch_financial_fact(conn, eid)
         elif kind == "T":

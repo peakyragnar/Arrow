@@ -33,6 +33,13 @@ from arrow.retrieval.companies import resolve_company_by_ticker
 from arrow.retrieval.documents import get_section_chunks, list_documents
 from arrow.retrieval.facts import get_financial_facts, get_segment_facts
 from arrow.retrieval.metrics import get_metrics, metrics_view_name
+from arrow.retrieval.screens import (
+    get_latest_roic,
+    list_companies,
+    metric_value_kind,
+    screen_companies_by_metric,
+    supported_metrics,
+)
 from arrow.retrieval.transcripts import (
     get_latest_transcripts,
     search_transcript_turns,
@@ -156,9 +163,23 @@ def _tool_get_metrics(conn: psycopg.Connection, params: dict[str, Any]) -> ToolR
         "fcf": _money(metric.fcf_fy),
     }
     cite = f"M:{metrics_view_name(period_type)}:{company.id}:{metric.fiscal_period_label}"
+    evidence_ids = [cite]
+
+    # Attach the most-recent-at-or-before ROIC for annual metrics. Quarterly
+    # metrics already have their own period_end; the ROIC view is quarterly,
+    # so pulling latest at or before fy_end gives the year-end snapshot.
+    if metric.fy_end is not None:
+        roic, roic_period = get_latest_roic(
+            conn, company_id=company.id, on_or_before=metric.fy_end
+        )
+        if roic is not None:
+            row["roic"] = _money(roic)
+            row["roic_period_end"] = roic_period
+            evidence_ids.append(f"M:v_metrics_roic:{company.id}:{roic_period}")
+
     return ToolResult(
         rows=[row],
-        evidence_ids=[cite],
+        evidence_ids=evidence_ids,
         summary=f"{company.ticker} {metric.fiscal_period_label} metrics from {metrics_view_name(period_type)}.",
     )
 
@@ -375,6 +396,82 @@ def _tool_read_filing_sections(conn: psycopg.Connection, params: dict[str, Any])
     )
 
 
+def _tool_list_companies(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    companies = list_companies(conn)
+    rows = [
+        {
+            "ticker": c.ticker,
+            "company_id": c.id,
+            "name": c.name,
+            "cik": c.cik,
+            "fiscal_year_end": c.fiscal_year_end_md,
+        }
+        for c in companies
+    ]
+    return ToolResult(
+        rows=rows,
+        evidence_ids=[],
+        summary=f"{len(companies)} company(ies) in the universe.",
+    )
+
+
+def _tool_screen_companies(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    metric = params["metric"]
+    if metric not in supported_metrics():
+        return ToolResult(
+            rows=[],
+            evidence_ids=[],
+            summary=f"unsupported metric '{metric}'. Supported: {', '.join(supported_metrics())}.",
+            error=f"unsupported metric '{metric}'",
+        )
+    n_years = int(params.get("n_years", 1))
+    limit = int(params.get("limit", 10))
+    sort_desc = bool(params.get("sort_desc", True))
+    screen_rows = screen_companies_by_metric(
+        conn,
+        metric=metric,
+        n_years=n_years,
+        limit=limit,
+        sort_desc=sort_desc,
+    )
+    if not screen_rows:
+        return ToolResult(
+            rows=[],
+            evidence_ids=[],
+            summary=f"No companies matched the {metric} screen (insufficient coverage?).",
+        )
+    kind = metric_value_kind(metric)
+    rows: list[dict[str, Any]] = []
+    evidence_ids: list[str] = []
+    for r in screen_rows:
+        rows.append(
+            {
+                "rank": len(rows) + 1,
+                "ticker": r.ticker,
+                "company_id": r.company_id,
+                "value": _money(r.value),
+                "value_kind": kind,
+                "metric": metric,
+                "n_periods": r.n_periods,
+                "period_start": r.period_start,
+                "period_end": r.period_end,
+            }
+        )
+        evidence_ids.append(
+            f"M:{r.view_name}:{r.company_id}:{r.period_start}_to_{r.period_end}"
+        )
+    label = (
+        f"{metric} (single year)"
+        if n_years <= 1
+        else f"{metric} avg over last {n_years} years"
+    )
+    return ToolResult(
+        rows=rows,
+        evidence_ids=evidence_ids,
+        summary=f"Top {len(rows)} companies by {label}.",
+    )
+
+
 REGISTRY: list[Tool] = [
     Tool(
         name="resolve_company",
@@ -530,6 +627,44 @@ REGISTRY: list[Tool] = [
         },
         execute=_tool_read_filing_sections,
     ),
+    Tool(
+        name="list_companies",
+        description=(
+            "List every company in the database (ticker, name, fiscal year end). "
+            "Use when a question asks 'which companies', 'what tickers', or "
+            "needs the universe to scope a follow-up tool call. Cheap."
+        ),
+        input_schema={"type": "object", "properties": {}},
+        execute=_tool_list_companies,
+    ),
+    Tool(
+        name="screen_companies",
+        description=(
+            "Rank companies across the universe by a metric, optionally averaged "
+            "over the most recent N years. Use this for ANY question of the form "
+            "'highest/lowest X', 'top N by X', 'rank by X'. Do not iterate "
+            "get_metrics across tickers — call screen_companies once instead. "
+            "Returns ranked rows with [M:view:co:window] citation IDs."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "metric": {
+                    "type": "string",
+                    "enum": ["revenue", "gross_margin", "operating_margin", "net_margin", "fcf", "roic"],
+                    "description": "Metric to rank by. roic is averaged over the recent N*4 quarterly rows.",
+                },
+                "n_years": {
+                    "type": "integer",
+                    "description": "Lookback window in years. 1 = single most recent year; 3 or 5 = rolling average. Default 1.",
+                },
+                "limit": {"type": "integer", "description": "Top N to return. Default 10, max 50."},
+                "sort_desc": {"type": "boolean", "description": "True for highest-first (default), false for lowest-first."},
+            },
+            "required": ["metric"],
+        },
+        execute=_tool_screen_companies,
+    ),
 ]
 
 REGISTRY_BY_NAME = {t.name: t for t in REGISTRY}
@@ -600,6 +735,8 @@ Rules:
 - Resolve tickers via resolve_company before deeper queries when in doubt.
 - Prefer get_metrics for headline numbers; use get_financial_facts when you need fact_ids or non-canonical concepts.
 - For 'what changed' or 'what did management say' questions, use search_transcripts with focused FTS queries.
+- For cross-company questions ('highest/lowest X', 'top N by X', 'rank companies by X', 'which company has the best X'), call screen_companies ONCE — do NOT iterate get_metrics across tickers, and do NOT call list_companies first; the screen tool already covers the universe.
+- Use list_companies only when the question asks what tickers exist in the database, or you genuinely don't know whether a ticker is covered.
 - Stop calling tools when you have enough evidence. When done, produce a brief plain-text note like 'Evidence gathered.' — synthesis happens elsewhere.
 - Do NOT fabricate evidence; if a tool returns no rows, accept that and either try a different query or stop.
 - Hard cap: 8 tool iterations.
