@@ -8,3 +8,4 @@ outputs/
 .venv/
 .DS_Store
 **/.DS_Store
+.claude/
