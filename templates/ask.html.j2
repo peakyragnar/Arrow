@@ -54,10 +54,11 @@
       background: var(--bg-alt);
       padding: 12px;
       border-radius: 4px;
-      margin-bottom: 16px;
+      margin-top: 16px;
       position: sticky;
-      top: 12px;
+      bottom: 12px;
       z-index: 5;
+      box-shadow: 0 -8px 16px -8px var(--bg);
     }
     .ask-form textarea {
       width: 100%;
@@ -246,21 +247,22 @@
       <button type="button" id="new-thread-btn">New conversation</button>
     </div>
 
+    <div id="messages-container">
+      <div class="examples" id="examples" style="margin-bottom:16px">
+        try:
+        <a data-q="What was DELL revenue in FY2024 and how did it change from FY2023?">DELL revenue YoY</a> ·
+        <a data-q="What did NVDA management say about data center demand in FY2026 Q4?">NVDA data center commentary</a> ·
+        <a data-q="What were NVDA segment revenues in FY2026 Q4?">NVDA segment breakdown</a>
+      </div>
+    </div>
+
     <form class="ask-form" id="ask-form">
       <textarea id="question" name="question" placeholder="Ask a question. Follow-ups remember the prior context — &quot;what about Q3?&quot; works."></textarea>
       <div class="row">
         <button type="submit" id="submit-btn">Ask</button>
         <span class="hint">Haiku routes, Sonnet writes. Up to 5 prior turns replayed for context.</span>
       </div>
-      <div class="examples" id="examples">
-        try:
-        <a data-q="What was DELL revenue in FY2024 and how did it change from FY2023?">DELL revenue YoY</a> ·
-        <a data-q="What did NVDA management say about data center demand in FY2026 Q4?">NVDA data center commentary</a> ·
-        <a data-q="What were NVDA segment revenues in FY2026 Q4?">NVDA segment breakdown</a>
-      </div>
     </form>
-
-    <div id="messages-container"></div>
 
   </main>
 
@@ -668,6 +670,8 @@
     questionEl.value = '';
 
     const card = createTurnCard(question);
+    // Form is sticky-bottom; scroll so the new card's question is at the top
+    // of the viewport and the user reads downward as the answer streams in.
     card.scrollIntoView({behavior: 'smooth', block: 'start'});
 
     try {
