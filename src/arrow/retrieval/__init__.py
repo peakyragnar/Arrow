@@ -26,6 +26,7 @@ from arrow.retrieval.transcripts import (
     compare_transcript_mentions,
     get_latest_transcripts,
     get_transcript_context,
+    read_transcript_turns,
     search_transcript_turns,
 )
 from arrow.retrieval.types import (
@@ -66,6 +67,7 @@ __all__ = [
     "get_transcript_context",
     "list_documents",
     "metrics_view_name",
+    "read_transcript_turns",
     "resolve_company_by_ticker",
     "search_transcript_turns",
 ]

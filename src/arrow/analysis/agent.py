@@ -42,7 +42,9 @@ from arrow.retrieval.screens import (
     supported_metrics,
 )
 from arrow.retrieval.transcripts import (
+    compare_transcript_mentions,
     get_latest_transcripts,
+    read_transcript_turns,
     search_transcript_turns,
 )
 from arrow.retrieval._query import jsonable
@@ -397,6 +399,81 @@ def _tool_read_filing_sections(conn: psycopg.Connection, params: dict[str, Any])
     )
 
 
+def _tool_read_transcript(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    ticker = params["ticker"]
+    fiscal_year = params["fiscal_year"]
+    fiscal_quarter = params.get("fiscal_quarter")
+    if fiscal_quarter:
+        fiscal_period_key = f"FY{fiscal_year} Q{fiscal_quarter}"
+    else:
+        fiscal_period_key = f"FY{fiscal_year} Q4"  # annual calls map to Q4
+    turns = read_transcript_turns(conn, ticker, fiscal_period_key)
+    if not turns:
+        return ToolResult(
+            rows=[],
+            evidence_ids=[],
+            summary=f"No transcript found for {ticker} {fiscal_period_key}.",
+        )
+    rows = [
+        {
+            "chunk_id": t.chunk_id,
+            "unit_ordinal": t.unit_ordinal,
+            "speaker": t.speaker,
+            "fiscal_period": t.fiscal_period_label,
+            "text": t.text,
+        }
+        for t in turns
+    ]
+    return ToolResult(
+        rows=rows,
+        evidence_ids=[f"T:{t.chunk_id}" for t in turns if t.chunk_id is not None],
+        summary=f"{ticker} {fiscal_period_key} transcript: {len(turns)} turn(s) in reading order.",
+    )
+
+
+def _tool_compare_transcript_mentions(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    ticker = params["ticker"]
+    terms = params.get("terms") or []
+    periods = int(params.get("periods", 8))
+    if not terms:
+        return ToolResult(
+            rows=[],
+            evidence_ids=[],
+            summary="terms list is required",
+            error="terms must be a non-empty list",
+        )
+    summaries = compare_transcript_mentions(
+        conn,
+        ticker,
+        terms=list(terms),
+        periods=periods,
+    )
+    if not summaries:
+        return ToolResult(
+            rows=[],
+            evidence_ids=[],
+            summary=f"No transcripts found for {ticker} when comparing terms.",
+        )
+    rows = [
+        {
+            "fiscal_period": s.fiscal_period_label,
+            "period_end": str(s.period_end),
+            "term_counts": s.term_counts,
+            "total_mentions": s.total_mentions,
+        }
+        for s in summaries
+    ]
+    return ToolResult(
+        rows=rows,
+        evidence_ids=[f"A:{s.artifact_id}" for s in summaries],
+        summary=(
+            f"{ticker}: {len(summaries)} period(s) compared for terms "
+            f"{terms}. Use the time-series shape to identify when "
+            f"discussion of these topics rose or fell."
+        ),
+    )
+
+
 def _tool_list_companies(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
     companies = list_companies(conn)
     rows = [
@@ -651,6 +728,51 @@ REGISTRY: list[Tool] = [
         execute=_tool_read_filing_sections,
     ),
     Tool(
+        name="read_transcript",
+        description=(
+            "Read the FULL transcript for one (ticker, fiscal_period) call in "
+            "speaker-turn order. Use this when the question wants synthesis "
+            "across an entire call (commentary tone, narrative arc, what was "
+            "emphasized, how guidance was framed). Returns every turn with "
+            "[T:chunk_id] citations. For annual questions (no fiscal_quarter), "
+            "this returns the FY-end (Q4) call where annual guidance is set."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "ticker": {"type": "string"},
+                "fiscal_year": {"type": "integer"},
+                "fiscal_quarter": {"type": "integer", "description": "Optional 1-4. Omit to get the Q4 / annual call."},
+            },
+            "required": ["ticker", "fiscal_year"],
+        },
+        execute=_tool_read_transcript,
+    ),
+    Tool(
+        name="compare_transcript_mentions",
+        description=(
+            "Count how often a list of terms appears across the most recent N "
+            "transcripts for one ticker, returning a per-period mention "
+            "time-series. Use this for 'how did discussion of X evolve over "
+            "time' questions. Pick FEW (1-4) high-signal terms — terms are "
+            "OR'd, not AND'd."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "ticker": {"type": "string"},
+                "terms": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Short keywords to count, e.g. ['efficiency', 'headcount', 'AI'].",
+                },
+                "periods": {"type": "integer", "description": "How many recent calls to compare (default 8)."},
+            },
+            "required": ["ticker", "terms"],
+        },
+        execute=_tool_compare_transcript_mentions,
+    ),
+    Tool(
         name="list_companies",
         description=(
             "List every company in the database (ticker, name, fiscal year end). "
@@ -754,14 +876,26 @@ _PLANNER_SYSTEM = """You are the routing model for an analyst data system over U
 
 Your job: read the user's question, call the available tools to gather grounded evidence, then signal you are done. Do NOT write the final answer — a separate model handles synthesis.
 
-Rules:
-- Resolve tickers via resolve_company before deeper queries when in doubt.
-- Prefer get_metrics for headline numbers; use get_financial_facts when you need fact_ids or non-canonical concepts.
-- For 'what changed' or 'what did management say' questions, use search_transcripts with focused FTS queries.
-- For cross-company questions ('highest/lowest X', 'top N by X', 'rank companies by X', 'which company has the best X'), call screen_companies ONCE — do NOT iterate get_metrics across tickers, and do NOT call list_companies first; the screen tool already covers the universe.
-- Use list_companies only when the question asks what tickers exist in the database, or you genuinely don't know whether a ticker is covered.
+Tool-selection playbook:
+- Headline numbers (revenue, margins, FCF, ROIC for ONE company-period): get_metrics.
+- Multiple periods of one company: call get_metrics once per year. For 5-year windows, fetch all 5.
+- Cross-company ranking ('highest/lowest X', 'top N by X', 'rank by X'): call screen_companies ONCE — do NOT iterate get_metrics, do NOT call list_companies first.
+- Universe discovery ('what tickers do we have'): list_companies. Otherwise skip it.
+- "What did management say about X in period P": search_transcripts with a SHORT FTS query.
+- "How did the discussion of X evolve over time" or "what changed period-to-period": compare_transcript_mentions with 1-4 high-signal terms.
+- Synthesis-style reading ("read the call and tell me", "what was the tone", "narrative arc", "what was emphasized"): read_transcript for the full call. Prefer this over chained search_transcripts when the question wants holistic reading.
+- 10-K / 10-Q section text: read_filing_sections (currently kind='mda').
+- Always resolve tickers via resolve_company FIRST when the ticker is named.
+
+FTS query hints (for search_transcripts):
+- Use 1-3 keywords. Postgres FTS treats them as required terms — long phrases like "guidance outlook expectations revenue growth margin forecast" return ZERO rows.
+- Prefer concrete nouns over hedging adjectives: "data center demand" beats "strong sustained accelerating demand".
+- If a search returns 0 rows, RETRY with fewer or different terms. Do not give up after one failed search.
+- For meta questions about commentary evolution, use compare_transcript_mentions instead of repeated search_transcripts calls.
+
+General:
 - Stop calling tools when you have enough evidence. When done, produce a brief plain-text note like 'Evidence gathered.' — synthesis happens elsewhere.
-- Do NOT fabricate evidence; if a tool returns no rows, accept that and either try a different query or stop.
+- Do NOT fabricate evidence; if a tool returns no rows, try a different query or accept the gap.
 - Hard cap: 8 tool iterations.
 """
 

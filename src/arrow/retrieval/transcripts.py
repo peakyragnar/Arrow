@@ -180,6 +180,62 @@ def get_transcript_context(
         )
 
 
+def read_transcript_turns(
+    conn: psycopg.Connection,
+    ticker: str,
+    fiscal_period_key: str,
+    *,
+    asof: datetime | None = None,
+) -> list[TranscriptTurn]:
+    """Read every speaker turn for one (ticker, fiscal_period_key) transcript
+    in reading order, joined through to chunk_ids so citations validate.
+
+    Use this when the analyst question wants a full reading of a single call
+    rather than FTS-matched fragments.
+    """
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(
+            """
+            SELECT
+                a.id AS artifact_id,
+                u.id AS text_unit_id,
+                c.id AS chunk_id,
+                a.ticker,
+                COALESCE(u.fiscal_period_key, a.fiscal_period_key) AS fiscal_period_key,
+                a.fiscal_period_label,
+                a.fiscal_year,
+                a.fiscal_quarter,
+                a.period_end,
+                a.published_at,
+                a.source_document_id,
+                u.unit_ordinal,
+                u.unit_key,
+                u.unit_title AS speaker,
+                c.chunk_ordinal,
+                c.heading_path,
+                c.text,
+                NULL::double precision AS rank
+            FROM artifact_text_units u
+            JOIN artifact_text_chunks c ON c.text_unit_id = u.id
+            JOIN artifacts a ON a.id = u.artifact_id
+            WHERE upper(a.ticker) = %s
+              AND a.artifact_type = 'transcript'
+              AND u.unit_type = 'transcript'
+              AND a.superseded_at IS NULL
+              AND COALESCE(u.fiscal_period_key, a.fiscal_period_key) = %s
+              AND (%s::timestamptz IS NULL OR a.published_at <= %s)
+            ORDER BY u.unit_ordinal, c.chunk_ordinal;
+            """,
+            (
+                _ticker(ticker),
+                fiscal_period_key,
+                asof,
+                asof,
+            ),
+        )
+        return [_turn(row) for row in cur.fetchall()]
+
+
 def search_transcript_turns(
     conn: psycopg.Connection,
     ticker: str,
