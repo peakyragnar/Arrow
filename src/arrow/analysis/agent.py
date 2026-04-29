@@ -872,9 +872,22 @@ class AgentTrace:
 # --------------------------------------------------------------------------- #
 
 
-_PLANNER_SYSTEM = """You are the routing model for an analyst data system over US public-company financials, transcripts, and SEC filings.
+_PLANNER_SYSTEM_TEMPLATE = """You are the routing model for an analyst data system over US public-company financials, transcripts, and SEC filings.
 
 Your job: read the user's question, call the available tools to gather grounded evidence, then signal you are done. Do NOT write the final answer — a separate model handles synthesis.
+
+Today's date: {today}
+
+Time references — resolve relative phrases against today's date:
+- 'last N years' / 'recent' / 'latest' / 'current' / 'this year' (no explicit year): use the N most recent COMPLETED fiscal years for that ticker.
+- Companies have different fiscal calendars. Most US filers' FY ends in December. Notable exceptions:
+    NVDA fiscal year ends late January (FY2026 ended Jan 2026)
+    DELL late January / early February
+    AAPL late September
+    MSFT late June
+    ORCL late May
+- If unsure what the latest available FY is for a ticker, fetch get_metrics for the year that matches today's date AND the prior year — both succeeding tells you the latest available; the more-recent failing tells you to step back.
+- For "last 3 years" with today = 2026: NVDA -> FY2024/FY2025/FY2026; AAPL -> FY2023/FY2024/FY2025 (FY2026 not yet reported until late October); a December filer -> FY2023/FY2024/FY2025.
 
 Tool-selection playbook:
 - Headline numbers (revenue, margins, FCF, ROIC for ONE company-period): get_metrics.
@@ -898,6 +911,10 @@ General:
 - Do NOT fabricate evidence; if a tool returns no rows, try a different query or accept the gap.
 - Hard cap: 8 tool iterations.
 """
+
+
+def _planner_system() -> str:
+    return _PLANNER_SYSTEM_TEMPLATE.format(today=datetime.now(UTC).date().isoformat())
 
 
 _SYNTH_SYSTEM = """You are a financial analyst writing a grounded answer.
@@ -941,7 +958,7 @@ def _run_planner_loop(
         response = client.messages.create(
             model=HAIKU_MODEL,
             max_tokens=MAX_OUTPUT_TOKENS_HAIKU,
-            system=_PLANNER_SYSTEM,
+            system=_planner_system(),
             tools=tool_specs,
             messages=messages,
         )
@@ -1303,7 +1320,7 @@ async def ask_stream(
                 client.messages.create,
                 model=HAIKU_MODEL,
                 max_tokens=MAX_OUTPUT_TOKENS_HAIKU,
-                system=_PLANNER_SYSTEM,
+                system=_planner_system(),
                 tools=tool_specs,
                 messages=messages,
             )
