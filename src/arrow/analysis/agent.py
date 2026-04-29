@@ -34,6 +34,7 @@ from arrow.retrieval.documents import get_section_chunks, list_documents
 from arrow.retrieval.facts import get_financial_facts, get_segment_facts
 from arrow.retrieval.metrics import get_metrics, metrics_view_name
 from arrow.retrieval.screens import (
+    count_universe_for_metric,
     get_latest_roic,
     list_companies,
     metric_value_kind,
@@ -415,6 +416,22 @@ def _tool_list_companies(conn: psycopg.Connection, params: dict[str, Any]) -> To
     )
 
 
+def _format_screen_citation(view_name: str, company_id: int, period_start: str, period_end: str) -> str:
+    """Format an M-citation, collapsing single-period windows to a clean form.
+
+    Matches get_metrics conventions when the screen window is one row, so the
+    popup lands in the existing single-row code path. Window form is reserved
+    for actual multi-row aggregates.
+    """
+    if view_name == "v_metrics_fy" and period_start == period_end:
+        return f"M:v_metrics_fy:{company_id}:FY{period_start}"
+    if view_name == "v_metrics_fy":
+        return f"M:v_metrics_fy:{company_id}:FY{period_start}_to_FY{period_end}"
+    if period_start == period_end:
+        return f"M:{view_name}:{company_id}:{period_start}"
+    return f"M:{view_name}:{company_id}:{period_start}_to_{period_end}"
+
+
 def _tool_screen_companies(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
     metric = params["metric"]
     if metric not in supported_metrics():
@@ -427,6 +444,7 @@ def _tool_screen_companies(conn: psycopg.Connection, params: dict[str, Any]) -> 
     n_years = int(params.get("n_years", 1))
     limit = int(params.get("limit", 10))
     sort_desc = bool(params.get("sort_desc", True))
+    universe_size = count_universe_for_metric(conn, metric=metric)
     screen_rows = screen_companies_by_metric(
         conn,
         metric=metric,
@@ -438,7 +456,7 @@ def _tool_screen_companies(conn: psycopg.Connection, params: dict[str, Any]) -> 
         return ToolResult(
             rows=[],
             evidence_ids=[],
-            summary=f"No companies matched the {metric} screen (insufficient coverage?).",
+            summary=f"No companies matched the {metric} screen (universe={universe_size}, insufficient coverage?).",
         )
     kind = metric_value_kind(metric)
     rows: list[dict[str, Any]] = []
@@ -458,17 +476,22 @@ def _tool_screen_companies(conn: psycopg.Connection, params: dict[str, Any]) -> 
             }
         )
         evidence_ids.append(
-            f"M:{r.view_name}:{r.company_id}:{r.period_start}_to_{r.period_end}"
+            _format_screen_citation(r.view_name, r.company_id, r.period_start, r.period_end)
         )
+    direction = "highest first" if sort_desc else "lowest first"
     label = (
         f"{metric} (single year)"
         if n_years <= 1
         else f"{metric} avg over last {n_years} years"
     )
+    summary = (
+        f"Top {len(rows)} of {universe_size} companies by {label} ({direction}). "
+        f"All {universe_size} ranked; only top {len(rows)} returned."
+    )
     return ToolResult(
         rows=rows,
         evidence_ids=evidence_ids,
-        summary=f"Top {len(rows)} companies by {label}.",
+        summary=summary,
     )
 
 

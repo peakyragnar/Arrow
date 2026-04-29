@@ -135,6 +135,24 @@ def screen_companies_by_metric(
     ]
 
 
+def count_universe_for_metric(conn: psycopg.Connection, *, metric: str) -> int:
+    """How many distinct tickers have at least one non-null value for this metric?
+
+    This is the size of the universe that ``screen_companies_by_metric``
+    actually ranks across (modulo coverage thresholds). The synthesis model
+    uses this to phrase rankings without unnecessary hedging.
+    """
+    if metric not in _METRIC_DEFS:
+        return 0
+    view, value_expr, _recency, _ppy, _kind = _METRIC_DEFS[metric]
+    rows = run_query(
+        conn,
+        sql=f"SELECT COUNT(DISTINCT company_id)::int AS n FROM {view} WHERE ({value_expr}) IS NOT NULL;",
+        params=(),
+    )
+    return rows[0]["n"] if rows else 0
+
+
 def list_companies(conn: psycopg.Connection) -> list[Company]:
     """Return every company in the universe ordered by ticker."""
     rows = run_query(
