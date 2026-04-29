@@ -2,21 +2,42 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 import psycopg
-from psycopg.rows import dict_row
 
+from arrow.retrieval._query import jsonable as _jsonable
+from arrow.retrieval._query import record_action
+from arrow.retrieval.companies import get_company, resolve_company_by_ticker
+from arrow.retrieval.documents import (
+    get_section_chunks,
+    get_text_unit_chunks,
+    list_documents,
+)
+from arrow.retrieval.facts import (
+    get_financial_facts,
+    get_segment_facts,
+    get_segment_value_index,
+)
+from arrow.retrieval.metrics import get_metrics, metrics_view_name
 from arrow.retrieval.transcripts import TranscriptTurn, search_transcript_turns
+from arrow.retrieval.types import (
+    ArtifactPeriod,
+    Company,
+    EvidenceChunk,
+    FinancialFact,
+    FiscalMetric,
+    Intent,
+    RuntimeTrace,
+    SegmentFact,
+)
 
 
 MDA_SECTION_KEYS = ("item_7_mda", "part1_item2_mda")
@@ -63,131 +84,6 @@ BOILERPLATE_PENALTIES = (
     (r"\bunfavorably affected\b", 10),
 )
 WEAK_EVIDENCE_SCORE = 12
-
-
-@dataclass(frozen=True)
-class Intent:
-    ticker: str
-    company_id: int
-    fiscal_year: int
-    fiscal_quarter: int | None
-    fiscal_period_key: str
-    period_type: str
-    topic: str
-    mode: str
-    source_question: str
-    asof: str | None = None
-
-
-@dataclass(frozen=True)
-class TraceAction:
-    label: str
-    params_hash: str
-    row_count: int
-    duration_ms: float
-    selected_ids: list[str] = field(default_factory=list)
-
-
-@dataclass
-class RuntimeTrace:
-    trace_id: str
-    surface: str
-    source_question: str
-    started_at: str
-    intent: dict[str, Any] | None = None
-    readiness: dict[str, Any] | None = None
-    recipe_name: str | None = None
-    actions: list[TraceAction] = field(default_factory=list)
-    synthesizer: str | None = None
-    verifier_status: str | None = None
-    gaps: list[str] = field(default_factory=list)
-    final_citations: list[str] = field(default_factory=list)
-
-    @classmethod
-    def start(cls, *, source_question: str, surface: str = "cli") -> "RuntimeTrace":
-        return cls(
-            trace_id=str(uuid4()),
-            surface=surface,
-            source_question=source_question,
-            started_at=datetime.now(UTC).isoformat(),
-        )
-
-
-@dataclass(frozen=True)
-class Company:
-    id: int
-    ticker: str
-    name: str
-    cik: int
-    fiscal_year_end_md: str
-
-
-@dataclass(frozen=True)
-class FiscalMetric:
-    ticker: str
-    company_id: int
-    fiscal_year: int
-    fiscal_period_label: str
-    fy_end: Any
-    revenue_fy: Decimal | None
-    gross_margin_fy: Decimal | None
-    operating_margin_fy: Decimal | None
-    cfo_fy: Decimal | None
-    capital_expenditures_fy: Decimal | None
-    fcf_fy: Decimal | None
-
-
-@dataclass(frozen=True)
-class FinancialFact:
-    fact_id: int
-    statement: str
-    concept: str
-    value: Decimal
-    unit: str
-    fiscal_period_label: str
-    period_end: Any
-
-
-@dataclass(frozen=True)
-class SegmentFact:
-    fact_id: int
-    dimension_type: str
-    dimension_key: str
-    dimension_label: str
-    value: Decimal
-    prior_value: Decimal | None
-    yoy_growth: Decimal | None
-    fiscal_period_label: str
-    period_end: Any
-
-
-@dataclass(frozen=True)
-class ArtifactPeriod:
-    artifact_id: int
-    artifact_type: str
-    fiscal_period_key: str | None
-    fiscal_period_label: str | None
-    period_type: str | None
-    period_end: Any
-    published_at: Any
-    source_document_id: str | None
-    accession_number: str | None
-
-
-@dataclass(frozen=True)
-class EvidenceChunk:
-    source_kind: str
-    artifact_id: int
-    chunk_id: int
-    chunk_ordinal: int
-    fiscal_period_key: str | None
-    published_at: Any
-    source_document_id: str | None
-    accession_number: str | None
-    unit_key: str
-    unit_title: str
-    heading_path: list[str]
-    text: str
 
 
 @dataclass(frozen=True)
@@ -246,100 +142,6 @@ class IntentError(ValueError):
     """Raised when v1 cannot resolve the question deterministically."""
 
 
-def _param_hash(params: Any) -> str:
-    payload = json.dumps(_jsonable(params), sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
-
-
-def _jsonable(value: Any) -> Any:
-    if isinstance(value, Decimal):
-        return str(value)
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if hasattr(value, "isoformat"):
-        return value.isoformat()
-    if isinstance(value, list):
-        return [_jsonable(v) for v in value]
-    if isinstance(value, tuple):
-        return [_jsonable(v) for v in value]
-    if isinstance(value, dict):
-        return {str(k): _jsonable(v) for k, v in value.items()}
-    if hasattr(value, "__dict__"):
-        return _jsonable(asdict(value))
-    return value
-
-
-def _query(
-    conn: psycopg.Connection,
-    trace: RuntimeTrace,
-    *,
-    label: str,
-    sql: str,
-    params: tuple[Any, ...],
-    selected_id_keys: tuple[str, ...] = (),
-) -> list[dict[str, Any]]:
-    started = time.perf_counter()
-    with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(sql, params)
-        rows = list(cur.fetchall())
-    duration_ms = (time.perf_counter() - started) * 1000
-    selected_ids: list[str] = []
-    for row in rows:
-        for key in selected_id_keys:
-            if row.get(key) is not None:
-                selected_ids.append(f"{key}:{row[key]}")
-    trace.actions.append(
-        TraceAction(
-            label=label,
-            params_hash=_param_hash(params),
-            row_count=len(rows),
-            duration_ms=round(duration_ms, 2),
-            selected_ids=selected_ids,
-        )
-    )
-    return rows
-
-
-def _search_transcript_revenue_turns(
-    conn: psycopg.Connection,
-    trace: RuntimeTrace,
-    intent: Intent,
-    *,
-    limit: int,
-) -> list[TranscriptTurn]:
-    fiscal_period_key = _transcript_evidence_period_key(intent)
-    started = time.perf_counter()
-    turns = search_transcript_turns(
-        conn,
-        intent.ticker,
-        TRANSCRIPT_REVENUE_QUERY,
-        fiscal_period_key=fiscal_period_key,
-        limit=limit,
-    )
-    duration_ms = (time.perf_counter() - started) * 1000
-    trace.actions.append(
-        TraceAction(
-            label="search_transcript_turns",
-            params_hash=_param_hash(
-                {
-                    "ticker": intent.ticker,
-                    "query": TRANSCRIPT_REVENUE_QUERY,
-                    "fiscal_period_key": fiscal_period_key,
-                    "limit": limit,
-                }
-            ),
-            row_count=len(turns),
-            duration_ms=round(duration_ms, 2),
-            selected_ids=[
-                f"chunk_id:{turn.chunk_id}"
-                for turn in turns
-                if turn.chunk_id is not None
-            ],
-        )
-    )
-    return turns
-
-
 def _period_label(fiscal_year: int, fiscal_quarter: int | None) -> str:
     if fiscal_quarter is None:
         return f"FY{fiscal_year}"
@@ -351,7 +153,7 @@ def _prior_period_label(intent: Intent) -> str:
 
 
 def _metrics_view_name(intent: Intent) -> str:
-    return "v_metrics_q" if intent.period_type == "quarter" else "v_metrics_fy"
+    return metrics_view_name(intent.period_type)
 
 
 def _transcript_evidence_period_key(intent: Intent) -> str:
@@ -362,10 +164,6 @@ def _transcript_evidence_period_key(intent: Intent) -> str:
 
 def _expects_mda_evidence(intent: Intent) -> bool:
     return not (intent.period_type == "quarter" and intent.fiscal_quarter == 4)
-
-
-def _one(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
-    return rows[0] if rows else None
 
 
 def _money(value: Decimal | None) -> str:
@@ -442,67 +240,6 @@ def _best_evidence_score(chunks: list[EvidenceChunk]) -> int | None:
     return max(_evidence_score(chunk) for chunk in chunks)
 
 
-def _metric(row: dict[str, Any] | None) -> FiscalMetric | None:
-    if row is None:
-        return None
-    return FiscalMetric(**row)
-
-
-def _company(row: dict[str, Any] | None) -> Company | None:
-    if row is None:
-        return None
-    return Company(**row)
-
-
-def _metrics_sql(intent: Intent) -> str:
-    if intent.period_type == "quarter":
-        return """
-            SELECT
-                ticker,
-                company_id,
-                fiscal_year,
-                fiscal_period_label,
-                period_end AS fy_end,
-                revenue AS revenue_fy,
-                gross_margin AS gross_margin_fy,
-                operating_margin AS operating_margin_fy,
-                cfo AS cfo_fy,
-                capital_expenditures AS capital_expenditures_fy,
-                cfo + capital_expenditures AS fcf_fy
-            FROM v_metrics_q
-            WHERE company_id = %s
-              AND fiscal_year = %s
-              AND fiscal_quarter = %s
-            ORDER BY period_end DESC
-            LIMIT 1;
-        """
-    return """
-        SELECT
-            ticker,
-            company_id,
-            fiscal_year,
-            fiscal_period_label,
-            fy_end,
-            revenue_fy,
-            gross_margin_fy,
-            operating_margin_fy,
-            cfo_fy,
-            capital_expenditures_fy,
-            cfo_fy + capital_expenditures_fy AS fcf_fy
-        FROM v_metrics_fy
-        WHERE company_id = %s
-          AND fiscal_year = %s
-        ORDER BY fy_end DESC
-        LIMIT 1;
-    """
-
-
-def _metrics_params(intent: Intent, *, fiscal_year: int) -> tuple[Any, ...]:
-    if intent.period_type == "quarter":
-        return (intent.company_id, fiscal_year, intent.fiscal_quarter)
-    return (intent.company_id, fiscal_year)
-
-
 def _growth(current: Decimal | None, prior: Decimal | None) -> Decimal | None:
     if current is None or prior is None or prior == 0:
         return None
@@ -536,28 +273,27 @@ def parse_revenue_driver_intent(
     if not ticker_candidates:
         raise IntentError("v1 needs an explicit uppercase ticker, e.g. PLTR.")
 
-    rows = _query(
-        conn,
+    started = time.perf_counter()
+    matches = resolve_company_by_ticker(
+        conn, ticker_candidates=ticker_candidates,
+    )
+    record_action(
         trace,
         label="resolve_company",
-        sql="""
-            SELECT id, ticker, name, cik, fiscal_year_end_md
-            FROM companies
-            WHERE upper(ticker) = ANY(%s)
-            ORDER BY id;
-        """,
-        params=([t.upper() for t in ticker_candidates],),
-        selected_id_keys=("id",),
+        params={"ticker_candidates": [t.upper() for t in ticker_candidates]},
+        started=started,
+        rows=matches,
+        selected_ids=[f"id:{c.id}" for c in matches],
     )
-    if not rows:
+    if not matches:
         raise IntentError(f"No company found for ticker candidates: {', '.join(ticker_candidates)}.")
-    if len(rows) > 1:
-        tickers = ", ".join(row["ticker"] for row in rows)
+    if len(matches) > 1:
+        tickers = ", ".join(c.ticker for c in matches)
         raise IntentError(f"v1 needs one ticker; resolved multiple: {tickers}.")
-    company = rows[0]
+    company = matches[0]
     intent = Intent(
-        ticker=company["ticker"],
-        company_id=company["id"],
+        ticker=company.ticker,
+        company_id=company.id,
         fiscal_year=fiscal_year,
         fiscal_quarter=fiscal_quarter,
         fiscal_period_key=fiscal_period_key,
@@ -576,6 +312,37 @@ def parse_revenue_driver_intent(
     return intent
 
 
+def _traced(
+    trace: RuntimeTrace,
+    *,
+    label: str,
+    params: dict[str, Any],
+    selected_id_fn=lambda result: [],
+):
+    """Decorator-light helper: time a primitive call and append a TraceAction."""
+    started = time.perf_counter()
+
+    def finish(result):
+        rows: list[Any]
+        if result is None:
+            rows = []
+        elif isinstance(result, list):
+            rows = result
+        else:
+            rows = [result]
+        record_action(
+            trace,
+            label=label,
+            params=params,
+            started=started,
+            rows=rows,
+            selected_ids=selected_id_fn(result),
+        )
+        return result
+
+    return finish
+
+
 def build_revenue_driver_packet(
     conn: psycopg.Connection,
     intent: Intent,
@@ -583,332 +350,219 @@ def build_revenue_driver_packet(
     *,
     limit_chunks: int = 3,
 ) -> RevenueDriverPacket:
-    company = _company(
-        _one(
-            _query(
-                conn,
-                trace,
-                label="get_company",
-                sql="""
-                    SELECT id, ticker, name, cik, fiscal_year_end_md
-                    FROM companies
-                    WHERE id = %s;
-                """,
-                params=(intent.company_id,),
-                selected_id_keys=("id",),
-            )
+    company = _traced(
+        trace,
+        label="get_company",
+        params={"company_id": intent.company_id},
+        selected_id_fn=lambda c: [f"id:{c.id}"] if c else [],
+    )(get_company(conn, company_id=intent.company_id))
+
+    metric_params_current = {
+        "company_id": intent.company_id,
+        "fiscal_year": intent.fiscal_year,
+        "fiscal_quarter": intent.fiscal_quarter,
+        "period_type": intent.period_type,
+    }
+    current_metrics: FiscalMetric | None = _traced(
+        trace,
+        label=f"get_current_{intent.period_type}_metrics",
+        params=metric_params_current,
+    )(
+        get_metrics(
+            conn,
+            company_id=intent.company_id,
+            fiscal_year=intent.fiscal_year,
+            fiscal_quarter=intent.fiscal_quarter,
+            period_type=intent.period_type,
         )
     )
-    current_metrics = _metric(
-        _one(
-            _query(
-                conn,
-                trace,
-                label=f"get_current_{intent.period_type}_metrics",
-                sql=_metrics_sql(intent),
-                params=_metrics_params(intent, fiscal_year=intent.fiscal_year),
-            )
+    metric_params_prior = {**metric_params_current, "fiscal_year": intent.fiscal_year - 1}
+    prior_metrics: FiscalMetric | None = _traced(
+        trace,
+        label=f"get_prior_{intent.period_type}_metrics",
+        params=metric_params_prior,
+    )(
+        get_metrics(
+            conn,
+            company_id=intent.company_id,
+            fiscal_year=intent.fiscal_year - 1,
+            fiscal_quarter=intent.fiscal_quarter,
+            period_type=intent.period_type,
         )
     )
-    prior_metrics = _metric(
-        _one(
-            _query(
-                conn,
-                trace,
-                label=f"get_prior_{intent.period_type}_metrics",
-                sql=_metrics_sql(intent),
-                params=_metrics_params(intent, fiscal_year=intent.fiscal_year - 1),
-            )
+
+    fact_concepts = ("revenue", "gross_profit", "operating_income", "cfo", "capital_expenditures")
+    current_facts: list[FinancialFact] = _traced(
+        trace,
+        label="get_current_fact_ids",
+        params={**metric_params_current, "concepts": list(fact_concepts)},
+        selected_id_fn=lambda facts: [f"fact_id:{f.fact_id}" for f in facts],
+    )(
+        get_financial_facts(
+            conn,
+            company_id=intent.company_id,
+            fiscal_year=intent.fiscal_year,
+            fiscal_quarter=intent.fiscal_quarter,
+            period_type=intent.period_type,
+            concepts=fact_concepts,
         )
     )
-    current_facts = [
-        FinancialFact(**row)
-        for row in _query(
+    prior_facts: list[FinancialFact] = _traced(
+        trace,
+        label="get_prior_fact_ids",
+        params={**metric_params_prior, "concepts": list(fact_concepts)},
+        selected_id_fn=lambda facts: [f"fact_id:{f.fact_id}" for f in facts],
+    )(
+        get_financial_facts(
             conn,
-            trace,
-            label="get_current_fact_ids",
-            sql="""
-                SELECT
-                    id AS fact_id,
-                    statement,
-                    concept,
-                    value,
-                    unit,
-                    fiscal_period_label,
-                    period_end
-                FROM financial_facts
-                WHERE company_id = %s
-                  AND fiscal_year = %s
-                  AND fiscal_quarter IS NOT DISTINCT FROM %s
-                  AND period_type = %s
-                  AND dimension_type IS NULL
-                  AND concept IN ('revenue', 'gross_profit', 'operating_income', 'cfo', 'capital_expenditures')
-                  AND superseded_at IS NULL
-                ORDER BY concept;
-            """,
-            params=(
-                intent.company_id,
-                intent.fiscal_year,
-                intent.fiscal_quarter,
-                intent.period_type,
-            ),
-            selected_id_keys=("fact_id",),
+            company_id=intent.company_id,
+            fiscal_year=intent.fiscal_year - 1,
+            fiscal_quarter=intent.fiscal_quarter,
+            period_type=intent.period_type,
+            concepts=fact_concepts,
         )
-    ]
-    prior_facts = [
-        FinancialFact(**row)
-        for row in _query(
+    )
+
+    artifact_periods: list[ArtifactPeriod] = _traced(
+        trace,
+        label="list_period_artifacts",
+        params={
+            "company_id": intent.company_id,
+            "period_type": intent.period_type,
+            "fiscal_year": intent.fiscal_year,
+            "fiscal_period_key": intent.fiscal_period_key,
+        },
+        selected_id_fn=lambda artifacts: [f"artifact_id:{a.artifact_id}" for a in artifacts],
+    )(
+        list_documents(
             conn,
-            trace,
-            label="get_prior_fact_ids",
-            sql="""
-                SELECT
-                    id AS fact_id,
-                    statement,
-                    concept,
-                    value,
-                    unit,
-                    fiscal_period_label,
-                    period_end
-                FROM financial_facts
-                WHERE company_id = %s
-                  AND fiscal_year = %s
-                  AND fiscal_quarter IS NOT DISTINCT FROM %s
-                  AND period_type = %s
-                  AND dimension_type IS NULL
-                  AND concept IN ('revenue', 'gross_profit', 'operating_income', 'cfo', 'capital_expenditures')
-                  AND superseded_at IS NULL
-                ORDER BY concept;
-            """,
-            params=(
-                intent.company_id,
-                intent.fiscal_year - 1,
-                intent.fiscal_quarter,
-                intent.period_type,
-            ),
-            selected_id_keys=("fact_id",),
+            company_id=intent.company_id,
+            period_type=intent.period_type,
+            fiscal_year=intent.fiscal_year,
+            fiscal_period_key=intent.fiscal_period_key,
         )
-    ]
-    artifact_periods = [
-        ArtifactPeriod(**row)
-        for row in _query(
-            conn,
-            trace,
-            label="list_period_artifacts",
-            sql="""
-                SELECT
-                    a.id AS artifact_id,
-                    a.artifact_type,
-                    a.fiscal_period_key,
-                    a.fiscal_period_label,
-                    a.period_type,
-                    a.period_end,
-                    a.published_at,
-                    a.source_document_id,
-                    a.accession_number
-                FROM artifacts a
-                WHERE a.company_id = %s
-                  AND (
-                        (%s = 'annual' AND a.fiscal_year = %s)
-                        OR (%s = 'quarter' AND a.fiscal_period_key = %s)
-                  )
-                  AND a.artifact_type IN ('10k', '10q', '8k', 'press_release', 'transcript')
-                  AND a.superseded_at IS NULL
-                ORDER BY
-                    CASE WHEN a.period_type = 'annual' THEN 0 ELSE 1 END,
-                    a.published_at DESC NULLS LAST,
-                    a.id DESC;
-            """,
-            params=(
-                intent.company_id,
-                intent.period_type,
-                intent.fiscal_year,
-                intent.period_type,
-                intent.fiscal_period_key,
-            ),
-            selected_id_keys=("artifact_id",),
-        )
-    ]
-    current_segment_rows = _query(
-        conn,
+    )
+
+    current_segment_facts = _traced(
         trace,
         label="get_segment_revenue",
-        sql="""
-            SELECT
-                id AS fact_id,
-                dimension_type,
-                dimension_key,
-                dimension_label,
-                value,
-                fiscal_period_label,
-                period_end
-            FROM financial_facts
-            WHERE company_id = %s
-              AND fiscal_year = %s
-              AND fiscal_quarter IS NOT DISTINCT FROM %s
-              AND period_type = %s
-              AND statement = 'segment'
-              AND concept = 'revenue'
-              AND superseded_at IS NULL
-            ORDER BY dimension_type, value DESC;
-        """,
-        params=(
-            intent.company_id,
-            intent.fiscal_year,
-            intent.fiscal_quarter,
-            intent.period_type,
-        ),
-        selected_id_keys=("fact_id",),
+        params=metric_params_current,
+        selected_id_fn=lambda facts: [f"fact_id:{f.fact_id}" for f in facts],
+    )(
+        get_segment_facts(
+            conn,
+            company_id=intent.company_id,
+            fiscal_year=intent.fiscal_year,
+            fiscal_quarter=intent.fiscal_quarter,
+            period_type=intent.period_type,
+        )
     )
-    prior_segment_rows = _query(
-        conn,
+    prior_segment_index = _traced(
         trace,
         label="get_prior_segment_revenue",
-        sql="""
-            SELECT
-                dimension_type,
-                dimension_key,
-                value
-            FROM financial_facts
-            WHERE company_id = %s
-              AND fiscal_year = %s
-              AND fiscal_quarter IS NOT DISTINCT FROM %s
-              AND period_type = %s
-              AND statement = 'segment'
-              AND concept = 'revenue'
-              AND superseded_at IS NULL;
-        """,
-        params=(
-            intent.company_id,
-            intent.fiscal_year - 1,
-            intent.fiscal_quarter,
-            intent.period_type,
-        ),
+        params=metric_params_prior,
+    )(
+        get_segment_value_index(
+            conn,
+            company_id=intent.company_id,
+            fiscal_year=intent.fiscal_year - 1,
+            fiscal_quarter=intent.fiscal_quarter,
+            period_type=intent.period_type,
+        )
     )
-    prior_segments = {
-        (row["dimension_type"], row["dimension_key"]): row["value"]
-        for row in prior_segment_rows
-    }
-    segment_facts = []
-    for row in current_segment_rows:
-        prior_value = prior_segments.get((row["dimension_type"], row["dimension_key"]))
+    segment_facts: list[SegmentFact] = []
+    for fact in current_segment_facts:
+        prior_value = prior_segment_index.get((fact.dimension_type, fact.dimension_key))
         segment_facts.append(
             SegmentFact(
-                fact_id=row["fact_id"],
-                dimension_type=row["dimension_type"],
-                dimension_key=row["dimension_key"],
-                dimension_label=row["dimension_label"],
-                value=row["value"],
+                fact_id=fact.fact_id,
+                dimension_type=fact.dimension_type,
+                dimension_key=fact.dimension_key,
+                dimension_label=fact.dimension_label,
+                value=fact.value,
                 prior_value=prior_value,
-                yoy_growth=_growth(row["value"], prior_value),
-                fiscal_period_label=row["fiscal_period_label"],
-                period_end=row["period_end"],
+                yoy_growth=_growth(fact.value, prior_value),
+                fiscal_period_label=fact.fiscal_period_label,
+                period_end=fact.period_end,
             )
         )
+
     candidate_limit = max(limit_chunks * 8, 12)
-    mda_candidates = [
-        EvidenceChunk(source_kind="mda", **row)
-        for row in _query(
-            conn,
-            trace,
-            label="get_mda_chunk_candidates",
-            sql="""
-                SELECT
-                    a.id AS artifact_id,
-                    a.accession_number,
-                    a.source_document_id,
-                    a.published_at,
-                    s.fiscal_period_key,
-                    s.section_key AS unit_key,
-                    s.section_title AS unit_title,
-                    c.id AS chunk_id,
-                    c.chunk_ordinal,
-                    c.heading_path,
-                    c.text
-                FROM artifact_sections s
-                JOIN artifact_section_chunks c ON c.section_id = s.id
-                JOIN artifacts a ON a.id = s.artifact_id
-                WHERE s.company_id = %s
-                  AND s.fiscal_period_key = %s
-                  AND s.section_key = ANY(%s)
-                  AND a.superseded_at IS NULL
-                ORDER BY
-                    a.published_at DESC NULLS LAST,
-                    CASE s.section_key WHEN 'item_7_mda' THEN 0 ELSE 1 END,
-                    c.chunk_ordinal
-                LIMIT %s;
-            """,
-            params=(intent.company_id, intent.fiscal_period_key, list(MDA_SECTION_KEYS), candidate_limit),
-            selected_id_keys=("artifact_id", "chunk_id"),
-        )
-    ]
-    mda_chunks = _rank_evidence_chunks(mda_candidates, limit=limit_chunks)
-    fy_end = None if current_metrics is None else current_metrics.fy_end
-    earnings_candidates = [
-        EvidenceChunk(source_kind="earnings_release", **row)
-        for row in _query(
-            conn,
-            trace,
-            label="get_earnings_release_chunk_candidates",
-            sql="""
-                SELECT
-                    a.id AS artifact_id,
-                    a.accession_number,
-                    a.source_document_id,
-                    a.published_at,
-                    COALESCE(u.fiscal_period_key, a.fiscal_period_key) AS fiscal_period_key,
-                    u.unit_key,
-                    u.unit_title,
-                    c.id AS chunk_id,
-                    c.chunk_ordinal,
-                    c.heading_path,
-                    c.text
-                FROM artifact_text_units u
-                JOIN artifact_text_chunks c ON c.text_unit_id = u.id
-                JOIN artifacts a ON a.id = u.artifact_id
-                WHERE (u.company_id = %s OR a.company_id = %s)
-                  AND u.unit_type = 'press_release'
-                  AND (
-                        COALESCE(u.fiscal_period_key, a.fiscal_period_key) = %s
-                        OR (
-                            %s = 'annual'
-                            AND
-                            a.period_type = 'quarter'
-                            AND a.fiscal_year = %s
-                            AND a.fiscal_quarter = 4
-                            AND a.period_end = %s
-                        )
-                  )
-                  AND a.superseded_at IS NULL
-                ORDER BY
-                    CASE
-                        WHEN COALESCE(u.fiscal_period_key, a.fiscal_period_key) = %s THEN 0
-                        ELSE 1
-                    END,
-                    a.published_at DESC NULLS LAST,
-                    u.unit_ordinal,
-                    c.chunk_ordinal
-                LIMIT %s;
-            """,
-            params=(
-                intent.company_id,
-                intent.company_id,
-                intent.fiscal_period_key,
-                intent.period_type,
-                intent.fiscal_year,
-                fy_end,
-                intent.fiscal_period_key,
-                candidate_limit,
-            ),
-            selected_id_keys=("artifact_id", "chunk_id"),
-        )
-    ]
-    earnings_chunks = _rank_evidence_chunks(earnings_candidates, limit=limit_chunks)
-    transcript_turns = _search_transcript_revenue_turns(
-        conn,
+    mda_candidates: list[EvidenceChunk] = _traced(
         trace,
-        intent,
-        limit=limit_chunks,
+        label="get_mda_chunk_candidates",
+        params={
+            "company_id": intent.company_id,
+            "fiscal_period_key": intent.fiscal_period_key,
+            "section_keys": list(MDA_SECTION_KEYS),
+            "limit": candidate_limit,
+        },
+        selected_id_fn=lambda chunks: [
+            t for c in chunks for t in (f"artifact_id:{c.artifact_id}", f"chunk_id:{c.chunk_id}")
+        ],
+    )(
+        get_section_chunks(
+            conn,
+            company_id=intent.company_id,
+            fiscal_period_key=intent.fiscal_period_key,
+            section_keys=MDA_SECTION_KEYS,
+            source_kind="mda",
+            limit=candidate_limit,
+        )
+    )
+    mda_chunks = _rank_evidence_chunks(mda_candidates, limit=limit_chunks)
+
+    fy_end = None if current_metrics is None else current_metrics.fy_end
+    annual_q4_fallback = (
+        (intent.fiscal_year, fy_end) if intent.period_type == "annual" else None
+    )
+    earnings_candidates: list[EvidenceChunk] = _traced(
+        trace,
+        label="get_earnings_release_chunk_candidates",
+        params={
+            "company_id": intent.company_id,
+            "fiscal_period_key": intent.fiscal_period_key,
+            "unit_type": "press_release",
+            "annual_q4_fallback": annual_q4_fallback,
+            "limit": candidate_limit,
+        },
+        selected_id_fn=lambda chunks: [
+            t for c in chunks for t in (f"artifact_id:{c.artifact_id}", f"chunk_id:{c.chunk_id}")
+        ],
+    )(
+        get_text_unit_chunks(
+            conn,
+            company_id=intent.company_id,
+            fiscal_period_key=intent.fiscal_period_key,
+            unit_type="press_release",
+            source_kind="earnings_release",
+            annual_q4_fallback=annual_q4_fallback,
+            limit=candidate_limit,
+        )
+    )
+    earnings_chunks = _rank_evidence_chunks(earnings_candidates, limit=limit_chunks)
+
+    transcript_period_key = _transcript_evidence_period_key(intent)
+    transcript_turns: list[TranscriptTurn] = _traced(
+        trace,
+        label="search_transcript_turns",
+        params={
+            "ticker": intent.ticker,
+            "query": TRANSCRIPT_REVENUE_QUERY,
+            "fiscal_period_key": transcript_period_key,
+            "limit": limit_chunks,
+        },
+        selected_id_fn=lambda turns: [
+            f"chunk_id:{t.chunk_id}" for t in turns if t.chunk_id is not None
+        ],
+    )(
+        search_transcript_turns(
+            conn,
+            intent.ticker,
+            TRANSCRIPT_REVENUE_QUERY,
+            fiscal_period_key=transcript_period_key,
+            limit=limit_chunks,
+        )
     )
     readiness, gaps = _ground_gaps(
         intent=intent,
