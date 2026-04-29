@@ -104,7 +104,13 @@ def fetch_annual_and_priors(
     """Return (annual_by_concept, sum_other_quarters_by_concept,
     annual_raw_response_id). The "other quarters" are the three quarters
     that are NOT the target — these are assumed correct, and the target
-    quarter's value is derived as ``annual − sum(other quarters)``."""
+    quarter's value is derived as ``annual − sum(other quarters)``.
+
+    Reads current-truth rows (``superseded_at IS NULL``) regardless of
+    extraction_version. If the XBRL audit has amended a prior quarter's
+    value (e.g. ``xbrl-amendment-is-v1``), that amended value is the one
+    the steward and downstream views see, so it's the value we sum here.
+    """
     annual: dict[str, Decimal] = {}
     annual_raw_response_id: int | None = None
     with conn.cursor() as cur:
@@ -116,11 +122,10 @@ def fetch_annual_and_priors(
               AND fiscal_year = %s
               AND period_type = 'annual'
               AND statement = 'income_statement'
-              AND extraction_version = %s
               AND superseded_at IS NULL
               AND dimension_type IS NULL
             """,
-            (company_id, fiscal_year, SOURCE_EXTRACTION_VERSION),
+            (company_id, fiscal_year),
         )
         for concept, value, raw_id in cur.fetchall():
             annual[concept] = value
@@ -138,12 +143,11 @@ def fetch_annual_and_priors(
               AND period_type = 'quarter'
               AND fiscal_quarter = ANY(%s)
               AND statement = 'income_statement'
-              AND extraction_version = %s
               AND superseded_at IS NULL
               AND dimension_type IS NULL
             GROUP BY concept
             """,
-            (company_id, fiscal_year, other_quarters, SOURCE_EXTRACTION_VERSION),
+            (company_id, fiscal_year, other_quarters),
         )
         for concept, total in cur.fetchall():
             sums[concept] = total
@@ -212,20 +216,18 @@ def main() -> None:
             print(f"No current Q{target_q} IS rows found for {ticker} FY{fiscal_year}.")
             return
 
-        already_derived = [r for r in current_q if r["extraction_version"] == DERIVED_EXTRACTION_VERSION]
-        if already_derived:
-            print(
-                f"{ticker} FY{fiscal_year} Q{target_q} already at "
-                f"{DERIVED_EXTRACTION_VERSION} ({len(already_derived)} rows). "
-                "Nothing to do."
-            )
-            return
-
-        # Build the corrected row plan
+        # Build the corrected row plan. Per-concept guards:
+        # - Only target rows still at SOURCE_EXTRACTION_VERSION (raw FMP).
+        #   Rows already at xbrl-amendment-is-v1 or arrow-derived-q4-v1
+        #   have been corrected via another path; don't double-touch them.
+        # - Skip when derived == old (no drift → supersession would be a
+        #   no-op).
         plan: list[dict] = []
         for row in current_q:
             concept = row["concept"]
             if concept not in SUMMABLE_FLOW_CONCEPTS:
+                continue
+            if row["extraction_version"] != SOURCE_EXTRACTION_VERSION:
                 continue
             other_sum = sums.get(concept, Decimal(0))
             if other_sum == 0:
@@ -235,6 +237,8 @@ def main() -> None:
             if annual_val is None:
                 continue
             derived = Decimal(annual_val) - Decimal(other_sum)
+            if derived == Decimal(row["value"]):
+                continue
             plan.append({
                 "old_id": row["id"],
                 "concept": concept,
