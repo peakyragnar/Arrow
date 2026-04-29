@@ -105,7 +105,11 @@ mismatched AS (
     AND ff.period_end <> can.canon_pe
 )
 UPDATE financial_facts ff
-SET period_end = m.new_pe
+SET period_end            = m.new_pe,
+    calendar_year         = EXTRACT(YEAR FROM m.new_pe)::int,
+    calendar_quarter      = EXTRACT(QUARTER FROM m.new_pe)::int,
+    calendar_period_label = 'CY' || EXTRACT(YEAR FROM m.new_pe)::int
+                            || ' Q' || EXTRACT(QUARTER FROM m.new_pe)::int
 FROM mismatched m
 WHERE ff.id = m.id
 RETURNING ff.id;
