@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 
 from arrow.db.connection import get_conn
+from arrow.ingest.common.runs import close_succeeded, open_run
 from arrow.normalize.periods.derive import derive_calendar_period
 
 
@@ -108,10 +109,27 @@ def main() -> None:
             print("\nDry run. Pass --apply to write.")
             return
 
+        tickers_in_scope = sorted({t for t in by_ticker.keys() if t and t != "?"})
+        run_id = open_run(
+            conn,
+            run_kind="manual",
+            vendor="arrow",
+            ticker_scope=tickers_in_scope or None,
+        )
         with conn.transaction(), conn.cursor() as cur3:
             for new_y, new_q, new_label, rid, *_ in plan:
                 cur3.execute(UPDATE_SQL, (new_y, new_q, new_label, rid))
-        print(f"\nUpdated {len(plan)} rows.")
+        close_succeeded(
+            conn,
+            run_id,
+            counts={
+                "action_kind": "repair_calendar_fields",
+                "tickers": tickers_in_scope,
+                "rows_updated": len(plan),
+                "rows_per_ticker": by_ticker,
+            },
+        )
+        print(f"\nUpdated {len(plan)} rows. ingest_run_id={run_id}")
 
 
 if __name__ == "__main__":

@@ -36,10 +36,16 @@ from typing import Any
 
 import psycopg
 
+from datetime import datetime, timezone
+
 from arrow.steward.actions import (
     StewardActionError,
     open_finding,
     resolve_finding,
+)
+from arrow.steward.provenance import (
+    find_resolving_runs,
+    format_resolution_note,
 )
 from arrow.steward.registry import (
     Check,
@@ -207,7 +213,8 @@ def _auto_resolve_cleared(
     with ticker in that set. Universe runs consider all open findings of
     the check.
     """
-    sql = ["SELECT id, fingerprint FROM data_quality_findings",
+    sql = ["SELECT id, fingerprint, ticker, fiscal_period_key",
+           "FROM data_quality_findings",
            "WHERE status = 'open' AND source_check = %s"]
     params: list[Any] = [check_name]
 
@@ -220,14 +227,23 @@ def _auto_resolve_cleared(
         rows = cur.fetchall()
 
     resolved_ids: list[int] = []
-    for row_id, fp in rows:
+    now = datetime.now(timezone.utc)
+    base = f"cleared by {check_name} (no longer surfacing)"
+    for row_id, fp, ticker, fpk in rows:
         if fp in produced_fingerprints:
             continue
         try:
-            resolve_finding(
-                conn, row_id, actor=actor,
-                note=f"cleared by {check_name} (no longer surfacing)",
+            # Correlate with recent operator runs so the resolution note
+            # carries provenance instead of just "cleared by check".
+            runs = find_resolving_runs(
+                conn,
+                ticker=ticker,
+                fiscal_period_key=fpk,
+                at=now,
+                window_minutes=60,
             )
+            note = format_resolution_note(base, runs)
+            resolve_finding(conn, row_id, actor=actor, note=note)
             resolved_ids.append(row_id)
         except StewardActionError:
             # Race: someone else closed it between our SELECT and resolve.

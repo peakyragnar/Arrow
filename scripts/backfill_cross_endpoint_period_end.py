@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 
 from arrow.db.connection import get_conn
+from arrow.ingest.common.runs import close_succeeded, open_run
 
 
 TRUSTED_VERSIONS = ("fmp-employees-v1", "fmp-segments-v1")
@@ -151,10 +152,27 @@ def main() -> None:
             print("\nDry run. Pass --apply to write.")
             return
 
+        tickers_in_scope = sorted({row[0] for row in preview})
+        run_id = open_run(
+            conn,
+            run_kind="manual",
+            vendor="arrow",
+            ticker_scope=tickers_in_scope,
+        )
         cur.execute(UPDATE_SQL, (list(TRUSTED_VERSIONS), list(TARGET_VERSIONS)))
         updated = cur.rowcount
         conn.commit()
-        print(f"\nUpdated {updated} rows.")
+        close_succeeded(
+            conn,
+            run_id,
+            counts={
+                "action_kind": "backfill_cross_endpoint_period_end",
+                "tickers": tickers_in_scope,
+                "rows_updated": updated,
+                "groups_updated": len(preview),
+            },
+        )
+        print(f"\nUpdated {updated} rows. ingest_run_id={run_id}")
 
 
 if __name__ == "__main__":
