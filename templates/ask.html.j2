@@ -142,6 +142,25 @@
     }
     .answer-meta .verifier-verified { color: var(--pos); }
     .answer-meta .verifier-unverified { color: var(--neg); }
+    .answer-meta .warnings-tag {
+      color: #f59e0b;
+      cursor: help;
+    }
+    .warnings-list {
+      background: #1f1a0a;
+      border: 1px solid #5a4716;
+      border-radius: 4px;
+      padding: 8px 12px;
+      margin: 8px 0 0 0;
+      font-size: 11.5px;
+      color: #f5cf7a;
+    }
+    .warnings-list .warning {
+      padding: 2px 0;
+    }
+    .warnings-list .warning::before {
+      content: "⚠ ";
+    }
     .trace-panel {
       background: var(--change-bg);
       border: 1px solid var(--border);
@@ -270,12 +289,15 @@
 
     <div class="answer-meta" id="answer-meta" style="display:none">
       <span id="verifier-status"></span>
+      <span id="warnings-tag" style="display:none"></span>
       <span id="duration-summary"></span>
       <span id="token-summary"></span>
       <span id="trace-id"></span>
     </div>
 
     <div class="answer-box" id="answer-box" style="display:none"></div>
+
+    <div class="warnings-list" id="warnings-list" style="display:none"></div>
 
     <details class="trace-panel" id="trace-panel" style="display:none; margin-top:16px">
       <summary>Trace details</summary>
@@ -308,6 +330,8 @@
   const durationSummary = document.getElementById('duration-summary');
   const tokenSummary = document.getElementById('token-summary');
   const traceIdEl = document.getElementById('trace-id');
+  const warningsTag = document.getElementById('warnings-tag');
+  const warningsList = document.getElementById('warnings-list');
   const tracePanel = document.getElementById('trace-panel');
   const traceToolsBody = document.querySelector('#trace-tools tbody');
   const traceModelsBody = document.querySelector('#trace-models tbody');
@@ -338,6 +362,10 @@
     tracePanel.style.display = 'none';
     traceToolsBody.innerHTML = '';
     traceModelsBody.innerHTML = '';
+    warningsTag.style.display = 'none';
+    warningsTag.textContent = '';
+    warningsList.style.display = 'none';
+    warningsList.innerHTML = '';
   }
 
   // Render the answer with [F:..]/[T:..]/[S:..]/[M:..]/[A:..] citations as
@@ -567,6 +595,16 @@
           if (ev.issues && ev.issues.length) {
             verifierStatus.title = ev.issues.join('\n');
           }
+        }
+        if (ev.warnings && ev.warnings.length) {
+          warningsTag.textContent = `⚠ ${ev.warnings.length} warning${ev.warnings.length === 1 ? '' : 's'}`;
+          warningsTag.title = ev.warnings.join('\n');
+          warningsTag.className = 'warnings-tag';
+          warningsTag.style.display = 'inline';
+          warningsList.innerHTML = ev.warnings.map(
+            w => `<div class="warning">${escapeHtml(w)}</div>`
+          ).join('');
+          warningsList.style.display = 'block';
         }
         answerMeta.style.display = 'flex';
         break;

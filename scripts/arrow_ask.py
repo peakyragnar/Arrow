@@ -43,6 +43,10 @@ def _print_trace(trace) -> None:
     if trace.verifier_issues:
         for issue in trace.verifier_issues:
             print(f"  ! {issue}")
+    if trace.verifier_warnings:
+        print(f"warnings ({len(trace.verifier_warnings)}):")
+        for w in trace.verifier_warnings:
+            print(f"  ⚠ {w}")
 
     print(f"\nmodel calls ({len(trace.model_calls)}):")
     for mc in trace.model_calls:

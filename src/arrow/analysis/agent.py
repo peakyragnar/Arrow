@@ -830,6 +830,7 @@ class ToolExecution:
     evidence_ids: list[str]
     error: str | None
     cited_in_answer: bool = False
+    rows: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -855,6 +856,7 @@ class AgentTrace:
     citations: list[str] = field(default_factory=list)
     verifier_status: str | None = None
     verifier_issues: list[str] = field(default_factory=list)
+    verifier_warnings: list[str] = field(default_factory=list)
     error: str | None = None
 
     def write(self, out_dir: Path | None = None) -> Path:
@@ -1007,6 +1009,7 @@ def _run_planner_loop(
                     row_count=len(result.rows),
                     evidence_ids=result.evidence_ids,
                     error=result.error,
+                    rows=result.rows,
                 )
                 executions.append(exec_record)
                 tool_results_content.append(
@@ -1130,6 +1133,191 @@ def _mark_cited_executions(executions: list[ToolExecution], citations: list[str]
             execution.cited_in_answer = True
 
 
+# --------------------------------------------------------------------------- #
+# Soft verification — numeric and quoted-text checks beyond citation-existence.
+# These produce warnings that surface in the trace but do NOT flip the
+# verified/unverified status. Use them to spot misread numbers or invented
+# quotes; the citation verifier remains the load-bearing invariant.
+# --------------------------------------------------------------------------- #
+
+
+_DOLLAR_RE = re.compile(
+    r"\$\s*(-?\d{1,3}(?:,\d{3})*(?:\.\d+)?|\-?\d+(?:\.\d+)?)\s*([BMK]|billion|million|thousand)?",
+    re.IGNORECASE,
+)
+_PERCENT_RE = re.compile(r"(-?\d+(?:\.\d+)?)\s*%")
+_QUOTE_RE = re.compile(r'"([^"]{4,400})"')
+
+
+def _to_canonical_dollars(text_match: re.Match) -> float | None:
+    raw = text_match.group(1).replace(",", "")
+    try:
+        n = float(raw)
+    except ValueError:
+        return None
+    suffix = (text_match.group(2) or "").lower()
+    if suffix in ("b", "billion"):
+        n *= 1_000_000_000
+    elif suffix in ("m", "million"):
+        n *= 1_000_000
+    elif suffix in ("k", "thousand"):
+        n *= 1_000
+    return n
+
+
+def _candidate_evidence_numbers(execution: ToolExecution) -> list[float]:
+    """Pull every numeric value from a tool's returned rows, canonicalized."""
+    out: list[float] = []
+    for row in execution.rows or []:
+        for v in row.values():
+            if v is None or isinstance(v, bool):
+                continue
+            if isinstance(v, (int, float)):
+                out.append(float(v))
+            elif isinstance(v, str):
+                try:
+                    out.append(float(v.replace(",", "")))
+                except ValueError:
+                    pass
+    return out
+
+
+def _execution_for_evidence_id(executions: list[ToolExecution], evidence_id: str) -> ToolExecution | None:
+    for execution in executions:
+        if evidence_id in execution.evidence_ids:
+            return execution
+    return None
+
+
+def _close_enough(a: float, b: float, *, rel_tol: float = 0.05, abs_tol: float = 0.5) -> bool:
+    """Numeric match with rounding tolerance.
+
+    rel_tol of 5% absorbs B/M rounding (47525 -> 47.5 is 0.05% off; 13.6% vs
+    13.5% growth is well inside). abs_tol catches near-zero values like
+    margins where relative tolerance is meaningless.
+    """
+    if a == b:
+        return True
+    if abs(a - b) <= abs_tol:
+        return True
+    bigger = max(abs(a), abs(b))
+    if bigger == 0:
+        return False
+    return abs(a - b) / bigger <= rel_tol
+
+
+def _check_numeric_claims(answer: str, executions: list[ToolExecution]) -> list[str]:
+    """For each F:/M: citation, find the nearest dollar amount before it in
+    prose and check it matches at least one number from the cited evidence
+    (within rounding tolerance). Returns warning strings; does not flip status.
+    """
+    warnings: list[str] = []
+    seen_pairs: set[tuple[str, str]] = set()
+
+    for cite_match in CITATION_RE.finditer(answer):
+        kind = cite_match.group(1)
+        body = cite_match.group(2)
+        if kind not in ("F", "M"):
+            continue
+        for cite in _split_bracket_body(kind, body):
+            execution = _execution_for_evidence_id(executions, cite)
+            if execution is None or not execution.rows:
+                continue
+            evidence_numbers = _candidate_evidence_numbers(execution)
+            if not evidence_numbers:
+                continue
+
+            window_start = max(0, cite_match.start() - 160)
+            window = answer[window_start:cite_match.start()]
+            dollar_matches = list(_DOLLAR_RE.finditer(window))
+            percent_matches = list(_PERCENT_RE.finditer(window))
+
+            if dollar_matches:
+                last_dollar = dollar_matches[-1]
+                value = _to_canonical_dollars(last_dollar)
+                if value is not None:
+                    raw_token = last_dollar.group(0).strip()
+                    pair_key = (raw_token, cite)
+                    if pair_key not in seen_pairs:
+                        seen_pairs.add(pair_key)
+                        if not any(_close_enough(value, ev) for ev in evidence_numbers):
+                            warnings.append(
+                                f"Number {raw_token} near [{cite}] is not within tolerance of any "
+                                f"value from the cited evidence."
+                            )
+
+            # Percent checks only fire for M: citations because F: rows store
+            # raw money values, not the YoY percentages Sonnet derives from
+            # them. M: rows often include margin fields directly.
+            if kind == "M" and percent_matches:
+                last_pct = percent_matches[-1]
+                try:
+                    pct_value = float(last_pct.group(1)) / 100.0
+                except ValueError:
+                    continue
+                raw_token = last_pct.group(0).strip()
+                pair_key = (raw_token, cite)
+                if pair_key in seen_pairs:
+                    continue
+                seen_pairs.add(pair_key)
+                if not any(_close_enough(pct_value, ev, rel_tol=0.05, abs_tol=0.005) for ev in evidence_numbers):
+                    warnings.append(
+                        f"Percent {raw_token} near [{cite}] does not match any margin/ratio "
+                        f"in the cited evidence row."
+                    )
+    return warnings
+
+
+def _check_quoted_text(answer: str, executions: list[ToolExecution]) -> list[str]:
+    """For each quoted phrase in the answer, check the nearest T:/S: citation's
+    chunk text actually contains it (case-insensitive, whitespace-tolerant).
+    """
+    warnings: list[str] = []
+
+    citations = list(CITATION_RE.finditer(answer))
+    if not citations:
+        return warnings
+
+    for quote_match in _QUOTE_RE.finditer(answer):
+        quote = quote_match.group(1).strip()
+        if len(quote) < 6:
+            continue
+        # Find the nearest citation whose start is at or after the quote's end.
+        nearest: re.Match | None = None
+        for cite in citations:
+            if cite.start() >= quote_match.end():
+                nearest = cite
+                break
+        if nearest is None:
+            continue
+        kind = nearest.group(1)
+        body = nearest.group(2)
+        if kind not in ("T", "S"):
+            continue
+        for cite_id in _split_bracket_body(kind, body):
+            execution = _execution_for_evidence_id(executions, cite_id)
+            if execution is None or not execution.rows:
+                continue
+            normalized_quote = _normalize(quote)
+            found = False
+            for row in execution.rows:
+                text = row.get("text") or ""
+                if normalized_quote in _normalize(text):
+                    found = True
+                    break
+            if not found:
+                snippet = quote if len(quote) <= 80 else quote[:77] + "..."
+                warnings.append(
+                    f'Quoted phrase "{snippet}" attributed to [{cite_id}] '
+                    f"was not found in that chunk's text."
+                )
+    return warnings
+
+
+def _normalize(text: str) -> str:
+    return " ".join(text.lower().split())
+
+
 def ask(
     question: str,
     *,
@@ -1182,6 +1370,7 @@ def ask(
         trace.answer = answer
         trace.citations = _extract_citations(answer)
         trace.verifier_status, trace.verifier_issues = _verify_citations(answer, allowed_ids)
+        trace.verifier_warnings = _check_numeric_claims(answer, executions) + _check_quoted_text(answer, executions)
         _mark_cited_executions(executions, trace.citations)
 
     except Exception as exc:
@@ -1391,6 +1580,7 @@ async def ask_stream(
         trace.answer = answer
         trace.citations = _extract_citations(answer)
         trace.verifier_status, trace.verifier_issues = _verify_citations(answer, allowed_ids)
+        trace.verifier_warnings = _check_numeric_claims(answer, executions) + _check_quoted_text(answer, executions)
         _mark_cited_executions(executions, trace.citations)
 
         yield {"event": "answer", "text": answer, "citations": trace.citations}
@@ -1398,6 +1588,7 @@ async def ask_stream(
             "event": "verifier",
             "status": trace.verifier_status,
             "issues": trace.verifier_issues,
+            "warnings": trace.verifier_warnings,
         }
 
     except Exception as exc:
