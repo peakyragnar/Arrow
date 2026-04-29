@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Arrow · Ask</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+  <style>
+    .ask-container {
+      max-width: 1200px;
+      margin: 24px auto;
+      padding: 0 16px;
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      grid-gap: 24px;
+    }
+    .ask-main {
+      min-width: 0;
+    }
+    .ask-aside {
+      min-width: 0;
+    }
+    .ask-form {
+      border: 1px solid var(--border);
+      background: var(--bg-alt);
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+    .ask-form textarea {
+      width: 100%;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 8px;
+      font-family: inherit;
+      font-size: inherit;
+      resize: vertical;
+      min-height: 60px;
+    }
+    .ask-form .row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      align-items: center;
+    }
+    .ask-form button {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      padding: 6px 14px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: inherit;
+      font-weight: 600;
+    }
+    .ask-form button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .ask-form .hint {
+      color: var(--text-dim);
+      font-size: 11px;
+    }
+    .progress-stream {
+      background: var(--change-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      font-size: 11.5px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    .progress-stream .step {
+      padding: 2px 0;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .progress-stream .step.tool-call {
+      color: var(--accent);
+    }
+    .progress-stream .step.tool-result.ok {
+      color: var(--text);
+    }
+    .progress-stream .step.tool-result.empty {
+      color: var(--text-dim);
+    }
+    .progress-stream .step.tool-result.error {
+      color: var(--neg);
+    }
+    .progress-stream .step.synthesizing {
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .answer-box {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 16px 18px;
+      line-height: 1.55;
+      font-size: 13.5px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .answer-box p {
+      margin: 0 0 12px 0;
+    }
+    .answer-box p:last-child {
+      margin-bottom: 0;
+    }
+    .answer-box .citation {
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: none;
+      font-family: ui-monospace, monospace;
+      font-size: 11px;
+      padding: 1px 4px;
+      background: var(--change-bg);
+      border-radius: 2px;
+      margin: 0 1px;
+    }
+    .answer-box .citation:hover {
+      background: var(--ttm-bg);
+    }
+    .answer-meta {
+      color: var(--text-dim);
+      font-size: 11px;
+      margin: 8px 0 16px 0;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+    .answer-meta .verifier-verified { color: var(--pos); }
+    .answer-meta .verifier-unverified { color: var(--neg); }
+    .trace-panel {
+      background: var(--change-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0;
+      font-size: 11.5px;
+    }
+    .trace-panel summary {
+      cursor: pointer;
+      padding: 8px 12px;
+      color: var(--text-dim);
+      user-select: none;
+    }
+    .trace-panel[open] summary {
+      border-bottom: 1px solid var(--border);
+    }
+    .trace-panel .trace-body {
+      padding: 8px 12px 12px 12px;
+    }
+    .trace-panel table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .trace-panel td, .trace-panel th {
+      padding: 3px 6px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--border);
+    }
+    .trace-panel th {
+      color: var(--text-dim);
+      font-weight: normal;
+    }
+    .evidence-aside h3 {
+      margin: 0 0 8px 0;
+      font-size: 12px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .evidence-card {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .evidence-card .ev-header {
+      color: var(--accent);
+      font-family: ui-monospace, monospace;
+      font-size: 11px;
+      margin-bottom: 6px;
+    }
+    .evidence-card .ev-meta {
+      color: var(--text-dim);
+      font-size: 11px;
+      margin-bottom: 8px;
+    }
+    .evidence-card .ev-body {
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+    .evidence-card .ev-body table {
+      border-collapse: collapse;
+    }
+    .evidence-card .ev-body td, .evidence-card .ev-body th {
+      padding: 2px 6px 2px 0;
+    }
+    .evidence-card .ev-body th {
+      color: var(--text-dim);
+      font-weight: normal;
+      text-align: left;
+    }
+    .evidence-aside .empty {
+      color: var(--text-dim);
+      font-size: 11.5px;
+      font-style: italic;
+    }
+    .examples {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .examples a {
+      color: var(--text-dim);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .examples a:hover {
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">Arrow</div>
+  <nav class="topnav">
+    <a href="/" class="navlink">Dashboard</a>
+    <a href="/findings?status=open" class="navlink">Findings</a>
+    <a href="/coverage" class="navlink">Coverage</a>
+    <a href="/ask" class="navlink active">Ask</a>
+  </nav>
+</header>
+
+<div class="ask-container">
+  <main class="ask-main">
+
+    <form class="ask-form" id="ask-form">
+      <textarea id="question" name="question" placeholder="Ask a question about a US filer — e.g. What drove DELL revenue change in FY2024?"></textarea>
+      <div class="row">
+        <button type="submit" id="submit-btn">Ask</button>
+        <span class="hint">Haiku routes, Sonnet writes. Trace persisted to outputs/qa_runs/agent/.</span>
+      </div>
+      <div class="examples">
+        try:
+        <a data-q="What was DELL revenue in FY2024 and how did it change from FY2023?">DELL revenue YoY</a> ·
+        <a data-q="What did NVDA management say about data center demand in FY2026 Q4?">NVDA data center commentary</a> ·
+        <a data-q="What were NVDA segment revenues in FY2026 Q4?">NVDA segment breakdown</a>
+      </div>
+    </form>
+
+    <div class="progress-stream" id="progress-stream" style="display:none">
+      <div class="step" data-role="placeholder">Waiting...</div>
+    </div>
+
+    <div class="answer-meta" id="answer-meta" style="display:none">
+      <span id="verifier-status"></span>
+      <span id="duration-summary"></span>
+      <span id="token-summary"></span>
+      <span id="trace-id"></span>
+    </div>
+
+    <div class="answer-box" id="answer-box" style="display:none"></div>
+
+    <details class="trace-panel" id="trace-panel" style="display:none; margin-top:16px">
+      <summary>Trace details</summary>
+      <div class="trace-body">
+        <h4 style="margin:8px 0 4px 0; color:var(--text-dim); font-size:11px; text-transform:uppercase;">Tool calls</h4>
+        <table id="trace-tools"><thead><tr><th>tool</th><th>rows</th><th>cited</th><th>ms</th></tr></thead><tbody></tbody></table>
+        <h4 style="margin:14px 0 4px 0; color:var(--text-dim); font-size:11px; text-transform:uppercase;">Model calls</h4>
+        <table id="trace-models"><thead><tr><th>model</th><th>role</th><th>in</th><th>out</th><th>ms</th></tr></thead><tbody></tbody></table>
+      </div>
+    </details>
+  </main>
+
+  <aside class="ask-aside evidence-aside">
+    <h3>Evidence</h3>
+    <div id="evidence-panel">
+      <div class="empty">Click a citation in the answer to inspect the source row.</div>
+    </div>
+  </aside>
+</div>
+
+<script>
+(function() {
+  const form = document.getElementById('ask-form');
+  const questionEl = document.getElementById('question');
+  const submitBtn = document.getElementById('submit-btn');
+  const progressStream = document.getElementById('progress-stream');
+  const answerBox = document.getElementById('answer-box');
+  const answerMeta = document.getElementById('answer-meta');
+  const verifierStatus = document.getElementById('verifier-status');
+  const durationSummary = document.getElementById('duration-summary');
+  const tokenSummary = document.getElementById('token-summary');
+  const traceIdEl = document.getElementById('trace-id');
+  const tracePanel = document.getElementById('trace-panel');
+  const traceToolsBody = document.querySelector('#trace-tools tbody');
+  const traceModelsBody = document.querySelector('#trace-models tbody');
+  const evidencePanel = document.getElementById('evidence-panel');
+
+  document.querySelectorAll('.examples a').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      questionEl.value = a.getAttribute('data-q');
+      questionEl.focus();
+    });
+  });
+
+  function appendStep(text, cls) {
+    const el = document.createElement('div');
+    el.className = 'step ' + (cls || '');
+    el.textContent = text;
+    progressStream.appendChild(el);
+    progressStream.scrollTop = progressStream.scrollHeight;
+  }
+
+  function clearAll() {
+    progressStream.innerHTML = '';
+    progressStream.style.display = 'block';
+    answerBox.innerHTML = '';
+    answerBox.style.display = 'none';
+    answerMeta.style.display = 'none';
+    tracePanel.style.display = 'none';
+    traceToolsBody.innerHTML = '';
+    traceModelsBody.innerHTML = '';
+  }
+
+  // Render the answer with [F:..]/[T:..]/[S:..]/[M:..]/[A:..] citations as
+  // clickable spans. Other text becomes paragraphs split on blank lines.
+  function renderAnswer(text) {
+    answerBox.innerHTML = '';
+    const paragraphs = text.split(/\n\n+/);
+    paragraphs.forEach(para => {
+      const p = document.createElement('p');
+      const re = /\[([A-Z]):([^\]]+)\]/g;
+      let lastIdx = 0;
+      let m;
+      while ((m = re.exec(para)) !== null) {
+        if (m.index > lastIdx) {
+          p.appendChild(document.createTextNode(para.slice(lastIdx, m.index)));
+        }
+        const kind = m[1];
+        const body = m[2];
+        const cite = document.createElement('a');
+        cite.className = 'citation';
+        cite.textContent = `[${kind}:${body}]`;
+        cite.dataset.kind = kind;
+        cite.dataset.body = body;
+        cite.addEventListener('click', e => {
+          e.preventDefault();
+          loadEvidence(kind, body);
+        });
+        p.appendChild(cite);
+        lastIdx = re.lastIndex;
+      }
+      if (lastIdx < para.length) {
+        p.appendChild(document.createTextNode(para.slice(lastIdx)));
+      }
+      answerBox.appendChild(p);
+    });
+    answerBox.style.display = 'block';
+  }
+
+  async function loadEvidence(kind, body) {
+    if (!['F', 'T', 'S'].includes(kind)) {
+      // Comma-joined (defensive); split and load first.
+      const first = body.split(',')[0].trim();
+      if (first.includes(':')) {
+        const [k2, b2] = first.split(':');
+        loadEvidence(k2, b2);
+        return;
+      }
+    }
+    const card = document.createElement('div');
+    card.className = 'evidence-card';
+    card.innerHTML = `<div class="ev-header">[${kind}:${body}]</div><div class="ev-meta">loading...</div>`;
+    evidencePanel.prepend(card);
+    if (evidencePanel.querySelector('.empty')) {
+      evidencePanel.querySelector('.empty').remove();
+    }
+    try {
+      const resp = await fetch(`/evidence/${kind}/${body}`);
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        card.querySelector('.ev-meta').textContent = `error: ${err.detail || resp.status}`;
+        return;
+      }
+      const data = await resp.json();
+      renderEvidenceCard(card, data);
+    } catch (err) {
+      card.querySelector('.ev-meta').textContent = `error: ${err.message}`;
+    }
+  }
+
+  function renderEvidenceCard(card, data) {
+    const row = data.row;
+    const kind = data.kind;
+    let metaText = '';
+    let bodyHtml = '';
+
+    if (kind === 'F') {
+      metaText = `${row.ticker || ''} ${row.fiscal_period_label || ''} · ${row.statement || ''}/${row.concept || ''}`;
+      bodyHtml = renderKvTable({
+        company: row.company_name || row.ticker,
+        concept: row.concept,
+        statement: row.statement,
+        value: row.value,
+        unit: row.unit,
+        fiscal_period: row.fiscal_period_label,
+        period_end: row.period_end,
+        dimension: row.dimension_type ? `${row.dimension_type}: ${row.dimension_label}` : null,
+      });
+    } else if (kind === 'T') {
+      metaText = `${row.ticker || ''} ${row.fiscal_period_label || ''} · ${row.speaker || 'speaker'} · transcript`;
+      bodyHtml = `<div style="margin-top:6px; white-space:pre-wrap">${escapeHtml(row.text || '')}</div>`;
+    } else if (kind === 'S') {
+      metaText = `${row.ticker || ''} ${row.fiscal_period_label || ''} · ${row.artifact_type || ''} ${row.section_title || row.section_key || ''}`;
+      bodyHtml = `<div style="margin-top:6px; white-space:pre-wrap">${escapeHtml(row.text || '')}</div>`;
+    }
+
+    card.querySelector('.ev-meta').textContent = metaText;
+    const body = document.createElement('div');
+    body.className = 'ev-body';
+    body.innerHTML = bodyHtml;
+    card.appendChild(body);
+  }
+
+  function renderKvTable(kv) {
+    const rows = Object.entries(kv)
+      .filter(([_, v]) => v !== null && v !== undefined && v !== '')
+      .map(([k, v]) => `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(String(v))}</td></tr>`);
+    return `<table>${rows.join('')}</table>`;
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function handleEvent(ev) {
+    switch (ev.event) {
+      case 'started':
+        appendStep(`started · ${ev.trace_id.slice(0, 8)}`);
+        break;
+      case 'router_turn':
+        appendStep(`router turn ${ev.iteration} · ${ev.tokens_in} in / ${ev.tokens_out} out · ${ev.duration_ms}ms · ${ev.stop_reason}`);
+        break;
+      case 'tool_call':
+        appendStep(`-> ${ev.name}(${JSON.stringify(ev.params)})`, 'tool-call');
+        break;
+      case 'tool_result': {
+        const rowsTxt = `${ev.row_count} row${ev.row_count === 1 ? '' : 's'}`;
+        const cls = ev.error ? 'error' : (ev.row_count === 0 ? 'empty' : 'ok');
+        appendStep(`<- ${ev.name}: ${rowsTxt}${ev.error ? ' · ' + ev.error : ''}`, 'tool-result ' + cls);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${escapeHtml(ev.name)}</td><td>${ev.row_count}</td><td data-cite-mark="${ev.evidence_ids.join(',')}"></td><td>${ev.duration_ms}</td>`;
+        traceToolsBody.appendChild(tr);
+        break;
+      }
+      case 'synthesizing':
+        appendStep('synthesizing answer...', 'synthesizing');
+        break;
+      case 'answer':
+        renderAnswer(ev.text);
+        // Mark cited tool calls in the trace table
+        const cited = new Set(ev.citations || []);
+        document.querySelectorAll('#trace-tools td[data-cite-mark]').forEach(td => {
+          const ids = td.getAttribute('data-cite-mark').split(',').filter(Boolean);
+          if (ids.some(id => cited.has(id))) td.textContent = '✓';
+        });
+        break;
+      case 'verifier':
+        if (ev.status === 'verified') {
+          verifierStatus.textContent = '✓ verified';
+          verifierStatus.className = 'verifier-verified';
+        } else {
+          verifierStatus.textContent = '✗ unverified';
+          verifierStatus.className = 'verifier-unverified';
+          if (ev.issues && ev.issues.length) {
+            verifierStatus.title = ev.issues.join('\n');
+          }
+        }
+        answerMeta.style.display = 'flex';
+        break;
+      case 'done':
+        durationSummary.textContent = `${(ev.duration_ms / 1000).toFixed(1)}s`;
+        tokenSummary.textContent = `${ev.input_tokens_total} in / ${ev.output_tokens_total} out`;
+        traceIdEl.textContent = ev.trace_id.slice(0, 8);
+        tracePanel.style.display = 'block';
+        break;
+      case 'error':
+        appendStep('error: ' + ev.message, 'tool-result error');
+        break;
+    }
+  }
+
+  // Add a row to the model-calls trace table whenever we get a router_turn
+  // or detect synthesis completion. We use the timing on the verifier event
+  // to mark the synthesizer row, but for simplicity we add rows reactively.
+  let modelCallSeq = 0;
+  function recordModelCallFromRouter(ev) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>haiku</td><td>router</td><td>${ev.tokens_in}</td><td>${ev.tokens_out}</td><td>${ev.duration_ms}</td>`;
+    traceModelsBody.appendChild(tr);
+  }
+
+  // Hook into handleEvent to also fill the trace-models table.
+  const _origHandle = handleEvent;
+  function dispatch(ev) {
+    if (ev.event === 'router_turn') {
+      recordModelCallFromRouter(ev);
+    }
+    _origHandle(ev);
+  }
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const question = questionEl.value.trim();
+    if (!question) return;
+    submitBtn.disabled = true;
+    clearAll();
+
+    try {
+      const resp = await fetch('/ask/stream', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({question}),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        appendStep('error: ' + (err.detail || resp.status), 'tool-result error');
+        submitBtn.disabled = false;
+        return;
+      }
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const {done, value} = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, {stream: true});
+        const chunks = buffer.split('\n\n');
+        buffer = chunks.pop() || '';
+        for (const chunk of chunks) {
+          for (const line of chunk.split('\n')) {
+            if (!line.startsWith('data:')) continue;
+            const payload = line.slice(5).trim();
+            if (!payload) continue;
+            try {
+              const ev = JSON.parse(payload);
+              dispatch(ev);
+            } catch (err) {
+              console.warn('bad SSE line', payload, err);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      appendStep('error: ' + err.message, 'tool-result error');
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>

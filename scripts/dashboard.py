@@ -129,6 +129,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Arrow Dashboard", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
+from arrow.web.ask import router as ask_router
+app.include_router(ask_router)
+
 # Annual columns: the ticker's 5 most recent fiscal years (one per 10-K).
 # Per-ticker because AMD's FY2025 ends Dec 2025 while NVDA's FY2026 ends
 # Jan 2026. The fiscal-year axis is audit-aligned: each FY column ties

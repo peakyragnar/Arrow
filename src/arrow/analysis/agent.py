@@ -887,3 +887,230 @@ def ask(
             conn_cm.__exit__(None, None, None)
 
     return trace
+
+
+# --------------------------------------------------------------------------- #
+# Streaming variant — emits per-step events for an async UI consumer.
+# --------------------------------------------------------------------------- #
+
+
+import asyncio
+from collections.abc import AsyncIterator
+
+
+def _execute_tool_block(
+    conn: psycopg.Connection,
+    block: Any,
+) -> tuple[ToolExecution, dict[str, Any]]:
+    """Run one tool_use block. Returns (execution_record, tool_result_payload)."""
+    tool = REGISTRY_BY_NAME.get(block.name)
+    tool_started = time.perf_counter()
+    if tool is None:
+        execution = ToolExecution(
+            name=block.name,
+            params=dict(block.input),
+            started_at=datetime.now(UTC).isoformat(),
+            duration_ms=0.0,
+            row_count=0,
+            evidence_ids=[],
+            error=f"unknown tool: {block.name}",
+        )
+        payload = {
+            "type": "tool_result",
+            "tool_use_id": block.id,
+            "content": json.dumps({"error": execution.error}),
+            "is_error": True,
+        }
+        return execution, payload
+    try:
+        result = tool.execute(conn, dict(block.input))
+        duration_ms = (time.perf_counter() - tool_started) * 1000
+        execution = ToolExecution(
+            name=tool.name,
+            params=dict(block.input),
+            started_at=datetime.now(UTC).isoformat(),
+            duration_ms=round(duration_ms, 2),
+            row_count=len(result.rows),
+            evidence_ids=result.evidence_ids,
+            error=result.error,
+        )
+        payload = {
+            "type": "tool_result",
+            "tool_use_id": block.id,
+            "content": result.as_content(),
+            "is_error": result.error is not None,
+        }
+        return execution, payload
+    except Exception as exc:
+        duration_ms = (time.perf_counter() - tool_started) * 1000
+        execution = ToolExecution(
+            name=tool.name,
+            params=dict(block.input),
+            started_at=datetime.now(UTC).isoformat(),
+            duration_ms=round(duration_ms, 2),
+            row_count=0,
+            evidence_ids=[],
+            error=f"{type(exc).__name__}: {exc}",
+        )
+        payload = {
+            "type": "tool_result",
+            "tool_use_id": block.id,
+            "content": json.dumps({"error": execution.error}),
+            "is_error": True,
+        }
+        return execution, payload
+
+
+async def ask_stream(
+    question: str,
+    *,
+    out_dir: Path | None = None,
+) -> AsyncIterator[dict[str, Any]]:
+    """Async generator: run the agent and yield per-step events.
+
+    Events:
+      {"event": "started", "trace_id": ..., "question": ...}
+      {"event": "router_turn", "iteration": N, "tokens_in": ..., "tokens_out": ..., "duration_ms": ...}
+      {"event": "tool_call", "name": ..., "params": {...}}
+      {"event": "tool_result", "name": ..., "row_count": ..., "evidence_ids": [...], "error": ... | None}
+      {"event": "synthesizing"}
+      {"event": "answer", "text": ..., "citations": [...]}
+      {"event": "verifier", "status": ..., "issues": [...]}
+      {"event": "done", "trace_id": ..., "duration_ms": ..., "input_tokens_total": ..., "output_tokens_total": ...}
+      {"event": "error", "message": ...}
+    """
+    load_dotenv(override=True)
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        yield {"event": "error", "message": "ANTHROPIC_API_KEY is not set in the environment."}
+        return
+
+    from arrow.db.connection import get_conn
+
+    trace = AgentTrace(
+        trace_id=str(uuid.uuid4()),
+        question=question,
+        started_at=datetime.now(UTC).isoformat(),
+    )
+    started_total = time.perf_counter()
+    yield {"event": "started", "trace_id": trace.trace_id, "question": question}
+
+    client = anthropic.Anthropic()
+    conn_cm = get_conn()
+    conn = await asyncio.to_thread(conn_cm.__enter__)
+    tool_specs = [t.anthropic_spec() for t in REGISTRY]
+    messages: list[dict[str, Any]] = [{"role": "user", "content": question}]
+    executions: list[ToolExecution] = []
+    allowed_ids: list[str] = []
+
+    try:
+        for iteration in range(MAX_TOOL_ITERATIONS):
+            turn_started = time.perf_counter()
+            response = await asyncio.to_thread(
+                client.messages.create,
+                model=HAIKU_MODEL,
+                max_tokens=MAX_OUTPUT_TOKENS_HAIKU,
+                system=_PLANNER_SYSTEM,
+                tools=tool_specs,
+                messages=messages,
+            )
+            turn_ms = (time.perf_counter() - turn_started) * 1000
+            trace.model_calls.append(
+                _model_call_metrics(response, HAIKU_MODEL, "router", turn_ms)
+            )
+            usage = getattr(response, "usage", None)
+            yield {
+                "event": "router_turn",
+                "iteration": iteration + 1,
+                "tokens_in": getattr(usage, "input_tokens", 0) if usage else 0,
+                "tokens_out": getattr(usage, "output_tokens", 0) if usage else 0,
+                "duration_ms": round(turn_ms, 2),
+                "stop_reason": response.stop_reason,
+            }
+
+            if response.stop_reason != "tool_use":
+                messages.append({"role": "assistant", "content": response.content})
+                break
+
+            messages.append({"role": "assistant", "content": response.content})
+            tool_use_blocks = [b for b in response.content if b.type == "tool_use"]
+            tool_results_content: list[dict[str, Any]] = []
+
+            for block in tool_use_blocks:
+                yield {
+                    "event": "tool_call",
+                    "name": block.name,
+                    "params": dict(block.input),
+                }
+                execution, payload = await asyncio.to_thread(_execute_tool_block, conn, block)
+                executions.append(execution)
+                tool_results_content.append(payload)
+                for cid in execution.evidence_ids:
+                    if cid not in allowed_ids:
+                        allowed_ids.append(cid)
+                yield {
+                    "event": "tool_result",
+                    "name": execution.name,
+                    "row_count": execution.row_count,
+                    "evidence_ids": execution.evidence_ids,
+                    "duration_ms": execution.duration_ms,
+                    "error": execution.error,
+                }
+
+            messages.append({"role": "user", "content": tool_results_content})
+
+        trace.tool_executions = executions
+        synth_prompt, allowed_ids = _build_synthesis_prompt(question, executions, messages)
+        yield {"event": "synthesizing"}
+
+        synth_started = time.perf_counter()
+        synth_response = await asyncio.to_thread(
+            client.messages.create,
+            model=SONNET_MODEL,
+            max_tokens=MAX_OUTPUT_TOKENS_SONNET,
+            system=_SYNTH_SYSTEM,
+            messages=[{"role": "user", "content": synth_prompt}],
+        )
+        synth_ms = (time.perf_counter() - synth_started) * 1000
+        trace.model_calls.append(
+            _model_call_metrics(synth_response, SONNET_MODEL, "synthesizer", synth_ms)
+        )
+
+        answer_parts = [b.text for b in synth_response.content if getattr(b, "type", None) == "text"]
+        answer = "\n".join(answer_parts).strip()
+        trace.answer = answer
+        trace.citations = _extract_citations(answer)
+        trace.verifier_status, trace.verifier_issues = _verify_citations(answer, allowed_ids)
+        _mark_cited_executions(executions, trace.citations)
+
+        yield {"event": "answer", "text": answer, "citations": trace.citations}
+        yield {
+            "event": "verifier",
+            "status": trace.verifier_status,
+            "issues": trace.verifier_issues,
+        }
+
+    except Exception as exc:
+        trace.error = f"{type(exc).__name__}: {exc}"
+        yield {"event": "error", "message": trace.error}
+    finally:
+        trace.finished_at = datetime.now(UTC).isoformat()
+        trace.duration_ms = round((time.perf_counter() - started_total) * 1000, 2)
+        try:
+            await asyncio.to_thread(trace.write, out_dir)
+        except Exception:
+            pass
+        try:
+            await asyncio.to_thread(conn_cm.__exit__, None, None, None)
+        except Exception:
+            pass
+
+    total_in = sum(mc.input_tokens for mc in trace.model_calls)
+    total_out = sum(mc.output_tokens for mc in trace.model_calls)
+    yield {
+        "event": "done",
+        "trace_id": trace.trace_id,
+        "duration_ms": trace.duration_ms,
+        "input_tokens_total": total_in,
+        "output_tokens_total": total_out,
+        "verifier_status": trace.verifier_status,
+    }
