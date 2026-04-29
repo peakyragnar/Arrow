@@ -481,7 +481,7 @@ Status legend:
 | `financial_facts` | built | migration 008; segment dimension identity added in migration 016 |
 | `artifact_sections` | built | migration 014; canonical extracted filing sections (`10-K`, `10-Q`) |
 | `artifact_section_chunks` | built | migration 014; standardized retrieval chunks derived from `artifact_sections` |
-| `artifact_text_units` | built | migration 015; generic extracted text units for non-10-K/Q artifacts, starting with earnings press releases; transcript unit type added in migration 020 |
+| `artifact_text_units` | built | migration 015; generic extracted text units for non-10-K/Q artifacts, starting with earnings press releases; transcript unit type added in migration 020; `company_id` tightened to NOT NULL in migration 021 to match `artifact_sections` |
 | `artifact_text_chunks` | built | migration 015; standardized retrieval chunks derived from `artifact_text_units` |
 | `artifact_chunks` | withdrawn | migration 005 added it; migration 006 dropped it. Re-add when chunking has real documents to operate on. ADR-0008 captures the prior design. |
 | `prices_daily` | deferred | — |
@@ -495,7 +495,7 @@ Status legend:
 | `alerts` | deferred | — |
 | `watchlists` | deferred | — |
 | `qa_log` | deferred | wired up the moment the analyst flow exists; consent flags must be enforced from the first interaction |
-| `coverage_membership` | withdrawn | added in migration 017, dropped in migration 019. The membership concept was an opt-in layer over `companies` that didn't earn its keep — every seeded ticker should be tracked by the steward by default. The steward now reads `companies` directly. See `docs/architecture/steward.md` § V1.2. |
+| `coverage_membership` | withdrawn | added in migration 017 with a `tier` column (`core` / `extended`); migration 018 dropped the tier column during the V1.1 simplification; migration 019 dropped the table entirely. The membership concept was an opt-in layer over `companies` that didn't earn its keep — every seeded ticker should be tracked by the steward by default. The steward now reads `companies` directly. See `docs/architecture/steward.md` § V1.2. |
 | `data_quality_findings` | built | migration 017 — steward-produced findings with two-state lifecycle (`open` → `closed` with structured `closed_reason`); audit captured in `history` jsonb. Distinct from inline-validation `data_quality_flags`; UNIONed by `v_open_quality_signals` (`db/queries/15_*.sql`) for dashboard. See `docs/architecture/steward.md`. |
 
 ## Table Intent

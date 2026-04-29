@@ -13,6 +13,7 @@ when single-turn is solid.
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,8 @@ from arrow.db.connection import get_conn
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 TEMPLATES = Jinja2Templates(directory=BASE_DIR / "templates")
+
+_LOG = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -51,8 +54,12 @@ async def ask_stream_endpoint(request: Request):
         try:
             async for event in ask_stream(question, thread_id=thread_id):
                 yield f"data: {json.dumps(event, default=str)}\n\n"
-        except Exception as exc:
-            yield f"data: {json.dumps({'event': 'error', 'message': f'{type(exc).__name__}: {exc}'})}\n\n"
+        except Exception:
+            # Log the full exception server-side; surface only the type to
+            # the browser. Exception messages from psycopg can include the
+            # connection string (with credentials) — never echo them out.
+            _LOG.exception("ask_stream failed")
+            yield f"data: {json.dumps({'event': 'error', 'message': 'internal error — check server logs'})}\n\n"
 
     return StreamingResponse(
         event_source(),
