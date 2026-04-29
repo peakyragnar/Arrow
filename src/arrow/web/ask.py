@@ -21,7 +21,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.templating import Jinja2Templates
 from psycopg.rows import dict_row
 
-from arrow.analysis.agent import ask_stream
+from arrow.analysis.agent import ask_stream, load_thread
 from arrow.db.connection import get_conn
 
 BASE_DIR = Path(__file__).resolve().parents[3]
@@ -43,12 +43,13 @@ def ask_page(request: Request):
 async def ask_stream_endpoint(request: Request):
     body = await request.json()
     question = (body.get("question") or "").strip()
+    thread_id = (body.get("thread_id") or "").strip() or None
     if not question:
         raise HTTPException(status_code=400, detail="question is required")
 
     async def event_source():
         try:
-            async for event in ask_stream(question):
+            async for event in ask_stream(question, thread_id=thread_id):
                 yield f"data: {json.dumps(event, default=str)}\n\n"
         except Exception as exc:
             yield f"data: {json.dumps({'event': 'error', 'message': f'{type(exc).__name__}: {exc}'})}\n\n"
@@ -62,6 +63,30 @@ async def ask_stream_endpoint(request: Request):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.get("/threads/{thread_id}")
+def get_thread(thread_id: str):
+    """Return the prior Q+A turns for a thread, in chronological order.
+
+    Used by the chat UI to hydrate prior turns on page load when the
+    browser remembers a thread_id from a previous session.
+    """
+    if not thread_id or "/" in thread_id or ".." in thread_id:
+        raise HTTPException(status_code=400, detail="invalid thread_id")
+    turns = load_thread(thread_id)
+    return {
+        "thread_id": thread_id,
+        "turn_count": len(turns),
+        "turns": [
+            {
+                "question": t.question,
+                "answer": t.answer,
+                "started_at": t.started_at,
+            }
+            for t in turns
+        ],
+    }
 
 
 # --------------------------------------------------------------------------- #

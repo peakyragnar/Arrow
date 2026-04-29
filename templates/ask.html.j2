@@ -20,18 +20,44 @@
       grid-template-columns: 1fr 360px;
       grid-gap: 24px;
     }
-    .ask-main {
-      min-width: 0;
+    .ask-main { min-width: 0; }
+    .ask-aside { min-width: 0; }
+
+    .thread-strip {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 12px;
+      font-size: 11.5px;
+      color: var(--text-dim);
     }
-    .ask-aside {
-      min-width: 0;
+    .thread-strip .thread-id {
+      font-family: ui-monospace, monospace;
     }
+    .thread-strip button {
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: inherit;
+    }
+    .thread-strip button:hover {
+      color: var(--text);
+      border-color: var(--accent);
+    }
+
     .ask-form {
       border: 1px solid var(--border);
       background: var(--bg-alt);
       padding: 12px;
       border-radius: 4px;
       margin-bottom: 16px;
+      position: sticky;
+      top: 12px;
+      z-index: 5;
     }
     .ask-form textarea {
       width: 100%;
@@ -46,36 +72,53 @@
       min-height: 60px;
     }
     .ask-form .row {
-      display: flex;
-      gap: 8px;
-      margin-top: 8px;
-      align-items: center;
+      display: flex; gap: 8px; margin-top: 8px; align-items: center;
     }
     .ask-form button {
-      background: var(--accent);
-      color: var(--bg);
-      border: none;
-      padding: 6px 14px;
-      border-radius: 3px;
-      cursor: pointer;
-      font-family: inherit;
-      font-size: inherit;
+      background: var(--accent); color: var(--bg); border: none;
+      padding: 6px 14px; border-radius: 3px; cursor: pointer;
+      font-family: inherit; font-size: inherit; font-weight: 600;
+    }
+    .ask-form button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .ask-form .hint { color: var(--text-dim); font-size: 11px; }
+
+    .examples {
+      margin-top: 8px; font-size: 11px; color: var(--text-dim);
+    }
+    .examples a {
+      color: var(--text-dim); text-decoration: underline; cursor: pointer;
+    }
+    .examples a:hover { color: var(--accent); }
+
+    .turn-card {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin-bottom: 18px;
+      padding: 14px 16px;
+      background: var(--bg);
+    }
+    .turn-card .turn-question {
       font-weight: 600;
+      font-size: 13.5px;
+      color: var(--text);
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-    .ask-form button:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-    .ask-form .hint {
+    .turn-card .turn-question::before {
+      content: "Q · ";
       color: var(--text-dim);
+      font-weight: normal;
       font-size: 11px;
     }
+
     .progress-stream {
       background: var(--change-bg);
       border: 1px solid var(--border);
       border-radius: 4px;
       padding: 8px 12px;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
       font-size: 11.5px;
       max-height: 220px;
       overflow-y: auto;
@@ -87,22 +130,12 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .progress-stream .step.tool-call {
-      color: var(--accent);
-    }
-    .progress-stream .step.tool-result.ok {
-      color: var(--text);
-    }
-    .progress-stream .step.tool-result.empty {
-      color: var(--text-dim);
-    }
-    .progress-stream .step.tool-result.error {
-      color: var(--neg);
-    }
-    .progress-stream .step.synthesizing {
-      color: var(--accent);
-      font-weight: 600;
-    }
+    .progress-stream .step.tool-call { color: var(--accent); }
+    .progress-stream .step.tool-result.ok { color: var(--text); }
+    .progress-stream .step.tool-result.empty { color: var(--text-dim); }
+    .progress-stream .step.tool-result.error { color: var(--neg); }
+    .progress-stream .step.synthesizing { color: var(--accent); font-weight: 600; }
+
     .answer-box {
       background: var(--bg-alt);
       border: 1px solid var(--border);
@@ -112,55 +145,36 @@
       font-size: 13.5px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-    .answer-box p {
-      margin: 0 0 12px 0;
-    }
-    .answer-box p:last-child {
-      margin-bottom: 0;
-    }
+    .answer-box p { margin: 0 0 12px 0; }
+    .answer-box p:last-child { margin-bottom: 0; }
     .answer-box .citation {
-      color: var(--accent);
-      cursor: pointer;
-      text-decoration: none;
-      font-family: ui-monospace, monospace;
-      font-size: 11px;
-      padding: 1px 4px;
-      background: var(--change-bg);
-      border-radius: 2px;
+      color: var(--accent); cursor: pointer; text-decoration: none;
+      font-family: ui-monospace, monospace; font-size: 11px;
+      padding: 1px 4px; background: var(--change-bg); border-radius: 2px;
       margin: 0 1px;
     }
-    .answer-box .citation:hover {
-      background: var(--ttm-bg);
-    }
+    .answer-box .citation:hover { background: var(--ttm-bg); }
+
     .answer-meta {
-      color: var(--text-dim);
-      font-size: 11px;
-      margin: 8px 0 16px 0;
-      display: flex;
-      gap: 14px;
-      align-items: center;
+      color: var(--text-dim); font-size: 11px;
+      margin: 8px 0; display: flex; gap: 14px; align-items: center;
     }
     .answer-meta .verifier-verified { color: var(--pos); }
     .answer-meta .verifier-unverified { color: var(--neg); }
-    .answer-meta .warnings-tag {
-      color: #f59e0b;
-      cursor: help;
-    }
+    .answer-meta .warnings-tag { color: #f59e0b; cursor: help; }
+
     .warnings-list {
       background: #1f1a0a;
       border: 1px solid #5a4716;
       border-radius: 4px;
       padding: 8px 12px;
-      margin: 8px 0 0 0;
+      margin: 0 0 8px 0;
       font-size: 11.5px;
       color: #f5cf7a;
     }
-    .warnings-list .warning {
-      padding: 2px 0;
-    }
-    .warnings-list .warning::before {
-      content: "⚠ ";
-    }
+    .warnings-list .warning { padding: 2px 0; }
+    .warnings-list .warning::before { content: "⚠ "; }
+
     .trace-panel {
       background: var(--change-bg);
       border: 1px solid var(--border);
@@ -169,88 +183,45 @@
       font-size: 11.5px;
     }
     .trace-panel summary {
-      cursor: pointer;
-      padding: 8px 12px;
-      color: var(--text-dim);
-      user-select: none;
+      cursor: pointer; padding: 8px 12px;
+      color: var(--text-dim); user-select: none;
     }
-    .trace-panel[open] summary {
-      border-bottom: 1px solid var(--border);
-    }
-    .trace-panel .trace-body {
-      padding: 8px 12px 12px 12px;
-    }
-    .trace-panel table {
-      width: 100%;
-      border-collapse: collapse;
-    }
+    .trace-panel[open] summary { border-bottom: 1px solid var(--border); }
+    .trace-panel .trace-body { padding: 8px 12px 12px 12px; }
+    .trace-panel table { width: 100%; border-collapse: collapse; }
     .trace-panel td, .trace-panel th {
-      padding: 3px 6px;
-      text-align: left;
-      vertical-align: top;
+      padding: 3px 6px; text-align: left; vertical-align: top;
       border-bottom: 1px solid var(--border);
     }
-    .trace-panel th {
-      color: var(--text-dim);
-      font-weight: normal;
-    }
+    .trace-panel th { color: var(--text-dim); font-weight: normal; }
+
     .evidence-aside h3 {
-      margin: 0 0 8px 0;
-      font-size: 12px;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+      margin: 0 0 8px 0; font-size: 12px; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.04em;
     }
     .evidence-card {
       background: var(--bg-alt);
       border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 12px;
-      margin-bottom: 12px;
+      border-radius: 4px; padding: 12px; margin-bottom: 12px;
     }
     .evidence-card .ev-header {
       color: var(--accent);
       font-family: ui-monospace, monospace;
-      font-size: 11px;
-      margin-bottom: 6px;
+      font-size: 11px; margin-bottom: 6px;
     }
     .evidence-card .ev-meta {
-      color: var(--text-dim);
-      font-size: 11px;
-      margin-bottom: 8px;
+      color: var(--text-dim); font-size: 11px; margin-bottom: 8px;
     }
-    .evidence-card .ev-body {
-      font-size: 12.5px;
-      line-height: 1.45;
-    }
-    .evidence-card .ev-body table {
-      border-collapse: collapse;
-    }
+    .evidence-card .ev-body { font-size: 12.5px; line-height: 1.45; }
+    .evidence-card .ev-body table { border-collapse: collapse; }
     .evidence-card .ev-body td, .evidence-card .ev-body th {
       padding: 2px 6px 2px 0;
     }
     .evidence-card .ev-body th {
-      color: var(--text-dim);
-      font-weight: normal;
-      text-align: left;
+      color: var(--text-dim); font-weight: normal; text-align: left;
     }
     .evidence-aside .empty {
-      color: var(--text-dim);
-      font-size: 11.5px;
-      font-style: italic;
-    }
-    .examples {
-      margin-top: 8px;
-      font-size: 11px;
-      color: var(--text-dim);
-    }
-    .examples a {
-      color: var(--text-dim);
-      text-decoration: underline;
-      cursor: pointer;
-    }
-    .examples a:hover {
-      color: var(--accent);
+      color: var(--text-dim); font-size: 11.5px; font-style: italic;
     }
   </style>
 </head>
@@ -269,13 +240,19 @@
 <div class="ask-container">
   <main class="ask-main">
 
+    <div class="thread-strip">
+      <span>thread <span class="thread-id" id="thread-id-display"></span></span>
+      <span id="turn-count"></span>
+      <button type="button" id="new-thread-btn">New conversation</button>
+    </div>
+
     <form class="ask-form" id="ask-form">
-      <textarea id="question" name="question" placeholder="Ask a question about a US filer — e.g. What drove DELL revenue change in FY2024?"></textarea>
+      <textarea id="question" name="question" placeholder="Ask a question. Follow-ups remember the prior context — &quot;what about Q3?&quot; works."></textarea>
       <div class="row">
         <button type="submit" id="submit-btn">Ask</button>
-        <span class="hint">Haiku routes, Sonnet writes. Trace persisted to outputs/qa_runs/agent/.</span>
+        <span class="hint">Haiku routes, Sonnet writes. Up to 5 prior turns replayed for context.</span>
       </div>
-      <div class="examples">
+      <div class="examples" id="examples">
         try:
         <a data-q="What was DELL revenue in FY2024 and how did it change from FY2023?">DELL revenue YoY</a> ·
         <a data-q="What did NVDA management say about data center demand in FY2026 Q4?">NVDA data center commentary</a> ·
@@ -283,37 +260,14 @@
       </div>
     </form>
 
-    <div class="progress-stream" id="progress-stream" style="display:none">
-      <div class="step" data-role="placeholder">Waiting...</div>
-    </div>
+    <div id="messages-container"></div>
 
-    <div class="answer-meta" id="answer-meta" style="display:none">
-      <span id="verifier-status"></span>
-      <span id="warnings-tag" style="display:none"></span>
-      <span id="duration-summary"></span>
-      <span id="token-summary"></span>
-      <span id="trace-id"></span>
-    </div>
-
-    <div class="answer-box" id="answer-box" style="display:none"></div>
-
-    <div class="warnings-list" id="warnings-list" style="display:none"></div>
-
-    <details class="trace-panel" id="trace-panel" style="display:none; margin-top:16px">
-      <summary>Trace details</summary>
-      <div class="trace-body">
-        <h4 style="margin:8px 0 4px 0; color:var(--text-dim); font-size:11px; text-transform:uppercase;">Tool calls</h4>
-        <table id="trace-tools"><thead><tr><th>tool</th><th>rows</th><th>cited</th><th>ms</th></tr></thead><tbody></tbody></table>
-        <h4 style="margin:14px 0 4px 0; color:var(--text-dim); font-size:11px; text-transform:uppercase;">Model calls</h4>
-        <table id="trace-models"><thead><tr><th>model</th><th>role</th><th>in</th><th>out</th><th>ms</th></tr></thead><tbody></tbody></table>
-      </div>
-    </details>
   </main>
 
   <aside class="ask-aside evidence-aside">
     <h3>Evidence</h3>
     <div id="evidence-panel">
-      <div class="empty">Click a citation in the answer to inspect the source row.</div>
+      <div class="empty">Click a citation in any answer to inspect the source row.</div>
     </div>
   </aside>
 </div>
@@ -323,21 +277,44 @@
   const form = document.getElementById('ask-form');
   const questionEl = document.getElementById('question');
   const submitBtn = document.getElementById('submit-btn');
-  const progressStream = document.getElementById('progress-stream');
-  const answerBox = document.getElementById('answer-box');
-  const answerMeta = document.getElementById('answer-meta');
-  const verifierStatus = document.getElementById('verifier-status');
-  const durationSummary = document.getElementById('duration-summary');
-  const tokenSummary = document.getElementById('token-summary');
-  const traceIdEl = document.getElementById('trace-id');
-  const warningsTag = document.getElementById('warnings-tag');
-  const warningsList = document.getElementById('warnings-list');
-  const tracePanel = document.getElementById('trace-panel');
-  const traceToolsBody = document.querySelector('#trace-tools tbody');
-  const traceModelsBody = document.querySelector('#trace-models tbody');
+  const messagesContainer = document.getElementById('messages-container');
   const evidencePanel = document.getElementById('evidence-panel');
+  const threadIdDisplay = document.getElementById('thread-id-display');
+  const turnCountEl = document.getElementById('turn-count');
+  const newThreadBtn = document.getElementById('new-thread-btn');
 
-  document.querySelectorAll('.examples a').forEach(a => {
+  // Thread state — persisted in localStorage so a refresh keeps the
+  // conversation. New conversations get a fresh UUID.
+  const THREAD_KEY = 'arrow.ask.thread_id';
+  function genThreadId() {
+    if (window.crypto && window.crypto.randomUUID) {
+      return window.crypto.randomUUID();
+    }
+    return 'th-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  }
+  function getThreadId() {
+    let tid = localStorage.getItem(THREAD_KEY);
+    if (!tid) {
+      tid = genThreadId();
+      localStorage.setItem(THREAD_KEY, tid);
+    }
+    return tid;
+  }
+  function newThread() {
+    const tid = genThreadId();
+    localStorage.setItem(THREAD_KEY, tid);
+    return tid;
+  }
+  let threadId = getThreadId();
+  function renderThreadInfo(turnCount) {
+    threadIdDisplay.textContent = threadId.slice(0, 8);
+    turnCountEl.textContent = turnCount > 0
+      ? `· ${turnCount} prior turn${turnCount === 1 ? '' : 's'}`
+      : '· new';
+  }
+
+  // Examples: clicking pre-fills the textarea.
+  document.querySelectorAll('#examples a').forEach(a => {
     a.addEventListener('click', e => {
       e.preventDefault();
       questionEl.value = a.getAttribute('data-q');
@@ -345,33 +322,60 @@
     });
   });
 
-  function appendStep(text, cls) {
+  // ---------- HTML escaping + utility ----------
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // ---------- Per-turn card factory ----------
+
+  function createTurnCard(question, options) {
+    options = options || {};
+    const card = document.createElement('div');
+    card.className = 'turn-card';
+    card.innerHTML = `
+      <div class="turn-question"></div>
+      <div class="progress-stream" style="display:${options.skipProgress ? 'none' : 'block'}"></div>
+      <div class="answer-meta" style="display:none">
+        <span class="verifier-status"></span>
+        <span class="warnings-tag" style="display:none"></span>
+        <span class="duration-summary"></span>
+        <span class="token-summary"></span>
+        <span class="trace-id"></span>
+      </div>
+      <div class="answer-box" style="display:none"></div>
+      <div class="warnings-list" style="display:none"></div>
+      <details class="trace-panel" style="display:none; margin-top:10px">
+        <summary>Trace details</summary>
+        <div class="trace-body">
+          <h4 style="margin:8px 0 4px 0; color:var(--text-dim); font-size:11px; text-transform:uppercase;">Tool calls</h4>
+          <table class="trace-tools"><thead><tr><th>tool</th><th>rows</th><th>cited</th><th>ms</th></tr></thead><tbody></tbody></table>
+          <h4 style="margin:14px 0 4px 0; color:var(--text-dim); font-size:11px; text-transform:uppercase;">Model calls</h4>
+          <table class="trace-models"><thead><tr><th>model</th><th>role</th><th>in</th><th>out</th><th>ms</th></tr></thead><tbody></tbody></table>
+        </div>
+      </details>
+    `;
+    card.querySelector('.turn-question').textContent = question;
+    messagesContainer.appendChild(card);
+    return card;
+  }
+
+  function appendStep(card, text, cls) {
+    const stream = card.querySelector('.progress-stream');
+    if (!stream) return;
     const el = document.createElement('div');
     el.className = 'step ' + (cls || '');
     el.textContent = text;
-    progressStream.appendChild(el);
-    progressStream.scrollTop = progressStream.scrollHeight;
+    stream.appendChild(el);
+    stream.scrollTop = stream.scrollHeight;
   }
 
-  function clearAll() {
-    progressStream.innerHTML = '';
-    progressStream.style.display = 'block';
-    answerBox.innerHTML = '';
-    answerBox.style.display = 'none';
-    answerMeta.style.display = 'none';
-    tracePanel.style.display = 'none';
-    traceToolsBody.innerHTML = '';
-    traceModelsBody.innerHTML = '';
-    warningsTag.style.display = 'none';
-    warningsTag.textContent = '';
-    warningsList.style.display = 'none';
-    warningsList.innerHTML = '';
-  }
-
-  // Render the answer with [F:..]/[T:..]/[S:..]/[M:..]/[A:..] citations as
-  // clickable spans. Other text becomes paragraphs split on blank lines.
-  function renderAnswer(text) {
-    answerBox.innerHTML = '';
+  function renderAnswer(card, text) {
+    const box = card.querySelector('.answer-box');
+    box.innerHTML = '';
     const paragraphs = text.split(/\n\n+/);
     paragraphs.forEach(para => {
       const p = document.createElement('p');
@@ -399,10 +403,12 @@
       if (lastIdx < para.length) {
         p.appendChild(document.createTextNode(para.slice(lastIdx)));
       }
-      answerBox.appendChild(p);
+      box.appendChild(p);
     });
-    answerBox.style.display = 'block';
+    box.style.display = 'block';
   }
+
+  // ---------- Evidence side panel ----------
 
   async function loadEvidence(kind, body) {
     const supported = ['F', 'T', 'S', 'M'];
@@ -412,18 +418,16 @@
       card.innerHTML = `<div class="ev-header">[${kind}:${escapeHtml(body)}]</div>` +
         `<div class="ev-meta">No popup yet for ${kind}-citations.</div>`;
       evidencePanel.prepend(card);
-      if (evidencePanel.querySelector('.empty')) {
-        evidencePanel.querySelector('.empty').remove();
-      }
+      const empty = evidencePanel.querySelector('.empty');
+      if (empty) empty.remove();
       return;
     }
     const card = document.createElement('div');
     card.className = 'evidence-card';
     card.innerHTML = `<div class="ev-header">[${kind}:${escapeHtml(body)}]</div><div class="ev-meta">loading...</div>`;
     evidencePanel.prepend(card);
-    if (evidencePanel.querySelector('.empty')) {
-      evidencePanel.querySelector('.empty').remove();
-    }
+    const empty = evidencePanel.querySelector('.empty');
+    if (empty) empty.remove();
     try {
       const resp = await fetch(`/evidence/${kind}/${encodeURIComponent(body)}`);
       if (!resp.ok) {
@@ -503,8 +507,6 @@
 
   function renderMetricWindowTable(rows) {
     if (!rows || rows.length === 0) return '<div>(no rows)</div>';
-    // Pick the columns that have at least one non-null value across rows,
-    // dropping ticker/company_id which we already showed in the header.
     const skip = new Set(['ticker', 'company_id', '_view', '_period', '_window']);
     const cols = [];
     for (const k of Object.keys(rows[0])) {
@@ -529,73 +531,70 @@
   }
 
   function formatMetricValue(key, n) {
-    // Margins / ROIC etc. are stored as fractions (0.235 = 23.5%).
     if (/_margin|^roic$|^roiic$|_pct|_rate/.test(key)) {
       return (n * 100).toFixed(1) + '%';
     }
-    // Money-ish columns.
     if (/^revenue|^cogs|^gross_profit|^operating_income|^net_income|^cfo|^capital_expenditures|^rd|^sbc|^net_debt|^total_assets|^total_equity|^cash|^accounts_|^inventory|^acquisitions|^tax|^ebt|^adjusted_/.test(key)) {
       const abs = Math.abs(n);
       if (abs >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
       if (abs >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
       return '$' + n.toLocaleString();
     }
-    // Fallback: integers as-is, floats to 2 decimals.
     return Number.isInteger(n) ? String(n) : n.toFixed(2);
   }
 
-  function escapeHtml(s) {
-    return String(s)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
+  // ---------- SSE event handler — operates on a per-turn card ----------
 
-  function handleEvent(ev) {
+  function handleEvent(card, ev) {
     switch (ev.event) {
       case 'started':
-        appendStep(`started · ${ev.trace_id.slice(0, 8)}`);
+        appendStep(card, `started · ${ev.trace_id.slice(0, 8)}${ev.prior_turns ? ' · with ' + ev.prior_turns + ' prior turn(s) of context' : ''}`);
         break;
-      case 'router_turn':
-        appendStep(`router turn ${ev.iteration} · ${ev.tokens_in} in / ${ev.tokens_out} out · ${ev.duration_ms}ms · ${ev.stop_reason}`);
+      case 'router_turn': {
+        appendStep(card, `router turn ${ev.iteration} · ${ev.tokens_in} in / ${ev.tokens_out} out · ${ev.duration_ms}ms · ${ev.stop_reason}`);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>haiku</td><td>router</td><td>${ev.tokens_in}</td><td>${ev.tokens_out}</td><td>${ev.duration_ms}</td>`;
+        card.querySelector('.trace-models tbody').appendChild(tr);
         break;
+      }
       case 'tool_call':
-        appendStep(`-> ${ev.name}(${JSON.stringify(ev.params)})`, 'tool-call');
+        appendStep(card, `-> ${ev.name}(${JSON.stringify(ev.params)})`, 'tool-call');
         break;
       case 'tool_result': {
         const rowsTxt = `${ev.row_count} row${ev.row_count === 1 ? '' : 's'}`;
         const cls = ev.error ? 'error' : (ev.row_count === 0 ? 'empty' : 'ok');
-        appendStep(`<- ${ev.name}: ${rowsTxt}${ev.error ? ' · ' + ev.error : ''}`, 'tool-result ' + cls);
+        appendStep(card, `<- ${ev.name}: ${rowsTxt}${ev.error ? ' · ' + ev.error : ''}`, 'tool-result ' + cls);
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${escapeHtml(ev.name)}</td><td>${ev.row_count}</td><td data-cite-mark="${ev.evidence_ids.join(',')}"></td><td>${ev.duration_ms}</td>`;
-        traceToolsBody.appendChild(tr);
+        tr.innerHTML = `<td>${escapeHtml(ev.name)}</td><td>${ev.row_count}</td><td data-cite-mark="${(ev.evidence_ids || []).join(',')}"></td><td>${ev.duration_ms}</td>`;
+        card.querySelector('.trace-tools tbody').appendChild(tr);
         break;
       }
       case 'synthesizing':
-        appendStep('synthesizing answer...', 'synthesizing');
+        appendStep(card, 'synthesizing answer...', 'synthesizing');
         break;
-      case 'answer':
-        renderAnswer(ev.text);
-        // Mark cited tool calls in the trace table
+      case 'answer': {
+        renderAnswer(card, ev.text);
         const cited = new Set(ev.citations || []);
-        document.querySelectorAll('#trace-tools td[data-cite-mark]').forEach(td => {
+        card.querySelectorAll('.trace-tools td[data-cite-mark]').forEach(td => {
           const ids = td.getAttribute('data-cite-mark').split(',').filter(Boolean);
           if (ids.some(id => cited.has(id))) td.textContent = '✓';
         });
         break;
-      case 'verifier':
+      }
+      case 'verifier': {
+        const verifierStatus = card.querySelector('.verifier-status');
         if (ev.status === 'verified') {
           verifierStatus.textContent = '✓ verified';
-          verifierStatus.className = 'verifier-verified';
+          verifierStatus.className = 'verifier-status verifier-verified';
         } else {
           verifierStatus.textContent = '✗ unverified';
-          verifierStatus.className = 'verifier-unverified';
+          verifierStatus.className = 'verifier-status verifier-unverified';
           if (ev.issues && ev.issues.length) {
             verifierStatus.title = ev.issues.join('\n');
           }
         }
+        const warningsTag = card.querySelector('.warnings-tag');
+        const warningsList = card.querySelector('.warnings-list');
         if (ev.warnings && ev.warnings.length) {
           warningsTag.textContent = `⚠ ${ev.warnings.length} warning${ev.warnings.length === 1 ? '' : 's'}`;
           warningsTag.title = ev.warnings.join('\n');
@@ -606,55 +605,80 @@
           ).join('');
           warningsList.style.display = 'block';
         }
-        answerMeta.style.display = 'flex';
+        card.querySelector('.answer-meta').style.display = 'flex';
         break;
+      }
       case 'done':
-        durationSummary.textContent = `${(ev.duration_ms / 1000).toFixed(1)}s`;
-        tokenSummary.textContent = `${ev.input_tokens_total} in / ${ev.output_tokens_total} out`;
-        traceIdEl.textContent = ev.trace_id.slice(0, 8);
-        tracePanel.style.display = 'block';
+        card.querySelector('.duration-summary').textContent = `${(ev.duration_ms / 1000).toFixed(1)}s`;
+        card.querySelector('.token-summary').textContent = `${ev.input_tokens_total} in / ${ev.output_tokens_total} out`;
+        card.querySelector('.trace-id').textContent = ev.trace_id.slice(0, 8);
+        card.querySelector('.trace-panel').style.display = 'block';
         break;
       case 'error':
-        appendStep('error: ' + ev.message, 'tool-result error');
+        appendStep(card, 'error: ' + ev.message, 'tool-result error');
         break;
     }
   }
 
-  // Add a row to the model-calls trace table whenever we get a router_turn
-  // or detect synthesis completion. We use the timing on the verifier event
-  // to mark the synthesizer row, but for simplicity we add rows reactively.
-  let modelCallSeq = 0;
-  function recordModelCallFromRouter(ev) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>haiku</td><td>router</td><td>${ev.tokens_in}</td><td>${ev.tokens_out}</td><td>${ev.duration_ms}</td>`;
-    traceModelsBody.appendChild(tr);
+  // ---------- Hydrate prior turns on page load ----------
+
+  async function hydrateThread() {
+    try {
+      const resp = await fetch(`/threads/${encodeURIComponent(threadId)}`);
+      if (!resp.ok) {
+        renderThreadInfo(0);
+        return;
+      }
+      const data = await resp.json();
+      renderThreadInfo(data.turn_count || 0);
+      for (const t of data.turns || []) {
+        const card = createTurnCard(t.question, {skipProgress: true});
+        renderAnswer(card, t.answer);
+        // Trace details / verifier metadata aren't returned by /threads/ for
+        // prior turns. We just show the question + answer with clickable
+        // citations. The full trace remains in the JSONL.
+        const meta = card.querySelector('.answer-meta');
+        const tid = card.querySelector('.trace-id');
+        tid.textContent = '(prior turn)';
+        meta.style.display = 'flex';
+      }
+    } catch (err) {
+      console.warn('thread hydrate failed', err);
+      renderThreadInfo(0);
+    }
   }
 
-  // Hook into handleEvent to also fill the trace-models table.
-  const _origHandle = handleEvent;
-  function dispatch(ev) {
-    if (ev.event === 'router_turn') {
-      recordModelCallFromRouter(ev);
-    }
-    _origHandle(ev);
-  }
+  // ---------- New conversation button ----------
+
+  newThreadBtn.addEventListener('click', () => {
+    threadId = newThread();
+    messagesContainer.innerHTML = '';
+    evidencePanel.innerHTML = '<div class="empty">Click a citation in any answer to inspect the source row.</div>';
+    renderThreadInfo(0);
+    questionEl.focus();
+  });
+
+  // ---------- Submit handler ----------
 
   form.addEventListener('submit', async e => {
     e.preventDefault();
     const question = questionEl.value.trim();
     if (!question) return;
     submitBtn.disabled = true;
-    clearAll();
+    questionEl.value = '';
+
+    const card = createTurnCard(question);
+    card.scrollIntoView({behavior: 'smooth', block: 'start'});
 
     try {
       const resp = await fetch('/ask/stream', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({question}),
+        body: JSON.stringify({question, thread_id: threadId}),
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
-        appendStep('error: ' + (err.detail || resp.status), 'tool-result error');
+        appendStep(card, 'error: ' + (err.detail || resp.status), 'tool-result error');
         submitBtn.disabled = false;
         return;
       }
@@ -674,19 +698,29 @@
             if (!payload) continue;
             try {
               const ev = JSON.parse(payload);
-              dispatch(ev);
+              handleEvent(card, ev);
             } catch (err) {
               console.warn('bad SSE line', payload, err);
             }
           }
         }
       }
+      // Refresh turn count after a successful run.
+      const tcResp = await fetch(`/threads/${encodeURIComponent(threadId)}`);
+      if (tcResp.ok) {
+        const data = await tcResp.json();
+        renderThreadInfo(data.turn_count || 0);
+      }
     } catch (err) {
-      appendStep('error: ' + err.message, 'tool-result error');
+      appendStep(card, 'error: ' + err.message, 'tool-result error');
     } finally {
       submitBtn.disabled = false;
+      questionEl.focus();
     }
   });
+
+  // Boot
+  hydrateThread();
 })();
 </script>
 </body>

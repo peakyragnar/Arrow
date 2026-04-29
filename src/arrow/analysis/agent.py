@@ -858,15 +858,89 @@ class AgentTrace:
     verifier_issues: list[str] = field(default_factory=list)
     verifier_warnings: list[str] = field(default_factory=list)
     error: str | None = None
+    thread_id: str | None = None
+    turn_index: int | None = None
 
     def write(self, out_dir: Path | None = None) -> Path:
         out_dir = out_dir or Path("outputs/qa_runs/agent")
         out_dir.mkdir(parents=True, exist_ok=True)
         path = out_dir / f"{datetime.now(UTC).date().isoformat()}.jsonl"
         payload = jsonable(self)
+        line = json.dumps(payload, sort_keys=True, default=str) + "\n"
         with path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(payload, sort_keys=True, default=str) + "\n")
+            f.write(line)
+        if self.thread_id:
+            thread_dir = out_dir / "threads"
+            thread_dir.mkdir(parents=True, exist_ok=True)
+            thread_path = thread_dir / f"{self.thread_id}.jsonl"
+            with thread_path.open("a", encoding="utf-8") as f:
+                f.write(line)
         return path
+
+
+# --------------------------------------------------------------------------- #
+# Multi-turn / thread storage
+# --------------------------------------------------------------------------- #
+
+# Cap how many prior turns we replay. Each turn is ~500-2000 tokens of Q+A
+# prose; 5 keeps the context manageable while supporting natural follow-ups
+# ("what about Q3", "compare to last year", "explain that more").
+MAX_PRIOR_TURNS = 5
+
+
+@dataclass
+class PriorTurn:
+    question: str
+    answer: str
+    started_at: str
+
+
+def _thread_path(thread_id: str, out_dir: Path | None = None) -> Path:
+    base = out_dir or Path("outputs/qa_runs/agent")
+    return base / "threads" / f"{thread_id}.jsonl"
+
+
+def load_thread(thread_id: str, out_dir: Path | None = None) -> list[PriorTurn]:
+    """Read a thread's prior turns in chronological order.
+
+    Returns only completed, answered turns (skips error rows and unanswered
+    runs). Caller is responsible for capping length before replaying.
+    """
+    path = _thread_path(thread_id, out_dir)
+    if not path.exists():
+        return []
+    turns: list[PriorTurn] = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            answer = row.get("answer")
+            question = row.get("question")
+            if not answer or not question:
+                continue
+            turns.append(
+                PriorTurn(
+                    question=question,
+                    answer=answer,
+                    started_at=row.get("started_at") or "",
+                )
+            )
+    turns.sort(key=lambda t: t.started_at)
+    return turns
+
+
+def _prior_messages(prior_turns: list[PriorTurn]) -> list[dict[str, Any]]:
+    """Render prior turns as Anthropic-format chat messages."""
+    out: list[dict[str, Any]] = []
+    for t in prior_turns[-MAX_PRIOR_TURNS:]:
+        out.append({"role": "user", "content": t.question})
+        out.append({"role": "assistant", "content": t.answer})
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -948,11 +1022,14 @@ def _run_planner_loop(
     conn: psycopg.Connection,
     question: str,
     trace: AgentTrace,
+    *,
+    prior_turns: list[PriorTurn] | None = None,
 ) -> tuple[list[ToolExecution], list[dict[str, Any]]]:
     """Run the Haiku tool-use loop. Returns the executions and the final
     Anthropic message history (so the synthesizer can replay the evidence)."""
     tool_specs = [t.anthropic_spec() for t in REGISTRY]
-    messages: list[dict[str, Any]] = [{"role": "user", "content": question}]
+    messages: list[dict[str, Any]] = list(_prior_messages(prior_turns or []))
+    messages.append({"role": "user", "content": question})
     executions: list[ToolExecution] = []
 
     for _ in range(MAX_TOOL_ITERATIONS):
@@ -1324,6 +1401,7 @@ def ask(
     conn: psycopg.Connection | None = None,
     client: anthropic.Anthropic | None = None,
     out_dir: Path | None = None,
+    thread_id: str | None = None,
 ) -> AgentTrace:
     """Answer one question and return the persisted trace."""
     load_dotenv(override=True)
@@ -1332,10 +1410,13 @@ def ask(
 
     from arrow.db.connection import get_conn
 
+    prior_turns = load_thread(thread_id, out_dir) if thread_id else []
     trace = AgentTrace(
         trace_id=str(uuid.uuid4()),
         question=question,
         started_at=datetime.now(UTC).isoformat(),
+        thread_id=thread_id,
+        turn_index=len(prior_turns) if thread_id else None,
     )
     started_total = time.perf_counter()
 
@@ -1348,16 +1429,20 @@ def ask(
         client = anthropic.Anthropic()
 
     try:
-        executions, planner_messages = _run_planner_loop(client, conn, question, trace)
+        executions, planner_messages = _run_planner_loop(
+            client, conn, question, trace, prior_turns=prior_turns
+        )
         trace.tool_executions = executions
 
         synth_prompt, allowed_ids = _build_synthesis_prompt(question, executions, planner_messages)
+        synth_messages = list(_prior_messages(prior_turns))
+        synth_messages.append({"role": "user", "content": synth_prompt})
         synth_started = time.perf_counter()
         synth_response = client.messages.create(
             model=SONNET_MODEL,
             max_tokens=MAX_OUTPUT_TOKENS_SONNET,
             system=_SYNTH_SYSTEM,
-            messages=[{"role": "user", "content": synth_prompt}],
+            messages=synth_messages,
         )
         trace.model_calls.append(
             _model_call_metrics(
@@ -1465,20 +1550,9 @@ async def ask_stream(
     question: str,
     *,
     out_dir: Path | None = None,
+    thread_id: str | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
-    """Async generator: run the agent and yield per-step events.
-
-    Events:
-      {"event": "started", "trace_id": ..., "question": ...}
-      {"event": "router_turn", "iteration": N, "tokens_in": ..., "tokens_out": ..., "duration_ms": ...}
-      {"event": "tool_call", "name": ..., "params": {...}}
-      {"event": "tool_result", "name": ..., "row_count": ..., "evidence_ids": [...], "error": ... | None}
-      {"event": "synthesizing"}
-      {"event": "answer", "text": ..., "citations": [...]}
-      {"event": "verifier", "status": ..., "issues": [...]}
-      {"event": "done", "trace_id": ..., "duration_ms": ..., "input_tokens_total": ..., "output_tokens_total": ...}
-      {"event": "error", "message": ...}
-    """
+    """Async generator: run the agent and yield per-step events."""
     load_dotenv(override=True)
     if not os.environ.get("ANTHROPIC_API_KEY"):
         yield {"event": "error", "message": "ANTHROPIC_API_KEY is not set in the environment."}
@@ -1486,19 +1560,30 @@ async def ask_stream(
 
     from arrow.db.connection import get_conn
 
+    prior_turns = load_thread(thread_id, out_dir) if thread_id else []
     trace = AgentTrace(
         trace_id=str(uuid.uuid4()),
         question=question,
         started_at=datetime.now(UTC).isoformat(),
+        thread_id=thread_id,
+        turn_index=len(prior_turns) if thread_id else None,
     )
     started_total = time.perf_counter()
-    yield {"event": "started", "trace_id": trace.trace_id, "question": question}
+    yield {
+        "event": "started",
+        "trace_id": trace.trace_id,
+        "question": question,
+        "thread_id": thread_id,
+        "turn_index": trace.turn_index,
+        "prior_turns": len(prior_turns),
+    }
 
     client = anthropic.Anthropic()
     conn_cm = get_conn()
     conn = await asyncio.to_thread(conn_cm.__enter__)
     tool_specs = [t.anthropic_spec() for t in REGISTRY]
-    messages: list[dict[str, Any]] = [{"role": "user", "content": question}]
+    messages: list[dict[str, Any]] = list(_prior_messages(prior_turns))
+    messages.append({"role": "user", "content": question})
     executions: list[ToolExecution] = []
     allowed_ids: list[str] = []
 
@@ -1560,6 +1645,8 @@ async def ask_stream(
 
         trace.tool_executions = executions
         synth_prompt, allowed_ids = _build_synthesis_prompt(question, executions, messages)
+        synth_messages = list(_prior_messages(prior_turns))
+        synth_messages.append({"role": "user", "content": synth_prompt})
         yield {"event": "synthesizing"}
 
         synth_started = time.perf_counter()
@@ -1568,7 +1655,7 @@ async def ask_stream(
             model=SONNET_MODEL,
             max_tokens=MAX_OUTPUT_TOKENS_SONNET,
             system=_SYNTH_SYSTEM,
-            messages=[{"role": "user", "content": synth_prompt}],
+            messages=synth_messages,
         )
         synth_ms = (time.perf_counter() - synth_started) * 1000
         trace.model_calls.append(
