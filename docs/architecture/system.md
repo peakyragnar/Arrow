@@ -497,6 +497,7 @@ Status legend:
 | `qa_log` | deferred | wired up the moment the analyst flow exists; consent flags must be enforced from the first interaction |
 | `coverage_membership` | withdrawn | added in migration 017 with a `tier` column (`core` / `extended`); migration 018 dropped the tier column during the V1.1 simplification; migration 019 dropped the table entirely. The membership concept was an opt-in layer over `companies` that didn't earn its keep — every seeded ticker should be tracked by the steward by default. The steward now reads `companies` directly. See `docs/architecture/steward.md` § V1.2. |
 | `data_quality_findings` | built | migration 017 — steward-produced findings with two-state lifecycle (`open` → `closed` with structured `closed_reason`); audit captured in `history` jsonb. Distinct from inline-validation `data_quality_flags`; UNIONed by `v_open_quality_signals` (`db/queries/15_*.sql`) for dashboard. See `docs/architecture/steward.md`. |
+| `triage_session` | built | migration 022 — per-operator-session capture of chat-driven triage work (Claude Code / Codex). Records intent, finding_ids, operator_quotes, investigations, actions_taken, outcomes, and a one-sentence captured_pattern. The V1 substrate for the future autonomous data-quality operator agent — these rows ARE the training corpus. See `src/arrow/steward/sessions.py` and `docs/architecture/steward.md` § LLM Trajectory. |
 
 ## Table Intent
 
