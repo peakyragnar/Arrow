@@ -52,9 +52,29 @@ from arrow.retrieval._query import jsonable
 
 HAIKU_MODEL = "claude-haiku-4-5-20251001"
 SONNET_MODEL = "claude-sonnet-4-6"
+OPUS_MODEL = "claude-opus-4-7"
 MAX_TOOL_ITERATIONS = 8
 MAX_OUTPUT_TOKENS_HAIKU = 2048
 MAX_OUTPUT_TOKENS_SONNET = 1500
+MAX_OUTPUT_TOKENS_OPUS = 4096
+
+#: Synthesizer-model registry. Keys are the short names the UI / API
+#: accepts; values are (model_id, max_tokens). Sonnet is the default —
+#: fast and cheap for testing. Opus is the considered-answer model.
+SYNTHESIZER_MODELS: dict[str, tuple[str, int]] = {
+    "sonnet": (SONNET_MODEL, MAX_OUTPUT_TOKENS_SONNET),
+    "opus": (OPUS_MODEL, MAX_OUTPUT_TOKENS_OPUS),
+}
+DEFAULT_SYNTHESIZER = "sonnet"
+
+
+def _resolve_synthesizer(name: str | None) -> tuple[str, int]:
+    """Return (model_id, max_tokens) for the requested synthesizer name.
+    Falls back to the default if name is None or unknown."""
+    if not name:
+        return SYNTHESIZER_MODELS[DEFAULT_SYNTHESIZER]
+    return SYNTHESIZER_MODELS.get(name.lower(), SYNTHESIZER_MODELS[DEFAULT_SYNTHESIZER])
+
 CITATION_RE = re.compile(r"\[([A-Z]):([^\]]+)\]")
 
 
@@ -1402,8 +1422,14 @@ def ask(
     client: anthropic.Anthropic | None = None,
     out_dir: Path | None = None,
     thread_id: str | None = None,
+    synthesizer: str | None = None,
 ) -> AgentTrace:
-    """Answer one question and return the persisted trace."""
+    """Answer one question and return the persisted trace.
+
+    ``synthesizer`` selects the answer-writing model: ``"sonnet"`` (default,
+    fast/cheap) or ``"opus"`` (considered answers). Router stays Haiku.
+    """
+    synth_model, synth_max_tokens = _resolve_synthesizer(synthesizer)
     load_dotenv(override=True)
     if not os.environ.get("ANTHROPIC_API_KEY"):
         raise RuntimeError("ANTHROPIC_API_KEY is not set in the environment.")
@@ -1439,14 +1465,14 @@ def ask(
         synth_messages.append({"role": "user", "content": synth_prompt})
         synth_started = time.perf_counter()
         synth_response = client.messages.create(
-            model=SONNET_MODEL,
-            max_tokens=MAX_OUTPUT_TOKENS_SONNET,
+            model=synth_model,
+            max_tokens=synth_max_tokens,
             system=_SYNTH_SYSTEM,
             messages=synth_messages,
         )
         trace.model_calls.append(
             _model_call_metrics(
-                synth_response, SONNET_MODEL, "synthesizer", (time.perf_counter() - synth_started) * 1000
+                synth_response, synth_model, "synthesizer", (time.perf_counter() - synth_started) * 1000
             )
         )
 
@@ -1551,8 +1577,14 @@ async def ask_stream(
     *,
     out_dir: Path | None = None,
     thread_id: str | None = None,
+    synthesizer: str | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
-    """Async generator: run the agent and yield per-step events."""
+    """Async generator: run the agent and yield per-step events.
+
+    ``synthesizer`` selects the answer-writing model: ``"sonnet"`` (default,
+    fast/cheap) or ``"opus"`` (considered answers). Router stays Haiku.
+    """
+    synth_model, synth_max_tokens = _resolve_synthesizer(synthesizer)
     load_dotenv(override=True)
     if not os.environ.get("ANTHROPIC_API_KEY"):
         yield {"event": "error", "message": "ANTHROPIC_API_KEY is not set in the environment."}
@@ -1652,14 +1684,14 @@ async def ask_stream(
         synth_started = time.perf_counter()
         synth_response = await asyncio.to_thread(
             client.messages.create,
-            model=SONNET_MODEL,
-            max_tokens=MAX_OUTPUT_TOKENS_SONNET,
+            model=synth_model,
+            max_tokens=synth_max_tokens,
             system=_SYNTH_SYSTEM,
             messages=synth_messages,
         )
         synth_ms = (time.perf_counter() - synth_started) * 1000
         trace.model_calls.append(
-            _model_call_metrics(synth_response, SONNET_MODEL, "synthesizer", synth_ms)
+            _model_call_metrics(synth_response, synth_model, "synthesizer", synth_ms)
         )
 
         answer_parts = [b.text for b in synth_response.content if getattr(b, "type", None) == "text"]

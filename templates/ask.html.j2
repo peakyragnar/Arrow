@@ -260,7 +260,12 @@
       <textarea id="question" name="question" placeholder="Ask a question. Follow-ups remember the prior context — &quot;what about Q3?&quot; works."></textarea>
       <div class="row">
         <button type="submit" id="submit-btn">Ask</button>
-        <span class="hint">Haiku routes, Sonnet writes. Up to 5 prior turns replayed for context.</span>
+        <label for="synth-select" style="color:var(--text-dim); font-size:12px; margin-left:8px;">Model:</label>
+        <select id="synth-select" style="background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:4px; padding:3px 6px; font-size:12px;">
+          <option value="sonnet">Sonnet 4.6 (fast)</option>
+          <option value="opus">Opus 4.7 (considered)</option>
+        </select>
+        <span class="hint">Haiku routes; Sonnet/Opus writes. Up to 5 prior turns replayed for context.</span>
       </div>
     </form>
 
@@ -308,6 +313,17 @@
     return tid;
   }
   let threadId = getThreadId();
+
+  // Restore the persisted synthesizer choice (Sonnet vs Opus) so the
+  // operator's preference sticks across page reloads.
+  try {
+    const savedSynth = localStorage.getItem('arrow.ask.synthesizer');
+    const synthSelect = document.getElementById('synth-select');
+    if (savedSynth && synthSelect && (savedSynth === 'sonnet' || savedSynth === 'opus')) {
+      synthSelect.value = savedSynth;
+    }
+  } catch (e) {}
+
   function renderThreadInfo(turnCount) {
     threadIdDisplay.textContent = threadId.slice(0, 8);
     turnCountEl.textContent = turnCount > 0
@@ -675,10 +691,14 @@
     card.scrollIntoView({behavior: 'smooth', block: 'start'});
 
     try {
+      const synthSelect = document.getElementById('synth-select');
+      const synthesizer = synthSelect ? synthSelect.value : 'sonnet';
+      // Persist the choice across page reloads — sticky preference.
+      try { localStorage.setItem('arrow.ask.synthesizer', synthesizer); } catch (e) {}
       const resp = await fetch('/ask/stream', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({question, thread_id: threadId}),
+        body: JSON.stringify({question, thread_id: threadId, synthesizer}),
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));

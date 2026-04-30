@@ -47,12 +47,17 @@ async def ask_stream_endpoint(request: Request):
     body = await request.json()
     question = (body.get("question") or "").strip()
     thread_id = (body.get("thread_id") or "").strip() or None
+    synthesizer = (body.get("synthesizer") or "").strip().lower() or None
     if not question:
         raise HTTPException(status_code=400, detail="question is required")
+    # Whitelist the model choice — anything else falls back to default
+    # inside the agent. Defensive against typos / unknown values.
+    if synthesizer is not None and synthesizer not in ("sonnet", "opus"):
+        synthesizer = None
 
     async def event_source():
         try:
-            async for event in ask_stream(question, thread_id=thread_id):
+            async for event in ask_stream(question, thread_id=thread_id, synthesizer=synthesizer):
                 yield f"data: {json.dumps(event, default=str)}\n\n"
         except Exception:
             # Log the full exception server-side; surface only the type to
