@@ -43,6 +43,7 @@ from arrow.retrieval.screens import (
     list_companies,
     metric_value_kind,
     screen_companies_by_metric,
+    screen_companies_by_trajectory,
     supported_metrics,
 )
 from arrow.retrieval.transcripts import (
@@ -876,6 +877,68 @@ def _tool_screen_companies(conn: psycopg.Connection, params: dict[str, Any]) -> 
     )
 
 
+def _tool_screen_companies_by_trajectory(
+    conn: psycopg.Connection, params: dict[str, Any]
+) -> ToolResult:
+    metric = params["metric"]
+    if metric not in supported_metrics():
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary=f"unsupported metric '{metric}'. Supported: {', '.join(supported_metrics())}.",
+            error=f"unsupported metric '{metric}'",
+        )
+    window_periods = int(params.get("window_periods", 12))
+    limit = int(params.get("limit", 10))
+    sort_desc = bool(params.get("sort_desc", True))
+    basis = params.get("basis", "auto")
+
+    try:
+        traj_rows = screen_companies_by_trajectory(
+            conn,
+            metric=metric,
+            window_periods=window_periods,
+            limit=limit,
+            sort_desc=sort_desc,
+            basis=basis,
+        )
+    except ValueError as e:
+        return ToolResult(rows=[], evidence_ids=[], summary=str(e), error=str(e))
+    if not traj_rows:
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary=f"No companies matched the {metric} trajectory screen (insufficient history?).",
+        )
+    kind = metric_value_kind(metric)
+    rows: list[dict[str, Any]] = []
+    evidence_ids: list[str] = []
+    for r in traj_rows:
+        rows.append({
+            "rank": len(rows) + 1,
+            "ticker": r.ticker,
+            "company_id": r.company_id,
+            "metric": metric,
+            "value_kind": kind,
+            "earliest_value": _money(r.earliest_value),
+            "latest_value": _money(r.latest_value),
+            "delta": _money(r.delta),
+            "relative_change": _money(r.relative_change),
+            "earliest_period": r.earliest_period,
+            "latest_period": r.latest_period,
+            "n_periods": r.n_periods,
+        })
+        evidence_ids.append(
+            _format_screen_citation(r.view_name, r.company_id, r.earliest_period, r.latest_period)
+        )
+    direction = "fastest improving first" if sort_desc else "fastest declining first"
+    summary = (
+        f"Top {len(rows)} companies by {metric} trajectory over the last "
+        f"{window_periods} periods ({direction}, basis={basis}). "
+        f"earliest_value = avg of first 1/3 of window; latest_value = avg of "
+        f"last 1/3. delta = latest - earliest. relative_change = delta / |earliest|."
+    )
+    return ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary)
+
+
 REGISTRY: list[Tool] = [
     Tool(
         name="resolve_company",
@@ -1229,6 +1292,44 @@ REGISTRY: list[Tool] = [
             "required": ["metric"],
         },
         execute=_tool_screen_companies,
+    ),
+    Tool(
+        name="screen_companies_by_trajectory",
+        description=(
+            "Rank companies by the *change* in a metric over a multi-period "
+            "window — answers 'fastest-improving X' / 'fastest-declining X' / "
+            "'who's accelerating?' / 'who's decelerating?'. Distinct from "
+            "screen_companies which ranks by AVERAGE LEVEL. Computes "
+            "earliest_value (avg of first 1/3 of window) vs latest_value "
+            "(avg of last 1/3); delta and relative_change are returned. "
+            "Default window_periods=12 (3 years for quarterly metrics like "
+            "ROIC). For ratios (ROIC, margins) ranking defaults to absolute "
+            "delta (percentage points); for money metrics (revenue, fcf) it "
+            "defaults to relative change. **Use this tool, not screen_companies, "
+            "for any 'fastest growing/improving/declining' question.**"
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "metric": {
+                    "type": "string",
+                    "enum": ["revenue", "gross_margin", "operating_margin", "net_margin", "fcf", "roic"],
+                },
+                "window_periods": {
+                    "type": "integer",
+                    "description": "Periods (quarters for ROIC, years for FY metrics) in the window. Default 12.",
+                },
+                "limit": {"type": "integer", "description": "Top N. Default 10, max 50."},
+                "sort_desc": {"type": "boolean", "description": "True = fastest-improving first (default). False = fastest-declining first."},
+                "basis": {
+                    "type": "string",
+                    "enum": ["auto", "absolute", "relative"],
+                    "description": "Rank order. 'auto' (default) = absolute pp for ratios, relative % for money. 'absolute' = always rank by delta. 'relative' = always rank by relative_change.",
+                },
+            },
+            "required": ["metric"],
+        },
+        execute=_tool_screen_companies_by_trajectory,
     ),
 ]
 

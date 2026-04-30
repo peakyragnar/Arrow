@@ -135,6 +135,183 @@ def screen_companies_by_metric(
     ]
 
 
+@dataclass(frozen=True)
+class TrajectoryRow:
+    """One row of the trajectory screen — a company's recent-vs-prior delta.
+
+    Computed as: avg(metric over recent third of window)
+              − avg(metric over earliest third of window).
+    Middle third is treated as transition and excluded so the comparison
+    is between two distinct cohorts of periods, not adjacent periods.
+    """
+
+    ticker: str
+    company_id: int
+    metric: str
+    view_name: str
+
+    earliest_value: Decimal | None    # avg of first 1/3 of window
+    latest_value: Decimal | None      # avg of last 1/3 of window
+    delta: Decimal | None             # latest - earliest
+    relative_change: Decimal | None   # delta / abs(earliest); NULL if earliest near 0
+
+    earliest_period: str
+    latest_period: str
+    n_periods: int
+
+
+def screen_companies_by_trajectory(
+    conn: psycopg.Connection,
+    *,
+    metric: str,
+    window_periods: int = 12,
+    sort_desc: bool = True,
+    limit: int = 10,
+    min_coverage: int | None = None,
+    basis: str = "auto",
+) -> list[TrajectoryRow]:
+    """Rank companies by the *change* in ``metric`` from earliest-third
+    to latest-third of the window. Answers "fastest improving / declining
+    X" — distinct from ``screen_companies_by_metric`` which ranks by
+    average level.
+
+    Window: ``window_periods`` most recent periods per ticker. Default
+    12 — for quarterly metrics (ROIC) that's 3 years; for annual
+    metrics it's a longer window.
+
+    Trajectory math:
+        earliest_value = AVG(metric) over the first 1/3 of the window
+        latest_value   = AVG(metric) over the last 1/3
+        delta          = latest_value - earliest_value
+        relative_change = delta / |earliest_value|   (NULL if denom near 0)
+
+    ``basis`` controls the rank order:
+      - 'auto'      (default) — ratio metrics rank by absolute delta (pp);
+                     money metrics rank by relative_change (%)
+      - 'absolute'  — always rank by delta
+      - 'relative'  — always rank by relative_change
+
+    Companies with fewer than ``min_coverage`` periods (default
+    ``window_periods - 1``) are excluded — partial histories produce
+    misleading deltas.
+    """
+    if metric not in _METRIC_DEFS:
+        raise ValueError(
+            f"unsupported metric '{metric}'. Supported: {', '.join(sorted(_METRIC_DEFS))}"
+        )
+    if basis not in {"auto", "absolute", "relative"}:
+        raise ValueError(f"basis must be 'auto'|'absolute'|'relative', got {basis!r}")
+
+    view, value_expr, recency_col, _periods_per_year, kind = _METRIC_DEFS[metric]
+
+    if basis == "auto":
+        rank_by = "absolute" if kind == "ratio" else "relative"
+    else:
+        rank_by = basis
+
+    if min_coverage is None:
+        # Need full window to compute a reliable trajectory; allow one missing.
+        min_coverage = max(3, window_periods - 1)
+    limit = max(1, min(limit, 50))
+    order = "DESC" if sort_desc else "ASC"
+
+    # Bucket boundaries: first third vs last third of the window. Integer
+    # arithmetic — for window_periods=12: bucket size = 4 (rn_desc 1..4 = recent,
+    # 5..8 = middle, 9..12 = earliest).
+    bucket_size = max(1, window_periods // 3)
+
+    rank_expr = (
+        "(latest_value - earliest_value)"
+        if rank_by == "absolute"
+        else "CASE WHEN earliest_value IS NULL OR earliest_value = 0 THEN NULL "
+             "ELSE (latest_value - earliest_value) / ABS(earliest_value) END"
+    )
+
+    sql = f"""
+        WITH base AS (
+            SELECT
+                ticker,
+                company_id,
+                {recency_col} AS recency_key,
+                ({value_expr})::numeric AS value
+            FROM {view}
+            WHERE ({value_expr}) IS NOT NULL
+        ),
+        windowed AS (
+            SELECT
+                ticker, company_id, recency_key, value,
+                ROW_NUMBER() OVER (
+                    PARTITION BY company_id
+                    ORDER BY recency_key DESC
+                ) AS rn_desc
+            FROM base
+        ),
+        bucketed AS (
+            SELECT
+                ticker, company_id, recency_key, value,
+                CASE
+                    WHEN rn_desc <= %s                         THEN 'recent'
+                    WHEN rn_desc > %s - %s AND rn_desc <= %s   THEN 'early'
+                    ELSE 'middle'
+                END AS bucket
+            FROM windowed
+            WHERE rn_desc <= %s
+        ),
+        agg AS (
+            SELECT
+                ticker, company_id,
+                AVG(value) FILTER (WHERE bucket = 'recent') AS latest_value,
+                AVG(value) FILTER (WHERE bucket = 'early')  AS earliest_value,
+                COUNT(*)                                    AS n_periods,
+                MIN(recency_key)                            AS earliest_period,
+                MAX(recency_key)                            AS latest_period
+            FROM bucketed
+            GROUP BY ticker, company_id
+            HAVING COUNT(*) >= %s
+        )
+        SELECT
+            ticker, company_id,
+            earliest_value, latest_value,
+            (latest_value - earliest_value) AS delta,
+            CASE WHEN earliest_value IS NULL OR earliest_value = 0 THEN NULL
+                 ELSE (latest_value - earliest_value) / ABS(earliest_value)
+            END AS relative_change,
+            earliest_period::text, latest_period::text, n_periods
+        FROM agg
+        WHERE latest_value IS NOT NULL AND earliest_value IS NOT NULL
+        ORDER BY {rank_expr} {order} NULLS LAST
+        LIMIT %s;
+    """
+    rows = run_query(
+        conn,
+        sql=sql,
+        params=(
+            bucket_size,                         # rn_desc <= bucket_size  (recent)
+            window_periods, bucket_size,         # > window-bucket
+            window_periods,                      # <= window
+            window_periods,                      # rn_desc <= window
+            min_coverage,
+            limit,
+        ),
+    )
+    return [
+        TrajectoryRow(
+            ticker=row["ticker"],
+            company_id=row["company_id"],
+            metric=metric,
+            view_name=view,
+            earliest_value=row["earliest_value"],
+            latest_value=row["latest_value"],
+            delta=row["delta"],
+            relative_change=row["relative_change"],
+            earliest_period=row["earliest_period"],
+            latest_period=row["latest_period"],
+            n_periods=row["n_periods"],
+        )
+        for row in rows
+    ]
+
+
 def count_universe_for_metric(conn: psycopg.Connection, *, metric: str) -> int:
     """How many distinct tickers have at least one non-null value for this metric?
 
