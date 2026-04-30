@@ -89,21 +89,36 @@ def get_metrics(
 
 _QUARTERLY_SERIES_SQL = """
     SELECT
-        ticker,
-        company_id,
-        fiscal_year,
-        fiscal_period_label,
-        period_end,
-        revenue,
-        gross_margin,
-        operating_margin,
-        net_margin,
-        cfo,
-        capital_expenditures,
-        cfo + capital_expenditures AS fcf
-    FROM v_metrics_q
-    WHERE company_id = %s
-    ORDER BY period_end DESC
+        m.ticker,
+        m.company_id,
+        m.fiscal_year,
+        m.fiscal_period_label,
+        m.period_end,
+        m.revenue,
+        m.gross_margin,
+        m.operating_margin,
+        m.net_margin,
+        m.cfo,
+        m.capital_expenditures,
+        m.cfo + m.capital_expenditures AS fcf,
+        da.value AS dna_cf,
+        -- Capex/D&A ratio. Capex is stored negative; take ABS so the ratio
+        -- reads as "spend / replacement-rate." > 1.5x sustained = structural
+        -- cash compression; ~1.0x = replacement-only spending.
+        CASE
+            WHEN da.value IS NULL OR da.value = 0 THEN NULL
+            WHEN m.capital_expenditures IS NULL THEN NULL
+            ELSE ABS(m.capital_expenditures) / da.value
+        END AS capex_to_dna_ratio
+    FROM v_metrics_q m
+    LEFT JOIN v_ff_current da
+      ON da.company_id = m.company_id
+     AND da.period_end = m.period_end
+     AND da.statement = 'cash_flow'
+     AND da.concept = 'dna_cf'
+     AND da.period_type = 'quarter'
+    WHERE m.company_id = %s
+    ORDER BY m.period_end DESC
     LIMIT %s;
 """
 
@@ -115,8 +130,9 @@ def get_quarterly_metrics_series(
     n: int = 8,
 ) -> list[dict]:
     """Last N quarters of metrics for one company. Returns row dicts in
-    period_end DESC order. Compact shape — only the fields that drive
-    growth/margin trajectory questions."""
+    period_end DESC order. Includes dna_cf (D&A from cash flow statement)
+    and capex_to_dna_ratio so capex-cycle vs. structural-compression
+    questions are answerable in one tool call."""
     return run_query(
         conn,
         sql=_QUARTERLY_SERIES_SQL,

@@ -718,6 +718,8 @@ def _tool_read_quarterly_metrics_series(conn: psycopg.Connection, params: dict[s
             "cfo": _money(r["cfo"]),
             "capital_expenditures": _money(r["capital_expenditures"]),
             "fcf": _money(r["fcf"]),
+            "dna_cf": _money(r.get("dna_cf")),
+            "capex_to_dna_ratio": _money(r.get("capex_to_dna_ratio")),
             "evidence_id": cite,
         })
         evidence_ids.append(cite)
@@ -726,7 +728,9 @@ def _tool_read_quarterly_metrics_series(conn: psycopg.Connection, params: dict[s
         evidence_ids=evidence_ids,
         summary=(
             f"{company.ticker}: last {len(rows)} quarter(s) of metrics, "
-            f"{rows[-1]['fiscal_period']}..{rows[0]['fiscal_period']}."
+            f"{rows[-1]['fiscal_period']}..{rows[0]['fiscal_period']}. "
+            f"capex_to_dna_ratio surfaces capex-cycle vs structural-compression: "
+            f">1.5x sustained = structural; ~1.0x = replacement-only."
         ),
     )
 
@@ -1155,11 +1159,13 @@ REGISTRY: list[Tool] = [
     Tool(
         name="read_quarterly_metrics_series",
         description=(
-            "Last N quarters of metrics for one ticker: revenue, gross margin, "
-            "operating margin, net margin, CFO, CapEx, FCF. Use this for "
-            "trend/trajectory questions ('is margin accelerating?', '8-quarter "
-            "FCF trend'). One call replaces N get_metrics calls. Default N=8 "
-            "(2 years). Caps at 40."
+            "Last N quarters of metrics for one ticker: revenue, margins, "
+            "CFO, CapEx, FCF, **D&A** (dna_cf), and the **capex_to_dna_ratio**. "
+            "Use for trajectory questions ('is margin accelerating?', "
+            "'8-quarter FCF trend') AND for capex-cycle vs structural-cash-"
+            "compression analysis: capex_to_dna_ratio sustained >1.5x = "
+            "structural compression; ~1.0x = replacement-only. One call "
+            "replaces 8+ get_metrics / get_financial_facts calls. Default N=8."
         ),
         input_schema={
             "type": "object",

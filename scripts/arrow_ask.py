@@ -26,6 +26,13 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="Print the full trace as JSON instead of pretty text.",
     )
+    parser.add_argument(
+        "--synthesizer",
+        choices=["sonnet", "opus"],
+        default=None,
+        help="Synthesizer model. Default = sonnet (fast/cheap, 1500 token cap). "
+             "Use 'opus' for multi-dimensional answers that need 4096 tokens.",
+    )
     return parser.parse_args(argv)
 
 
@@ -72,7 +79,7 @@ def _print_trace(trace) -> None:
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(sys.argv[1:] if argv is None else argv)
     try:
-        trace = ask(args.question)
+        trace = ask(args.question, synthesizer=args.synthesizer)
     except RuntimeError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
