@@ -49,6 +49,7 @@ from arrow.normalize.financials.load import (
 )
 from arrow.steward.registry import Scope
 from arrow.steward.runner import run_steward
+import arrow.steward.checks  # noqa: F401  — register checks into REGISTRY
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
