@@ -5,6 +5,7 @@ Usage:
     uv run scripts/ingest_company.py --since 2018-01-01 --scoped NVDA
     uv run scripts/ingest_company.py --sec-limit 3 NVDA
     uv run scripts/ingest_company.py --no-xbrl-audit NVDA   # skip Layer 5 audit
+    uv run scripts/ingest_company.py --no-steward NVDA      # skip post-ingest steward
 
 Normal flow:
   1. seed company from SEC
@@ -17,11 +18,20 @@ Normal flow:
      ``xbrl_audit_unresolved`` steward check for analyst review.
   7. backfill SEC `10-K` / `10-Q` qualitative filings
      (5 fiscal years, complete first FY, primary docs only)
+  8. POST-INGEST STEWARD PASS: run all deterministic checks scoped to
+     the just-ingested tickers; auto-resolve cleared findings; surface
+     anything that needs human triage. Drops a pending_triage record
+     under data/pending_triage/ if any new findings appeared, so the
+     next AI session (Claude Code, Codex, anything) sees pending work
+     without the operator having to remember.
 """
 
 from __future__ import annotations
 
+import json
 import sys
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from arrow.agents.fmp_employees import backfill_fmp_employees
@@ -37,6 +47,12 @@ from arrow.normalize.financials.load import (
     CFVerificationFailed,
     VerificationFailed,
 )
+from arrow.steward.registry import Scope
+from arrow.steward.runner import run_steward
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+PENDING_TRIAGE_DIR = REPO_ROOT / "data" / "pending_triage"
 
 
 def _usage() -> str:
@@ -97,6 +113,11 @@ def main() -> int:
     if "--no-xbrl-audit" in args:
         skip_xbrl_audit = True
         args = [a for a in args if a != "--no-xbrl-audit"]
+
+    skip_steward = False
+    if "--no-steward" in args:
+        skip_steward = True
+        args = [a for a in args if a != "--no-steward"]
 
     if not args:
         print(_usage(), file=sys.stderr)
@@ -255,7 +276,83 @@ def main() -> int:
         },
     )
     print("Status: PASS — baseline facts + transcripts + SEC qualitative filings stored.")
+
+    if not skip_steward:
+        _run_post_ingest_steward(tickers, ingest_run_ids={
+            "fmp_financials": fmp_counts.get("ingest_run_id"),
+            "fmp_segments": segment_counts.get("ingest_run_id"),
+            "fmp_employees": employee_counts.get("ingest_run_id"),
+            "fmp_transcripts": transcript_counts.get("ingest_run_id"),
+            "xbrl_audit": (xbrl_audit_counts or {}).get("ingest_run_id"),
+            "sec_filings": sec_counts.get("ingest_run_id"),
+        })
+
     return 0
+
+
+def _run_post_ingest_steward(
+    tickers: list[str],
+    *,
+    ingest_run_ids: dict[str, int | None],
+) -> None:
+    """Run the steward against the just-ingested tickers and surface
+    pending triage. Operator never has to remember to run the steward
+    after an ingest — it happens here. New findings are dropped as a
+    pending_triage JSON record under ``data/pending_triage/`` so the
+    next AI session picks them up regardless of harness.
+    """
+    print()
+    print("=" * 60)
+    print("Post-ingest steward")
+    print("=" * 60)
+
+    with get_conn() as conn:
+        scope = Scope(tickers=tickers, verticals=None, check_names=None)
+        summary = run_steward(conn, scope=scope, actor="system:post_ingest")
+
+    totals = summary.to_dict()["totals"]
+    print(
+        f"  scope: {tickers}  "
+        f"new={totals['new']}  unchanged={totals['unchanged']}  "
+        f"resolved={totals['resolved']}  suppressed={totals['suppressed']}  "
+        f"({summary.duration_ms:.0f}ms)"
+    )
+
+    new_finding_ids: list[int] = []
+    for r in summary.results:
+        new_finding_ids.extend(r.new_finding_ids)
+
+    if not new_finding_ids:
+        print("  inbox: clean ✓")
+        return
+
+    # Drop a pending_triage record for the next AI session.
+    PENDING_TRIAGE_DIR.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    record_path = PENDING_TRIAGE_DIR / f"{ts}_{'-'.join(tickers)}.json"
+    record = {
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "tickers": tickers,
+        "ingest_run_ids": {k: v for k, v in ingest_run_ids.items() if v is not None},
+        "steward_totals": totals,
+        "new_finding_ids": sorted(new_finding_ids),
+        "per_check_summary": [
+            {"name": r.name, "new": r.findings_new, "resolved": r.findings_resolved}
+            for r in summary.results
+            if r.findings_new or r.findings_resolved
+        ],
+        "next_step_hint": (
+            f"Open the next chat session and ask: "
+            f"'walk me through pending triage for {tickers}'. "
+            f"The AI will read this record via "
+            f"scripts/check_pending_triage.py and surface each finding."
+        ),
+    }
+    record_path.write_text(json.dumps(record, indent=2))
+
+    print(f"  ⚠ {len(new_finding_ids)} new finding(s) need triage")
+    print(f"    pending_triage: {record_path.relative_to(REPO_ROOT)}")
+    print(f"    next: open a chat session and say 'walk me through pending triage'")
 
 
 if __name__ == "__main__":
