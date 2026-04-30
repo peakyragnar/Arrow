@@ -991,8 +991,9 @@ Tool-selection playbook:
 - Cross-company ranking ('highest/lowest X', 'top N by X', 'rank by X'): call screen_companies ONCE — do NOT iterate get_metrics, do NOT call list_companies first.
 - Universe discovery ('what tickers do we have'): list_companies. Otherwise skip it.
 - "What did management say about X in period P": search_transcripts with a SHORT FTS query.
-- "How did the discussion of X evolve over time" or "what changed period-to-period": compare_transcript_mentions with 1-4 high-signal terms.
+- "How did the discussion of X evolve over time" — counting/term-frequency framing only: compare_transcript_mentions with 1-4 high-signal terms.
 - Synthesis-style reading ("read the call and tell me", "what was the tone", "narrative arc", "what was emphasized"): read_transcript for the full call. Prefer this over chained search_transcripts when the question wants holistic reading.
+- Multi-quarter NARRATIVE comparison ("compare commentary across the last N quarters", "what's consistent / different / strengthened / weakened", "how has management's view changed", "characterize the shift"): call read_transcript for EACH of the N quarters. compare_transcript_mentions alone gives only term-count tables, which are too thin for a narrative-comparison answer — a synthesizer cannot characterize tone, framing, conviction, or emphasis from frequency counts. The 8-iteration cap accommodates 5-6 read_transcript calls plus 1-2 supporting calls (resolve_company, get_metrics for context).
 - 10-K / 10-Q section text: read_filing_sections (currently kind='mda').
 - Always resolve tickers via resolve_company FIRST when the ticker is named.
 
