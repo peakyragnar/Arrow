@@ -133,6 +133,203 @@ def latest_price_date(conn: psycopg.Connection, ticker: str) -> date | None:
     return row[0] if row else None
 
 
+@dataclass(frozen=True)
+class ValuationSamplePoint:
+    security_id: int
+    ticker: str
+    date: date
+    market_cap: Decimal | None
+    pe_ttm: Decimal | None
+    ps_ttm: Decimal | None
+    ev_ebitda_ttm: Decimal | None
+    fcf_yield_ttm: Decimal | None  # fraction
+    fiscal_period_label_at_asof: str | None
+
+
+@dataclass(frozen=True)
+class ValuationPercentile:
+    security_id: int
+    ticker: str
+    as_of: date
+    window_from: date
+    window_to: date
+    n_samples: int
+
+    pe_ttm: Decimal | None
+    pe_min: Decimal | None
+    pe_median: Decimal | None
+    pe_max: Decimal | None
+    pe_percentile: float | None  # fraction 0..1; how many historical days had a *lower* PE
+
+    ps_ttm: Decimal | None
+    ps_percentile: float | None
+
+    ev_ebitda_ttm: Decimal | None
+    ev_ebitda_percentile: float | None
+
+    fcf_yield_ttm: Decimal | None
+    fcf_yield_percentile: float | None  # high yield = "cheap" — interpret as inverse
+
+
+def read_valuation_series(
+    conn: psycopg.Connection,
+    *,
+    ticker: str,
+    from_date: date,
+    to_date: date,
+    sample: str = "monthly",
+) -> list[ValuationSamplePoint]:
+    """Sampled valuation series for one ticker.
+
+    ``sample`` controls grain:
+      - ``daily``    every trading day in window (caps at 400 rows)
+      - ``monthly``  first trading day of each month (default)
+      - ``quarterly`` first trading day of each calendar quarter
+      - ``yearly``    first trading day of each year
+
+    Sampling is "first row in the period" — picks the earliest available
+    trading day within each period bucket. Skips rows where pe_ttm IS NULL
+    (partial TTM history at the start of a series).
+    """
+    bucket_expr = {
+        "daily": None,
+        "monthly": "date_trunc('month', date)",
+        "quarterly": "date_trunc('quarter', date)",
+        "yearly": "date_trunc('year', date)",
+    }
+    if sample not in bucket_expr:
+        raise ValueError(f"sample must be one of {list(bucket_expr)}, got {sample!r}")
+
+    if sample == "daily":
+        sql = """
+            SELECT security_id, ticker, date, market_cap,
+                   pe_ttm, ps_ttm, ev_ebitda_ttm, fcf_yield_ttm,
+                   fiscal_period_label_at_asof
+            FROM v_valuation_ratios_ttm
+            WHERE ticker = %s AND date BETWEEN %s AND %s
+              AND pe_ttm IS NOT NULL
+            ORDER BY date
+            LIMIT 400;
+        """
+        params: tuple = (ticker.upper(), from_date, to_date)
+    else:
+        bucket = bucket_expr[sample]
+        sql = f"""
+            SELECT security_id, ticker, date, market_cap,
+                   pe_ttm, ps_ttm, ev_ebitda_ttm, fcf_yield_ttm,
+                   fiscal_period_label_at_asof
+            FROM (
+                SELECT *,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY ticker, {bucket}
+                           ORDER BY date
+                       ) AS rn
+                FROM v_valuation_ratios_ttm
+                WHERE ticker = %s
+                  AND date BETWEEN %s AND %s
+                  AND pe_ttm IS NOT NULL
+            ) ranked
+            WHERE rn = 1
+            ORDER BY date;
+        """
+        params = (ticker.upper(), from_date, to_date)
+
+    with conn.cursor() as cur:
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+    return [
+        ValuationSamplePoint(
+            security_id=r[0], ticker=r[1], date=r[2], market_cap=r[3],
+            pe_ttm=r[4], ps_ttm=r[5], ev_ebitda_ttm=r[6], fcf_yield_ttm=r[7],
+            fiscal_period_label_at_asof=r[8],
+        )
+        for r in rows
+    ]
+
+
+def valuation_percentile(
+    conn: psycopg.Connection,
+    *,
+    ticker: str,
+    as_of: date | None = None,
+    window_years: int = 5,
+) -> ValuationPercentile | None:
+    """Where today's valuation sits in this ticker's own historical distribution.
+
+    Returns the current ratios + their percentile rank vs the trailing
+    ``window_years``. Percentile = fraction of historical observations
+    BELOW the current value. So pe_percentile = 0.85 means "today's P/E
+    is higher than 85% of the last 5 years' daily P/Es."
+
+    For FCF yield, higher is "cheaper" — interpret the percentile inversely.
+    """
+    if as_of is None:
+        as_of = latest_price_date(conn, ticker)
+        if as_of is None:
+            return None
+
+    from datetime import timedelta
+    window_from = as_of - timedelta(days=365 * window_years)
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            WITH win AS (
+                SELECT pe_ttm, ps_ttm, ev_ebitda_ttm, fcf_yield_ttm
+                FROM v_valuation_ratios_ttm
+                WHERE ticker = %s
+                  AND date BETWEEN %s AND %s
+                  AND pe_ttm IS NOT NULL
+            ),
+            cur AS (
+                SELECT security_id, ticker, date,
+                       pe_ttm, ps_ttm, ev_ebitda_ttm, fcf_yield_ttm
+                FROM v_valuation_ratios_ttm
+                WHERE ticker = %s AND date = %s
+                LIMIT 1
+            )
+            SELECT
+                cur.security_id, cur.ticker, cur.date,
+                (SELECT COUNT(*) FROM win) AS n_samples,
+                cur.pe_ttm, (SELECT MIN(pe_ttm) FROM win), (SELECT percentile_disc(0.5) WITHIN GROUP (ORDER BY pe_ttm) FROM win), (SELECT MAX(pe_ttm) FROM win),
+                CASE WHEN cur.pe_ttm IS NULL THEN NULL ELSE
+                    (SELECT COUNT(*)::float / NULLIF((SELECT COUNT(*) FROM win), 0)
+                     FROM win WHERE pe_ttm < cur.pe_ttm)
+                END,
+                cur.ps_ttm,
+                CASE WHEN cur.ps_ttm IS NULL THEN NULL ELSE
+                    (SELECT COUNT(*)::float / NULLIF((SELECT COUNT(*) FROM win), 0)
+                     FROM win WHERE ps_ttm < cur.ps_ttm)
+                END,
+                cur.ev_ebitda_ttm,
+                CASE WHEN cur.ev_ebitda_ttm IS NULL THEN NULL ELSE
+                    (SELECT COUNT(*)::float / NULLIF((SELECT COUNT(*) FROM win), 0)
+                     FROM win WHERE ev_ebitda_ttm < cur.ev_ebitda_ttm)
+                END,
+                cur.fcf_yield_ttm,
+                CASE WHEN cur.fcf_yield_ttm IS NULL THEN NULL ELSE
+                    (SELECT COUNT(*)::float / NULLIF((SELECT COUNT(*) FROM win), 0)
+                     FROM win WHERE fcf_yield_ttm < cur.fcf_yield_ttm)
+                END
+            FROM cur;
+            """,
+            (ticker.upper(), window_from, as_of, ticker.upper(), as_of),
+        )
+        row = cur.fetchone()
+    if row is None or row[0] is None:
+        return None
+    return ValuationPercentile(
+        security_id=row[0], ticker=row[1], as_of=row[2],
+        window_from=window_from, window_to=as_of,
+        n_samples=int(row[3]),
+        pe_ttm=row[4], pe_min=row[5], pe_median=row[6], pe_max=row[7],
+        pe_percentile=row[8],
+        ps_ttm=row[9], ps_percentile=row[10],
+        ev_ebitda_ttm=row[11], ev_ebitda_percentile=row[12],
+        fcf_yield_ttm=row[13], fcf_yield_percentile=row[14],
+    )
+
+
 def read_valuation(
     conn: psycopg.Connection,
     *,

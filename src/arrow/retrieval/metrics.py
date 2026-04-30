@@ -85,3 +85,40 @@ def get_metrics(
     if not rows:
         return None
     return FiscalMetric(**rows[0])
+
+
+_QUARTERLY_SERIES_SQL = """
+    SELECT
+        ticker,
+        company_id,
+        fiscal_year,
+        fiscal_period_label,
+        period_end,
+        revenue,
+        gross_margin,
+        operating_margin,
+        net_margin,
+        cfo,
+        capital_expenditures,
+        cfo + capital_expenditures AS fcf
+    FROM v_metrics_q
+    WHERE company_id = %s
+    ORDER BY period_end DESC
+    LIMIT %s;
+"""
+
+
+def get_quarterly_metrics_series(
+    conn: psycopg.Connection,
+    *,
+    company_id: int,
+    n: int = 8,
+) -> list[dict]:
+    """Last N quarters of metrics for one company. Returns row dicts in
+    period_end DESC order. Compact shape — only the fields that drive
+    growth/margin trajectory questions."""
+    return run_query(
+        conn,
+        sql=_QUARTERLY_SERIES_SQL,
+        params=(company_id, int(n)),
+    )

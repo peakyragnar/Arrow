@@ -32,7 +32,11 @@ from dotenv import load_dotenv
 from arrow.retrieval.companies import resolve_company_by_ticker
 from arrow.retrieval.documents import get_section_chunks, list_documents
 from arrow.retrieval.facts import get_financial_facts, get_segment_facts
-from arrow.retrieval.metrics import get_metrics, metrics_view_name
+from arrow.retrieval.metrics import (
+    get_metrics,
+    get_quarterly_metrics_series,
+    metrics_view_name,
+)
 from arrow.retrieval.screens import (
     count_universe_for_metric,
     get_latest_roic,
@@ -51,6 +55,8 @@ from arrow.retrieval.prices import (
     latest_price_date,
     read_prices,
     read_valuation,
+    read_valuation_series,
+    valuation_percentile,
 )
 from arrow.retrieval._query import jsonable
 
@@ -58,7 +64,14 @@ from arrow.retrieval._query import jsonable
 HAIKU_MODEL = "claude-haiku-4-5-20251001"
 SONNET_MODEL = "claude-sonnet-4-6"
 OPUS_MODEL = "claude-opus-4-7"
-MAX_TOOL_ITERATIONS = 8
+#: Iteration cap on planner ↔ tool round-trips per question. Each iteration
+#: is one router model call + one tool execution. Cost driver is the router
+#: (haiku, ~2k input tokens cached + ~150 output); tool exec is free (DB).
+#: Bumped from 8 → 16 (2026-04-30) so multi-dimensional cross-ticker
+#: questions ("compare valuation + 5yr percentile + quarterly trend +
+#: transcript narrative across 4 names") have room to compose. Smaller
+#: questions still finish in 1-3 iterations as before.
+MAX_TOOL_ITERATIONS = 16
 MAX_OUTPUT_TOKENS_HAIKU = 2048
 MAX_OUTPUT_TOKENS_SONNET = 1500
 MAX_OUTPUT_TOKENS_OPUS = 4096
@@ -575,6 +588,149 @@ def _tool_read_valuation(conn: psycopg.Connection, params: dict[str, Any]) -> To
     return ToolResult(rows=[row], evidence_ids=[cite], summary=summary)
 
 
+def _tool_read_valuation_series(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    ticker = params["ticker"].upper()
+    from_date = _parse_iso_date(params.get("from_date"))
+    to_date = _parse_iso_date(params.get("to_date"))
+    sample = params.get("sample", "monthly")
+    if from_date is None or to_date is None:
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary="from_date and to_date are required (YYYY-MM-DD).",
+            error="from_date and to_date are required",
+        )
+    try:
+        points = read_valuation_series(
+            conn, ticker=ticker,
+            from_date=from_date, to_date=to_date, sample=sample,
+        )
+    except ValueError as e:
+        return ToolResult(rows=[], evidence_ids=[], summary=str(e), error=str(e))
+    if not points:
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary=f"No valuation series for {ticker} in [{from_date}, {to_date}].",
+        )
+
+    rows = []
+    evidence_ids: list[str] = []
+    for p in points:
+        cite = f"M:v_valuation_ratios_ttm:{p.security_id}:{p.date.isoformat()}"
+        rows.append({
+            "date": p.date.isoformat(),
+            "market_cap": _money(p.market_cap),
+            "pe_ttm": _money(p.pe_ttm),
+            "ps_ttm": _money(p.ps_ttm),
+            "ev_ebitda_ttm": _money(p.ev_ebitda_ttm),
+            "fcf_yield_ttm": _money(p.fcf_yield_ttm),
+            "fiscal_period_at_asof": p.fiscal_period_label_at_asof,
+            "evidence_id": cite,
+        })
+        evidence_ids.append(cite)
+    summary = (
+        f"{ticker}: {len(points)} valuation samples ({sample}) "
+        f"{points[0].date}..{points[-1].date}. "
+        f"P/E first {points[0].pe_ttm} → last {points[-1].pe_ttm}."
+    )
+    return ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary)
+
+
+def _tool_valuation_percentile(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    ticker = params["ticker"].upper()
+    as_of = _parse_iso_date(params.get("as_of"))
+    window_years = int(params.get("window_years") or 5)
+
+    vp = valuation_percentile(
+        conn, ticker=ticker, as_of=as_of, window_years=window_years
+    )
+    if vp is None:
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary=f"No valuation history for {ticker} (or as_of is not a trading day).",
+        )
+
+    def _pct(p):
+        return None if p is None else round(float(p) * 100.0, 1)
+
+    row = {
+        "ticker": vp.ticker,
+        "as_of": vp.as_of.isoformat(),
+        "window_from": vp.window_from.isoformat(),
+        "window_to": vp.window_to.isoformat(),
+        "n_samples": vp.n_samples,
+        "current": {
+            "pe_ttm": _money(vp.pe_ttm),
+            "ps_ttm": _money(vp.ps_ttm),
+            "ev_ebitda_ttm": _money(vp.ev_ebitda_ttm),
+            "fcf_yield_ttm": _money(vp.fcf_yield_ttm),
+        },
+        "percentile_in_window_pct": {
+            "pe_ttm": _pct(vp.pe_percentile),
+            "ps_ttm": _pct(vp.ps_percentile),
+            "ev_ebitda_ttm": _pct(vp.ev_ebitda_percentile),
+            "fcf_yield_ttm": _pct(vp.fcf_yield_percentile),
+        },
+        "pe_window_stats": {
+            "min": _money(vp.pe_min),
+            "median": _money(vp.pe_median),
+            "max": _money(vp.pe_max),
+        },
+    }
+    cite = f"M:v_valuation_ratios_ttm:{vp.security_id}:{vp.as_of.isoformat()}"
+    pe_pct = _pct(vp.pe_percentile)
+    summary = (
+        f"{ticker} on {vp.as_of}: P/E {vp.pe_ttm} is "
+        + (f"at the {pe_pct}th percentile " if pe_pct is not None else "(percentile n/a) ")
+        + f"of its {window_years}-year history "
+        f"(min {vp.pe_min}, median {vp.pe_median}, max {vp.pe_max}; "
+        f"n={vp.n_samples} historical days)."
+    )
+    return ToolResult(rows=[row], evidence_ids=[cite], summary=summary)
+
+
+def _tool_read_quarterly_metrics_series(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    ticker = params["ticker"]
+    n = int(params.get("n") or 8)
+    if n < 1 or n > 40:
+        return ToolResult(rows=[], evidence_ids=[], summary="n must be 1..40", error="n out of range")
+    company = _resolve_company(conn, ticker)
+    if company is None:
+        return ToolResult(rows=[], evidence_ids=[], summary=f"No company found for {ticker}.")
+
+    rows_raw = get_quarterly_metrics_series(conn, company_id=company.id, n=n)
+    if not rows_raw:
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary=f"No quarterly metrics for {ticker}.",
+        )
+
+    rows = []
+    evidence_ids: list[str] = []
+    for r in rows_raw:
+        cite = f"M:v_metrics_q:{company.id}:{r['fiscal_period_label']}"
+        rows.append({
+            "fiscal_period": r["fiscal_period_label"],
+            "period_end": str(r["period_end"]),
+            "revenue": _money(r["revenue"]),
+            "gross_margin": _money(r["gross_margin"]),
+            "operating_margin": _money(r["operating_margin"]),
+            "net_margin": _money(r["net_margin"]),
+            "cfo": _money(r["cfo"]),
+            "capital_expenditures": _money(r["capital_expenditures"]),
+            "fcf": _money(r["fcf"]),
+            "evidence_id": cite,
+        })
+        evidence_ids.append(cite)
+    return ToolResult(
+        rows=rows,
+        evidence_ids=evidence_ids,
+        summary=(
+            f"{company.ticker}: last {len(rows)} quarter(s) of metrics, "
+            f"{rows[-1]['fiscal_period']}..{rows[0]['fiscal_period']}."
+        ),
+    )
+
+
 def _tool_compare_transcript_mentions(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
     ticker = params["ticker"]
     terms = params.get("terms") or []
@@ -947,6 +1103,73 @@ REGISTRY: list[Tool] = [
             "required": ["ticker", "from_date", "to_date"],
         },
         execute=_tool_read_prices,
+    ),
+    Tool(
+        name="read_valuation_series",
+        description=(
+            "Sampled valuation series (P/E, P/S, EV/EBITDA, FCF yield, market cap) "
+            "for one ticker across a date range. Use this for trend questions: "
+            "'is NVDA's P/E unusually high vs its own history?', 'how has AMZN's "
+            "FCF yield trended?'. Default sample is monthly (manageable row "
+            "count); use quarterly for multi-decade windows. Returns one M:cite "
+            "per sample point."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "ticker": {"type": "string"},
+                "from_date": {"type": "string", "description": "YYYY-MM-DD inclusive."},
+                "to_date":   {"type": "string", "description": "YYYY-MM-DD inclusive."},
+                "sample": {
+                    "type": "string",
+                    "enum": ["daily", "monthly", "quarterly", "yearly"],
+                    "description": "Sampling grain. Default 'monthly'. Use 'daily' only for short windows (caps at 400 rows).",
+                },
+            },
+            "required": ["ticker", "from_date", "to_date"],
+        },
+        execute=_tool_read_valuation_series,
+    ),
+    Tool(
+        name="valuation_percentile",
+        description=(
+            "Where one ticker's CURRENT valuation sits in its own historical "
+            "distribution. Returns current P/E/P/S/EV-EBITDA/FCF-yield + each "
+            "ratio's percentile rank within the trailing N-year window (default 5y). "
+            "Pe_percentile=85 means today's P/E is higher than 85% of historical "
+            "daily values — i.e. expensive vs its own history. **This is the "
+            "right tool for 'is X overvalued vs its own history' questions** — "
+            "one call beats dozens of read_valuation calls."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "ticker": {"type": "string"},
+                "as_of": {"type": "string", "description": "YYYY-MM-DD trading day. Omit for latest available."},
+                "window_years": {"type": "integer", "description": "Trailing window. Default 5."},
+            },
+            "required": ["ticker"],
+        },
+        execute=_tool_valuation_percentile,
+    ),
+    Tool(
+        name="read_quarterly_metrics_series",
+        description=(
+            "Last N quarters of metrics for one ticker: revenue, gross margin, "
+            "operating margin, net margin, CFO, CapEx, FCF. Use this for "
+            "trend/trajectory questions ('is margin accelerating?', '8-quarter "
+            "FCF trend'). One call replaces N get_metrics calls. Default N=8 "
+            "(2 years). Caps at 40."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "ticker": {"type": "string"},
+                "n": {"type": "integer", "description": "How many recent quarters. Default 8, max 40."},
+            },
+            "required": ["ticker"],
+        },
+        execute=_tool_read_quarterly_metrics_series,
     ),
     Tool(
         name="read_valuation",
