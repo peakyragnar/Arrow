@@ -10,8 +10,8 @@ from typing import Literal
 
 import psycopg
 
-EXTRACTOR_VERSION = "sec_sections_v10"
-CHUNKER_VERSION = "sec_chunks_v10"
+EXTRACTOR_VERSION = "sec_sections_v12"
+CHUNKER_VERSION = "sec_chunks_v12"
 TEXT_UNIT_EXTRACTOR_VERSION = "press_release_units_v4"
 TEXT_CHUNKER_VERSION = "artifact_text_chunks_v1"
 
@@ -1563,9 +1563,22 @@ def _is_toc_like(lines: list[_Line], index: int, body: str) -> bool:
                 break
         if not prose_before_page_ref:
             return True
-    if lines[index].start > int(len(body) * 0.15):
+    # Cluster heuristic: real TOCs cluster at top of document; cross-reference
+    # indexes ("Form 10-Q Cross-Reference Index") cluster at the very end.
+    # Run the cluster check at either end. The middle of the document is
+    # genuinely body content, where we don't want false positives from
+    # heading-like body lists.
+    in_top_15pct = lines[index].start <= int(len(body) * 0.15)
+    in_bottom_10pct = lines[index].start >= int(len(body) * 0.90)
+    if not (in_top_15pct or in_bottom_10pct):
         return False
-    return _looks_like_toc_item_heading_cluster(lines[index : min(len(lines), index + 8)])
+    # Cluster context spans before AND after the candidate. A candidate
+    # in the middle of a dense item-list (e.g. "Item 5" between "Item 4"
+    # and "Item 6" in a cross-reference index) needs backward context to
+    # see the earlier siblings.
+    cluster_start = max(0, index - 5)
+    cluster_end = min(len(lines), index + 8)
+    return _looks_like_toc_item_heading_cluster(lines[cluster_start:cluster_end])
 
 
 def _looks_like_toc_page_number_window(lines: list[_Line]) -> bool:
@@ -1593,8 +1606,23 @@ def _looks_like_toc_heading_list_window(lines: list[_Line]) -> bool:
     headings = 0
     for probe in lines:
         text = probe.text.strip()
+        # Short item markers like "Item 3." are TOC items even though they
+        # end in punctuation. Count them before the trailing-punctuation
+        # skip rejects them. Without this, dense TOCs with bare "Item N."
+        # markers (Microsoft, Nvidia, etc.) appear to have only a handful
+        # of headings and fail the threshold — letting the parser pick
+        # the TOC heading as the "real" section, which then gets trimmed
+        # to ~85 chars by the next-item boundary one line later.
+        if _is_toc_item_marker(text):
+            headings += 1
+            continue
         if _word_count(text) >= 6 and text.endswith((".", "?", "!", "”", '"')):
-            return False
+            # Hit prose. If we already counted enough TOC headings, the
+            # cluster IS a TOC — the prose just marks where the body
+            # commentary begins. Without this, INTC-style TOCs with 6
+            # bare section names followed by a "Forward-Looking
+            # Statements" preamble fail the test before reaching `>= 5`.
+            return headings >= 5
         if text.endswith((".", "?", "!", ";", "”", '"')):
             continue
         if _looks_like_heading(text):
@@ -1606,13 +1634,30 @@ def _looks_like_toc_item_heading_cluster(lines: list[_Line]) -> bool:
     item_headings = 0
     for probe in lines:
         text = probe.text.strip()
+        # See _looks_like_toc_heading_list_window above — bare "Item N."
+        # markers are valid TOC items and must be counted before the
+        # trailing-punctuation skip filters them out.
+        if _is_toc_item_marker(text):
+            item_headings += 1
+            continue
         if _word_count(text) >= 6 and text.endswith((".", "?", "!", "”", '"')):
-            return False
+            # Hit prose; same rationale as in _looks_like_toc_heading_list_window.
+            return item_headings >= 3
         if text.endswith((".", "?", "!", ";", "”", '"')):
             continue
         if re.search(r"(?i)\bitem\s+\d+[a-z]?\b", text):
             item_headings += 1
     return item_headings >= 3
+
+
+_TOC_ITEM_MARKER_RE = re.compile(r"(?i)^\s*item\s+\d+[a-z]?\.?\s*$")
+
+
+def _is_toc_item_marker(text: str) -> bool:
+    """True if `text` is a bare 'Item NN' or 'Item NNa.' marker — the
+    short form that appears in dense table-of-contents listings.
+    """
+    return bool(_TOC_ITEM_MARKER_RE.match(text.strip()))
 
 
 def _looks_like_toc_page_reference(text: str) -> bool:
