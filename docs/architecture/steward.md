@@ -20,9 +20,14 @@ exists so that every claim Arrow makes carries provenance, freshness, and
 known coverage.
 
 The steward is also the system's **operator console.** Arrow's owner
-operates the system primarily through the dashboard, not through `psql`.
-Every finding the steward writes is something the operator (or a future
-agent) can act on without writing SQL.
+operates the system primarily through chat with an AI agent (Claude
+Code, Codex, etc.), not through the dashboard or `psql`. The dashboard
+exists for monitoring and audit; the chat is where triage happens. The
+AI is the operator's investigator + script-runner + recorder — every
+finding it surfaces is something the operator can act on without
+writing SQL, and every triage session is captured structurally as
+training data for the future autonomous data-quality operator agent
+(see § LLM Trajectory).
 
 ## Three-Agent Split
 
@@ -36,9 +41,10 @@ The steward is the third role:
 | **Steward** | **Vigilance over data state; surfacing; lifecycle of findings** | **Mostly deterministic; per-check policy; never mutates source data** |
 
 Do not combine roles. The steward is built separately and integrates with
-the others through shared substrate (`coverage_membership`,
-`data_quality_findings`, `data_quality_flags`) and — at V3+ — shared
-retrieval primitives.
+the others through shared substrate (`data_quality_findings`,
+`data_quality_flags`, `triage_session`, `ingest_runs`) and — at V3+ —
+shared retrieval primitives. (`coverage_membership` was withdrawn in
+migration 019 — every ticker in `companies` is automatically tracked.)
 
 ## Runtime Spine
 
@@ -58,20 +64,38 @@ Trigger (manual sweep | post-ingest hook | cron | ticker scope)
   -> Emit RunSummary
 ```
 
-Findings flow into the dashboard `/findings` pane. The operator (V1) or
-agent (V2+) decides next action through typed action callables — the same
-callables that the dashboard route handlers wrap.
+After a steward run, findings are surfaced via two channels:
+
+1. **Chat (primary triage surface).** `scripts/ingest_company.py` runs
+   the steward post-ingest and drops a JSON record under
+   `data/pending_triage/` whenever new findings appear. The next AI
+   session in the repo (Claude Code, Codex, anything) calls
+   `scripts/check_pending_triage.py` and surfaces them to the operator
+   for triage. The AI investigates, the operator decides, the AI
+   executes any approved actions, and the loop is captured via
+   `scripts/record_triage_session.py` as a `triage_session` row.
+2. **Dashboard `/findings` pane (monitoring + audit).** Lists open and
+   closed findings with filters; lifecycle buttons (resolve / suppress
+   / dismiss) wrap the same typed action callables the AI uses. The
+   dashboard is the surface for browsing history, not for primary
+   triage.
+
+The operator (V1) or agent (V2+) decides next action through typed
+action callables — the same callables that the dashboard route handlers
+and the AI session wrap.
 
 ## Stage Contracts
 
 | Stage | Input | Output | V1 behavior | V2+ behavior |
 |---|---|---|---|---|
-| Trigger | scope filter | `Scope` object | manual CLI / explicit ticker | + post-ingest hook + nightly cron |
+| Trigger | scope filter | `Scope` object | manual CLI + post-ingest hook (built into `ingest_company.py`) | + nightly cron |
 | Plan | scope | filtered check list | all registered checks matching scope | + per-check automation policy lookup |
 | Run | check + scope | `FindingDraft` iterable | deterministic SQL only | + LLM-as-judge checks where prose required |
 | Reconcile | drafts + existing findings | DB state changes | open / bump / auto-resolve / respect-suppression | same |
-| Suggest | open finding | `agent_suggestion` jsonb | n/a (V1) | RAG over closed findings + LLM proposal |
-| Execute | finding + decision | action callable invocation | human clicks lifecycle button | per-check policy: human / suggest / auto |
+| Surface | new findings | `pending_triage/*.json` | dropped by post-ingest hook for next AI session to pick up | same |
+| Capture | chat triage loop | `triage_session` row | AI calls `record_triage_session.py` at end of triage | same — feeds V2 retrieval |
+| Suggest | open finding | `agent_suggestion` jsonb | n/a (V1) | SQL + FTS over closed `triage_session` rows + LLM proposal |
+| Execute | finding + decision | action callable invocation | human clicks lifecycle button (chat or dashboard) | per-check policy: human / suggest / auto |
 | Audit | every state change | `history` jsonb append | always | always |
 
 ## Core Objects
@@ -202,13 +226,18 @@ history captures decisions with reasons — V2's suggester reads from this.
 
 The agent enters in three roles, ordered by leverage:
 
-1. **Triage suggester.** For each new open finding, the agent embeds it,
-   pulls similar past closed findings (RAG over `data_quality_findings`
-   where `status='closed'`), sends evidence + similar precedents to the LLM,
-   and writes an `agent_suggestion` jsonb field to the finding.
-   Dashboard shows the suggestion as a chip; human clicks confirm or
-   override. Override reasons are captured — these are the next-tier
-   training signal.
+1. **Triage suggester.** For each new open finding, the agent retrieves
+   similar past closed findings + their associated `triage_session`
+   rows via SQL + FTS over the structured fields (matching by
+   `source_check`, scope (ticker / fiscal_period_key), evidence-jsonb
+   keys, and FTS on `triage_session.intent` / `captured_pattern`).
+   This is consistent with the broader Arrow retrieval rule:
+   search-first, SQL + FTS, not naive RAG (see `AGENTS.md` § Working
+   Rules). The agent sends evidence + similar precedents to the LLM
+   and writes an `agent_suggestion` jsonb field to the finding. The
+   chat (or dashboard) shows the suggestion; the operator clicks
+   confirm or override, and the override reasoning becomes the
+   next-tier training signal in the next `triage_session` capture.
 
 2. **LLM-as-judge checks.** New `LLMCheck` class, same registry. First two
    checks worth building:
@@ -267,6 +296,12 @@ honest about what's automatable.
 | `extraction_method_drift` | human_only | suggest_only | suggest_only |
 | `chunk_repair_concentration` | human_only | suggest_only | suggest_only |
 | `quarterly_value_duplication` | human_only | suggest_only | auto_with_review |
+| `quarterly_sum_to_annual_drift` | human_only | suggest_only | suggest_only |
+| `q4_period_end_consistency` | human_only | suggest_only | autonomous |
+| `cross_endpoint_period_end_consistency` | human_only | suggest_only | autonomous |
+| `period_end_calendar_consistency` | human_only | suggest_only | autonomous |
+| `transcript_artifact_orphans` | human_only | suggest_only | auto_with_review |
+| `xbrl_audit_unresolved` | human_only | suggest_only | suggest_only |
 | `expected_coverage` | human_only | suggest_only | auto_with_review |
 | `segment_taxonomy_drift` (LLM) | n/a | suggest_only | suggest_only |
 | `extraction_quality_regression` (LLM) | n/a | suggest_only | suggest_only |
@@ -506,8 +541,8 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started).
   comparisons stay symmetric.
 - ✅ Pre-fill note inputs from `suggested_action.prose` (commit c6025f3).
   Lifecycle forms switched from plain inputs to textareas with a
-  3-line structured template (Action / Cause / Expected) so V2's RAG
-  trains on consistent shape and the operator approves rather than
+  3-line structured template (Action / Cause / Expected) so V2's
+  SQL + FTS retrieval surfaces consistently-shaped precedents and the operator approves rather than
   authors.
 
 **V1.3 (chunk-quality signal promoted from audit script):**
@@ -547,7 +582,7 @@ Status markers (✅ done · 🚧 in progress · ⏳ next · ⬜ not started).
   retained — distinct Q1 vs Q2 values support legitimate origin
   in the S-1/A Selected Quarterly Data tables. Pattern is also a
   **labeled training-corpus entry** (situation → action → reasoning)
-  for the V2 RAG suggester.
+  for the V2 SQL+FTS-based suggester.
 - ✅ Companion `verify_bs.py` / `verify_cf.py` fix: demoted the
   `total_liabilities_and_equity == total_liabilities + total_equity`
   BS tie and the `net_change_in_cash == cash_end - cash_begin` CF
@@ -603,18 +638,25 @@ respective sequence; cumulative state reflects V1.2.
 
 ### V2 — LLM as advisor
 
-**Entry criteria:** ~50 closed findings with substantive notes
-covering ≥8 distinct triage patterns. Variety dominates volume —
-RAG learns from pattern variety. As of 2026-04-26 we have 9 closed
-across 5 patterns. Realistic timeline: 2–3 months of organic
-operation (5–15 findings/week steady state).
+**Entry criteria:** ~50 closed findings + ~25 captured `triage_session`
+rows with rich `captured_pattern` notes covering ≥8 distinct triage
+patterns. Variety dominates volume — the suggester learns from pattern
+variety, not row count. As of 2026-04-30 we have 13 captured
+`triage_session` rows across distinct patterns (LITE supersessions,
+calendar drift, ASC 606 transitions, vendor concept-definition shifts,
+intra-year reclassifications, planner prompt fix, etc.) with operator
+attribution preserved via `created_by` taxonomy. Realistic timeline:
+2–3 months of organic operation (5–15 findings/week steady state).
 
-9.  ⬜ Triage suggester: RAG over closed findings + dashboard suggestion
-    chip + confirm/override flow. The agent embeds new findings,
-    pulls 3–5 similar past closed findings, sends evidence + similar
-    precedents to the LLM, writes `agent_suggestion` jsonb on the
-    finding row. Operator clicks confirm or override; overrides
-    captured as next-tier training signal. **Effort: ~1 week.**
+9.  ⬜ Triage suggester: SQL + FTS retrieval over closed findings +
+    `triage_session` rows + chat / dashboard suggestion display +
+    confirm/override flow. The agent matches new findings to past
+    precedents via structured fields (`source_check`, scope,
+    evidence-jsonb keys) plus FTS on `triage_session.intent` /
+    `captured_pattern`, sends evidence + 3–5 similar precedents to the
+    LLM, writes `agent_suggestion` jsonb on the finding row. Operator
+    clicks confirm or override; overrides captured as next-tier
+    training signal in the next `triage_session`. **Effort: ~1 week.**
 10. ⬜ `LLMCheck` infrastructure + first two LLM checks
     (`segment_taxonomy_drift`, `extraction_quality_regression`).
     New check class, same registry. Deterministic prefilter narrows

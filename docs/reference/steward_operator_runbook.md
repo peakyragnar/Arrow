@@ -49,7 +49,22 @@ uv run scripts/run_steward.py [--ticker T] [--check NAME] [--vertical V] [--verb
 Run with no args = universe sweep, all 6 checks. Run with `--ticker
 PLTR` after re-ingesting PLTR to see the impact immediately.
 
-## Starting the dashboard
+## Where you operate
+
+**Chat with an AI agent (Claude Code, Codex, etc.) is the primary
+triage surface — not the dashboard.** Translating workflows to
+dashboard widgets is friction; describing a finding to an AI that
+can investigate, run scripts, and execute the fix is faster and
+generates richer training data.
+
+The dashboard exists for:
+- Browsing the inbox (`/findings`) and coverage matrix (`/coverage`)
+- Auditing closure history
+- One-off `/ask` analyst queries
+
+Both surfaces wrap the same typed action callables — the AI in chat
+calls them via Python imports / Bash, the dashboard calls them via
+HTTP route handlers. Same primitives, different consumer.
 
 ```bash
 uv run uvicorn scripts.dashboard:app --reload
@@ -57,31 +72,45 @@ uv run uvicorn scripts.dashboard:app --reload
 ```
 
 Stays bound to localhost. Reads-only on the metric views; lifecycle
-POSTs mutate `data_quality_findings` and `coverage_membership` only.
+POSTs mutate `data_quality_findings` only.
 
 ## The recommended cadence
 
-The single most important thing you can do for V2 is **process
-findings on a regular cadence** so the audit trail accumulates with
-fresh context. Stale evidence is bad training data.
+The single most important thing you can do for V2 is **let the AI
+capture every triage session structurally** so the training corpus
+accumulates with fresh context. Stale evidence is bad training data.
 
-- **Daily (10–15 min):** open `/findings?status=open`, triage
-  anything new since yesterday. Resolve / suppress / dismiss with a
-  note.
-- **Weekly (30 min):** scan `/coverage` for changes. Add new
-  tickers, demote / remove ones you no longer care about. Spot-check
-  the closed-findings tail — search for patterns ("did I suppress
-  something I shouldn't have?").
-- **After every ingest** of any ticker:
-  ```bash
-  uv run scripts/run_steward.py --ticker TICKER --verbose
-  ```
-  Then refresh `/findings?ticker=TICKER&status=open` to see what
-  changed.
+The flow is automated end-to-end:
 
-If a week goes by without you opening the inbox, the training data
-loses freshness — by the time you triage, the original context
-("why did I just re-ingest?") may be gone.
+- **When you ingest a ticker** — `uv run scripts/ingest_company.py
+  TICKER` runs the steward post-ingest as its final step. If new
+  findings appear, it drops a `data/pending_triage/<timestamp>_<ticker>.json`
+  record. If the inbox is clean, it tells you so.
+- **When you start an AI session** — the AI reads
+  `scripts/check_pending_triage.py` and surfaces what's pending. You
+  walk through each finding with the AI; it investigates, you decide,
+  it executes any approved actions and captures the loop.
+- **At end of triage** — the AI calls
+  `scripts/record_triage_session.py` with a structured payload (intent,
+  finding IDs, your verbatim words, investigations run, actions taken,
+  outcomes, captured pattern). Your reasoning becomes V2 training
+  data.
+- **After triage** — `scripts/check_pending_triage.py --resolve <path>`
+  moves the pending record to `data/pending_triage/resolved/` so it
+  doesn't resurface.
+
+You should rarely need to think about cadence — the post-ingest hook
+surfaces work as it appears, and the AI handles the housekeeping
+loops. Spend your time deciding, not operating mechanics.
+
+**Honest actor labeling matters.** When the AI captures a session,
+`created_by` should reflect who actually drove the analysis:
+- `human:michael` — operator drove the analysis; reasoning is yours
+- `claude:assistant_via_michael` — AI investigated, you approved
+- `claude:assistant_triage` — AI-driven, low operator review (avoid;
+  flags pollution risk for V2 training)
+
+Never assert `human:michael` for AI-paraphrased reasoning.
 
 ## Triage workflow per finding
 
@@ -363,10 +392,13 @@ The whole V1 design is built on one assumption: **every triage
 decision you make becomes a labeled training example for V2's
 suggester** ([steward.md § LLM
 Trajectory](../architecture/steward.md#llm-trajectory-v1-→-v2-→-v3)).
-Decisions are captured in `data_quality_findings.history` jsonb
-with actor, before/after state, timestamp, and reason. The
-suggester later does RAG over these to propose actions on new
-findings.
+Decisions are captured in two places: per-row state changes in
+`data_quality_findings.history` jsonb (actor, before/after, timestamp,
+reason), and per-session loops in the `triage_session` table (intent,
+finding IDs, operator quotes, investigations, actions taken, outcomes,
+captured patterns). The V2 suggester later retrieves over these via
+SQL + FTS — search-first, not naive RAG, consistent with Arrow's
+broader retrieval rule.
 
 What this means in practice:
 
