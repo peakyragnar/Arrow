@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Arrow · {{ ticker }} · Valuation</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+  <link rel="stylesheet" href="/static/valuation.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">Arrow</div>
+  <nav class="topnav">
+    <a href="/t/{{ ticker }}" class="navlink">Metrics</a>
+    <a href="/t/{{ ticker }}/valuation" class="navlink active">Valuation</a>
+    <a href="/findings?ticker={{ ticker }}&status=open" class="navlink">Findings</a>
+    <a href="/coverage" class="navlink">Coverage</a>
+    <a href="/ask" class="navlink">Ask</a>
+  </nav>
+  <form class="ticker-select" method="get" action="/">
+    <label for="ticker-dropdown">Ticker:</label>
+    <select id="ticker-dropdown" onchange="window.location.href = '/t/' + this.value + '/valuation';">
+      {% for t in tickers %}
+        <option value="{{ t }}" {% if t == ticker %}selected{% endif %}>{{ t }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  <div class="meta">
+    <span class="period">As of: {{ asof }}</span>
+  </div>
+</header>
+
+<main class="valuation">
+
+{# ---------- Header card: price + market cap + EV ---------- #}
+<section class="vcard">
+  <h2>{{ ticker }} · Snapshot</h2>
+  <table class="vsnap">
+    <tr>
+      <td class="lbl">Close</td>
+      <td class="val">{{ "${:,.2f}".format(close|float) if close else "—" }}</td>
+      <td class="lbl">Market Cap</td>
+      <td class="val">{{ fmt_money(market_cap) }}</td>
+      <td class="lbl">EV</td>
+      <td class="val">{{ fmt_money(ev) }}</td>
+      <td class="lbl">TTM as of</td>
+      <td class="val">{{ fiscal_period_label_at_asof or "—" }}</td>
+    </tr>
+  </table>
+</section>
+
+{% if forward_periods %}
+{# ---------- Forward consensus card ---------- #}
+<section class="vcard">
+  <h2>Forward Consensus (analyst aggregate)</h2>
+  <table class="vmatrix">
+    <thead>
+      <tr>
+        <th class="metric-col">Metric</th>
+        <th class="ttm-col">
+          <div class="hdr-main">TTM</div>
+          <div class="hdr-sub">trailing</div>
+        </th>
+        {% for p in forward_periods %}
+        <th class="est-col">
+          <div class="hdr-main">{{ p.label }}</div>
+          <div class="hdr-sub">est · {{ p.period_end.strftime("%b %Y") }}</div>
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="metric-col">Revenue</td>
+        <td class="ttm-col">{{ fmt_money(ttm.ttm_revenue) }}</td>
+        {% for p in forward_periods %}
+        <td class="est-col">{{ fmt_money(p.revenue) }}<span class="n-tag">{% if p.n_revenue %}n={{ p.n_revenue }}{% endif %}</span></td>
+        {% endfor %}
+      </tr>
+      <tr>
+        <td class="metric-col">EBITDA</td>
+        <td class="ttm-col">{{ fmt_money(ttm.ttm_ebitda) }}</td>
+        {% for p in forward_periods %}
+        <td class="est-col">{{ fmt_money(p.ebitda) }}</td>
+        {% endfor %}
+      </tr>
+      <tr>
+        <td class="metric-col">Operating Income</td>
+        <td class="ttm-col">{{ fmt_money(ttm.ttm_operating_income) }}</td>
+        {% for p in forward_periods %}
+        <td class="est-col">{{ fmt_money(p.ebit) }}</td>
+        {% endfor %}
+      </tr>
+      <tr>
+        <td class="metric-col">Net Income</td>
+        <td class="ttm-col">{{ fmt_money(ttm.ttm_net_income) }}</td>
+        {% for p in forward_periods %}
+        <td class="est-col">{{ fmt_money(p.net_income) }}<span class="n-tag">{% if p.n_eps %}n={{ p.n_eps }}{% endif %}</span></td>
+        {% endfor %}
+      </tr>
+      <tr>
+        <td class="metric-col">EPS</td>
+        <td class="ttm-col">—</td>
+        {% for p in forward_periods %}
+        <td class="est-col">{{ "${:,.2f}".format(p.eps|float) if p.eps else "—" }}</td>
+        {% endfor %}
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+{# ---------- Multiples card: TTM + Forward ---------- #}
+<section class="vcard">
+  <h2>Multiples</h2>
+  <table class="vmatrix">
+    <thead>
+      <tr>
+        <th class="metric-col">Multiple</th>
+        <th class="ttm-col">
+          <div class="hdr-main">TTM</div>
+          <div class="hdr-sub">trailing</div>
+        </th>
+        {% for p in forward_periods %}
+        <th class="est-col">
+          <div class="hdr-main">Fwd {{ p.label }}</div>
+          <div class="hdr-sub">forward</div>
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="metric-col">P / E <span class="metric-sub">price ÷ EPS</span></td>
+        <td class="ttm-col">{{ fmt_x(ttm.pe_ttm) }}</td>
+        {% for p in forward_periods %}
+        <td class="est-col">{{ fmt_x(p.pe_fwd) }}</td>
+        {% endfor %}
+      </tr>
+      <tr>
+        <td class="metric-col">P / Sales <span class="metric-sub">market cap ÷ revenue</span></td>
+        <td class="ttm-col">{{ fmt_x(ttm.ps_ttm) }}</td>
+        {% for p in forward_periods %}
+        <td class="est-col">{{ fmt_x(p.ps_fwd) }}</td>
+        {% endfor %}
+      </tr>
+      <tr>
+        <td class="metric-col">EV / EBITDA <span class="metric-sub">enterprise value ÷ EBITDA</span></td>
+        <td class="ttm-col">{{ fmt_x(ttm.ev_ebitda_ttm) }}</td>
+        {% for p in forward_periods %}
+        <td class="est-col">{{ fmt_x(p.ev_ebitda_fwd) }}</td>
+        {% endfor %}
+      </tr>
+      <tr>
+        <td class="metric-col">FCF Yield <span class="metric-sub">FCF ÷ market cap</span></td>
+        <td class="ttm-col">{{ fmt_pct(ttm.fcf_yield_ttm) }}</td>
+        {% for p in forward_periods %}
+        <td class="est-col">
+          {{ fmt_pct(p.fcf_yield_fwd_implied) }}
+          {% if p.fcf_yield_fwd_implied %}<span class="impl-tag" title="Implied: forward revenue × (TTM FCF / TTM revenue) ÷ market cap. FMP does not publish forward FCF.">impl</span>{% endif %}
+        </td>
+        {% endfor %}
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+{# ---------- Implied growth card ---------- #}
+<section class="vcard">
+  <h2>Implied Growth (analyst consensus)</h2>
+  <table class="vmatrix">
+    <thead>
+      <tr>
+        <th class="metric-col">Driver</th>
+        {% for g in implied_growth %}
+        <th class="est-col">
+          <div class="hdr-main">{{ g.label }}</div>
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="metric-col">Revenue</td>
+        {% for g in implied_growth %}
+        <td class="est-col {% if g.revenue_growth and g.revenue_growth > 0 %}pos{% elif g.revenue_growth and g.revenue_growth < 0 %}neg{% endif %}">{{ fmt_pct_signed(g.revenue_growth) }}</td>
+        {% endfor %}
+      </tr>
+      <tr>
+        <td class="metric-col">EBITDA</td>
+        {% for g in implied_growth %}
+        <td class="est-col {% if g.ebitda_growth and g.ebitda_growth > 0 %}pos{% elif g.ebitda_growth and g.ebitda_growth < 0 %}neg{% endif %}">{{ fmt_pct_signed(g.ebitda_growth) }}</td>
+        {% endfor %}
+      </tr>
+      <tr>
+        <td class="metric-col">Net Income</td>
+        {% for g in implied_growth %}
+        <td class="est-col {% if g.net_income_growth and g.net_income_growth > 0 %}pos{% elif g.net_income_growth and g.net_income_growth < 0 %}neg{% endif %}">{{ fmt_pct_signed(g.net_income_growth) }}</td>
+        {% endfor %}
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+{% else %}
+<section class="vcard">
+  <p>No forward analyst estimates loaded for {{ ticker }}. Run <code>uv run scripts/ingest_estimates.py {{ ticker }}</code>.</p>
+</section>
+{% endif %}
+
+</main>
+
+<footer class="bottom">
+  <a href="/t/{{ ticker }}">metrics</a>
+  &middot;
+  <a href="/health">health</a>
+  &middot;
+  <span class="audit-note">Forward multiples use latest analyst consensus from FMP (revenue, EBITDA, net income, EPS). FCF yield forward is implied from trailing FCF/revenue ratio — FMP does not publish forward FCF.</span>
+</footer>
+
+</body>
+</html>

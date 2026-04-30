@@ -210,6 +210,33 @@ th.last-fy, td.last-fy {
     border-right: 1px solid var(--border);
 }
 
+/* Forward analyst-consensus estimate columns: dimmer, italic to mark
+   them visually distinct from reported actuals. Subtle blue tint to
+   read as "forecast" vs. the warm grey of actuals. */
+th.est-col, td.est-col {
+    background: #0e1622;
+    color: #92a4be;
+    font-style: italic;
+}
+td.est-col.null {
+    color: #2c3b53;
+}
+tr.change-row td.est-col {
+    background: #0c1320;
+    color: #6c84a3;
+}
+/* Strong left border at the start of each estimate run so the eye
+   sees actual → estimate boundaries clearly. */
+th.first-est-fy, td.first-est-fy,
+th.first-est-q,  td.first-est-q {
+    border-left: 2px dashed #3a5078;
+}
+/* Header sub label "est · n=X" reads as the analyst-count badge */
+th.est-col .hdr-sub {
+    color: #6c87b3;
+    font-style: italic;
+}
+
 .audit-note { color: var(--text-dim); }
 
 footer.bottom {

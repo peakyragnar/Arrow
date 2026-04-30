@@ -1,0 +1,131 @@
+/* Valuation page styling.
+   Layered on top of dashboard.css — borrows colors and typography. */
+
+main.valuation {
+    padding: 18px 22px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+section.vcard {
+    margin-bottom: 28px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    background: var(--bg-alt, #0c1320);
+}
+section.vcard h2 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+table.vsnap, table.vmatrix {
+    border-collapse: collapse;
+    width: 100%;
+}
+table.vsnap td, table.vmatrix th, table.vmatrix td {
+    padding: 8px 14px;
+    font-size: 13px;
+    border-bottom: 1px solid #1a2333;
+}
+table.vsnap td.lbl {
+    color: var(--text-dim);
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    width: 1%;
+    white-space: nowrap;
+}
+table.vsnap td.val {
+    color: var(--text);
+    font-weight: 600;
+    padding-right: 28px;
+    white-space: nowrap;
+}
+
+table.vmatrix th {
+    text-align: right;
+    color: var(--text-dim);
+    font-weight: 500;
+    border-bottom: 1px solid var(--border);
+    background: #0a121e;
+}
+table.vmatrix th.metric-col {
+    text-align: left;
+    width: 30%;
+}
+table.vmatrix th .hdr-main {
+    color: var(--text);
+    font-weight: 600;
+    font-size: 13px;
+}
+table.vmatrix th .hdr-sub {
+    color: var(--text-dim);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 2px;
+}
+
+table.vmatrix td.metric-col {
+    text-align: left;
+    color: var(--text);
+}
+table.vmatrix td.metric-col .metric-sub {
+    color: var(--text-dim);
+    font-size: 11px;
+    margin-left: 6px;
+    font-weight: normal;
+}
+table.vmatrix td {
+    text-align: right;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+table.vmatrix td.ttm-col {
+    background: var(--ttm-bg);
+}
+table.vmatrix th.ttm-col {
+    background: var(--ttm-bg);
+}
+table.vmatrix td.est-col {
+    background: #0e1622;
+    color: #92a4be;
+    font-style: italic;
+}
+table.vmatrix th.est-col {
+    background: #0e1622;
+}
+
+.n-tag {
+    color: #6c87b3;
+    font-size: 10px;
+    margin-left: 6px;
+    font-weight: normal;
+    font-style: normal;
+    text-transform: uppercase;
+}
+.impl-tag {
+    color: #b2884d;
+    font-size: 9px;
+    margin-left: 6px;
+    text-transform: uppercase;
+    border: 1px solid #7d6233;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-style: normal;
+    cursor: help;
+}
+
+table.vmatrix td.pos { color: var(--pos) !important; }
+table.vmatrix td.neg { color: var(--neg) !important; }
+
+.navlink.active {
+    color: var(--text);
+    border-bottom: 2px solid var(--accent, #4d8fc7);
+    padding-bottom: 4px;
+}

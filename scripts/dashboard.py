@@ -44,6 +44,43 @@ from arrow.steward.coverage import (
 BASE_DIR = Path(__file__).resolve().parents[1]
 TEMPLATES = Jinja2Templates(directory=BASE_DIR / "templates")
 
+
+def _fmt_money(v: Any) -> str:
+    """Format a numeric value as $XB / $XM / $X — used by templates."""
+    f = _to_float(v)
+    if f is None:
+        return "—"
+    if abs(f) >= 1e9:
+        return f"${f / 1e9:,.2f}B"
+    if abs(f) >= 1e6:
+        return f"${f / 1e6:,.0f}M"
+    return f"${f:,.0f}"
+
+
+def _fmt_x(v: Any) -> str:
+    f = _to_float(v)
+    return "—" if f is None else f"{f:.1f}x"
+
+
+def _fmt_pct(v: Any) -> str:
+    """Plain percent (no sign)."""
+    f = _to_float(v)
+    return "—" if f is None else f"{f * 100:.1f}%"
+
+
+def _fmt_pct_signed(v: Any) -> str:
+    """Signed percent (with +/-) — for delta/growth rows."""
+    f = _to_float(v)
+    return "—" if f is None else f"{f * 100:+.1f}%"
+
+
+# Jinja globals for templates that don't go through the (text, cls) cell
+# tuple machinery (e.g. valuation.html.j2 renders simple per-cell values).
+TEMPLATES.env.globals["fmt_money"] = _fmt_money
+TEMPLATES.env.globals["fmt_x"] = _fmt_x
+TEMPLATES.env.globals["fmt_pct"] = _fmt_pct
+TEMPLATES.env.globals["fmt_pct_signed"] = _fmt_pct_signed
+
 logger = logging.getLogger("arrow.dashboard")
 
 
@@ -211,6 +248,173 @@ def fetch_fiscal_years(
     return rows
 
 
+def fetch_eps_diluted(
+    conn: psycopg.Connection,
+    ticker: str,
+    *,
+    fy_end_dates: list[Any],
+    quarterly_period_ends: list[Any],
+) -> tuple[dict[Any, Any], dict[Any, Any], Any | None]:
+    """Pull diluted EPS (concept = 'eps_diluted') and align to the
+    columns the metric panel renders.
+
+    Returns:
+      fy_eps:  {fy_end_date → diluted EPS for that fiscal year (annual row)}
+      q_eps:   {quarter period_end → diluted EPS for that quarter}
+      ttm_eps: sum of the most recent 4 quarterly EPS values, or None
+
+    EPS does not sum cleanly across quarters when the share count is
+    moving. The sum-of-4-quarters TTM is an approximation; it matches
+    how Yahoo / stockanalysis.com display TTM EPS and is close enough
+    for the panel context.
+    """
+    fy_eps: dict[Any, Any] = {}
+    q_eps: dict[Any, Any] = {}
+    ttm_eps: Any | None = None
+
+    if not fy_end_dates and not quarterly_period_ends:
+        return fy_eps, q_eps, ttm_eps
+
+    with conn.cursor() as cur:
+        if fy_end_dates:
+            cur.execute(
+                """
+                SELECT ff.period_end, ff.value
+                FROM financial_facts ff
+                JOIN companies co ON co.id = ff.company_id
+                WHERE co.ticker = %s
+                  AND ff.statement = 'income_statement'
+                  AND ff.concept = 'eps_diluted'
+                  AND ff.period_type = 'annual'
+                  AND ff.superseded_at IS NULL
+                  AND ff.period_end = ANY(%s);
+                """,
+                (ticker, fy_end_dates),
+            )
+            for pe, v in cur.fetchall():
+                fy_eps[pe] = v
+
+        if quarterly_period_ends:
+            cur.execute(
+                """
+                SELECT ff.period_end, ff.value
+                FROM financial_facts ff
+                JOIN companies co ON co.id = ff.company_id
+                WHERE co.ticker = %s
+                  AND ff.statement = 'income_statement'
+                  AND ff.concept = 'eps_diluted'
+                  AND ff.period_type = 'quarter'
+                  AND ff.superseded_at IS NULL
+                  AND ff.period_end = ANY(%s);
+                """,
+                (ticker, quarterly_period_ends),
+            )
+            for pe, v in cur.fetchall():
+                q_eps[pe] = v
+
+        # TTM EPS: sum of last 4 quarters by period_end.
+        cur.execute(
+            """
+            SELECT ff.value
+            FROM financial_facts ff
+            JOIN companies co ON co.id = ff.company_id
+            WHERE co.ticker = %s
+              AND ff.statement = 'income_statement'
+              AND ff.concept = 'eps_diluted'
+              AND ff.period_type = 'quarter'
+              AND ff.superseded_at IS NULL
+            ORDER BY ff.period_end DESC
+            LIMIT 4;
+            """,
+            (ticker,),
+        )
+        rows = cur.fetchall()
+    if rows and len(rows) >= 4:
+        try:
+            ttm_eps = sum(float(r[0]) for r in rows if r[0] is not None)
+        except (TypeError, ValueError):
+            ttm_eps = None
+
+    return fy_eps, q_eps, ttm_eps
+
+
+def fetch_forward_estimates(
+    conn: psycopg.Connection,
+    ticker: str,
+    *,
+    n_annual: int = 2,
+    n_quarterly: int = 4,
+    after_fy_end: Any | None = None,
+    after_q_end: Any | None = None,
+) -> tuple[list[dict], list[dict]]:
+    """Forward analyst-consensus estimates for one ticker.
+
+    Returns (annual_rows, quarterly_rows). Each row carries period_end +
+    the *_avg, *_low, *_high metrics + analyst counts + fetched_at.
+
+    Filter contract:
+      annual rows: period_end > after_fy_end (defaults to today's date)
+      quarter rows: period_end > after_q_end (defaults to today's date)
+
+    Both lists sorted ascending by period_end. Lists are short (≤2, ≤4)
+    by design — the dashboard only renders the immediate forward horizon
+    where analyst consensus is densest. Long-horizon estimates (FY+3..FY+5)
+    live on the dedicated estimates / valuation pages, not the main panel.
+    """
+    if after_fy_end is None or after_q_end is None:
+        from datetime import date as _date
+        today = _date.today()
+        after_fy_end = after_fy_end or today
+        after_q_end = after_q_end or today
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT ae.period_end,
+                   ae.revenue_low, ae.revenue_avg, ae.revenue_high,
+                   ae.ebitda_low, ae.ebitda_avg, ae.ebitda_high,
+                   ae.ebit_low, ae.ebit_avg, ae.ebit_high,
+                   ae.net_income_low, ae.net_income_avg, ae.net_income_high,
+                   ae.eps_low, ae.eps_avg, ae.eps_high,
+                   ae.num_analysts_revenue, ae.num_analysts_eps,
+                   ae.fetched_at
+            FROM analyst_estimates ae
+            JOIN securities s ON s.id = ae.security_id
+            WHERE s.ticker = %s AND s.status = 'active'
+              AND ae.period_kind = 'annual'
+              AND ae.period_end > %s
+            ORDER BY ae.period_end ASC
+            LIMIT %s;
+            """,
+            (ticker, after_fy_end, n_annual),
+        )
+        annual = _rows_as_dicts(cur)
+
+        cur.execute(
+            """
+            SELECT ae.period_end,
+                   ae.revenue_low, ae.revenue_avg, ae.revenue_high,
+                   ae.ebitda_low, ae.ebitda_avg, ae.ebitda_high,
+                   ae.ebit_low, ae.ebit_avg, ae.ebit_high,
+                   ae.net_income_low, ae.net_income_avg, ae.net_income_high,
+                   ae.eps_low, ae.eps_avg, ae.eps_high,
+                   ae.num_analysts_revenue, ae.num_analysts_eps,
+                   ae.fetched_at
+            FROM analyst_estimates ae
+            JOIN securities s ON s.id = ae.security_id
+            WHERE s.ticker = %s AND s.status = 'active'
+              AND ae.period_kind = 'quarter'
+              AND ae.period_end > %s
+            ORDER BY ae.period_end ASC
+            LIMIT %s;
+            """,
+            (ticker, after_q_end, n_quarterly),
+        )
+        quarterly = _rows_as_dicts(cur)
+
+    return annual, quarterly
+
+
 def fetch_fy_ttm_metrics(
     conn: psycopg.Connection, ticker: str, fy_end_dates: list[Any]
 ) -> dict[Any, dict]:
@@ -365,6 +569,8 @@ class _Columns:
         fy_ttm_by_anchor: dict[Any, dict] | None = None,
         *,
         quarterly_full: list[dict] | None = None,
+        est_fy: list[dict] | None = None,
+        est_q: list[dict] | None = None,
     ):
         """fy_rows / quarterly are the displayed sets (oldest → newest).
 
@@ -372,12 +578,21 @@ class _Columns:
         each displayed quarter can look up its same-quarter-prior-year
         value for YoY deltas. quarterly_full is oldest → newest and
         has `quarterly` as its last len(quarterly) entries.
+
+        `est_fy` / `est_q` are forward analyst-consensus rows from
+        analyst_estimates (oldest → newest). Each row exposes
+        revenue_avg / ebit_avg / net_income_avg / eps_avg / etc. The
+        column builder maps these into the corresponding actuals rows
+        (Revenue → revenue_avg, Operating Income → ebit_avg, etc.) and
+        leaves cells blank where no estimate exists for that metric.
         """
         self.fy = fy_rows
         self.fy_ttm = fy_ttm_by_anchor or {}
         self.ttm = ttm or {}
         self.q = quarterly
         self.q_full = quarterly_full if quarterly_full is not None else quarterly
+        self.est_fy = est_fy or []
+        self.est_q = est_q or []
 
     @property
     def n_fy(self) -> int:
@@ -427,27 +642,78 @@ class _Columns:
     def all_null_q(self) -> list[Any]:
         return [None] * len(self.q)
 
+    @property
+    def n_est_fy(self) -> int:
+        return len(self.est_fy)
 
-def _abs_row_with_yoy(name: str, c: _Columns, fy_key: str, ttm_key: str, q_key: str) -> list[PanelRow]:
+    @property
+    def n_est_q(self) -> int:
+        return len(self.est_q)
+
+    def est_fy_series(self, est_key: str | None) -> list[Any]:
+        """Forward annual estimate values for `est_key` (e.g. revenue_avg).
+        Returns nulls when no key is provided (metric has no estimate)."""
+        if est_key is None:
+            return [None] * len(self.est_fy)
+        return [row.get(est_key) for row in self.est_fy]
+
+    def est_q_series(self, est_key: str | None) -> list[Any]:
+        if est_key is None:
+            return [None] * len(self.est_q)
+        return [row.get(est_key) for row in self.est_q]
+
+    def all_null_est_fy(self) -> list[Any]:
+        return [None] * len(self.est_fy)
+
+    def all_null_est_q(self) -> list[Any]:
+        return [None] * len(self.est_q)
+
+
+def _abs_row_with_yoy(
+    name: str, c: _Columns, fy_key: str, ttm_key: str, q_key: str,
+    *, est_key: str | None = None, fmt: str = "money",
+) -> list[PanelRow]:
     fy_vals = c.fy_series(fy_key)
     ttm_val = c.ttm_value(ttm_key)
     q_vals = c.q_series(q_key)
-    values = fy_vals + [ttm_val] + q_vals
+    est_fy_vals = c.est_fy_series(est_key)
+    est_q_vals = c.est_q_series(est_key)
+    # Column layout: FY actuals + forward FY estimates + TTM + Q actuals + forward Q estimates
+    values = fy_vals + est_fy_vals + [ttm_val] + q_vals + est_q_vals
 
     # All deltas are YoY (year-over-year) for consistency:
-    #   FY cell  → this FY vs prior FY        (already YoY)
-    #   TTM cell → this TTM vs prior FY total (TTM-over-last-FY approximation)
-    #   Q cell   → this quarter vs same quarter one year earlier (4 quarters back)
-    # Quarterly QoQ was seasonality-dominated; YoY matches how analysts
-    # actually talk about growth and the FY/TTM columns' semantics.
+    #   FY cell      → this FY vs prior FY (already YoY)
+    #   EST FY cell  → forward estimate vs prior FY (or prior estimate)
+    #                  — this is "implied growth analysts expect"
+    #   TTM cell     → this TTM vs prior FY total
+    #   Q cell       → this quarter vs same-quarter-prior-year (4 quarters back)
+    #   EST Q cell   → forward quarter estimate vs same-quarter-prior-year
     fy_deltas = [None] + [_pct_change(fy_vals[i], fy_vals[i - 1]) for i in range(1, len(fy_vals))]
+    # Estimate FY deltas: first one bridges actuals→estimates, subsequent
+    # ones chain estimate-over-estimate.
+    est_fy_deltas: list[Any] = []
+    prev_fy = fy_vals[-1] if fy_vals else None
+    for v in est_fy_vals:
+        est_fy_deltas.append(_pct_change(v, prev_fy))
+        prev_fy = v
     ttm_delta = _pct_change(ttm_val, fy_vals[-1]) if fy_vals else None
     q_prior_year = c.q_prior_year_series(q_key)
     q_deltas = [_pct_change(q_vals[i], q_prior_year[i]) for i in range(len(q_vals))]
-    deltas = fy_deltas + [ttm_delta] + q_deltas
+    # Estimate Q deltas: each forward quarter vs same-quarter-actual one
+    # year earlier. q_full has the recent 12 quarters; we need the quarter
+    # 4 positions before the forward quarter's natural slot.
+    est_q_deltas: list[Any] = []
+    for i in range(len(est_q_vals)):
+        # Forward Q i corresponds to "one year after Q[-(4 - i)]" in the
+        # actuals tail. Look up by date if available; otherwise use the
+        # quarterly series end + i.
+        offset = len(c.q_full) - 4 + i
+        prior = c.q_full[offset].get(q_key) if 0 <= offset < len(c.q_full) else None
+        est_q_deltas.append(_pct_change(est_q_vals[i], prior))
+    deltas = fy_deltas + est_fy_deltas + [ttm_delta] + q_deltas + est_q_deltas
 
     return [
-        PanelRow(name=name, format="money", values=values),
+        PanelRow(name=name, format=fmt, values=values),
         PanelRow(name=f"  Δ YoY", format="pct", values=deltas, is_change_row=True),
     ]
 
@@ -459,18 +725,43 @@ def _margin_row_with_bps(
     ttm_num_key: str,
     ttm_denom_key: str,
     q_key: str,
+    *,
+    est_num_key: str | None = None,
+    est_denom_key: str | None = None,
 ) -> list[PanelRow]:
     fy_vals = c.fy_series(fy_key)
     ttm_val = _safe_div(c.ttm_value(ttm_num_key), c.ttm_value(ttm_denom_key))
     q_vals = c.q_series(q_key)
-    values = fy_vals + [ttm_val] + q_vals
+    # Forward margins: numerator/denominator both come from estimates.
+    # Most often: ebit_avg/revenue_avg, net_income_avg/revenue_avg.
+    if est_num_key and est_denom_key:
+        est_fy_num = c.est_fy_series(est_num_key)
+        est_fy_den = c.est_fy_series(est_denom_key)
+        est_fy_vals = [_safe_div(n, d) for n, d in zip(est_fy_num, est_fy_den)]
+        est_q_num = c.est_q_series(est_num_key)
+        est_q_den = c.est_q_series(est_denom_key)
+        est_q_vals = [_safe_div(n, d) for n, d in zip(est_q_num, est_q_den)]
+    else:
+        est_fy_vals = c.all_null_est_fy()
+        est_q_vals = c.all_null_est_q()
+    values = fy_vals + est_fy_vals + [ttm_val] + q_vals + est_q_vals
 
-    # BPS deltas mirror the abs-row YoY contract: quarter vs same-quarter-prior-year.
+    # BPS deltas mirror the abs-row YoY contract.
     fy_bps = [None] + [_bps_change(fy_vals[i], fy_vals[i - 1]) for i in range(1, len(fy_vals))]
+    est_fy_bps: list[Any] = []
+    prev_fy = fy_vals[-1] if fy_vals else None
+    for v in est_fy_vals:
+        est_fy_bps.append(_bps_change(v, prev_fy))
+        prev_fy = v
     ttm_bps = _bps_change(ttm_val, fy_vals[-1]) if fy_vals else None
     q_prior_year = c.q_prior_year_series(q_key)
     q_bps = [_bps_change(q_vals[i], q_prior_year[i]) for i in range(len(q_vals))]
-    bps = fy_bps + [ttm_bps] + q_bps
+    est_q_bps: list[Any] = []
+    for i in range(len(est_q_vals)):
+        offset = len(c.q_full) - 4 + i
+        prior = c.q_full[offset].get(q_key) if 0 <= offset < len(c.q_full) else None
+        est_q_bps.append(_bps_change(est_q_vals[i], prior))
+    bps = fy_bps + est_fy_bps + [ttm_bps] + q_bps + est_q_bps
 
     return [
         PanelRow(name=name, format="pct", values=values),
@@ -484,10 +775,11 @@ def _ttm_only_row(name: str, fmt: str, c: _Columns, ttm_key: str, q_key: str | N
     FY columns: populated from c.fy_ttm_series (TTM at each FY-end anchor).
     TTM column: latest TTM value.
     Quarter columns: rolling TTM at each quarter-end.
+    Estimate columns: blank (no analyst forward estimate for these).
     """
     fy_vals = c.fy_ttm_series(ttm_key) if ttm_key in _FY_TTM_KEYS else c.all_null_fy()
     q_vals = c.q_series(q_key) if q_key else c.all_null_q()
-    values = fy_vals + [c.ttm_value(ttm_key)] + q_vals
+    values = fy_vals + c.all_null_est_fy() + [c.ttm_value(ttm_key)] + q_vals + c.all_null_est_q()
     return PanelRow(name=name, format=fmt, values=values, tooltip=tooltip)
 
 
@@ -506,7 +798,10 @@ _FY_TTM_KEYS = {
 
 
 def _quarter_only_row(name: str, fmt: str, c: _Columns, q_key: str) -> PanelRow:
-    values = c.all_null_fy() + [None] + c.q_series(q_key)
+    values = (
+        c.all_null_fy() + c.all_null_est_fy() + [None]
+        + c.q_series(q_key) + c.all_null_est_q()
+    )
     return PanelRow(name=name, format=fmt, values=values)
 
 
@@ -516,16 +811,23 @@ def build_panel(
     ttm: dict | None,
     fy_ttm_by_anchor: dict[Any, dict] | None = None,
     quarterly_full: list[dict] | None = None,
+    *,
+    est_fy: list[dict] | None = None,
+    est_q: list[dict] | None = None,
 ) -> tuple[list[str], list[PanelRow]]:
-    """Compose metric rows aligned with (FY + TTM + Q) columns.
+    """Compose metric rows aligned with the column layout.
 
-    `quarterly` is the 8 displayed quarters. `quarterly_full` is the
-    extended 12-quarter window used to supply each displayed quarter's
-    prior-year lookback for YoY deltas.
+    Layout (left → right): FY actuals + forward FY estimates + TTM
+    + Q actuals + forward Q estimates. The estimate columns hold
+    analyst-consensus forward values (revenue / op_income / net_income /
+    EPS / EBITDA where present) and stay blank for metrics with no
+    consensus equivalent (CFO, ROIC, working capital, etc.).
     """
     c = _Columns(
         fy_rows, ttm, quarterly, fy_ttm_by_anchor,
         quarterly_full=quarterly_full,
+        est_fy=est_fy or [],
+        est_q=est_q or [],
     )
 
     # Column headers are structured as {date, main, sub?} so the
@@ -543,6 +845,17 @@ def build_panel(
             "sub": "",
         })
 
+    est_fy_headers: list[dict[str, str]] = []
+    for row in c.est_fy:
+        pe = row.get("period_end")
+        n_eps = row.get("num_analysts_eps")
+        sub = f"est · n={n_eps}" if n_eps else "est"
+        est_fy_headers.append({
+            "date": month_year(pe),
+            "main": f"FY{pe.year}" if pe else "",
+            "sub": sub,
+        })
+
     q_headers: list[dict[str, str]] = []
     n = len(quarterly)
     for i in range(n):
@@ -554,6 +867,26 @@ def build_panel(
             "sub": position,
         })
 
+    est_q_headers: list[dict[str, str]] = []
+    # Quarterly estimate periods don't have fiscal_period_label from
+    # analyst_estimates (FMP returns only period_end). Derive a
+    # quarter label from the date itself so the header matches the
+    # ticker's natural fiscal cadence on the right edge of the table.
+    for row in c.est_q:
+        pe = row.get("period_end")
+        n_eps = row.get("num_analysts_eps")
+        sub = f"est · n={n_eps}" if n_eps else "est"
+        if pe:
+            cq = (pe.month - 1) // 3 + 1
+            label = f"CY{pe.year} Q{cq}"
+        else:
+            label = ""
+        est_q_headers.append({
+            "date": month_year(pe),
+            "main": label,
+            "sub": sub,
+        })
+
     ttm_pe = quarterly[-1].get("period_end") if quarterly else None
     ttm_header = {
         "date": f"ending {month_year(ttm_pe)}" if ttm_pe else "",
@@ -561,38 +894,60 @@ def build_panel(
         "sub": "",
     }
 
-    headers = fy_headers + [ttm_header] + q_headers
+    headers = fy_headers + est_fy_headers + [ttm_header] + q_headers + est_q_headers
 
     rows: list[PanelRow] = []
 
     # ----- Absolute levels + YoY% -----
-    rows.extend(_abs_row_with_yoy("Revenue", c, "revenue_fy", "revenue_ttm", "revenue"))
+    # Forward consensus (FMP analyst-estimates) maps to the *_avg
+    # fields. Metrics without an estimate equivalent (Gross Profit,
+    # CFO) leave the est columns blank.
+    rows.extend(_abs_row_with_yoy("Revenue", c, "revenue_fy", "revenue_ttm", "revenue", est_key="revenue_avg"))
     rows.extend(_abs_row_with_yoy("Gross Profit", c, "gross_profit_fy", "gross_profit_ttm", "gross_profit"))
-    rows.extend(_abs_row_with_yoy("Operating Income", c, "operating_income_fy", "operating_income_ttm", "operating_income"))
-    rows.extend(_abs_row_with_yoy("Net Income", c, "net_income_fy", "net_income_ttm", "net_income"))
+    rows.extend(_abs_row_with_yoy("Operating Income", c, "operating_income_fy", "operating_income_ttm", "operating_income", est_key="ebit_avg"))
+    rows.extend(_abs_row_with_yoy("Net Income", c, "net_income_fy", "net_income_ttm", "net_income", est_key="net_income_avg"))
+    # Diluted EPS sits below Net Income; reads from `eps_diluted`
+    # (injected onto each row dict from financial_facts) and pairs
+    # with analyst-consensus eps_avg on the forward columns. TTM EPS
+    # is the sum of the trailing 4 quarterly EPS values.
+    rows.extend(_abs_row_with_yoy(
+        "Diluted EPS", c,
+        "eps_diluted", "eps_diluted", "eps_diluted",
+        est_key="eps_avg", fmt="eps",
+    ))
     rows.extend(_abs_row_with_yoy("CFO", c, "cfo_fy", "cfo_ttm", "cfo"))
 
     # ----- Margins + BPS deltas -----
     rows.extend(_margin_row_with_bps("Gross Margin", c, "gross_margin_fy", "gross_profit_ttm", "revenue_ttm", "gross_margin"))
-    rows.extend(_margin_row_with_bps("Operating Margin", c, "operating_margin_fy", "operating_income_ttm", "revenue_ttm", "operating_margin"))
-    rows.extend(_margin_row_with_bps("Net Margin", c, "net_margin_fy", "net_income_ttm", "revenue_ttm", "net_margin"))
+    rows.extend(_margin_row_with_bps(
+        "Operating Margin", c, "operating_margin_fy",
+        "operating_income_ttm", "revenue_ttm", "operating_margin",
+        est_num_key="ebit_avg", est_denom_key="revenue_avg",
+    ))
+    rows.extend(_margin_row_with_bps(
+        "Net Margin", c, "net_margin_fy",
+        "net_income_ttm", "revenue_ttm", "net_margin",
+        est_num_key="net_income_avg", est_denom_key="revenue_avg",
+    ))
 
     # ----- Return-on-capital metrics (TTM grain, anchored at FY-end) -----
+    # Forward estimate columns are blank for these — analyst consensus
+    # doesn't include ROIC / NOPAT projections.
     coverage = (ttm or {}).get("rd_coverage_quarters")
     coverage_note = f"R&D coverage: {coverage}/20 quarters" if coverage else None
     rows.append(PanelRow(
         name="NOPAT Margin", format="pct",
-        values=c.fy_ttm_series("nopat_margin") + [c.ttm_value("nopat_margin")] + c.q_series("nopat_margin"),
+        values=c.fy_ttm_series("nopat_margin") + c.all_null_est_fy() + [c.ttm_value("nopat_margin")] + c.q_series("nopat_margin") + c.all_null_est_q(),
         tooltip=coverage_note,
     ))
     rows.append(PanelRow(
         name="Adjusted ROIC", format="pct",
-        values=c.fy_ttm_series("roic") + [c.ttm_value("roic")] + c.q_series("roic"),
+        values=c.fy_ttm_series("roic") + c.all_null_est_fy() + [c.ttm_value("roic")] + c.q_series("roic") + c.all_null_est_q(),
         tooltip=coverage_note,
     ))
     rows.append(PanelRow(
         name="ROIIC", format="pct",
-        values=c.fy_ttm_series("roiic") + [c.ttm_value("roiic")] + c.q_series("roiic"),
+        values=c.fy_ttm_series("roiic") + c.all_null_est_fy() + [c.ttm_value("roiic")] + c.q_series("roiic") + c.all_null_est_q(),
         tooltip=coverage_note,
     ))
     rows.append(_ttm_only_row("Reinvestment Rate", "pct", c, "reinvestment_rate", "reinvestment_rate"))
@@ -606,36 +961,38 @@ def build_panel(
     # ----- SBC / Revenue per Employee -----
     rows.append(PanelRow(
         name="SBC % Revenue", format="pct",
-        values=c.fy_series("sbc_pct_revenue_fy") + [c.ttm_value("sbc_pct_revenue")] + c.q_series("sbc_pct_revenue"),
+        values=c.fy_series("sbc_pct_revenue_fy") + c.all_null_est_fy() + [c.ttm_value("sbc_pct_revenue")] + c.q_series("sbc_pct_revenue") + c.all_null_est_q(),
     ))
     rows.append(_ttm_only_row("Rev / Employee", "money", c, "revenue_per_employee", "revenue_per_employee"))
 
     # ----- Working capital days (FY cells = quarter-end at FY-end) -----
     rows.append(PanelRow(name="CCC", format="days",
-        values=c.fy_ttm_series("ccc") + [None] + c.q_series("ccc")))
+        values=c.fy_ttm_series("ccc") + c.all_null_est_fy() + [None] + c.q_series("ccc") + c.all_null_est_q()))
     rows.append(PanelRow(name="DSO", format="days",
-        values=c.fy_ttm_series("dso") + [None] + c.q_series("dso")))
+        values=c.fy_ttm_series("dso") + c.all_null_est_fy() + [None] + c.q_series("dso") + c.all_null_est_q()))
     rows.append(PanelRow(name="DIO", format="days",
-        values=c.fy_ttm_series("dio") + [None] + c.q_series("dio")))
+        values=c.fy_ttm_series("dio") + c.all_null_est_fy() + [None] + c.q_series("dio") + c.all_null_est_q()))
     rows.append(PanelRow(name="DPO", format="days",
-        values=c.fy_ttm_series("dpo") + [None] + c.q_series("dpo")))
+        values=c.fy_ttm_series("dpo") + c.all_null_est_fy() + [None] + c.q_series("dpo") + c.all_null_est_q()))
 
     # ----- Balance-sheet stocks (FY-end snapshots) -----
     rows.append(PanelRow(
         name="Net Debt", format="money",
-        values=c.fy_series("net_debt_fy_end") + [None] + c.q_series("net_debt"),
+        values=c.fy_series("net_debt_fy_end") + c.all_null_est_fy() + [None] + c.q_series("net_debt") + c.all_null_est_q(),
     ))
     rows.append(PanelRow(
         name="Net Debt / EBITDA", format="x",
-        values=c.fy_ttm_series("net_debt_to_ebitda") + [None] + c.q_series("net_debt_to_ebitda"),
+        values=c.fy_ttm_series("net_debt_to_ebitda") + c.all_null_est_fy() + [None] + c.q_series("net_debt_to_ebitda") + c.all_null_est_q(),
     ))
 
     # ----- Share count growth -----
     rows.append(PanelRow(
         name="Diluted Shares YoY", format="pct",
         values=c.fy_ttm_series("diluted_share_count_growth")
+              + c.all_null_est_fy()
               + [c.ttm_value("diluted_share_count_growth")]
-              + c.q_series("diluted_share_count_growth"),
+              + c.q_series("diluted_share_count_growth")
+              + c.all_null_est_q(),
     ))
 
     return headers, rows
@@ -657,6 +1014,10 @@ def fmt_cell(value: Any, fmt: str, is_change: bool) -> tuple[str, str]:
             text = f"${v / 1e6:,.0f}M"
         else:
             text = f"${v:,.0f}"
+    elif fmt == "eps":
+        # Per-share dollars. Negative shown as -$X.XX so the sign reads
+        # like a number, not a currency-with-minus.
+        text = f"-${abs(v):,.2f}" if v < 0 else f"${v:,.2f}"
     elif fmt == "pct":
         text = f"{v * 100:+.1f}%" if is_change else f"{v * 100:.1f}%"
     elif fmt == "bps":
@@ -772,6 +1133,34 @@ def _build_ticker_context(ticker: str) -> dict[str, Any] | None:
         fy_ttm_by_anchor = fetch_fy_ttm_metrics(conn, ticker, fy_end_dates)
         ttm = fetch_latest_ttm(conn, ticker)
         flag_counts = fetch_flag_counts(conn, ticker)
+        # Forward analyst-consensus estimates: filter strictly to periods
+        # ending AFTER the most-recent actual FY / actual quarter, so we
+        # never collide with reported numbers.
+        last_actual_fy_end = fy_rows[-1]["fy_end"] if fy_rows else None
+        last_actual_q_end = (
+            quarterly_full[-1]["period_end"] if quarterly_full else None
+        )
+        est_fy, est_q = fetch_forward_estimates(
+            conn, ticker,
+            n_annual=3, n_quarterly=4,
+            after_fy_end=last_actual_fy_end,
+            after_q_end=last_actual_q_end,
+        )
+        # Diluted EPS lives in financial_facts as a separate concept
+        # (not in v_metrics_q / v_metrics_fy / v_metrics_ttm). Fetch
+        # alongside and inject the value into each row dict so the
+        # generic row builders pick it up via the "eps_diluted" key.
+        fy_eps_map, q_eps_map, ttm_eps = fetch_eps_diluted(
+            conn, ticker,
+            fy_end_dates=fy_end_dates,
+            quarterly_period_ends=[q["period_end"] for q in quarterly_full],
+        )
+    for fy in fy_rows:
+        fy["eps_diluted"] = fy_eps_map.get(fy["fy_end"])
+    for q in quarterly_full:
+        q["eps_diluted"] = q_eps_map.get(q["period_end"])
+    if ttm is not None:
+        ttm["eps_diluted"] = ttm_eps
 
     if not quarterly_full:
         return None
@@ -781,6 +1170,7 @@ def _build_ticker_context(ticker: str) -> dict[str, Any] | None:
     headers, rows = build_panel(
         quarterly, fy_rows, ttm, fy_ttm_by_anchor,
         quarterly_full=quarterly_full,
+        est_fy=est_fy, est_q=est_q,
     )
 
     col_period_ends: list[str] = []
@@ -788,6 +1178,10 @@ def _build_ticker_context(ticker: str) -> dict[str, Any] | None:
     for fr in fy_rows:
         col_period_ends.append(fr["fy_end"].isoformat() if fr.get("fy_end") else "")
         col_labels.append(f"FY{fr['fiscal_year']}")
+    for er in est_fy:
+        pe = er.get("period_end")
+        col_period_ends.append(pe.isoformat() if pe else "")
+        col_labels.append(f"FY{pe.year} (est)" if pe else "FY (est)")
     col_period_ends.append(
         quarterly[-1]["period_end"].isoformat() if quarterly else ""
     )
@@ -795,6 +1189,14 @@ def _build_ticker_context(ticker: str) -> dict[str, Any] | None:
     for q in quarterly:
         col_period_ends.append(q["period_end"].isoformat() if q.get("period_end") else "")
         col_labels.append(q["fiscal_period_label"])
+    for er in est_q:
+        pe = er.get("period_end")
+        col_period_ends.append(pe.isoformat() if pe else "")
+        if pe:
+            cq = (pe.month - 1) // 3 + 1
+            col_labels.append(f"CY{pe.year} Q{cq} (est)")
+        else:
+            col_labels.append("Q (est)")
 
     rendered_rows = []
     for row in rows:
@@ -820,7 +1222,9 @@ def _build_ticker_context(ticker: str) -> dict[str, Any] | None:
         "flag_counts": flag_counts,
         "latest_period": quarterly[-1]["fiscal_period_label"] if quarterly else "",
         "n_fy": len(fy_rows),
+        "n_est_fy": len(est_fy),
         "n_q": len(quarterly),
+        "n_est_q": len(est_q),
     }
 
 
@@ -851,6 +1255,187 @@ def dashboard(request: Request, ticker: str) -> Any:
     return TEMPLATES.TemplateResponse(
         request=request,
         name="dashboard.html.j2",
+        context={**ctx, "tickers": tickers},
+    )
+
+
+def _build_valuation_context(ticker: str) -> dict[str, Any] | None:
+    """Compute the per-ticker valuation context.
+
+    Layout: TTM + 2 forward FY columns. Multiples shown:
+    P/E, P/Sales, EV/EBITDA, FCF yield. Forward FCF yield is implied
+    from the trailing FCF-to-revenue conversion ratio applied to
+    forward revenue (no direct FCF estimate from FMP). Marked '(impl)'
+    in the table so the operator sees the derivation.
+    """
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            # Current price + valuation ratios row from v_valuation_ratios_ttm
+            cur.execute(
+                """
+                SELECT v.security_id, v.ticker, v.company_id, v.date AS asof,
+                       v.close, v.adj_close, v.market_cap, v.ev,
+                       v.fiscal_period_label_at_asof,
+                       v.pe_ttm, v.ps_ttm, v.ev_ebitda_ttm, v.fcf_yield_ttm,
+                       v.ttm_revenue, v.ttm_net_income, v.ttm_operating_income,
+                       v.ttm_ebitda, v.ttm_cfo, v.ttm_capex, v.ttm_fcf,
+                       v.cash_and_equivalents, v.short_term_investments,
+                       v.long_term_debt, v.current_portion_lt_debt,
+                       v.noncontrolling_interest
+                FROM v_valuation_ratios_ttm v
+                WHERE v.ticker = %s
+                ORDER BY v.date DESC
+                LIMIT 1;
+                """,
+                (ticker,),
+            )
+            val = cur.fetchone()
+            if val is None:
+                return None
+            cols = [d[0] for d in cur.description]
+            v = dict(zip(cols, val))
+
+        last_actual_fy_end = None
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT max(period_end) FROM financial_facts ff "
+                "JOIN companies co ON co.id = ff.company_id "
+                "WHERE co.ticker = %s AND ff.period_type = 'annual' "
+                "  AND ff.statement = 'income_statement' AND ff.concept = 'revenue'",
+                (ticker,),
+            )
+            r = cur.fetchone()
+            last_actual_fy_end = r[0] if r else None
+
+        est_fy, _est_q = fetch_forward_estimates(
+            conn, ticker, n_annual=3, n_quarterly=0,
+            after_fy_end=last_actual_fy_end,
+        )
+
+    if not est_fy:
+        # No forward estimates — render minimal valuation (TTM only)
+        return {
+            "ticker": ticker,
+            "asof": v["asof"],
+            "close": v["close"],
+            "market_cap": v["market_cap"],
+            "ev": v["ev"],
+            "fiscal_period_label_at_asof": v["fiscal_period_label_at_asof"],
+            "ttm": v,
+            "forward_periods": [],
+            "implied_growth": [],
+        }
+
+    # Compute trailing FCF/Revenue conversion (used to imply forward FCF
+    # yield from forward revenue when no direct FCF estimate exists).
+    fcf_to_rev = (
+        float(v["ttm_fcf"]) / float(v["ttm_revenue"])
+        if v.get("ttm_fcf") is not None and v.get("ttm_revenue") not in (None, 0)
+        else None
+    )
+
+    forward_periods = []
+    market_cap = float(v["market_cap"]) if v.get("market_cap") else None
+    ev = float(v["ev"]) if v.get("ev") else None
+    close = float(v["close"]) if v.get("close") else None
+
+    for er in est_fy:
+        period_end = er["period_end"]
+        rev = _to_float(er.get("revenue_avg"))
+        ebitda = _to_float(er.get("ebitda_avg"))
+        ebit = _to_float(er.get("ebit_avg"))
+        ni = _to_float(er.get("net_income_avg"))
+        eps = _to_float(er.get("eps_avg"))
+
+        # Forward multiples
+        pe_fwd = (close / eps) if (close is not None and eps not in (None, 0)) else None
+        ps_fwd = (market_cap / rev) if (market_cap is not None and rev not in (None, 0)) else None
+        ev_ebitda_fwd = (ev / ebitda) if (ev is not None and ebitda not in (None, 0)) else None
+
+        # Implied forward FCF yield: forward_revenue × (TTM FCF / TTM Revenue) / market_cap
+        if rev is not None and fcf_to_rev is not None and market_cap not in (None, 0):
+            implied_fcf = rev * fcf_to_rev
+            fcf_yield_fwd = implied_fcf / market_cap
+        else:
+            implied_fcf = None
+            fcf_yield_fwd = None
+
+        forward_periods.append({
+            "period_end": period_end,
+            "label": f"FY{period_end.year}",
+            "n_eps": er.get("num_analysts_eps"),
+            "n_revenue": er.get("num_analysts_revenue"),
+            "revenue": rev,
+            "ebitda": ebitda,
+            "ebit": ebit,
+            "net_income": ni,
+            "eps": eps,
+            "pe_fwd": pe_fwd,
+            "ps_fwd": ps_fwd,
+            "ev_ebitda_fwd": ev_ebitda_fwd,
+            "fcf_yield_fwd_implied": fcf_yield_fwd,
+            "implied_fcf": implied_fcf,
+        })
+
+    # Implied growth: for each forward period, % change vs. TTM (period 1)
+    # and vs. prior forward period (period 2).
+    ttm_revenue = _to_float(v.get("ttm_revenue"))
+    ttm_ebitda = _to_float(v.get("ttm_ebitda"))
+    ttm_net_income = _to_float(v.get("ttm_net_income"))
+
+    implied_growth: list[dict[str, Any]] = []
+    prev_rev = ttm_revenue
+    prev_eb = ttm_ebitda
+    prev_ni = ttm_net_income
+    for p in forward_periods:
+        implied_growth.append({
+            "label": f"{p['label']} vs " + ("TTM" if p is forward_periods[0] else forward_periods[forward_periods.index(p) - 1]["label"]),
+            "revenue_growth": _pct_change(p["revenue"], prev_rev),
+            "ebitda_growth": _pct_change(p["ebitda"], prev_eb),
+            "net_income_growth": _pct_change(p["net_income"], prev_ni),
+        })
+        prev_rev = p["revenue"]
+        prev_eb = p["ebitda"]
+        prev_ni = p["net_income"]
+
+    return {
+        "ticker": ticker,
+        "asof": v["asof"],
+        "close": v["close"],
+        "market_cap": v["market_cap"],
+        "ev": v["ev"],
+        "fiscal_period_label_at_asof": v["fiscal_period_label_at_asof"],
+        "ttm": v,
+        "forward_periods": forward_periods,
+        "implied_growth": implied_growth,
+        "fcf_to_rev": fcf_to_rev,
+    }
+
+
+@app.get("/t/{ticker}/valuation", response_class=HTMLResponse)
+def valuation(request: Request, ticker: str) -> Any:
+    ticker = ticker.upper()
+    with get_conn() as conn:
+        tickers = fetch_tickers(conn)
+    if ticker not in tickers:
+        raise HTTPException(404, f"{ticker} not in companies")
+
+    ctx = _build_valuation_context(ticker)
+    if ctx is None:
+        return _no_data_response(
+            heading=f"{ticker}: no valuation data.",
+            body_html=(
+                f"<p>{ticker} needs prices + financial_facts loaded. "
+                f"Run <code>uv run scripts/ingest_company.py {ticker}</code> "
+                f"and <code>uv run scripts/ingest_prices.py {ticker}</code>.</p>"
+            ),
+            tickers=tickers,
+            current_ticker=ticker,
+        )
+
+    return TEMPLATES.TemplateResponse(
+        request=request,
+        name="valuation.html.j2",
         context={**ctx, "tickers": tickers},
     )
 

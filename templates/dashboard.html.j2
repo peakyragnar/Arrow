@@ -10,6 +10,7 @@
 <header class="topbar">
   <div class="brand">Arrow</div>
   <nav class="topnav">
+    <a href="/t/{{ ticker }}/valuation" class="navlink">Valuation</a>
     <a href="/findings?status=open" class="navlink">Findings</a>
     <a href="/coverage" class="navlink">Coverage</a>
     <a href="/ask" class="navlink">Ask</a>
@@ -35,16 +36,36 @@
 <main>
   <table class="dashboard">
     <thead>
+      {#
+        Column index map (left → right):
+          [0 .. n_fy-1]                                  FY actuals
+          [n_fy .. n_fy+n_est_fy-1]                      forward FY estimates
+          [n_fy+n_est_fy]                                TTM
+          [n_fy+n_est_fy+1 .. n_fy+n_est_fy+n_q]         Q actuals
+          [n_fy+n_est_fy+n_q+1 ..]                       forward Q estimates
+      #}
+      {% set i_first_est_fy = n_fy %}
+      {% set i_ttm = n_fy + n_est_fy %}
+      {% set i_first_q = i_ttm + 1 %}
+      {% set i_first_est_q = i_first_q + n_q %}
       <tr>
         <th class="metric-name">Metric</th>
         {% for h in headers %}
-          {% set is_last_fy = loop.index0 == (n_fy - 1) %}
-          {% set is_ttm     = loop.index0 == n_fy %}
-          {% set is_first_q = loop.index0 == n_fy + 1 %}
+          {% set is_last_fy     = loop.index0 == (n_fy - 1) %}
+          {% set is_first_est_fy = n_est_fy > 0 and loop.index0 == i_first_est_fy %}
+          {% set is_est_fy       = n_est_fy > 0 and i_first_est_fy <= loop.index0 < i_ttm %}
+          {% set is_ttm          = loop.index0 == i_ttm %}
+          {% set is_first_q      = loop.index0 == i_first_q %}
+          {% set is_first_est_q  = n_est_q > 0 and loop.index0 == i_first_est_q %}
+          {% set is_est_q        = n_est_q > 0 and loop.index0 >= i_first_est_q %}
           <th class="
             {% if is_ttm %}ttm-col{% endif %}
             {% if is_first_q %}first-q{% endif %}
             {% if is_last_fy %}last-fy{% endif %}
+            {% if is_est_fy %}est-col est-fy-col{% endif %}
+            {% if is_first_est_fy %}first-est-fy{% endif %}
+            {% if is_est_q %}est-col est-q-col{% endif %}
+            {% if is_first_est_q %}first-est-q{% endif %}
           ">
             <div class="hdr">
               {% if h.date %}<div class="hdr-date">{{ h.date }}</div>{% endif %}
@@ -60,13 +81,21 @@
         <tr class="{% if row.is_change %}change-row{% endif %}">
           <td class="metric-name" {% if row.tooltip %}title="{{ row.tooltip }}"{% endif %}>{{ row.name }}</td>
           {% for cell in row.cells %}
-            {% set is_ttm     = loop.index0 == n_fy %}
-            {% set is_first_q = loop.index0 == n_fy + 1 %}
-            {% set is_last_fy = loop.index0 == (n_fy - 1) %}
+            {% set is_last_fy      = loop.index0 == (n_fy - 1) %}
+            {% set is_first_est_fy = n_est_fy > 0 and loop.index0 == i_first_est_fy %}
+            {% set is_est_fy       = n_est_fy > 0 and i_first_est_fy <= loop.index0 < i_ttm %}
+            {% set is_ttm          = loop.index0 == i_ttm %}
+            {% set is_first_q      = loop.index0 == i_first_q %}
+            {% set is_first_est_q  = n_est_q > 0 and loop.index0 == i_first_est_q %}
+            {% set is_est_q        = n_est_q > 0 and loop.index0 >= i_first_est_q %}
             <td class="cell {{ cell[1] }}
               {% if is_ttm %}ttm-col{% endif %}
               {% if is_first_q %}first-q{% endif %}
               {% if is_last_fy %}last-fy{% endif %}
+              {% if is_est_fy %}est-col est-fy-col{% endif %}
+              {% if is_first_est_fy %}first-est-fy{% endif %}
+              {% if is_est_q %}est-col est-q-col{% endif %}
+              {% if is_first_est_q %}first-est-q{% endif %}
             " title="{{ cell[2] }}">{{ cell[0] }}</td>
           {% endfor %}
         </tr>
