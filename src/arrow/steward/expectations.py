@@ -76,6 +76,11 @@ STANDARD: list[Expectation] = [
     Expectation("transcript", "present", {}),
     Expectation("transcript", "min_periods", {"count": 20}),
     Expectation("transcript", "recency", {"max_age_days": 150}),
+    # Daily prices: every active company should have prices, refreshed
+    # within the last calendar week (covers weekend + 1 stale trading day
+    # before we'd expect a daily ingest sweep to have run).
+    Expectation("prices", "present", {}),
+    Expectation("prices", "recency", {"max_age_days": 5}),
 ]
 
 

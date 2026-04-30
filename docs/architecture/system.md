@@ -484,7 +484,9 @@ Status legend:
 | `artifact_text_units` | built | migration 015; generic extracted text units for non-10-K/Q artifacts, starting with earnings press releases; transcript unit type added in migration 020; `company_id` tightened to NOT NULL in migration 021 to match `artifact_sections` |
 | `artifact_text_chunks` | built | migration 015; standardized retrieval chunks derived from `artifact_text_units` |
 | `artifact_chunks` | withdrawn | migration 005 added it; migration 006 dropped it. Re-add when chunking has real documents to operate on. ADR-0008 captures the prior design. |
-| `prices_daily` | deferred | — |
+| `securities` | built | migration 023 — tradable instruments (common stock, ETFs, indices). `companies.primary_security_id` resolves "ticker NVDA" to a security row. ETFs/indices have NULL `company_id`. Accommodates multi-class shares (GOOG/GOOGL) without future migration. See `docs/architecture/prices_ingest_plan.md`. |
+| `prices_daily` | built | migration 023 — daily OHLCV per security. `close` = raw as-traded (FMP `historical-price-eod/non-split-adjusted`); `adj_close` = split + dividend adjusted total-return basis (FMP `historical-price-eod/dividend-adjusted`). |
+| `historical_market_cap` | built | migration 023 — daily market cap series from FMP `historical-market-capitalization`. Stored as a fact rather than derived from `price × shares` to capture intra-filing buyback/issuance moves cleanly. |
 | `prices_intraday` | deferred | reserved for event-reaction workflows |
 | `options_contracts` | deferred | until Massive vendor active |
 | `options_eod_snapshots` | deferred | until Massive vendor active |

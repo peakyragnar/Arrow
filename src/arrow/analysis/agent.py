@@ -47,6 +47,11 @@ from arrow.retrieval.transcripts import (
     read_transcript_turns,
     search_transcript_turns,
 )
+from arrow.retrieval.prices import (
+    latest_price_date,
+    read_prices,
+    read_valuation,
+)
 from arrow.retrieval._query import jsonable
 
 
@@ -451,6 +456,125 @@ def _tool_read_transcript(conn: psycopg.Connection, params: dict[str, Any]) -> T
     )
 
 
+def _parse_iso_date(s: str | None) -> "date | None":
+    if not s:
+        return None
+    from datetime import date as _date
+    y, m, d = s.split("-")
+    return _date(int(y), int(m), int(d))
+
+
+def _tool_read_prices(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    ticker = params["ticker"].upper()
+    from_date = _parse_iso_date(params.get("from_date"))
+    to_date = _parse_iso_date(params.get("to_date"))
+    if from_date is None or to_date is None:
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary="from_date and to_date are required (YYYY-MM-DD).",
+            error="from_date and to_date are required",
+        )
+
+    bars = read_prices(conn, ticker=ticker, from_date=from_date, to_date=to_date)
+    if not bars:
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary=f"No prices for {ticker} in [{from_date}, {to_date}].",
+        )
+
+    rows = []
+    evidence_ids: list[str] = []
+    for b in bars:
+        cite = f"P:{b.security_id}:{b.date.isoformat()}"
+        rows.append({
+            "date": b.date.isoformat(),
+            "close": _money(b.close),
+            "adj_close": _money(b.adj_close),
+            "open": _money(b.open),
+            "high": _money(b.high),
+            "low": _money(b.low),
+            "volume": b.volume,
+            "evidence_id": cite,
+        })
+        evidence_ids.append(cite)
+    first_close = bars[0].adj_close
+    last_close = bars[-1].adj_close
+    pct_change = None
+    if first_close:
+        pct_change = float((last_close - first_close) / first_close) * 100.0
+    summary = (
+        f"{ticker}: {len(bars)} trading day(s) {bars[0].date}..{bars[-1].date}. "
+        f"adj_close {bars[0].adj_close} → {bars[-1].adj_close}"
+        + (f" ({pct_change:+.2f}% total return)." if pct_change is not None else ".")
+        + f" Cite individual bars as P:{bars[0].security_id}:YYYY-MM-DD."
+    )
+    return ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary)
+
+
+def _tool_read_valuation(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    ticker = params["ticker"].upper()
+    as_of = _parse_iso_date(params.get("as_of"))
+
+    val = read_valuation(conn, ticker=ticker, as_of=as_of)
+    if val is None:
+        if as_of is None:
+            return ToolResult(
+                rows=[], evidence_ids=[],
+                summary=f"No valuation data for {ticker} (no prices loaded).",
+            )
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary=(
+                f"No valuation row for {ticker} on {as_of} — likely a "
+                f"non-trading day. Try the nearest weekday."
+            ),
+        )
+
+    row = {
+        "ticker": val.ticker,
+        "date": val.date.isoformat(),
+        "close": _money(val.close),
+        "adj_close": _money(val.adj_close),
+        "market_cap": _money(val.market_cap),
+        "ev": _money(val.ev),
+        "fiscal_period_label_at_asof": val.fiscal_period_label_at_asof,
+        "components_known_since": (
+            val.components_known_since.isoformat() if val.components_known_since else None
+        ),
+        "quarters_in_window": val.quarters_in_window,
+        "pe_ttm": _money(val.pe_ttm),
+        "ps_ttm": _money(val.ps_ttm),
+        "ev_ebitda_ttm": _money(val.ev_ebitda_ttm),
+        "fcf_yield_ttm": _money(val.fcf_yield_ttm),
+        "components": {
+            "ttm_net_income": _money(val.ttm_net_income),
+            "ttm_revenue": _money(val.ttm_revenue),
+            "ttm_operating_income": _money(val.ttm_operating_income),
+            "ttm_dna": _money(val.ttm_dna),
+            "ttm_ebitda": _money(val.ttm_ebitda),
+            "ttm_cfo": _money(val.ttm_cfo),
+            "ttm_capex": _money(val.ttm_capex),
+            "ttm_fcf": _money(val.ttm_fcf),
+            "cash_and_equivalents": _money(val.cash_and_equivalents),
+            "short_term_investments": _money(val.short_term_investments),
+            "long_term_debt": _money(val.long_term_debt),
+            "current_portion_lt_debt": _money(val.current_portion_lt_debt),
+            "noncontrolling_interest": _money(val.noncontrolling_interest),
+        },
+    }
+
+    cite = (
+        f"M:v_valuation_ratios_ttm:{val.security_id}:{val.date.isoformat()}"
+    )
+    summary = (
+        f"{ticker} valuation on {val.date} (TTM as of {val.fiscal_period_label_at_asof}): "
+        f"P/E {val.pe_ttm}, P/S {val.ps_ttm}, EV/EBITDA {val.ev_ebitda_ttm}, "
+        f"FCF yield {val.fcf_yield_ttm}. PIT — uses financials known on {val.date}, "
+        f"NOT recomputed with hindsight."
+    )
+    return ToolResult(rows=[row], evidence_ids=[cite], summary=summary)
+
+
 def _tool_compare_transcript_mentions(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
     ticker = params["ticker"]
     terms = params.get("terms") or []
@@ -801,6 +925,53 @@ REGISTRY: list[Tool] = [
         ),
         input_schema={"type": "object", "properties": {}},
         execute=_tool_list_companies,
+    ),
+    Tool(
+        name="read_prices",
+        description=(
+            "Daily OHLCV bars for a security across [from_date, to_date]. "
+            "Returns close (raw as-traded) and adj_close (split + dividend "
+            "adjusted, total-return basis). Use adj_close for return math; "
+            "use close when describing 'what the ticker said that day'. "
+            "Caps at 400 rows — narrow the window if you need finer detail. "
+            "Works for both common stock (NVDA, AMD, ...) and benchmark ETFs "
+            "(SPY, QQQ)."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "ticker": {"type": "string"},
+                "from_date": {"type": "string", "description": "YYYY-MM-DD inclusive."},
+                "to_date":   {"type": "string", "description": "YYYY-MM-DD inclusive."},
+            },
+            "required": ["ticker", "from_date", "to_date"],
+        },
+        execute=_tool_read_prices,
+    ),
+    Tool(
+        name="read_valuation",
+        description=(
+            "Valuation ratios (P/E, P/S, EV/EBITDA, FCF yield) + EV + "
+            "underlying TTM components for one (ticker, date). Uses "
+            "POINT-IN-TIME TTM — financials KNOWN on the date, not "
+            "recomputed with hindsight. Public sources (stockanalysis.com, "
+            "etc.) typically apply hindsight TTM; expect divergence in the "
+            "~30 days between fiscal period end and filing publication. "
+            "Omit as_of for the latest available trading day. Common stock "
+            "only (no ETF valuation). Cite as M:v_valuation_ratios_ttm:..."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "ticker": {"type": "string"},
+                "as_of": {
+                    "type": "string",
+                    "description": "YYYY-MM-DD trading day. Omit for latest available.",
+                },
+            },
+            "required": ["ticker"],
+        },
+        execute=_tool_read_valuation,
     ),
     Tool(
         name="screen_companies",

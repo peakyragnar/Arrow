@@ -378,6 +378,121 @@ These guards are layer 4 of the five-layer correctness stack. See [`verification
   - Revenue contribution from acquisitions is footnote-driven and not standardized.
   - For v1, flag companies with material acquisitions and handle the acquisition contribution via manual research note or override.
 
+## Valuation Metrics
+
+The metrics above are operational quality metrics — what the business does and how
+efficiently. The metrics below are valuation metrics — what the market pays for that
+business. Both share the same `concepts.md` bucket vocabulary; the new ingredient is
+daily prices and market cap from `prices_daily` + `historical_market_cap`.
+
+See `docs/architecture/prices_ingest_plan.md` for the substrate. Views live in
+`db/queries/16_v_quarterly_components_pit.sql` through `19_v_valuation_ratios_ttm.sql`.
+
+### Enterprise Value
+
+The canonical Arrow definition:
+
+```
+EV = market_cap
+   + total_debt              (long_term_debt + current_portion_lt_debt)
+   + noncontrolling_interest
+   - cash_and_equivalents
+   - short_term_investments
+```
+
+Notes:
+- `market_cap` from `historical_market_cap.market_cap` on the trading day. We store
+  the FMP daily series as a fact rather than deriving from `price × shares`; the
+  vendor series captures intra-filing buyback/issuance moves cleanly.
+- `total_debt` is the sum of long-term debt and the current portion. We do NOT
+  include operating lease liabilities in EV's debt term — those live in the
+  ROIC adjusted-invested-capital calculation but are not market-priced obligations
+  in the same sense.
+- **Subtract both `cash_and_equivalents` and `short_term_investments`.** For tech
+  filers (NVDA, MSFT, GOOGL, META) holding tens of billions in marketable
+  securities, excluding STI overstates EV materially. They are functionally cash.
+  Operator-validated 2026-04-30.
+- `noncontrolling_interest` from balance sheet (`noncontrolling_interest`).
+- `preferred_equity` defaults to 0; absent in the current universe.
+
+### Point-in-time methodology (REQUIRED reading)
+
+"P/E on date X" can mean two different things:
+
+1. **As-known-on-X (Arrow's choice):** uses TTM through the latest filing
+   *published* on or before X. Reproduces what an operator could have seen at
+   that moment. Right for backtests and historical context.
+2. **As-recomputed-with-hindsight:** uses TTM through the latest fiscal period
+   whose end-date ≤ X, regardless of when the filing was actually published.
+   What most public data services show. Wrong for backtests because it leaks
+   future information.
+
+**Arrow chooses (1).** The view filter on `v_quarterly_components_pit` is
+`asof_date = MAX(published_at)::date`, and the daily LATERAL join in
+`v_valuation_components_daily` finds the latest row with `asof_date <= price_date`.
+
+**Consequence — visible divergence from public sources for ~30 days between
+fiscal period end and filing date.** Spike-validated 2026-04-30 with NVDA:
+
+| Date | Latest known | Arrow P/E | Stockanalysis.com P/E |
+|---|---|---|---|
+| 2024-08-15 | FY2025 Q1 (filed 2024-05-29) | 70.76 | 53.08 |
+| 2024-08-29 | FY2025 Q2 (filed 2024-08-28) | 54.42 | 53.08 |
+
+Arrow's 2024-08-15 number is correct under PIT — Q2 FY25's $16.6B net income was
+not yet public on that day. Once the Q2 filing drops, Arrow's number converges to
+within 2.5% of the hindsight-based public source. **This divergence is by design,
+not a bug.** Document it in `/ask` answers when ratios disagree with external
+references.
+
+### v1 NULL-out rules (applied in `v_valuation_ratios_ttm`)
+
+All four ratios are NULL when:
+- `quarters_in_window < 4` (partial TTM history — recent IPO, spinoff)
+- `market_cap IS NULL` (price day pre-listing on the market cap series)
+
+Per-ratio additional rules:
+- **P/E NULL** when `ttm_net_income <= 0` (negative earnings → meaningless P/E)
+- **EV/EBITDA NULL** when `ttm_ebitda <= 0`
+- **P/S NULL** when `ttm_revenue <= 0`
+- **FCF yield NULL** when `market_cap = 0` (defensive — should not occur)
+
+### 23. P/E TTM
+
+- Grain: Daily, point-in-time TTM
+- Formula:
+  `P/E TTM = market_cap / TTM net_income`
+- Sources:
+  - `market_cap`: `historical_market_cap.market_cap` on the trading day
+  - `TTM net_income`: rolling 4-quarter sum of `income_statement.net_income`
+    using only quarters whose filing was published on or before the trading day
+- Notes: NULL when TTM net_income is non-positive or partial.
+
+### 24. P/S TTM
+
+- Grain: Daily, point-in-time TTM
+- Formula:
+  `P/S TTM = market_cap / TTM revenue`
+- Sources: as above; revenue from `income_statement.revenue`.
+- Notes: rarely NULL — revenue is almost always positive.
+
+### 25. EV/EBITDA TTM
+
+- Grain: Daily, point-in-time TTM
+- Formula:
+  `EV/EBITDA TTM = EV / TTM EBITDA`
+- EV per the canonical definition above.
+- TTM EBITDA = `TTM operating_income + TTM dna_cf` (matches Metric 15 derivation).
+
+### 26. FCF Yield TTM
+
+- Grain: Daily, point-in-time TTM
+- Formula:
+  `FCF Yield TTM = TTM FCF / market_cap`
+- TTM FCF = `TTM cfo - |TTM capital_expenditures|` (CapEx is stored negative; we
+  take `cfo - ABS(capex)` so the formula reads correctly regardless).
+- Returned as a fraction; consumers multiply by 100 for percent.
+
 ## Grain Summary
 
 | Metric | Canonical Grain |
@@ -404,3 +519,7 @@ These guards are layer 4 of the five-layer correctness stack. See [`verification
 | 20. DSO / DIO / DPO | Quarter-end balance sheet / TTM income statement |
 | 21. Unlevered FCF | TTM |
 | 22. Organic vs. Acquired Growth | TTM YoY, manual-adjusted where needed |
+| 23. P/E TTM | Daily, point-in-time TTM |
+| 24. P/S TTM | Daily, point-in-time TTM |
+| 25. EV/EBITDA TTM | Daily, point-in-time TTM |
+| 26. FCF Yield TTM | Daily, point-in-time TTM |

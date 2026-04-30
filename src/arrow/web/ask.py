@@ -180,6 +180,10 @@ _METRIC_VIEW_KEY_FIELDS = {
     "v_metrics_cy": ("calendar_period_label",),
     "v_metrics_ttm": ("period_end",),
     "v_metrics_ttm_yoy": ("period_end",),
+    # Valuation citations look like M:v_valuation_ratios_ttm:<security_id>:<YYYY-MM-DD>.
+    # The "company_id" slot here actually carries security_id — the body
+    # parser doesn't care, it just keys the lookup.
+    "v_valuation_ratios_ttm": ("date",),
 }
 
 # Columns to surface in the popup, per view. Keep this tight — full row
@@ -200,6 +204,18 @@ _METRIC_VIEW_DISPLAY_COLS: dict[str, tuple[str, ...]] = {
         "ticker", "period_end", "roic", "roiic",
         "adjusted_nopat_ttm", "adjusted_ic_q",
     ),
+    "v_valuation_ratios_ttm": (
+        "ticker", "date", "fiscal_period_label_at_asof", "components_known_since",
+        "close", "adj_close", "market_cap", "ev",
+        "pe_ttm", "ps_ttm", "ev_ebitda_ttm", "fcf_yield_ttm",
+        "ttm_net_income", "ttm_revenue", "ttm_ebitda", "ttm_fcf",
+    ),
+}
+
+# Some metric views key on company_id; valuation keys on security_id. Default
+# to company_id for backward compat with the existing m_metrics_* views.
+_METRIC_VIEW_ENTITY_COLUMN: dict[str, str] = {
+    "v_valuation_ratios_ttm": "security_id",
 }
 
 
@@ -228,14 +244,15 @@ def _fetch_metric_view_row(conn, body: str) -> dict[str, Any] | None:
     parts = body.split(":", 2)
     if len(parts) != 3:
         return None
-    view, company_part, period_part = parts
+    view, entity_part, period_part = parts
     if view not in _METRIC_VIEW_KEY_FIELDS:
         return None
     try:
-        company_id = int(company_part)
+        entity_id = int(entity_part)
     except ValueError:
         return None
     period_field = _METRIC_VIEW_KEY_FIELDS[view][0]
+    entity_column = _METRIC_VIEW_ENTITY_COLUMN.get(view, "company_id")
     cols = _METRIC_VIEW_DISPLAY_COLS.get(view)
     select_clause = ", ".join(cols) if cols else "*"
 
@@ -246,11 +263,11 @@ def _fetch_metric_view_row(conn, body: str) -> dict[str, Any] | None:
                 f"""
                 SELECT {select_clause}
                 FROM {view}
-                WHERE company_id = %s
+                WHERE {entity_column} = %s
                   AND {period_field}::text BETWEEN %s AND %s
                 ORDER BY {period_field};
                 """,
-                (company_id, start, end),
+                (entity_id, start, end),
             )
             rows = list(cur.fetchall())
         if not rows:
@@ -270,11 +287,11 @@ def _fetch_metric_view_row(conn, body: str) -> dict[str, Any] | None:
             f"""
             SELECT {select_clause}
             FROM {view}
-            WHERE company_id = %s
+            WHERE {entity_column} = %s
               AND {period_field}::text = %s
             LIMIT 1;
             """,
-            (company_id, period_part),
+            (entity_id, period_part),
         )
         row = cur.fetchone()
     if row is None:
@@ -284,6 +301,44 @@ def _fetch_metric_view_row(conn, body: str) -> dict[str, Any] | None:
     safe["_period"] = period_part
     safe["_window"] = False
     return safe
+
+
+def _fetch_price_bar(conn, body: str) -> dict[str, Any] | None:
+    """Look up a single (security_id, date) bar from prices_daily for a P: cite.
+
+    Body shape: ``<security_id>:<YYYY-MM-DD>``.
+    """
+    parts = body.split(":", 1)
+    if len(parts) != 2:
+        return None
+    sec_part, date_part = parts
+    try:
+        security_id = int(sec_part)
+    except ValueError:
+        return None
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(
+            """
+            SELECT
+                pd.security_id, pd.date,
+                pd.open, pd.high, pd.low, pd.close, pd.adj_close, pd.volume,
+                hmc.market_cap,
+                s.ticker, s.kind,
+                c.name AS company_name
+            FROM prices_daily pd
+            JOIN securities s ON s.id = pd.security_id
+            LEFT JOIN companies c ON c.id = s.company_id
+            LEFT JOIN historical_market_cap hmc
+              ON hmc.security_id = pd.security_id AND hmc.date = pd.date
+            WHERE pd.security_id = %s AND pd.date = %s::date
+            LIMIT 1;
+            """,
+            (security_id, date_part),
+        )
+        row = cur.fetchone()
+    if row is None:
+        return None
+    return _row_to_safe(row)
 
 
 def _fetch_section_chunk(conn, chunk_id: int) -> dict[str, Any] | None:
@@ -327,15 +382,16 @@ def get_evidence(kind: str, evidence_id: str):
 
     ``kind`` is one of:
       F (financial_fact), T (transcript chunk), S (filing section chunk),
-      M (metric-view row, body is ``view:company_id:period``).
+      M (metric-view row, body is ``view:entity_id:period``),
+      P (price bar, body is ``security_id:YYYY-MM-DD``).
 
     A (artifact) is not implemented yet; cite just renders as text.
     """
     kind = kind.upper()
-    if kind not in {"F", "T", "S", "M"}:
+    if kind not in {"F", "T", "S", "M", "P"}:
         raise HTTPException(
             status_code=400,
-            detail=f"unsupported evidence kind '{kind}'. Supported: F, T, S, M.",
+            detail=f"unsupported evidence kind '{kind}'. Supported: F, T, S, M, P.",
         )
     with get_conn() as conn:
         if kind == "M":
@@ -343,6 +399,11 @@ def get_evidence(kind: str, evidence_id: str):
             if row is None:
                 raise HTTPException(status_code=404, detail=f"no metric row for id '{evidence_id}'")
             return {"kind": "M", "id": evidence_id, "row": row}
+        if kind == "P":
+            row = _fetch_price_bar(conn, evidence_id)
+            if row is None:
+                raise HTTPException(status_code=404, detail=f"no price bar for id '{evidence_id}'")
+            return {"kind": "P", "id": evidence_id, "row": row}
         try:
             eid = int(evidence_id)
         except ValueError:

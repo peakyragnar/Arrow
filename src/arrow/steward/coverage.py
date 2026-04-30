@@ -20,6 +20,8 @@ Verticals (V1):
   - sec_qual         artifacts where artifact_type IN ('10k', '10q')
   - press_release    artifacts where artifact_type = 'press_release'
   - transcript       artifacts where artifact_type = 'transcript'
+  - prices           prices_daily joined to securities (common_stock only;
+                     ETF/index securities do not roll up under a company)
 
 Two patterns recur in the queries below:
   - ``superseded_at IS NULL`` everywhere — only current rows count
@@ -43,6 +45,7 @@ VERTICALS: tuple[str, ...] = (
     "sec_qual",
     "press_release",
     "transcript",
+    "prices",
 )
 
 
@@ -263,6 +266,24 @@ def compute_ticker_coverage(
         )
         per_vertical_periods["transcript"] = _rows_as_dicts(cur)
 
+        # Prices: per-month rollup so the per-ticker detail page isn't
+        # 2000+ rows. The matrix-level summary still has total / first / last.
+        cur.execute(
+            """
+            SELECT date_trunc('month', pd.date)::date AS period,
+                   COUNT(*) AS rows,
+                   MIN(pd.date) AS earliest,
+                   MAX(pd.date) AS latest
+            FROM prices_daily pd
+            JOIN securities s ON s.id = pd.security_id
+            WHERE s.company_id = %s AND s.status = 'active'
+            GROUP BY date_trunc('month', pd.date)
+            ORDER BY period DESC;
+            """,
+            (company_id,),
+        )
+        per_vertical_periods["prices"] = _rows_as_dicts(cur)
+
     return summary, per_vertical_periods
 
 
@@ -400,6 +421,28 @@ def _vertical_aggregates(
         for cid, rows, periods, earliest, latest in cur.fetchall():
             out["transcript"][cid] = VerticalCoverage(
                 vertical="transcript", row_count=rows, period_count=periods,
+                earliest=earliest, latest=latest,
+            )
+
+        # Daily prices (joined through securities to companies). ETFs/indices
+        # don't roll up under a company so they're absent from this matrix
+        # — they're covered by the dedicated steward checks instead.
+        cur.execute(
+            """
+            SELECT s.company_id,
+                   COUNT(*),
+                   COUNT(DISTINCT pd.date),
+                   MIN(pd.date), MAX(pd.date)
+            FROM prices_daily pd
+            JOIN securities s ON s.id = pd.security_id
+            WHERE s.company_id = ANY(%s) AND s.status = 'active'
+            GROUP BY s.company_id;
+            """,
+            (company_ids,),
+        )
+        for cid, rows, periods, earliest, latest in cur.fetchall():
+            out["prices"][cid] = VerticalCoverage(
+                vertical="prices", row_count=rows, period_count=periods,
                 earliest=earliest, latest=latest,
             )
 
