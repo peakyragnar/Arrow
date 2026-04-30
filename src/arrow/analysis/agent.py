@@ -59,6 +59,12 @@ from arrow.retrieval.prices import (
     read_valuation_series,
     valuation_percentile,
 )
+from arrow.retrieval.estimates import (
+    read_consensus,
+    read_surprise_history,
+    read_target_gap,
+    recent_analyst_actions,
+)
 from arrow.retrieval._query import jsonable
 
 
@@ -877,6 +883,175 @@ def _tool_screen_companies(conn: psycopg.Connection, params: dict[str, Any]) -> 
     )
 
 
+def _tool_read_consensus(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    ticker = params["ticker"].upper()
+    period_kind = params.get("period_kind", "quarter")
+    n_forward = int(params.get("n_forward", 4))
+    n_past = int(params.get("n_past", 1))
+    try:
+        rows_data = read_consensus(
+            conn, ticker=ticker, period_kind=period_kind,
+            n_forward=n_forward, n_past=n_past,
+        )
+    except ValueError as e:
+        return ToolResult(rows=[], evidence_ids=[], summary=str(e), error=str(e))
+    if not rows_data:
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary=f"No analyst consensus for {ticker} ({period_kind}).",
+        )
+    rows: list[dict[str, Any]] = []
+    evidence_ids: list[str] = []
+    for r in rows_data:
+        cite = f"E:{r.security_id}:{r.period_kind}:{r.period_end.isoformat()}"
+        rows.append({
+            "period_kind": r.period_kind,
+            "period_end": r.period_end.isoformat(),
+            "is_forward": r.is_forward,
+            "eps_avg": _money(r.eps_avg),
+            "eps_low": _money(r.eps_low),
+            "eps_high": _money(r.eps_high),
+            "revenue_avg": _money(r.revenue_avg),
+            "revenue_low": _money(r.revenue_low),
+            "revenue_high": _money(r.revenue_high),
+            "ebitda_avg": _money(r.ebitda_avg),
+            "net_income_avg": _money(r.net_income_avg),
+            "num_analysts_eps": r.num_analysts_eps,
+            "num_analysts_revenue": r.num_analysts_revenue,
+            "fetched_at": r.fetched_at.isoformat(),
+            "evidence_id": cite,
+        })
+        evidence_ids.append(cite)
+    forward = [r for r in rows_data if r.is_forward]
+    summary = (
+        f"{ticker} {period_kind} consensus: {len(rows_data)} period(s) returned "
+        f"({len(forward)} forward). Latest fetched_at "
+        f"{rows_data[-1].fetched_at.date()}. Cite individual periods as "
+        f"E:{rows_data[0].security_id}:{period_kind}:YYYY-MM-DD."
+    )
+    return ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary)
+
+
+def _tool_read_target_gap(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    ticker = params["ticker"].upper()
+    as_of = _parse_iso_date(params.get("as_of"))
+    gap = read_target_gap(conn, ticker=ticker, as_of=as_of)
+    if gap is None:
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary=f"No price-target consensus for {ticker}.",
+        )
+    cite = f"T:{gap.security_id}:{gap.fetched_at.date().isoformat()}"
+    row = {
+        "ticker": gap.ticker,
+        "target_high": _money(gap.target_high),
+        "target_low": _money(gap.target_low),
+        "target_median": _money(gap.target_median),
+        "target_consensus": _money(gap.target_consensus),
+        "current_close": _money(gap.current_close),
+        "current_close_date": (
+            gap.current_close_date.isoformat() if gap.current_close_date else None
+        ),
+        "upside_to_consensus_pct": (
+            None if gap.upside_to_consensus_pct is None
+            else round(gap.upside_to_consensus_pct, 2)
+        ),
+        "fetched_at": gap.fetched_at.isoformat(),
+        "evidence_id": cite,
+    }
+    upside_str = (
+        "n/a" if gap.upside_to_consensus_pct is None
+        else f"{gap.upside_to_consensus_pct:+.1f}%"
+    )
+    summary = (
+        f"{ticker}: consensus target {gap.target_consensus} "
+        f"(low {gap.target_low}, median {gap.target_median}, high {gap.target_high}); "
+        f"close {gap.current_close} on {gap.current_close_date} → upside {upside_str}. "
+        f"Cite as {cite}."
+    )
+    return ToolResult(rows=[row], evidence_ids=[cite], summary=summary)
+
+
+def _tool_read_surprise_history(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    ticker = params["ticker"].upper()
+    n = int(params.get("n", 8))
+    rows_data = read_surprise_history(conn, ticker=ticker, n=n)
+    if not rows_data:
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary=f"No earnings surprise history for {ticker}.",
+        )
+    rows: list[dict[str, Any]] = []
+    evidence_ids: list[str] = []
+    for s in rows_data:
+        cite = f"S:{s.security_id}:{s.announcement_date.isoformat()}"
+        rows.append({
+            "announcement_date": s.announcement_date.isoformat(),
+            "eps_actual": _money(s.eps_actual),
+            "eps_estimated": _money(s.eps_estimated),
+            "eps_surprise_pct": (
+                None if s.eps_surprise_pct is None else round(s.eps_surprise_pct, 2)
+            ),
+            "revenue_actual": _money(s.revenue_actual),
+            "revenue_estimated": _money(s.revenue_estimated),
+            "revenue_surprise_pct": (
+                None if s.revenue_surprise_pct is None
+                else round(s.revenue_surprise_pct, 2)
+            ),
+            "evidence_id": cite,
+        })
+        evidence_ids.append(cite)
+    beats = [s for s in rows_data if s.eps_surprise_pct is not None and s.eps_surprise_pct > 0]
+    summary = (
+        f"{ticker}: {len(rows_data)} announcement(s), "
+        f"{rows_data[-1].announcement_date}..{rows_data[0].announcement_date}. "
+        f"EPS beats: {len(beats)} of "
+        f"{sum(1 for s in rows_data if s.eps_surprise_pct is not None)}. "
+        f"Cite individual quarters as S:{rows_data[0].security_id}:YYYY-MM-DD."
+    )
+    return ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary)
+
+
+def _tool_recent_analyst_actions(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    ticker = params["ticker"].upper()
+    days = int(params.get("days", 90))
+    limit = int(params.get("limit", 50))
+    actions = recent_analyst_actions(conn, ticker=ticker, days=days, limit=limit)
+    if not actions:
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary=f"No analyst actions for {ticker} in the last {days} days.",
+        )
+    rows: list[dict[str, Any]] = []
+    evidence_ids: list[str] = []
+    for a in actions:
+        rows.append({
+            "kind": a.kind,
+            "when": a.when.date().isoformat(),
+            "firm": a.firm,
+            "analyst_name": a.analyst_name,
+            "previous_grade": a.previous_grade,
+            "new_grade": a.new_grade,
+            "action": a.action,
+            "price_target": _money(a.price_target),
+            "adj_price_target": _money(a.adj_price_target),
+            "price_when_posted": _money(a.price_when_posted),
+            "news_title": a.news_title,
+            "news_url": a.news_url,
+            "evidence_id": a.citation,
+        })
+        evidence_ids.append(a.citation)
+    grades = [a for a in actions if a.kind == "grade"]
+    targets = [a for a in actions if a.kind == "price_target"]
+    summary = (
+        f"{ticker}: {len(actions)} action(s) in last {days}d "
+        f"({len(grades)} grade, {len(targets)} price-target). "
+        f"Latest: {actions[0].when.date()} ({actions[0].kind}, {actions[0].firm}). "
+        f"Cite grade rows as G:<id>, price-target rows as A:<id>."
+    )
+    return ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary)
+
+
 def _tool_screen_companies_by_trajectory(
     conn: psycopg.Connection, params: dict[str, Any]
 ) -> ToolResult:
@@ -1330,6 +1505,96 @@ REGISTRY: list[Tool] = [
             "required": ["metric"],
         },
         execute=_tool_screen_companies_by_trajectory,
+    ),
+    Tool(
+        name="read_consensus",
+        description=(
+            "Forward + most-recent past analyst consensus per fiscal period for "
+            "one ticker. Returns revenue / EPS / EBITDA / net-income low / avg / "
+            "high + analyst counts per (period_kind, period_end). Use for 'what "
+            "does the street expect for X next quarter / next FY?' questions, or "
+            "as substrate for forward valuation. Default: 4 forward + 1 past "
+            "QUARTERLY periods. Set period_kind='annual' for FY-grain. Cite "
+            "individual periods as E:<security_id>:<period_kind>:<period_end>."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "ticker": {"type": "string"},
+                "period_kind": {
+                    "type": "string", "enum": ["annual", "quarter"],
+                    "description": "Default 'quarter'.",
+                },
+                "n_forward": {"type": "integer", "description": "Forward periods to return. Default 4."},
+                "n_past": {"type": "integer", "description": "Most-recent past periods to return. Default 1."},
+            },
+            "required": ["ticker"],
+        },
+        execute=_tool_read_consensus,
+    ),
+    Tool(
+        name="read_target_gap",
+        description=(
+            "Current price vs analyst consensus price target for one ticker. "
+            "Returns target high / low / median / consensus, latest close, "
+            "current_close_date, and upside_to_consensus_pct (= (consensus - "
+            "close) / close × 100). Positive upside = analysts expect the "
+            "stock to rise. Single snapshot — no analyst count exposed by FMP "
+            "on this endpoint. Cite as T:<security_id>:<fetched_at_date>."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "ticker": {"type": "string"},
+                "as_of": {
+                    "type": "string",
+                    "description": "YYYY-MM-DD trading day for the close. Omit for latest available.",
+                },
+            },
+            "required": ["ticker"],
+        },
+        execute=_tool_read_target_gap,
+    ),
+    Tool(
+        name="read_surprise_history",
+        description=(
+            "Last N quarterly earnings announcements for one ticker: actual vs "
+            "estimated EPS and revenue, with surprise percentages. Newest first. "
+            "Use for beat / miss questions ('how often does META beat?', 'did "
+            "Q3 surprise?'). Default N=8. Filters out upcoming announcements "
+            "(actuals null). Cite individual quarters as "
+            "S:<security_id>:<announcement_date>."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "ticker": {"type": "string"},
+                "n": {"type": "integer", "description": "How many recent quarters. Default 8."},
+            },
+            "required": ["ticker"],
+        },
+        execute=_tool_read_surprise_history,
+    ),
+    Tool(
+        name="recent_analyst_actions",
+        description=(
+            "Combined event log of analyst grade changes (upgrade / downgrade / "
+            "maintain) and price-target updates for one ticker, newest first. "
+            "Use for sentiment / news-flow questions ('has anyone moved on TSLA "
+            "this week?', 'who's been upgrading NVDA?'). Default window 90 days. "
+            "Each row carries firm, analyst name (where known), and news source "
+            "URL. Cite grade rows as G:<id>, price-target rows as A:<id>."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "ticker": {"type": "string"},
+                "days": {"type": "integer", "description": "Lookback window in days. Default 90."},
+                "limit": {"type": "integer", "description": "Max rows. Default 50."},
+            },
+            "required": ["ticker"],
+        },
+        execute=_tool_recent_analyst_actions,
     ),
 ]
 

@@ -16,6 +16,7 @@ Start here. Read only the next doc you need.
 - Steward operator runbook (how to use it day-to-day + how to operate so V2 trains well): `docs/reference/steward_operator_runbook.md`
 - Driver analysis ingest plan (growth/margin/cash driver substrate): `docs/architecture/driver_analysis_ingest_plan.md`
 - Prices ingest plan (daily OHLCV + market cap + valuation views): `docs/architecture/prices_ingest_plan.md`
+- Estimates ingest plan (analyst consensus, price targets, surprises, ratings events): `docs/architecture/estimates_ingest_plan.md`
 - Dashboard UI surface: `docs/architecture/dashboard.md`
 - SEC qualitative layer (filings → sections → chunks, amendments, FTS): `docs/architecture/sec_qualitative_layer.md`
 - How to review SEC qualitative extraction quality: `docs/reference/sec_qualitative_review.md`

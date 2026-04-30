@@ -22,6 +22,10 @@ Verticals (V1):
   - transcript       artifacts where artifact_type = 'transcript'
   - prices           prices_daily joined to securities (common_stock only;
                      ETF/index securities do not roll up under a company)
+  - estimates        analyst_estimates joined to securities. `latest` is
+                     MAX(fetched_at) — the refresh timestamp — so the
+                     `recency` expectation evaluates "are estimates fresh?"
+                     not "how far forward does coverage reach?"
 
 Two patterns recur in the queries below:
   - ``superseded_at IS NULL`` everywhere — only current rows count
@@ -46,6 +50,7 @@ VERTICALS: tuple[str, ...] = (
     "press_release",
     "transcript",
     "prices",
+    "estimates",
 )
 
 
@@ -284,6 +289,21 @@ def compute_ticker_coverage(
         )
         per_vertical_periods["prices"] = _rows_as_dicts(cur)
 
+        # Estimates per fiscal period (annual + quarter), latest first.
+        cur.execute(
+            """
+            SELECT ae.period_kind, ae.period_end,
+                   ae.eps_avg, ae.revenue_avg, ae.num_analysts_eps,
+                   ae.fetched_at
+            FROM analyst_estimates ae
+            JOIN securities s ON s.id = ae.security_id
+            WHERE s.company_id = %s AND s.status = 'active'
+            ORDER BY ae.period_end DESC, ae.period_kind;
+            """,
+            (company_id,),
+        )
+        per_vertical_periods["estimates"] = _rows_as_dicts(cur)
+
     return summary, per_vertical_periods
 
 
@@ -443,6 +463,29 @@ def _vertical_aggregates(
         for cid, rows, periods, earliest, latest in cur.fetchall():
             out["prices"][cid] = VerticalCoverage(
                 vertical="prices", row_count=rows, period_count=periods,
+                earliest=earliest, latest=latest,
+            )
+
+        # Analyst estimates (joined through securities to companies).
+        # `latest` is MAX(fetched_at) — the refresh timestamp — because
+        # period_end is forward-looking (e.g. FY2031) and isn't a freshness
+        # signal. ETFs/indices have no analyst coverage and are absent here.
+        cur.execute(
+            """
+            SELECT s.company_id,
+                   COUNT(*),
+                   COUNT(DISTINCT ae.period_end),
+                   MIN(ae.period_end), MAX(ae.fetched_at)
+            FROM analyst_estimates ae
+            JOIN securities s ON s.id = ae.security_id
+            WHERE s.company_id = ANY(%s) AND s.status = 'active'
+            GROUP BY s.company_id;
+            """,
+            (company_ids,),
+        )
+        for cid, rows, periods, earliest, latest in cur.fetchall():
+            out["estimates"][cid] = VerticalCoverage(
+                vertical="estimates", row_count=rows, period_count=periods,
                 earliest=earliest, latest=latest,
             )
 

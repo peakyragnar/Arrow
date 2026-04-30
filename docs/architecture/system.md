@@ -487,6 +487,11 @@ Status legend:
 | `securities` | built | migration 023 — tradable instruments (common stock, ETFs, indices). `companies.primary_security_id` resolves "ticker NVDA" to a security row. ETFs/indices have NULL `company_id`. Accommodates multi-class shares (GOOG/GOOGL) without future migration. See `docs/architecture/prices_ingest_plan.md`. |
 | `prices_daily` | built | migration 023 — daily OHLCV per security. `close` = raw as-traded (FMP `historical-price-eod/non-split-adjusted`); `adj_close` = split + dividend adjusted total-return basis (FMP `historical-price-eod/dividend-adjusted`). |
 | `historical_market_cap` | built | migration 023 — daily market cap series from FMP `historical-market-capitalization`. Stored as a fact rather than derived from `price × shares` to capture intra-filing buyback/issuance moves cleanly. |
+| `analyst_estimates` | built | migration 024 — forward + historical analyst consensus per (security, period_kind, period_end). Replace-by-(security, period_kind) on each ingest. Migration to snapshot history is a one-line PK change. See `docs/architecture/estimates_ingest_plan.md`. |
+| `price_target_consensus` | built | migration 024 — latest analyst consensus price target (high / low / median / consensus) per security. One row per security; replaced on each ingest. |
+| `earnings_surprises` | built | migration 024 — historical EPS + revenue actual vs estimate per announcement. Natural key (security, announcement_date). UPSERT on re-ingest because actuals populate after announcement. |
+| `analyst_grades` | built | migration 024 — event log of analyst rating actions (upgrade / downgrade / maintain) from FMP `/stable/grades`. Append-only with natural-key dedup. |
+| `analyst_price_targets` | built | migration 024 — event log of individual analyst price-target updates from FMP `/stable/price-target-news`. Carries split-adjusted target + full news provenance. |
 | `prices_intraday` | deferred | reserved for event-reaction workflows |
 | `options_contracts` | deferred | until Massive vendor active |
 | `options_eod_snapshots` | deferred | until Massive vendor active |

@@ -81,6 +81,13 @@ STANDARD: list[Expectation] = [
     # before we'd expect a daily ingest sweep to have run).
     Expectation("prices", "present", {}),
     Expectation("prices", "recency", {"max_age_days": 5}),
+    # Analyst estimates: every active common-stock ticker should have
+    # forward consensus, refreshed within 3 days. FMP refreshes consensus
+    # daily (probe 2026-04-30); 3 days handles weekends without false
+    # positives. `latest` for the estimates vertical is MAX(fetched_at) —
+    # see arrow.steward.coverage.
+    Expectation("estimates", "present", {}),
+    Expectation("estimates", "recency", {"max_age_days": 3}),
 ]
 
 

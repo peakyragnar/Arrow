@@ -28,3 +28,6 @@ from arrow.steward.checks import period_end_calendar_consistency  # noqa: F401
 from arrow.steward.checks import quarterly_sum_to_annual_drift  # noqa: F401
 from arrow.steward.checks import xbrl_audit_unresolved  # noqa: F401
 from arrow.steward.checks import prices_gap_detection  # noqa: F401
+from arrow.steward.checks import price_target_consensus_freshness  # noqa: F401
+from arrow.steward.checks import analyst_estimates_orphan  # noqa: F401
+from arrow.steward.checks import earnings_surprise_sanity  # noqa: F401

@@ -172,6 +172,7 @@ class ExpectedCoverage(Check):
             "sec_qual":      f"uv run scripts/fetch_sec_filings.py {ticker}",
             "press_release": f"uv run scripts/ingest_company.py {ticker}",
             "transcript":    f"uv run scripts/ingest_transcripts.py {ticker}",
+            "estimates":     f"uv run scripts/ingest_estimates.py {ticker}",
         }
         cmd = commands_by_vertical.get(v, f"# inspect {v} ingest path for {ticker}")
 
