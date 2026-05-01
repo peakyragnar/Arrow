@@ -32,3 +32,4 @@ from arrow.steward.checks import price_target_consensus_freshness  # noqa: F401
 from arrow.steward.checks import analyst_estimates_orphan  # noqa: F401
 from arrow.steward.checks import earnings_surprise_sanity  # noqa: F401
 from arrow.steward.checks import section_text_suspicious_length  # noqa: F401
+from arrow.steward.checks import forward_estimate_consistency  # noqa: F401

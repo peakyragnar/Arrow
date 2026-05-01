@@ -1162,6 +1162,28 @@ def _build_ticker_context(ticker: str) -> dict[str, Any] | None:
     if ttm is not None:
         ttm["eps_diluted"] = ttm_eps
 
+    # Per-period consistency flag for forward estimates: when EBIT goes
+    # one way and NI goes the other (NI > 0, EBIT < 0) and the bridge
+    # exceeds 20% of forward revenue, the EBIT side is unreliable for
+    # this row. Mirrors the forward_estimate_consistency steward check.
+    # Used downstream to mark Operating Income / Op Margin cells with a
+    # "suspect-est" flag so the dashboard displays a warning at the
+    # decision surface, not just in the steward queue.
+    def _is_inconsistent(row: dict) -> bool:
+        rev = _to_float(row.get("revenue_avg"))
+        ebit = _to_float(row.get("ebit_avg"))
+        ni = _to_float(row.get("net_income_avg"))
+        if rev is None or ebit is None or ni is None:
+            return False
+        if rev <= 0:
+            return False
+        if not (ni > 0 and ebit < 0):
+            return False
+        return abs(ni - ebit) / rev > 0.20
+
+    est_fy_inconsistent = [_is_inconsistent(r) for r in est_fy]
+    est_q_inconsistent = [_is_inconsistent(r) for r in est_q]
+
     if not quarterly_full:
         return None
 
@@ -1214,6 +1236,48 @@ def _build_ticker_context(ticker: str) -> dict[str, Any] | None:
         rendered_rows.append(
             {"name": row.name, "cells": cells, "is_change": row.is_change_row, "tooltip": row.tooltip}
         )
+
+    # Mark forward EBIT-derived cells as suspect when this period's
+    # forward consensus is internally inconsistent. The check fires per
+    # period; we apply the warning to: Operating Income (EBIT level),
+    # Operating Margin (its bps row + value row), and the row's Δ YoY.
+    # Revenue / Net Income / EPS rows stay unmarked — those lines are
+    # still trustworthy when only the EBIT line diverges.
+    suspect_metric_names = {
+        "Operating Income", "Operating Margin",
+    }
+    n_actual_fy = len(fy_rows)
+    n_actual_q = len(quarterly)
+    # Forward FY columns: indices [n_actual_fy .. n_actual_fy + n_est_fy)
+    # Forward Q columns:  indices [n_actual_fy + n_est_fy + 1 + n_actual_q ..)
+    # (the +1 is the TTM column between FY block and Q block)
+    fwd_fy_start = n_actual_fy
+    fwd_q_start = n_actual_fy + len(est_fy) + 1 + n_actual_q
+    suspect_msg = (
+        "Forward EBIT inconsistent with forward NI for this period — "
+        "FMP aggregation likely mixed GAAP and non-GAAP analysts. "
+        "Treat with caution; revenue + NI + EPS lines remain reliable."
+    )
+    for rrow in rendered_rows:
+        # The Δ YoY rows immediately follow their value rows and inherit
+        # the metric name's parent — match either by exact name or by
+        # the leading-spaces convention used for change rows.
+        parent = rrow["name"].strip() or rrow["name"]
+        is_op_inc = parent in suspect_metric_names
+        if not is_op_inc:
+            continue
+        new_cells = []
+        for i, (text, cls, tip) in enumerate(rrow["cells"]):
+            if fwd_fy_start <= i < fwd_fy_start + len(est_fy):
+                if est_fy_inconsistent[i - fwd_fy_start]:
+                    cls = (cls + " suspect-est").strip()
+                    tip = (tip + " · " if tip else "") + suspect_msg
+            elif fwd_q_start <= i < fwd_q_start + len(est_q):
+                if est_q_inconsistent[i - fwd_q_start]:
+                    cls = (cls + " suspect-est").strip()
+                    tip = (tip + " · " if tip else "") + suspect_msg
+            new_cells.append((text, cls, tip))
+        rrow["cells"] = new_cells
 
     return {
         "ticker": ticker,
@@ -1347,6 +1411,18 @@ def _build_valuation_context(ticker: str) -> dict[str, Any] | None:
         ni = _to_float(er.get("net_income_avg"))
         eps = _to_float(er.get("eps_avg"))
 
+        # Internal-consistency flag: NI > 0 AND EBIT < 0 AND
+        # |NI - EBIT| > revenue × 20%. When True, the EBIT/EBITDA
+        # estimates and the EV/EBITDA forward multiple should be
+        # treated as unreliable for this period. Mirrors the
+        # forward_estimate_consistency steward check.
+        consistency_suspect = (
+            rev is not None and rev > 0
+            and ebit is not None and ebit < 0
+            and ni is not None and ni > 0
+            and abs(ni - ebit) / rev > 0.20
+        )
+
         # Forward multiples
         pe_fwd = (close / eps) if (close is not None and eps not in (None, 0)) else None
         ps_fwd = (market_cap / rev) if (market_cap is not None and rev not in (None, 0)) else None
@@ -1375,6 +1451,7 @@ def _build_valuation_context(ticker: str) -> dict[str, Any] | None:
             "ev_ebitda_fwd": ev_ebitda_fwd,
             "fcf_yield_fwd_implied": fcf_yield_fwd,
             "implied_fcf": implied_fcf,
+            "consistency_suspect": consistency_suspect,
         })
 
     # Implied growth: for each forward period, % change vs. TTM (period 1)

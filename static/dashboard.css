@@ -237,6 +237,26 @@ th.est-col .hdr-sub {
     font-style: italic;
 }
 
+/* Suspect-est: forward estimate cell whose underlying EBIT diverges
+   inconsistently from the NI line. Subtle amber tint + warning glyph
+   so the operator sees the issue at the decision surface, not just
+   in the steward queue. */
+th.suspect-est, td.suspect-est {
+    background: #1f1408 !important;
+    color: #c89252 !important;
+    cursor: help;
+}
+tr.change-row td.suspect-est {
+    background: #1a1106 !important;
+    color: #b07d3d !important;
+}
+.suspect-tag {
+    color: #d49558;
+    font-size: 10px;
+    margin-left: 4px;
+    font-style: normal;
+}
+
 .audit-note { color: var(--text-dim); }
 
 footer.bottom {

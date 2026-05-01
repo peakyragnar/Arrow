@@ -81,14 +81,20 @@
         <td class="metric-col">EBITDA</td>
         <td class="ttm-col">{{ fmt_money(ttm.ttm_ebitda) }}</td>
         {% for p in forward_periods %}
-        <td class="est-col">{{ fmt_money(p.ebitda) }}</td>
+        <td class="est-col {% if p.consistency_suspect %}suspect-est{% endif %}"
+            {% if p.consistency_suspect %}title="Forward EBIT inconsistent with forward NI for this period — FMP aggregation likely mixed GAAP and non-GAAP analysts. Treat with caution; revenue + NI + EPS lines remain reliable."{% endif %}>
+          {{ fmt_money(p.ebitda) }}{% if p.consistency_suspect %}<span class="suspect-tag">⚠</span>{% endif %}
+        </td>
         {% endfor %}
       </tr>
       <tr>
         <td class="metric-col">Operating Income</td>
         <td class="ttm-col">{{ fmt_money(ttm.ttm_operating_income) }}</td>
         {% for p in forward_periods %}
-        <td class="est-col">{{ fmt_money(p.ebit) }}</td>
+        <td class="est-col {% if p.consistency_suspect %}suspect-est{% endif %}"
+            {% if p.consistency_suspect %}title="Forward EBIT inconsistent with forward NI for this period — FMP aggregation likely mixed GAAP and non-GAAP analysts. Treat with caution; revenue + NI + EPS lines remain reliable."{% endif %}>
+          {{ fmt_money(p.ebit) }}{% if p.consistency_suspect %}<span class="suspect-tag">⚠</span>{% endif %}
+        </td>
         {% endfor %}
       </tr>
       <tr>
@@ -147,7 +153,10 @@
         <td class="metric-col">EV / EBITDA <span class="metric-sub">enterprise value ÷ EBITDA</span></td>
         <td class="ttm-col">{{ fmt_x(ttm.ev_ebitda_ttm) }}</td>
         {% for p in forward_periods %}
-        <td class="est-col">{{ fmt_x(p.ev_ebitda_fwd) }}</td>
+        <td class="est-col {% if p.consistency_suspect %}suspect-est{% endif %}"
+            {% if p.consistency_suspect %}title="Forward EV/EBITDA unreliable: forward EBIT inconsistent with forward NI for this period. FMP aggregation likely mixed GAAP and non-GAAP analysts."{% endif %}>
+          {{ fmt_x(p.ev_ebitda_fwd) }}{% if p.consistency_suspect %}<span class="suspect-tag">⚠</span>{% endif %}
+        </td>
         {% endfor %}
       </tr>
       <tr>
@@ -188,7 +197,12 @@
       <tr>
         <td class="metric-col">EBITDA</td>
         {% for g in implied_growth %}
-        <td class="est-col {% if g.ebitda_growth and g.ebitda_growth > 0 %}pos{% elif g.ebitda_growth and g.ebitda_growth < 0 %}neg{% endif %}">{{ fmt_pct_signed(g.ebitda_growth) }}</td>
+        {# Match the consistency flag of the forward period this growth row references #}
+        {% set p = forward_periods[loop.index0] %}
+        <td class="est-col {% if g.ebitda_growth and g.ebitda_growth > 0 %}pos{% elif g.ebitda_growth and g.ebitda_growth < 0 %}neg{% endif %} {% if p.consistency_suspect %}suspect-est{% endif %}"
+            {% if p.consistency_suspect %}title="EBITDA growth is unreliable for this period — forward EBIT inconsistent with NI."{% endif %}>
+          {{ fmt_pct_signed(g.ebitda_growth) }}{% if p.consistency_suspect %}<span class="suspect-tag">⚠</span>{% endif %}
+        </td>
         {% endfor %}
       </tr>
       <tr>
