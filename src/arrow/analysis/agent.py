@@ -29,7 +29,7 @@ import anthropic
 import psycopg
 from dotenv import load_dotenv
 
-from arrow.retrieval.companies import resolve_company_by_ticker
+from arrow.retrieval.companies import resolve_company_by_ticker, suggest_tickers_near
 from arrow.retrieval.documents import get_section_chunks, list_documents
 from arrow.retrieval.facts import get_financial_facts, get_segment_facts
 from arrow.retrieval.metrics import (
@@ -142,8 +142,50 @@ class Tool:
 
 
 def _resolve_company(conn: psycopg.Connection, ticker: str):
+    """Resolve a ticker to a Company, with silent fallback to an unambiguous
+    near-miss (e.g. user types AXT, DB has AXTI). When the near-miss set has
+    exactly one candidate the lookup auto-corrects; ambiguity returns None
+    and the caller's empty path renders.
+    """
     matches = resolve_company_by_ticker(conn, ticker_candidates=[ticker])
-    return matches[0] if matches else None
+    if matches:
+        return matches[0]
+    suggestions = suggest_tickers_near(conn, ticker=ticker)
+    if len(suggestions) == 1:
+        return suggestions[0]
+    return None
+
+
+def _normalize_ticker(conn: psycopg.Connection, ticker: str) -> tuple[str, str | None]:
+    """Return (canonical_ticker, note).
+
+    For tools that take ticker strings directly (read_consensus, read_prices,
+    company_valuation, etc.) and bypass _resolve_company. Mirrors
+    _resolve_company's auto-correction so a turn-N ticker typo doesn't burn
+    three empty tool calls. ``note`` carries a "did you mean" string when a
+    correction was applied; tools fold it into their summaries so the
+    planner learns the canonical ticker for subsequent calls in the thread.
+    """
+    t = ticker.upper()
+    if resolve_company_by_ticker(conn, ticker_candidates=[t]):
+        return t, None
+    suggestions = suggest_tickers_near(conn, ticker=t)
+    if len(suggestions) == 1:
+        canonical = suggestions[0].ticker
+        return canonical, f"Resolved {t!r} → {canonical} (ticker prefix-match)."
+    return t, None
+
+
+def _with_ticker_note(result: ToolResult, note: str | None) -> ToolResult:
+    """Prepend a ticker-correction note to a ToolResult's summary."""
+    if not note:
+        return result
+    return ToolResult(
+        rows=result.rows,
+        evidence_ids=result.evidence_ids,
+        summary=f"{note} {result.summary}",
+        error=result.error,
+    )
 
 
 def _period_type(fiscal_quarter: int | None) -> str:
@@ -442,7 +484,7 @@ def _list_recent_documents(
 
 
 def _tool_search_transcripts(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
-    ticker = params["ticker"]
+    ticker, _ticker_note = _normalize_ticker(conn, params["ticker"])
     query = params["query"]
     fiscal_period_key = params.get("fiscal_period_key")
     limit = int(params.get("limit", 10))
@@ -454,7 +496,10 @@ def _tool_search_transcripts(conn: psycopg.Connection, params: dict[str, Any]) -
         limit=limit,
     )
     if not turns:
-        return ToolResult(rows=[], evidence_ids=[], summary=f"No transcript turns for {ticker} matching '{query}'.")
+        return _with_ticker_note(
+            ToolResult(rows=[], evidence_ids=[], summary=f"No transcript turns for {ticker} matching '{query}'."),
+            _ticker_note,
+        )
     rows = [
         {
             "chunk_id": t.chunk_id,
@@ -464,10 +509,13 @@ def _tool_search_transcripts(conn: psycopg.Connection, params: dict[str, Any]) -
         }
         for t in turns
     ]
-    return ToolResult(
-        rows=rows,
-        evidence_ids=[f"T:{t.chunk_id}" for t in turns if t.chunk_id is not None],
-        summary=f"{ticker}: {len(turns)} transcript turn(s) matching '{query}'.",
+    return _with_ticker_note(
+        ToolResult(
+            rows=rows,
+            evidence_ids=[f"T:{t.chunk_id}" for t in turns if t.chunk_id is not None],
+            summary=f"{ticker}: {len(turns)} transcript turn(s) matching '{query}'.",
+        ),
+        _ticker_note,
     )
 
 
@@ -520,7 +568,7 @@ def _tool_read_filing_sections(conn: psycopg.Connection, params: dict[str, Any])
 
 
 def _tool_read_transcript(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
-    ticker = params["ticker"]
+    ticker, _ticker_note = _normalize_ticker(conn, params["ticker"])
     fiscal_year = params["fiscal_year"]
     fiscal_quarter = params.get("fiscal_quarter")
     if fiscal_quarter:
@@ -529,10 +577,13 @@ def _tool_read_transcript(conn: psycopg.Connection, params: dict[str, Any]) -> T
         fiscal_period_key = f"FY{fiscal_year} Q4"  # annual calls map to Q4
     turns = read_transcript_turns(conn, ticker, fiscal_period_key)
     if not turns:
-        return ToolResult(
-            rows=[],
-            evidence_ids=[],
-            summary=f"No transcript found for {ticker} {fiscal_period_key}.",
+        return _with_ticker_note(
+            ToolResult(
+                rows=[],
+                evidence_ids=[],
+                summary=f"No transcript found for {ticker} {fiscal_period_key}.",
+            ),
+            _ticker_note,
         )
     rows = [
         {
@@ -544,10 +595,13 @@ def _tool_read_transcript(conn: psycopg.Connection, params: dict[str, Any]) -> T
         }
         for t in turns
     ]
-    return ToolResult(
-        rows=rows,
-        evidence_ids=[f"T:{t.chunk_id}" for t in turns if t.chunk_id is not None],
-        summary=f"{ticker} {fiscal_period_key} transcript: {len(turns)} turn(s) in reading order.",
+    return _with_ticker_note(
+        ToolResult(
+            rows=rows,
+            evidence_ids=[f"T:{t.chunk_id}" for t in turns if t.chunk_id is not None],
+            summary=f"{ticker} {fiscal_period_key} transcript: {len(turns)} turn(s) in reading order.",
+        ),
+        _ticker_note,
     )
 
 
@@ -560,7 +614,7 @@ def _parse_iso_date(s: str | None) -> "date | None":
 
 
 def _tool_read_prices(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
-    ticker = params["ticker"].upper()
+    ticker, _ticker_note = _normalize_ticker(conn, params["ticker"])
     from_date = _parse_iso_date(params.get("from_date"))
     to_date = _parse_iso_date(params.get("to_date"))
     if from_date is None or to_date is None:
@@ -572,9 +626,12 @@ def _tool_read_prices(conn: psycopg.Connection, params: dict[str, Any]) -> ToolR
 
     bars = read_prices(conn, ticker=ticker, from_date=from_date, to_date=to_date)
     if not bars:
-        return ToolResult(
-            rows=[], evidence_ids=[],
-            summary=f"No prices for {ticker} in [{from_date}, {to_date}].",
+        return _with_ticker_note(
+            ToolResult(
+                rows=[], evidence_ids=[],
+                summary=f"No prices for {ticker} in [{from_date}, {to_date}].",
+            ),
+            _ticker_note,
         )
 
     rows = []
@@ -603,7 +660,10 @@ def _tool_read_prices(conn: psycopg.Connection, params: dict[str, Any]) -> ToolR
         + (f" ({pct_change:+.2f}% total return)." if pct_change is not None else ".")
         + f" Cite individual bars as P:{bars[0].security_id}:YYYY-MM-DD."
     )
-    return ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary)
+    return _with_ticker_note(
+        ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary),
+        _ticker_note,
+    )
 
 
 def _tool_company_valuation(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
@@ -617,14 +677,14 @@ def _tool_company_valuation(conn: psycopg.Connection, params: dict[str, Any]) ->
                           Optional `as_of` (default: latest), `window_years`
                           (default 5).
     """
-    ticker = params["ticker"].upper()
+    ticker, _ticker_note = _normalize_ticker(conn, params["ticker"])
     mode = params.get("mode", "snapshot")
     if mode == "snapshot":
-        return _valuation_snapshot(conn, ticker=ticker, params=params)
+        return _with_ticker_note(_valuation_snapshot(conn, ticker=ticker, params=params), _ticker_note)
     if mode == "series":
-        return _valuation_series(conn, ticker=ticker, params=params)
+        return _with_ticker_note(_valuation_series(conn, ticker=ticker, params=params), _ticker_note)
     if mode == "percentile":
-        return _valuation_percentile_tool(conn, ticker=ticker, params=params)
+        return _with_ticker_note(_valuation_percentile_tool(conn, ticker=ticker, params=params), _ticker_note)
     return ToolResult(
         rows=[], evidence_ids=[],
         summary=f"unknown mode {mode!r}. Use 'snapshot' | 'series' | 'percentile'.",
@@ -843,7 +903,7 @@ def _get_quarterly_series_tool(
 
 
 def _tool_compare_transcript_mentions(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
-    ticker = params["ticker"]
+    ticker, _ticker_note = _normalize_ticker(conn, params["ticker"])
     terms = params.get("terms") or []
     periods = int(params.get("periods", 8))
     if not terms:
@@ -860,10 +920,13 @@ def _tool_compare_transcript_mentions(conn: psycopg.Connection, params: dict[str
         periods=periods,
     )
     if not summaries:
-        return ToolResult(
-            rows=[],
-            evidence_ids=[],
-            summary=f"No transcripts found for {ticker} when comparing terms.",
+        return _with_ticker_note(
+            ToolResult(
+                rows=[],
+                evidence_ids=[],
+                summary=f"No transcripts found for {ticker} when comparing terms.",
+            ),
+            _ticker_note,
         )
     rows = [
         {
@@ -874,14 +937,17 @@ def _tool_compare_transcript_mentions(conn: psycopg.Connection, params: dict[str
         }
         for s in summaries
     ]
-    return ToolResult(
-        rows=rows,
-        evidence_ids=[f"A:{s.artifact_id}" for s in summaries],
-        summary=(
-            f"{ticker}: {len(summaries)} period(s) compared for terms "
-            f"{terms}. Use the time-series shape to identify when "
-            f"discussion of these topics rose or fell."
+    return _with_ticker_note(
+        ToolResult(
+            rows=rows,
+            evidence_ids=[f"A:{s.artifact_id}" for s in summaries],
+            summary=(
+                f"{ticker}: {len(summaries)} period(s) compared for terms "
+                f"{terms}. Use the time-series shape to identify when "
+                f"discussion of these topics rose or fell."
+            ),
         ),
+        _ticker_note,
     )
 
 
@@ -1048,7 +1114,7 @@ def _tool_screen_valuation(conn: psycopg.Connection, params: dict[str, Any]) -> 
 
 
 def _tool_read_consensus(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
-    ticker = params["ticker"].upper()
+    ticker, _ticker_note = _normalize_ticker(conn, params["ticker"])
     period_kind = params.get("period_kind", "quarter")
     n_forward = int(params.get("n_forward", 4))
     n_past = int(params.get("n_past", 1))
@@ -1060,9 +1126,12 @@ def _tool_read_consensus(conn: psycopg.Connection, params: dict[str, Any]) -> To
     except ValueError as e:
         return ToolResult(rows=[], evidence_ids=[], summary=str(e), error=str(e))
     if not rows_data:
-        return ToolResult(
-            rows=[], evidence_ids=[],
-            summary=f"No analyst consensus for {ticker} ({period_kind}).",
+        return _with_ticker_note(
+            ToolResult(
+                rows=[], evidence_ids=[],
+                summary=f"No analyst consensus for {ticker} ({period_kind}).",
+            ),
+            _ticker_note,
         )
 
     warnings = read_estimate_warnings(conn, ticker=ticker)
@@ -1122,17 +1191,23 @@ def _tool_read_consensus(conn: psycopg.Connection, params: dict[str, Any]) -> To
         f"{rows_data[-1].fetched_at.date()}. Cite individual periods as "
         f"E:{rows_data[0].security_id}:{period_kind}:YYYY-MM-DD.{warn_note}"
     )
-    return ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary)
+    return _with_ticker_note(
+        ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary),
+        _ticker_note,
+    )
 
 
 def _tool_read_target_gap(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
-    ticker = params["ticker"].upper()
+    ticker, _ticker_note = _normalize_ticker(conn, params["ticker"])
     as_of = _parse_iso_date(params.get("as_of"))
     gap = read_target_gap(conn, ticker=ticker, as_of=as_of)
     if gap is None:
-        return ToolResult(
-            rows=[], evidence_ids=[],
-            summary=f"No price-target consensus for {ticker}.",
+        return _with_ticker_note(
+            ToolResult(
+                rows=[], evidence_ids=[],
+                summary=f"No price-target consensus for {ticker}.",
+            ),
+            _ticker_note,
         )
     cite = f"T:{gap.security_id}:{gap.fetched_at.date().isoformat()}"
     row = {
@@ -1162,17 +1237,23 @@ def _tool_read_target_gap(conn: psycopg.Connection, params: dict[str, Any]) -> T
         f"close {gap.current_close} on {gap.current_close_date} → upside {upside_str}. "
         f"Cite as {cite}."
     )
-    return ToolResult(rows=[row], evidence_ids=[cite], summary=summary)
+    return _with_ticker_note(
+        ToolResult(rows=[row], evidence_ids=[cite], summary=summary),
+        _ticker_note,
+    )
 
 
 def _tool_read_surprise_history(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
-    ticker = params["ticker"].upper()
+    ticker, _ticker_note = _normalize_ticker(conn, params["ticker"])
     n = int(params.get("n", 8))
     rows_data = read_surprise_history(conn, ticker=ticker, n=n)
     if not rows_data:
-        return ToolResult(
-            rows=[], evidence_ids=[],
-            summary=f"No earnings surprise history for {ticker}.",
+        return _with_ticker_note(
+            ToolResult(
+                rows=[], evidence_ids=[],
+                summary=f"No earnings surprise history for {ticker}.",
+            ),
+            _ticker_note,
         )
     rows: list[dict[str, Any]] = []
     evidence_ids: list[str] = []
@@ -1202,18 +1283,24 @@ def _tool_read_surprise_history(conn: psycopg.Connection, params: dict[str, Any]
         f"{sum(1 for s in rows_data if s.eps_surprise_pct is not None)}. "
         f"Cite individual quarters as S:{rows_data[0].security_id}:YYYY-MM-DD."
     )
-    return ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary)
+    return _with_ticker_note(
+        ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary),
+        _ticker_note,
+    )
 
 
 def _tool_recent_analyst_actions(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
-    ticker = params["ticker"].upper()
+    ticker, _ticker_note = _normalize_ticker(conn, params["ticker"])
     days = int(params.get("days", 90))
     limit = int(params.get("limit", 50))
     actions = recent_analyst_actions(conn, ticker=ticker, days=days, limit=limit)
     if not actions:
-        return ToolResult(
-            rows=[], evidence_ids=[],
-            summary=f"No analyst actions for {ticker} in the last {days} days.",
+        return _with_ticker_note(
+            ToolResult(
+                rows=[], evidence_ids=[],
+                summary=f"No analyst actions for {ticker} in the last {days} days.",
+            ),
+            _ticker_note,
         )
     rows: list[dict[str, Any]] = []
     evidence_ids: list[str] = []
@@ -1242,7 +1329,10 @@ def _tool_recent_analyst_actions(conn: psycopg.Connection, params: dict[str, Any
         f"Latest: {actions[0].when.date()} ({actions[0].kind}, {actions[0].firm}). "
         f"Cite grade rows as G:<id>, price-target rows as A:<id>."
     )
-    return ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary)
+    return _with_ticker_note(
+        ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary),
+        _ticker_note,
+    )
 
 
 REGISTRY: list[Tool] = [

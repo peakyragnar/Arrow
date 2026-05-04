@@ -51,3 +51,37 @@ def resolve_company_by_ticker(
         params=([t.upper() for t in ticker_candidates],),
     )
     return [Company(**row) for row in rows]
+
+
+def suggest_tickers_near(
+    conn: psycopg.Connection,
+    *,
+    ticker: str,
+    limit: int = 5,
+) -> list[Company]:
+    """Suggest near-miss companies when a ticker doesn't resolve exactly.
+
+    Bidirectional prefix match — finds rows where the DB ticker starts with
+    the typed string (e.g. AXT → AXTI) OR the typed string starts with a DB
+    ticker (e.g. AXTII → AXTI). Common case: user drops or adds one letter.
+    Caller decides whether to surface the suggestion or just use it.
+    """
+    if not ticker:
+        return []
+    t = ticker.upper()
+    rows = run_query(
+        conn,
+        sql="""
+            SELECT id, ticker, name, cik, fiscal_year_end_md
+            FROM companies
+            WHERE upper(ticker) <> %s
+              AND (
+                    upper(ticker) LIKE %s || '%%'
+                 OR %s LIKE upper(ticker) || '%%'
+              )
+            ORDER BY length(ticker), ticker
+            LIMIT %s;
+        """,
+        params=(t, t, t, limit),
+    )
+    return [Company(**row) for row in rows]
