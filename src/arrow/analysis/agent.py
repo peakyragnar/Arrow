@@ -21,7 +21,7 @@ import time
 import uuid
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -60,7 +60,9 @@ from arrow.retrieval.prices import (
     valuation_percentile,
 )
 from arrow.retrieval.estimates import (
+    EstimateWarning,
     read_consensus,
+    read_estimate_warnings,
     read_surprise_history,
     read_target_gap,
     recent_analyst_actions,
@@ -900,10 +902,22 @@ def _tool_read_consensus(conn: psycopg.Connection, params: dict[str, Any]) -> To
             rows=[], evidence_ids=[],
             summary=f"No analyst consensus for {ticker} ({period_kind}).",
         )
+
+    warnings = read_estimate_warnings(conn, ticker=ticker)
+    # Index by (period_kind, period_end) for per-row attachment.
+    warnings_by_period: dict[tuple[str, date], list[EstimateWarning]] = {}
+    unscoped_warnings: list[EstimateWarning] = []
+    for w in warnings:
+        if w.period_kind and w.period_end:
+            warnings_by_period.setdefault((w.period_kind, w.period_end), []).append(w)
+        else:
+            unscoped_warnings.append(w)
+
     rows: list[dict[str, Any]] = []
     evidence_ids: list[str] = []
     for r in rows_data:
         cite = f"E:{r.security_id}:{r.period_kind}:{r.period_end.isoformat()}"
+        row_warnings = warnings_by_period.get((r.period_kind, r.period_end), [])
         rows.append({
             "period_kind": r.period_kind,
             "period_end": r.period_end.isoformat(),
@@ -915,19 +929,36 @@ def _tool_read_consensus(conn: psycopg.Connection, params: dict[str, Any]) -> To
             "revenue_low": _money(r.revenue_low),
             "revenue_high": _money(r.revenue_high),
             "ebitda_avg": _money(r.ebitda_avg),
+            "ebit_avg": _money(r.ebit_avg),
+            "ebit_low": _money(r.ebit_low),
+            "ebit_high": _money(r.ebit_high),
             "net_income_avg": _money(r.net_income_avg),
             "num_analysts_eps": r.num_analysts_eps,
             "num_analysts_revenue": r.num_analysts_revenue,
             "fetched_at": r.fetched_at.isoformat(),
             "evidence_id": cite,
+            "warnings": [
+                {
+                    "finding_id": w.finding_id,
+                    "source_check": w.source_check,
+                    "severity": w.severity,
+                    "summary": w.summary,
+                }
+                for w in row_warnings
+            ],
         })
         evidence_ids.append(cite)
     forward = [r for r in rows_data if r.is_forward]
+    warn_count = sum(len(r["warnings"]) for r in rows) + len(unscoped_warnings)
+    warn_note = (
+        f" {warn_count} steward warning(s) attached — review before relying on EBIT/EBITDA."
+        if warn_count else ""
+    )
     summary = (
         f"{ticker} {period_kind} consensus: {len(rows_data)} period(s) returned "
         f"({len(forward)} forward). Latest fetched_at "
         f"{rows_data[-1].fetched_at.date()}. Cite individual periods as "
-        f"E:{rows_data[0].security_id}:{period_kind}:YYYY-MM-DD."
+        f"E:{rows_data[0].security_id}:{period_kind}:YYYY-MM-DD.{warn_note}"
     )
     return ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary)
 
@@ -1510,10 +1541,15 @@ REGISTRY: list[Tool] = [
         name="read_consensus",
         description=(
             "Forward + most-recent past analyst consensus per fiscal period for "
-            "one ticker. Returns revenue / EPS / EBITDA / net-income low / avg / "
-            "high + analyst counts per (period_kind, period_end). Use for 'what "
-            "does the street expect for X next quarter / next FY?' questions, or "
-            "as substrate for forward valuation. Default: 4 forward + 1 past "
+            "one ticker. Returns revenue / EPS / EBITDA / EBIT (operating income) "
+            "/ net-income low / avg / high + analyst counts per (period_kind, "
+            "period_end). Each row also carries a `warnings` array with any open "
+            "steward findings for that period (`forward_estimate_consistency`, "
+            "`earnings_surprise_sanity`) — when present, treat the flagged metric "
+            "(typically EBIT/EBITDA) as unreliable and surface the warning in the "
+            "answer rather than reasoning around it silently. Use for 'what does "
+            "the street expect for X next quarter / next FY?' questions, or as "
+            "substrate for forward valuation. Default: 4 forward + 1 past "
             "QUARTERLY periods. Set period_kind='annual' for FY-grain. Cite "
             "individual periods as E:<security_id>:<period_kind>:<period_end>."
         ),

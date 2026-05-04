@@ -40,6 +40,9 @@ class ConsensusRow:
     eps_low: Decimal | None
     eps_high: Decimal | None
     ebitda_avg: Decimal | None
+    ebit_avg: Decimal | None         # forward operating income; often unreliable, see steward
+    ebit_low: Decimal | None
+    ebit_high: Decimal | None
     net_income_avg: Decimal | None
     num_analysts_revenue: int | None
     num_analysts_eps: int | None
@@ -120,6 +123,9 @@ def read_consensus(
                 eps_low=d.get("eps_low"),
                 eps_high=d.get("eps_high"),
                 ebitda_avg=d.get("ebitda_avg"),
+                ebit_avg=d.get("ebit_avg"),
+                ebit_low=d.get("ebit_low"),
+                ebit_high=d.get("ebit_high"),
                 net_income_avg=d.get("net_income_avg"),
                 num_analysts_revenue=d.get("num_analysts_revenue"),
                 num_analysts_eps=d.get("num_analysts_eps"),
@@ -127,6 +133,68 @@ def read_consensus(
                 is_forward=d["period_end"] >= today,
             )
         )
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# Estimate warnings (steward findings)
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True)
+class EstimateWarning:
+    finding_id: int
+    source_check: str               # 'forward_estimate_consistency' | 'earnings_surprise_sanity'
+    period_kind: str | None         # 'annual' | 'quarter' | None for non-period-scoped
+    period_end: date | None
+    severity: str
+    summary: str
+
+
+def read_estimate_warnings(
+    conn: psycopg.Connection,
+    *,
+    ticker: str,
+) -> list[EstimateWarning]:
+    """Open steward findings for the estimates vertical.
+
+    Surfaces forward_estimate_consistency and earnings_surprise_sanity
+    warnings so the synthesizer can flag unreliable consensus values
+    alongside the raw numbers. Without this, /ask reads consensus blind
+    to what the dashboard surfaces via the same checks.
+    """
+    sql = """
+    SELECT id, source_check, evidence, severity, summary
+    FROM data_quality_findings
+    WHERE ticker = %s
+      AND vertical = 'estimates'
+      AND status = 'open'
+      AND source_check IN ('forward_estimate_consistency', 'earnings_surprise_sanity')
+    ORDER BY source_check, id;
+    """
+    out: list[EstimateWarning] = []
+    with conn.cursor() as cur:
+        cur.execute(sql, (ticker.upper(),))
+        for fid, source_check, evidence, severity, summary in cur.fetchall():
+            ev = evidence or {}
+            pk = ev.get("period_kind")
+            pe_raw = ev.get("period_end")
+            pe: date | None = None
+            if pe_raw:
+                try:
+                    pe = date.fromisoformat(pe_raw)
+                except (TypeError, ValueError):
+                    pe = None
+            out.append(
+                EstimateWarning(
+                    finding_id=fid,
+                    source_check=source_check,
+                    period_kind=pk,
+                    period_end=pe,
+                    severity=severity,
+                    summary=summary,
+                )
+            )
     return out
 
 
