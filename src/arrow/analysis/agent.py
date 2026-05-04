@@ -45,7 +45,6 @@ from arrow.retrieval.registry import METRICS, list_metrics, metric_names
 from arrow.retrieval.screener import ScreenRow, screen, universe_size
 from arrow.retrieval.transcripts import (
     compare_transcript_mentions,
-    get_latest_transcripts,
     read_transcript_turns,
     search_transcript_turns,
 )
@@ -177,9 +176,28 @@ def _tool_resolve_company(conn: psycopg.Connection, params: dict[str, Any]) -> T
 
 
 def _tool_get_metrics(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    """Period metrics for one ticker.
+
+    - Single period (default): pass fiscal_year (and optionally fiscal_quarter).
+      Returns one row from v_metrics_fy / v_metrics_q + most-recent ROIC.
+    - Quarterly series: pass n_quarters > 1. Returns the latest N quarters with
+      revenue, margins, CFO, CapEx, FCF, D&A, capex_to_dna_ratio. Replaces the
+      standalone read_quarterly_metrics_series tool. fiscal_year/fiscal_quarter
+      are ignored when n_quarters > 1.
+    """
+    n_quarters = int(params.get("n_quarters") or 1)
+    if n_quarters > 1:
+        return _get_quarterly_series_tool(conn, params=params, n=n_quarters)
+
     company = _resolve_company(conn, params["ticker"])
     if company is None:
         return ToolResult(rows=[], evidence_ids=[], summary=f"No company found for {params['ticker']}.")
+    if params.get("fiscal_year") is None:
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary="fiscal_year is required when n_quarters is omitted (single-period mode).",
+            error="fiscal_year required for single-period mode",
+        )
     fiscal_quarter = params.get("fiscal_quarter")
     period_type = _period_type(fiscal_quarter)
     metric = get_metrics(
@@ -307,39 +325,120 @@ def _tool_get_segment_facts(conn: psycopg.Connection, params: dict[str, Any]) ->
 
 
 def _tool_list_documents(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    """List artifacts for one ticker.
+
+    Two shapes:
+      - Period-bound: pass fiscal_year (and optionally fiscal_quarter). Returns
+        every artifact tied to that fiscal period.
+      - Recent-N: omit fiscal_year. Returns the latest N artifacts (default 10),
+        optionally filtered by `kind` (e.g. 'transcript', '10k', '10q', '8k',
+        'press_release'). Replaces the standalone get_latest_transcripts tool.
+    """
     company = _resolve_company(conn, params["ticker"])
     if company is None:
         return ToolResult(rows=[], evidence_ids=[], summary=f"No company found for {params['ticker']}.")
+    fiscal_year = params.get("fiscal_year")
     fiscal_quarter = params.get("fiscal_quarter")
-    period_type = _period_type(fiscal_quarter)
-    fiscal_period_key = (
-        f"FY{params['fiscal_year']} Q{fiscal_quarter}" if fiscal_quarter else None
-    )
-    artifacts = list_documents(
-        conn,
-        company_id=company.id,
-        period_type=period_type,
-        fiscal_year=params["fiscal_year"] if not fiscal_quarter else None,
-        fiscal_period_key=fiscal_period_key,
-    )
-    if not artifacts:
-        return ToolResult(rows=[], evidence_ids=[], summary=f"No documents for {company.ticker}.")
+    kind = params.get("kind")
+    n = int(params.get("n", 10))
+
+    if fiscal_year is not None:
+        period_type = _period_type(fiscal_quarter)
+        fiscal_period_key = (
+            f"FY{fiscal_year} Q{fiscal_quarter}" if fiscal_quarter else None
+        )
+        artifact_types = (kind,) if kind else None
+        artifacts = list_documents(
+            conn,
+            company_id=company.id,
+            period_type=period_type,
+            fiscal_year=fiscal_year if not fiscal_quarter else None,
+            fiscal_period_key=fiscal_period_key,
+            artifact_types=artifact_types,
+        )
+        if not artifacts:
+            return ToolResult(rows=[], evidence_ids=[], summary=f"No documents for {company.ticker}.")
+        rows = [
+            {
+                "artifact_id": a.artifact_id,
+                "artifact_type": a.artifact_type,
+                "fiscal_period_key": a.fiscal_period_key,
+                "period_end": str(a.period_end),
+                "published_at": str(a.published_at) if a.published_at else None,
+                "accession_number": a.accession_number,
+            }
+            for a in artifacts
+        ]
+        return ToolResult(
+            rows=rows,
+            evidence_ids=[f"A:{a.artifact_id}" for a in artifacts],
+            summary=f"{company.ticker}: {len(artifacts)} document(s).",
+        )
+
+    # Recent-N path — no fiscal period given.
+    rows_raw = _list_recent_documents(conn, company_id=company.id, kind=kind, n=n)
+    if not rows_raw:
+        kind_label = f" ({kind})" if kind else ""
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary=f"No documents for {company.ticker}{kind_label}.",
+        )
     rows = [
         {
-            "artifact_id": a.artifact_id,
-            "artifact_type": a.artifact_type,
-            "fiscal_period_key": a.fiscal_period_key,
-            "period_end": str(a.period_end),
-            "published_at": str(a.published_at) if a.published_at else None,
-            "accession_number": a.accession_number,
+            "artifact_id": r["artifact_id"],
+            "artifact_type": r["artifact_type"],
+            "fiscal_period_key": r["fiscal_period_key"],
+            "period_end": str(r["period_end"]) if r["period_end"] else None,
+            "published_at": str(r["published_at"]) if r["published_at"] else None,
+            "accession_number": r["accession_number"],
         }
-        for a in artifacts
+        for r in rows_raw
     ]
+    kind_label = f" {kind}" if kind else ""
     return ToolResult(
         rows=rows,
-        evidence_ids=[f"A:{a.artifact_id}" for a in artifacts],
-        summary=f"{company.ticker}: {len(artifacts)} document(s).",
+        evidence_ids=[f"A:{r['artifact_id']}" for r in rows_raw],
+        summary=f"{company.ticker}: latest {len(rows)}{kind_label} document(s).",
     )
+
+
+def _list_recent_documents(
+    conn: psycopg.Connection,
+    *,
+    company_id: int,
+    kind: str | None,
+    n: int,
+) -> list[dict[str, Any]]:
+    """Latest N current artifacts for a company, optionally filtered by type."""
+    if kind:
+        sql = """
+            SELECT id AS artifact_id, artifact_type, fiscal_period_key,
+                   period_end, published_at, accession_number
+            FROM artifacts
+            WHERE company_id = %s
+              AND artifact_type = %s
+              AND superseded_at IS NULL
+            ORDER BY period_end DESC NULLS LAST,
+                     published_at DESC NULLS LAST,
+                     id DESC
+            LIMIT %s;
+        """
+        params: tuple[Any, ...] = (company_id, kind, n)
+    else:
+        sql = """
+            SELECT id AS artifact_id, artifact_type, fiscal_period_key,
+                   period_end, published_at, accession_number
+            FROM artifacts
+            WHERE company_id = %s
+              AND superseded_at IS NULL
+            ORDER BY period_end DESC NULLS LAST,
+                     published_at DESC NULLS LAST,
+                     id DESC
+            LIMIT %s;
+        """
+        params = (company_id, n)
+    from arrow.retrieval._query import run_query as _rq
+    return _rq(conn, sql=sql, params=params)
 
 
 def _tool_search_transcripts(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
@@ -369,29 +468,6 @@ def _tool_search_transcripts(conn: psycopg.Connection, params: dict[str, Any]) -
         rows=rows,
         evidence_ids=[f"T:{t.chunk_id}" for t in turns if t.chunk_id is not None],
         summary=f"{ticker}: {len(turns)} transcript turn(s) matching '{query}'.",
-    )
-
-
-def _tool_get_latest_transcripts(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
-    ticker = params["ticker"]
-    n = int(params.get("n", 4))
-    docs = get_latest_transcripts(conn, ticker, n=n)
-    if not docs:
-        return ToolResult(rows=[], evidence_ids=[], summary=f"No transcripts for {ticker}.")
-    rows = [
-        {
-            "artifact_id": d.artifact_id,
-            "fiscal_period": d.fiscal_period_label,
-            "period_end": str(d.period_end),
-            "turn_count": d.turn_count,
-            "chunk_count": d.chunk_count,
-        }
-        for d in docs
-    ]
-    return ToolResult(
-        rows=rows,
-        evidence_ids=[f"A:{d.artifact_id}" for d in docs],
-        summary=f"{ticker}: {len(docs)} most-recent transcript(s).",
     )
 
 
@@ -530,10 +606,36 @@ def _tool_read_prices(conn: psycopg.Connection, params: dict[str, Any]) -> ToolR
     return ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary)
 
 
-def _tool_read_valuation(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
-    ticker = params["ticker"].upper()
-    as_of = _parse_iso_date(params.get("as_of"))
+def _tool_company_valuation(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    """One-ticker valuation tool routed by `mode`.
 
+    - mode='snapshot' — single-date P/E, P/S, EV/EBITDA, FCF yield + components.
+                        Optional `as_of` (default: latest trading day).
+    - mode='series'   — sampled valuation series across [from_date, to_date].
+                        `sample` in {'daily','monthly','quarterly','yearly'}.
+    - mode='percentile' — current ratios vs trailing N-year own-history dist.
+                          Optional `as_of` (default: latest), `window_years`
+                          (default 5).
+    """
+    ticker = params["ticker"].upper()
+    mode = params.get("mode", "snapshot")
+    if mode == "snapshot":
+        return _valuation_snapshot(conn, ticker=ticker, params=params)
+    if mode == "series":
+        return _valuation_series(conn, ticker=ticker, params=params)
+    if mode == "percentile":
+        return _valuation_percentile_tool(conn, ticker=ticker, params=params)
+    return ToolResult(
+        rows=[], evidence_ids=[],
+        summary=f"unknown mode {mode!r}. Use 'snapshot' | 'series' | 'percentile'.",
+        error=f"unknown mode {mode!r}",
+    )
+
+
+def _valuation_snapshot(
+    conn: psycopg.Connection, *, ticker: str, params: dict[str, Any]
+) -> ToolResult:
+    as_of = _parse_iso_date(params.get("as_of"))
     val = read_valuation(conn, ticker=ticker, as_of=as_of)
     if val is None:
         if as_of is None:
@@ -548,7 +650,6 @@ def _tool_read_valuation(conn: psycopg.Connection, params: dict[str, Any]) -> To
                 f"non-trading day. Try the nearest weekday."
             ),
         )
-
     row = {
         "ticker": val.ticker,
         "date": val.date.isoformat(),
@@ -581,10 +682,7 @@ def _tool_read_valuation(conn: psycopg.Connection, params: dict[str, Any]) -> To
             "noncontrolling_interest": _money(val.noncontrolling_interest),
         },
     }
-
-    cite = (
-        f"M:v_valuation_ratios_ttm:{val.security_id}:{val.date.isoformat()}"
-    )
+    cite = f"M:v_valuation_ratios_ttm:{val.security_id}:{val.date.isoformat()}"
     summary = (
         f"{ticker} valuation on {val.date} (TTM as of {val.fiscal_period_label_at_asof}): "
         f"P/E {val.pe_ttm}, P/S {val.ps_ttm}, EV/EBITDA {val.ev_ebitda_ttm}, "
@@ -594,16 +692,17 @@ def _tool_read_valuation(conn: psycopg.Connection, params: dict[str, Any]) -> To
     return ToolResult(rows=[row], evidence_ids=[cite], summary=summary)
 
 
-def _tool_read_valuation_series(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
-    ticker = params["ticker"].upper()
+def _valuation_series(
+    conn: psycopg.Connection, *, ticker: str, params: dict[str, Any]
+) -> ToolResult:
     from_date = _parse_iso_date(params.get("from_date"))
     to_date = _parse_iso_date(params.get("to_date"))
     sample = params.get("sample", "monthly")
     if from_date is None or to_date is None:
         return ToolResult(
             rows=[], evidence_ids=[],
-            summary="from_date and to_date are required (YYYY-MM-DD).",
-            error="from_date and to_date are required",
+            summary="mode='series' requires from_date and to_date (YYYY-MM-DD).",
+            error="from_date and to_date are required for series",
         )
     try:
         points = read_valuation_series(
@@ -617,7 +716,6 @@ def _tool_read_valuation_series(conn: psycopg.Connection, params: dict[str, Any]
             rows=[], evidence_ids=[],
             summary=f"No valuation series for {ticker} in [{from_date}, {to_date}].",
         )
-
     rows = []
     evidence_ids: list[str] = []
     for p in points:
@@ -641,11 +739,11 @@ def _tool_read_valuation_series(conn: psycopg.Connection, params: dict[str, Any]
     return ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary)
 
 
-def _tool_valuation_percentile(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
-    ticker = params["ticker"].upper()
+def _valuation_percentile_tool(
+    conn: psycopg.Connection, *, ticker: str, params: dict[str, Any]
+) -> ToolResult:
     as_of = _parse_iso_date(params.get("as_of"))
     window_years = int(params.get("window_years") or 5)
-
     vp = valuation_percentile(
         conn, ticker=ticker, as_of=as_of, window_years=window_years
     )
@@ -694,11 +792,14 @@ def _tool_valuation_percentile(conn: psycopg.Connection, params: dict[str, Any])
     return ToolResult(rows=[row], evidence_ids=[cite], summary=summary)
 
 
-def _tool_read_quarterly_metrics_series(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+def _get_quarterly_series_tool(
+    conn: psycopg.Connection, *, params: dict[str, Any], n: int
+) -> ToolResult:
+    """Latest N quarters with D&A and capex_to_dna_ratio. Internal helper for
+    get_metrics's series mode."""
     ticker = params["ticker"]
-    n = int(params.get("n") or 8)
     if n < 1 or n > 40:
-        return ToolResult(rows=[], evidence_ids=[], summary="n must be 1..40", error="n out of range")
+        return ToolResult(rows=[], evidence_ids=[], summary="n_quarters must be 1..40", error="n_quarters out of range")
     company = _resolve_company(conn, ticker)
     if company is None:
         return ToolResult(rows=[], evidence_ids=[], summary=f"No company found for {ticker}.")
@@ -1165,18 +1266,32 @@ REGISTRY: list[Tool] = [
         name="get_metrics",
         description=(
             "Canonical period metrics from the v_metrics_fy / v_metrics_q views: "
-            "revenue, gross_margin, operating_margin, cfo, capital_expenditures, fcf. "
-            "Use this for headline numbers like 'DELL FY2024 revenue'. Omit "
-            "fiscal_quarter for annual metrics."
+            "revenue, gross_margin, operating_margin, cfo, capital_expenditures, fcf.\n"
+            "Two shapes:\n"
+            "  - SINGLE PERIOD (default): pass fiscal_year (and optionally "
+            "fiscal_quarter). Returns one row + most-recent ROIC. Use for "
+            "headline numbers like 'DELL FY2024 revenue'.\n"
+            "  - SERIES: pass n_quarters > 1 (max 40). Returns the latest N "
+            "quarters with revenue, margins, CFO, CapEx, FCF, **D&A** (dna_cf), "
+            "and **capex_to_dna_ratio**. Use for trajectory questions ('is "
+            "margin accelerating?', '8-quarter FCF trend') AND for capex-cycle "
+            "vs structural-compression analysis: capex_to_dna_ratio sustained "
+            ">1.5x = structural compression; ~1.0x = replacement-only. ONE call "
+            "replaces 8+ single-period get_metrics calls. fiscal_year/fiscal_"
+            "quarter are ignored when n_quarters > 1."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "ticker": {"type": "string"},
-                "fiscal_year": {"type": "integer"},
+                "fiscal_year": {"type": "integer", "description": "Required for single-period mode."},
                 "fiscal_quarter": {"type": "integer", "description": "1-4. Omit for full-year."},
+                "n_quarters": {
+                    "type": "integer",
+                    "description": "Series length (2-40). When set, returns latest N quarters and ignores fiscal_year/fiscal_quarter.",
+                },
             },
-            "required": ["ticker", "fiscal_year"],
+            "required": ["ticker"],
         },
         execute=_tool_get_metrics,
     ),
@@ -1227,17 +1342,32 @@ REGISTRY: list[Tool] = [
         name="list_documents",
         description=(
             "List artifacts (10-K, 10-Q, 8-K, press release, transcript) for "
-            "one company-period. Use this to discover what documents exist "
-            "before reading text."
+            "one ticker. Two shapes:\n"
+            "  - PERIOD-BOUND: pass fiscal_year (and optionally fiscal_quarter) "
+            "to see every artifact for that period. Use to discover what "
+            "documents exist before reading text.\n"
+            "  - RECENT-N: omit fiscal_year. Returns the latest N artifacts "
+            "(default 10), optionally filtered by `kind` ('transcript', '10k', "
+            "'10q', '8k', 'press_release'). Use to orient a multi-period "
+            "question — e.g. 'last 4 transcripts' = list_documents(kind='transcript', n=4)."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "ticker": {"type": "string"},
-                "fiscal_year": {"type": "integer"},
-                "fiscal_quarter": {"type": "integer"},
+                "fiscal_year": {"type": "integer", "description": "Period-bound mode."},
+                "fiscal_quarter": {"type": "integer", "description": "Optional with fiscal_year."},
+                "kind": {
+                    "type": "string",
+                    "enum": ["transcript", "10k", "10q", "8k", "press_release"],
+                    "description": "Filter by artifact type. Used by recent-N mode (default = all types).",
+                },
+                "n": {
+                    "type": "integer",
+                    "description": "Recent-N cap when fiscal_year is omitted. Default 10.",
+                },
             },
-            "required": ["ticker", "fiscal_year"],
+            "required": ["ticker"],
         },
         execute=_tool_list_documents,
     ),
@@ -1262,22 +1392,6 @@ REGISTRY: list[Tool] = [
             "required": ["ticker", "query"],
         },
         execute=_tool_search_transcripts,
-    ),
-    Tool(
-        name="get_latest_transcripts",
-        description=(
-            "List the N most recent transcript artifacts for a ticker. Useful "
-            "for orienting a multi-period transcript question before searching."
-        ),
-        input_schema={
-            "type": "object",
-            "properties": {
-                "ticker": {"type": "string"},
-                "n": {"type": "integer", "description": "How many recent transcripts (default 4)."},
-            },
-            "required": ["ticker"],
-        },
-        execute=_tool_get_latest_transcripts,
     ),
     Tool(
         name="read_filing_sections",
@@ -1377,98 +1491,61 @@ REGISTRY: list[Tool] = [
         execute=_tool_read_prices,
     ),
     Tool(
-        name="read_valuation_series",
+        name="company_valuation",
         description=(
-            "Sampled valuation series (P/E, P/S, EV/EBITDA, FCF yield, market cap) "
-            "for one ticker across a date range. Use this for trend questions: "
-            "'is NVDA's P/E unusually high vs its own history?', 'how has AMZN's "
-            "FCF yield trended?'. Default sample is monthly (manageable row "
-            "count); use quarterly for multi-decade windows. Returns one M:cite "
-            "per sample point."
+            "Valuation tool for ONE ticker, routed by `mode`:\n"
+            "  - mode='snapshot' (default): single-date P/E, P/S, EV/EBITDA, FCF "
+            "yield + EV + TTM components. Optional as_of (YYYY-MM-DD; default "
+            "latest trading day). Uses POINT-IN-TIME TTM — financials KNOWN on "
+            "the date, not recomputed with hindsight. Public sources typically "
+            "apply hindsight TTM; expect ~30-day divergence between fiscal "
+            "period-end and filing publication.\n"
+            "  - mode='series': sampled valuation series across [from_date, "
+            "to_date]. sample='monthly' (default) | 'daily' (caps at 400 rows) "
+            "| 'quarterly' | 'yearly'. Use for 'P/E history', 'FCF yield trend'.\n"
+            "  - mode='percentile': current valuation vs its OWN trailing N-year "
+            "history. Returns ratios + percentile rank in window. "
+            "pe_percentile=85 means today's P/E is higher than 85% of the "
+            "trailing window. Use for 'is X overvalued vs its own history' — "
+            "one call beats dozens of snapshot calls. Optional as_of (default "
+            "latest), window_years (default 5).\n"
+            "Common stock only (no ETF valuation). Cite as "
+            "M:v_valuation_ratios_ttm:<security_id>:<date>."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "ticker": {"type": "string"},
-                "from_date": {"type": "string", "description": "YYYY-MM-DD inclusive."},
-                "to_date":   {"type": "string", "description": "YYYY-MM-DD inclusive."},
+                "mode": {
+                    "type": "string",
+                    "enum": ["snapshot", "series", "percentile"],
+                    "description": "Default 'snapshot'.",
+                },
+                "as_of": {
+                    "type": "string",
+                    "description": "YYYY-MM-DD. Used by 'snapshot' and 'percentile'. Default latest.",
+                },
+                "from_date": {
+                    "type": "string",
+                    "description": "YYYY-MM-DD. Required for mode='series'.",
+                },
+                "to_date": {
+                    "type": "string",
+                    "description": "YYYY-MM-DD. Required for mode='series'.",
+                },
                 "sample": {
                     "type": "string",
                     "enum": ["daily", "monthly", "quarterly", "yearly"],
-                    "description": "Sampling grain. Default 'monthly'. Use 'daily' only for short windows (caps at 400 rows).",
+                    "description": "Series sampling grain. Default 'monthly'.",
                 },
-            },
-            "required": ["ticker", "from_date", "to_date"],
-        },
-        execute=_tool_read_valuation_series,
-    ),
-    Tool(
-        name="valuation_percentile",
-        description=(
-            "Where one ticker's CURRENT valuation sits in its own historical "
-            "distribution. Returns current P/E/P/S/EV-EBITDA/FCF-yield + each "
-            "ratio's percentile rank within the trailing N-year window (default 5y). "
-            "Pe_percentile=85 means today's P/E is higher than 85% of historical "
-            "daily values — i.e. expensive vs its own history. **This is the "
-            "right tool for 'is X overvalued vs its own history' questions** — "
-            "one call beats dozens of read_valuation calls."
-        ),
-        input_schema={
-            "type": "object",
-            "properties": {
-                "ticker": {"type": "string"},
-                "as_of": {"type": "string", "description": "YYYY-MM-DD trading day. Omit for latest available."},
-                "window_years": {"type": "integer", "description": "Trailing window. Default 5."},
-            },
-            "required": ["ticker"],
-        },
-        execute=_tool_valuation_percentile,
-    ),
-    Tool(
-        name="read_quarterly_metrics_series",
-        description=(
-            "Last N quarters of metrics for one ticker: revenue, margins, "
-            "CFO, CapEx, FCF, **D&A** (dna_cf), and the **capex_to_dna_ratio**. "
-            "Use for trajectory questions ('is margin accelerating?', "
-            "'8-quarter FCF trend') AND for capex-cycle vs structural-cash-"
-            "compression analysis: capex_to_dna_ratio sustained >1.5x = "
-            "structural compression; ~1.0x = replacement-only. One call "
-            "replaces 8+ get_metrics / get_financial_facts calls. Default N=8."
-        ),
-        input_schema={
-            "type": "object",
-            "properties": {
-                "ticker": {"type": "string"},
-                "n": {"type": "integer", "description": "How many recent quarters. Default 8, max 40."},
-            },
-            "required": ["ticker"],
-        },
-        execute=_tool_read_quarterly_metrics_series,
-    ),
-    Tool(
-        name="read_valuation",
-        description=(
-            "Valuation ratios (P/E, P/S, EV/EBITDA, FCF yield) + EV + "
-            "underlying TTM components for one (ticker, date). Uses "
-            "POINT-IN-TIME TTM — financials KNOWN on the date, not "
-            "recomputed with hindsight. Public sources (stockanalysis.com, "
-            "etc.) typically apply hindsight TTM; expect divergence in the "
-            "~30 days between fiscal period end and filing publication. "
-            "Omit as_of for the latest available trading day. Common stock "
-            "only (no ETF valuation). Cite as M:v_valuation_ratios_ttm:..."
-        ),
-        input_schema={
-            "type": "object",
-            "properties": {
-                "ticker": {"type": "string"},
-                "as_of": {
-                    "type": "string",
-                    "description": "YYYY-MM-DD trading day. Omit for latest available.",
+                "window_years": {
+                    "type": "integer",
+                    "description": "Percentile lookback. Default 5.",
                 },
             },
             "required": ["ticker"],
         },
-        execute=_tool_read_valuation,
+        execute=_tool_company_valuation,
     ),
     Tool(
         name="screen_financials",
@@ -1572,8 +1649,8 @@ REGISTRY: list[Tool] = [
         description=(
             "Rank the universe by a valuation ratio (P/E, P/S, EV/EBITDA, FCF "
             "yield, market cap, EV) on a single date. Uses point-in-time TTM. "
-            "ONE call ranks every company — never iterate read_valuation across "
-            "tickers.\n"
+            "ONE call ranks every company — never iterate company_valuation "
+            "across tickers.\n"
             "  metric: pe_ttm, ps_ttm, ev_ebitda_ttm, fcf_yield_ttm, market_cap, ev.\n"
             "  period: 'latest' (default; most recent non-null per company) or "
             "'asof:YYYY-MM-DD'. Most-recent-non-null can return STALE dates for "
@@ -1854,8 +1931,9 @@ Time references — resolve relative phrases against today's date:
 - For "last 3 years" with today = 2026: NVDA -> FY2024/FY2025/FY2026; AAPL -> FY2023/FY2024/FY2025 (FY2026 not yet reported until late October); a December filer -> FY2023/FY2024/FY2025.
 
 Tool-selection playbook:
-- Headline numbers (revenue, margins, FCF, ROIC for ONE company-period): get_metrics.
-- Multiple periods of one company: call get_metrics once per year. For 5-year windows, fetch all 5.
+- Headline numbers (revenue, margins, FCF, ROIC for ONE company-period): get_metrics with fiscal_year (and optionally fiscal_quarter).
+- Multi-quarter trajectory of one company ('8-quarter trend', 'is margin accelerating?', 'capex cycle vs structural compression'): get_metrics with n_quarters=N (one call returns the series).
+- Multi-year of one company: call get_metrics once per year. For 5-year windows, fetch all 5.
 - Cross-company ranking by a financial metric ('highest/lowest revenue', 'top N by margin', 'rank by ROIC', 'fastest improving / declining X'): call screen_financials ONCE. Pass period='latest' / 'FY2024' / 'last_3y_avg' / 'last_12q'; agg='delta' or 'relative_change' (with a windowed period like 'last_12q') for fastest-improving / declining questions. Do NOT iterate get_metrics across tickers.
 - Cross-company ranking by a forward consensus estimate ('highest forward EPS growth', 'rank by next-quarter revenue', 'lowest forward EBITDA growth', 'fastest forward growers'): call screen_estimates ONCE. Pass metric=revenue_growth / eps_growth / ebitda_growth (or *_avg for raw level), period='forward_4q_avg' (default) / 'next' / 'next_fy', period_kind='quarter' or 'annual'. Do NOT iterate read_consensus across tickers — it cannot rank.
 - Cross-company valuation snapshot ('cheapest P/E', 'highest FCF yield', 'biggest market cap'): call screen_valuation ONCE. Pass period='latest' or 'asof:YYYY-MM-DD'. For "cheapest" multiples use sort='asc'.
@@ -1869,6 +1947,8 @@ Tool-selection playbook:
 - Price target vs current price ('upside to consensus target', 'how much room', 'analyst target', 'PT upside'): read_target_gap.
 - Earnings beat / miss history ('does X usually beat?', 'how big a surprise last quarter', 'EPS / revenue surprise pattern'): read_surprise_history.
 - Recent analyst actions ('who upgraded / downgraded', 'recent PT changes', 'analyst sentiment shift this week / month'): recent_analyst_actions.
+- Single-ticker valuation: company_valuation. mode='snapshot' (default) for one date's P/E/P-S/EV-EBITDA/FCF-yield. mode='series' for trend ('how has X's P/E moved'). mode='percentile' for own-history positioning ('is X overvalued vs its 5-year history'). One percentile call beats dozens of snapshots.
+- List documents for a company: list_documents. Pass fiscal_year for period-bound discovery. Omit fiscal_year and pass kind='transcript' / '10k' / '8k' + n=N for "the last N transcripts/filings".
 - Always resolve tickers via resolve_company FIRST when the ticker is named.
 - Tickers may appear lowercase or mixed-case in user input ('lite', 'nvda', 'Aapl') — recognize them as tickers and uppercase them when calling tools. Common short tickers that look like English words ('lite', 'meta', 'nice', 'alle', 'rare') are still tickers — resolve them rather than dismissing the question.
 
@@ -1881,7 +1961,7 @@ FTS query hints (for search_transcripts):
 General:
 - Stop calling tools when you have enough evidence. When done, produce a brief plain-text note like 'Evidence gathered.' — synthesis happens elsewhere.
 - Do NOT fabricate evidence; if a tool returns no rows, try a different query or accept the gap.
-- Hard cap: 8 tool iterations.
+- Hard cap: 16 tool iterations.
 """
 
 
