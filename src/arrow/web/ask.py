@@ -184,6 +184,9 @@ _METRIC_VIEW_KEY_FIELDS = {
     # The "company_id" slot here actually carries security_id — the body
     # parser doesn't care, it just keys the lookup.
     "v_valuation_ratios_ttm": ("date",),
+    # Universe estimates citations: M:analyst_estimates:<security_id>:<period_start>_to_<period_end>.
+    # Keyed on period_end; security_id rides in the "company_id" slot, same as valuation.
+    "analyst_estimates": ("period_end",),
 }
 
 # Columns to surface in the popup, per view. Keep this tight — full row
@@ -210,12 +213,21 @@ _METRIC_VIEW_DISPLAY_COLS: dict[str, tuple[str, ...]] = {
         "pe_ttm", "ps_ttm", "ev_ebitda_ttm", "fcf_yield_ttm",
         "ttm_net_income", "ttm_revenue", "ttm_ebitda", "ttm_fcf",
     ),
+    "analyst_estimates": (
+        "security_id", "period_kind", "period_end",
+        "revenue_low", "revenue_avg", "revenue_high",
+        "eps_low", "eps_avg", "eps_high",
+        "ebitda_avg", "ebit_avg", "net_income_avg",
+        "num_analysts_revenue", "num_analysts_eps",
+        "fetched_at",
+    ),
 }
 
 # Some metric views key on company_id; valuation keys on security_id. Default
 # to company_id for backward compat with the existing m_metrics_* views.
 _METRIC_VIEW_ENTITY_COLUMN: dict[str, str] = {
     "v_valuation_ratios_ttm": "security_id",
+    "analyst_estimates": "security_id",
 }
 
 
@@ -239,7 +251,9 @@ def _fetch_metric_view_row(conn, body: str) -> dict[str, Any] | None:
       v_metrics_q:<company_id>:FY2024 Q3                single quarterly row
       v_metrics_roic:<company_id>:<period_end_iso>      single ROIC row
       v_metrics_roic:<company_id>:<start>_to_<end>      window of rows
-                                                        (from screen_companies)
+                                                        (from screen_financials)
+      analyst_estimates:<security_id>:<start>_to_<end>  forward-window screen
+                                                        (from screen_estimates)
     """
     parts = body.split(":", 2)
     if len(parts) != 3:

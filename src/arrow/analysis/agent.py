@@ -38,14 +38,11 @@ from arrow.retrieval.metrics import (
     metrics_view_name,
 )
 from arrow.retrieval.screens import (
-    count_universe_for_metric,
     get_latest_roic,
     list_companies,
-    metric_value_kind,
-    screen_companies_by_metric,
-    screen_companies_by_trajectory,
-    supported_metrics,
 )
+from arrow.retrieval.registry import METRICS, list_metrics, metric_names
+from arrow.retrieval.screener import ScreenRow, screen, universe_size
 from arrow.retrieval.transcripts import (
     compare_transcript_mentions,
     get_latest_transcripts,
@@ -806,82 +803,146 @@ def _tool_list_companies(conn: psycopg.Connection, params: dict[str, Any]) -> To
     )
 
 
-def _format_screen_citation(view_name: str, company_id: int, period_start: str, period_end: str) -> str:
-    """Format an M-citation, collapsing single-period windows to a clean form.
+def _screen_rows_to_tool_result(
+    rows: list[ScreenRow],
+    *,
+    universe_n: int,
+    metric: str,
+    period: str,
+    agg: str,
+    sort: str,
+) -> ToolResult:
+    """Common tool-result builder for screen_financials/estimates/valuation.
 
-    Matches get_metrics conventions when the screen window is one row, so the
-    popup lands in the existing single-row code path. Window form is reserved
-    for actual multi-row aggregates.
+    Surfaces ranks, raw values, and citations. The synthesizer can cite a
+    single ``M:view:co:period[_to_period]`` token per company.
     """
-    if view_name == "v_metrics_fy" and period_start == period_end:
-        return f"M:v_metrics_fy:{company_id}:FY{period_start}"
-    if view_name == "v_metrics_fy":
-        return f"M:v_metrics_fy:{company_id}:FY{period_start}_to_FY{period_end}"
-    if period_start == period_end:
-        return f"M:{view_name}:{company_id}:{period_start}"
-    return f"M:{view_name}:{company_id}:{period_start}_to_{period_end}"
-
-
-def _tool_screen_companies(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
-    metric = params["metric"]
-    if metric not in supported_metrics():
+    if not rows:
         return ToolResult(
             rows=[],
             evidence_ids=[],
-            summary=f"unsupported metric '{metric}'. Supported: {', '.join(supported_metrics())}.",
-            error=f"unsupported metric '{metric}'",
+            summary=(
+                f"No companies matched the {metric} screen "
+                f"(universe={universe_n}, period={period!r}, agg={agg}). "
+                "Either no coverage or the filter excluded all rows."
+            ),
         )
-    n_years = int(params.get("n_years", 1))
-    limit = int(params.get("limit", 10))
-    sort_desc = bool(params.get("sort_desc", True))
-    universe_size = count_universe_for_metric(conn, metric=metric)
-    screen_rows = screen_companies_by_metric(
-        conn,
-        metric=metric,
-        n_years=n_years,
-        limit=limit,
-        sort_desc=sort_desc,
-    )
-    if not screen_rows:
-        return ToolResult(
-            rows=[],
-            evidence_ids=[],
-            summary=f"No companies matched the {metric} screen (universe={universe_size}, insufficient coverage?).",
-        )
-    kind = metric_value_kind(metric)
-    rows: list[dict[str, Any]] = []
+    out_rows: list[dict[str, Any]] = []
     evidence_ids: list[str] = []
-    for r in screen_rows:
-        rows.append(
+    for r in rows:
+        out_rows.append(
             {
-                "rank": len(rows) + 1,
+                "rank": r.rank,
                 "ticker": r.ticker,
                 "company_id": r.company_id,
                 "value": _money(r.value),
-                "value_kind": kind,
-                "metric": metric,
+                "value_kind": r.metric_kind,
+                "earliest_value": _money(r.earliest_value),
+                "latest_value": _money(r.latest_value),
+                "metric": r.metric,
                 "n_periods": r.n_periods,
                 "period_start": r.period_start,
                 "period_end": r.period_end,
+                "view": r.view_name,
             }
         )
-        evidence_ids.append(
-            _format_screen_citation(r.view_name, r.company_id, r.period_start, r.period_end)
-        )
-    direction = "highest first" if sort_desc else "lowest first"
-    label = (
-        f"{metric} (single year)"
-        if n_years <= 1
-        else f"{metric} avg over last {n_years} years"
-    )
+        evidence_ids.append(r.citation)
+    direction = "highest first" if sort == "desc" else "lowest first"
+    if agg == "level":
+        label = f"{metric} for period={period!r}"
+    elif agg == "delta":
+        label = f"{metric} change (latest_third − earliest_third) over {period!r}"
+    else:
+        label = f"{metric} relative change over {period!r}"
     summary = (
-        f"Top {len(rows)} of {universe_size} companies by {label} ({direction}). "
-        f"All {universe_size} ranked; only top {len(rows)} returned."
+        f"Top {len(out_rows)} of {universe_n} companies by {label} "
+        f"({direction}). All {universe_n} ranked; top {len(out_rows)} returned."
     )
-    return ToolResult(
-        rows=rows,
-        evidence_ids=evidence_ids,
-        summary=summary,
+    return ToolResult(rows=out_rows, evidence_ids=evidence_ids, summary=summary)
+
+
+def _tool_screen_financials(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    metric = params["metric"]
+    if metric not in METRICS or METRICS[metric].vertical != "financials":
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary=f"unknown financials metric {metric!r}. Valid: {', '.join(metric_names('financials'))}.",
+            error=f"unknown financials metric {metric!r}",
+        )
+    period = params.get("period", "latest")
+    agg = params.get("agg", "level")
+    sort = params.get("sort", "desc")
+    limit = int(params.get("limit", 10))
+    try:
+        rows = screen(conn, metric=metric, period=period, agg=agg, sort=sort, limit=limit)
+    except ValueError as e:
+        return ToolResult(rows=[], evidence_ids=[], summary=str(e), error=str(e))
+    return _screen_rows_to_tool_result(
+        rows,
+        universe_n=universe_size(conn, metric=metric),
+        metric=metric,
+        period=period,
+        agg=agg,
+        sort=sort,
+    )
+
+
+def _tool_screen_estimates(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    metric = params["metric"]
+    if metric not in METRICS or METRICS[metric].vertical != "estimates":
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary=f"unknown estimates metric {metric!r}. Valid: {', '.join(metric_names('estimates'))}.",
+            error=f"unknown estimates metric {metric!r}",
+        )
+    period = params.get("period", "forward_4q_avg")
+    period_kind = params.get("period_kind", "quarter")
+    sort = params.get("sort", "desc")
+    limit = int(params.get("limit", 10))
+    try:
+        rows = screen(
+            conn,
+            metric=metric,
+            period=period,
+            agg="level",
+            sort=sort,
+            limit=limit,
+            period_kind=period_kind,
+        )
+    except ValueError as e:
+        return ToolResult(rows=[], evidence_ids=[], summary=str(e), error=str(e))
+    return _screen_rows_to_tool_result(
+        rows,
+        universe_n=universe_size(conn, metric=metric),
+        metric=metric,
+        period=period,
+        agg="level",
+        sort=sort,
+    )
+
+
+def _tool_screen_valuation(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
+    metric = params["metric"]
+    if metric not in METRICS or METRICS[metric].vertical != "valuation":
+        return ToolResult(
+            rows=[], evidence_ids=[],
+            summary=f"unknown valuation metric {metric!r}. Valid: {', '.join(metric_names('valuation'))}.",
+            error=f"unknown valuation metric {metric!r}",
+        )
+    period = params.get("period", "latest")
+    sort = params.get("sort", "desc")
+    limit = int(params.get("limit", 10))
+    try:
+        rows = screen(conn, metric=metric, period=period, agg="level", sort=sort, limit=limit)
+    except ValueError as e:
+        return ToolResult(rows=[], evidence_ids=[], summary=str(e), error=str(e))
+    return _screen_rows_to_tool_result(
+        rows,
+        universe_n=universe_size(conn, metric=metric),
+        metric=metric,
+        period=period,
+        agg="level",
+        sort=sort,
     )
 
 
@@ -1079,68 +1140,6 @@ def _tool_recent_analyst_actions(conn: psycopg.Connection, params: dict[str, Any
         f"({len(grades)} grade, {len(targets)} price-target). "
         f"Latest: {actions[0].when.date()} ({actions[0].kind}, {actions[0].firm}). "
         f"Cite grade rows as G:<id>, price-target rows as A:<id>."
-    )
-    return ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary)
-
-
-def _tool_screen_companies_by_trajectory(
-    conn: psycopg.Connection, params: dict[str, Any]
-) -> ToolResult:
-    metric = params["metric"]
-    if metric not in supported_metrics():
-        return ToolResult(
-            rows=[], evidence_ids=[],
-            summary=f"unsupported metric '{metric}'. Supported: {', '.join(supported_metrics())}.",
-            error=f"unsupported metric '{metric}'",
-        )
-    window_periods = int(params.get("window_periods", 12))
-    limit = int(params.get("limit", 10))
-    sort_desc = bool(params.get("sort_desc", True))
-    basis = params.get("basis", "auto")
-
-    try:
-        traj_rows = screen_companies_by_trajectory(
-            conn,
-            metric=metric,
-            window_periods=window_periods,
-            limit=limit,
-            sort_desc=sort_desc,
-            basis=basis,
-        )
-    except ValueError as e:
-        return ToolResult(rows=[], evidence_ids=[], summary=str(e), error=str(e))
-    if not traj_rows:
-        return ToolResult(
-            rows=[], evidence_ids=[],
-            summary=f"No companies matched the {metric} trajectory screen (insufficient history?).",
-        )
-    kind = metric_value_kind(metric)
-    rows: list[dict[str, Any]] = []
-    evidence_ids: list[str] = []
-    for r in traj_rows:
-        rows.append({
-            "rank": len(rows) + 1,
-            "ticker": r.ticker,
-            "company_id": r.company_id,
-            "metric": metric,
-            "value_kind": kind,
-            "earliest_value": _money(r.earliest_value),
-            "latest_value": _money(r.latest_value),
-            "delta": _money(r.delta),
-            "relative_change": _money(r.relative_change),
-            "earliest_period": r.earliest_period,
-            "latest_period": r.latest_period,
-            "n_periods": r.n_periods,
-        })
-        evidence_ids.append(
-            _format_screen_citation(r.view_name, r.company_id, r.earliest_period, r.latest_period)
-        )
-    direction = "fastest improving first" if sort_desc else "fastest declining first"
-    summary = (
-        f"Top {len(rows)} companies by {metric} trajectory over the last "
-        f"{window_periods} periods ({direction}, basis={basis}). "
-        f"earliest_value = avg of first 1/3 of window; latest_value = avg of "
-        f"last 1/3. delta = latest - earliest. relative_change = delta / |earliest|."
     )
     return ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary)
 
@@ -1472,70 +1471,137 @@ REGISTRY: list[Tool] = [
         execute=_tool_read_valuation,
     ),
     Tool(
-        name="screen_companies",
+        name="screen_financials",
         description=(
-            "Rank companies across the universe by a metric, optionally averaged "
-            "over the most recent N years. Use this for ANY question of the form "
-            "'highest/lowest X', 'top N by X', 'rank by X'. Do not iterate "
-            "get_metrics across tickers — call screen_companies once instead. "
-            "Returns ranked rows with [M:view:co:window] citation IDs."
+            "Rank the universe by a financial metric over a chosen period. ONE call "
+            "ranks every company — never iterate get_metrics across tickers.\n"
+            "  metric: revenue, gross_margin, operating_margin, net_margin, fcf, "
+            "cfo, net_income, operating_income, rd, sbc_pct_revenue, roic, roiic, "
+            "revenue_growth_yoy, gross_profit_growth_yoy, incremental_gross_margin, "
+            "incremental_operating_margin, accruals_ratio, net_debt_to_ebitda, "
+            "interest_coverage_ttm, reinvestment_rate.\n"
+            "  period: 'latest' (default) | 'FY2024' | '2025-Q3' | "
+            "'last_3y_avg' | 'last_3y_sum' | 'last_12q' | 'last_12q_avg'.\n"
+            "  agg: 'level' (default; rank by single/window value) | 'delta' "
+            "(rank by latest_third − earliest_third; needs windowed period) | "
+            "'relative_change' (delta normalized by |earliest_value|).\n"
+            "Returns ranked rows with [M:view:co:period] citation IDs. Use 'delta' "
+            "/ 'relative_change' over 'last_Nq' for fastest-improving / declining "
+            "questions."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "metric": {
                     "type": "string",
-                    "enum": ["revenue", "gross_margin", "operating_margin", "net_margin", "fcf", "roic"],
-                    "description": "Metric to rank by. roic is averaged over the recent N*4 quarterly rows.",
+                    "enum": metric_names("financials"),
+                    "description": "Metric to rank by.",
                 },
-                "n_years": {
-                    "type": "integer",
-                    "description": "Lookback window in years. 1 = single most recent year; 3 or 5 = rolling average. Default 1.",
+                "period": {
+                    "type": "string",
+                    "description": (
+                        "Period spec. Forms: 'latest', 'FYNNNN', 'YYYY-QN', "
+                        "'last_Ny[_avg|_sum]', 'last_Nq[_avg|_sum]'. Default 'latest'."
+                    ),
                 },
-                "limit": {"type": "integer", "description": "Top N to return. Default 10, max 50."},
-                "sort_desc": {"type": "boolean", "description": "True for highest-first (default), false for lowest-first."},
+                "agg": {
+                    "type": "string",
+                    "enum": ["level", "delta", "relative_change"],
+                    "description": "Default 'level'. 'delta'/'relative_change' need a windowed period.",
+                },
+                "sort": {
+                    "type": "string", "enum": ["asc", "desc"],
+                    "description": "'desc' = highest first (default).",
+                },
+                "limit": {"type": "integer", "description": "Top N. Default 10, max 100."},
             },
             "required": ["metric"],
         },
-        execute=_tool_screen_companies,
+        execute=_tool_screen_financials,
     ),
     Tool(
-        name="screen_companies_by_trajectory",
+        name="screen_estimates",
         description=(
-            "Rank companies by the *change* in a metric over a multi-period "
-            "window — answers 'fastest-improving X' / 'fastest-declining X' / "
-            "'who's accelerating?' / 'who's decelerating?'. Distinct from "
-            "screen_companies which ranks by AVERAGE LEVEL. Computes "
-            "earliest_value (avg of first 1/3 of window) vs latest_value "
-            "(avg of last 1/3); delta and relative_change are returned. "
-            "Default window_periods=12 (3 years for quarterly metrics like "
-            "ROIC). For ratios (ROIC, margins) ranking defaults to absolute "
-            "delta (percentage points); for money metrics (revenue, fcf) it "
-            "defaults to relative change. **Use this tool, not screen_companies, "
-            "for any 'fastest growing/improving/declining' question.**"
+            "Rank the universe by a forward consensus estimate. ONE call ranks "
+            "every company — do NOT iterate read_consensus across tickers.\n"
+            "  metric: revenue_avg, eps_avg, ebitda_avg, ebit_avg, net_income_avg "
+            "(forward levels) or revenue_growth, eps_growth, ebitda_growth, "
+            "ebit_growth, net_income_growth (forward YoY %). Growth metrics "
+            "self-join each forward period vs same period 1y prior.\n"
+            "  period: 'next' / 'next_q' (first forward quarter), 'next_fy' "
+            "(first forward annual), 'forward_4q_avg' (default), "
+            "'forward_4q_sum', 'forward_2y_avg', etc.\n"
+            "  period_kind: 'quarter' (default) or 'annual'. 'next_fy' / "
+            "forward_Ny_* override to annual automatically.\n"
+            "EBIT/EBITDA estimates are often steward-flagged unreliable — for "
+            "individual diagnostic detail, use read_consensus on a specific "
+            "ticker after screening."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "metric": {
                     "type": "string",
-                    "enum": ["revenue", "gross_margin", "operating_margin", "net_margin", "fcf", "roic"],
+                    "enum": metric_names("estimates"),
+                    "description": "Forward consensus metric.",
                 },
-                "window_periods": {
-                    "type": "integer",
-                    "description": "Periods (quarters for ROIC, years for FY metrics) in the window. Default 12.",
-                },
-                "limit": {"type": "integer", "description": "Top N. Default 10, max 50."},
-                "sort_desc": {"type": "boolean", "description": "True = fastest-improving first (default). False = fastest-declining first."},
-                "basis": {
+                "period": {
                     "type": "string",
-                    "enum": ["auto", "absolute", "relative"],
-                    "description": "Rank order. 'auto' (default) = absolute pp for ratios, relative % for money. 'absolute' = always rank by delta. 'relative' = always rank by relative_change.",
+                    "description": (
+                        "Forward period spec. 'next', 'next_fy', 'forward_4q_avg', "
+                        "'forward_2y_avg', 'forward_4q_sum'. Default 'forward_4q_avg'."
+                    ),
                 },
+                "period_kind": {
+                    "type": "string",
+                    "enum": ["annual", "quarter"],
+                    "description": "Default 'quarter'.",
+                },
+                "sort": {
+                    "type": "string", "enum": ["asc", "desc"],
+                    "description": "'desc' = highest first (default).",
+                },
+                "limit": {"type": "integer", "description": "Top N. Default 10, max 100."},
             },
             "required": ["metric"],
         },
-        execute=_tool_screen_companies_by_trajectory,
+        execute=_tool_screen_estimates,
+    ),
+    Tool(
+        name="screen_valuation",
+        description=(
+            "Rank the universe by a valuation ratio (P/E, P/S, EV/EBITDA, FCF "
+            "yield, market cap, EV) on a single date. Uses point-in-time TTM. "
+            "ONE call ranks every company — never iterate read_valuation across "
+            "tickers.\n"
+            "  metric: pe_ttm, ps_ttm, ev_ebitda_ttm, fcf_yield_ttm, market_cap, ev.\n"
+            "  period: 'latest' (default; most recent non-null per company) or "
+            "'asof:YYYY-MM-DD'. Most-recent-non-null can return STALE dates for "
+            "companies whose ratio went null (e.g. negative TTM net income drops "
+            "P/E to NULL); pin a specific date with 'asof:' for cross-sectional "
+            "snapshots."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "metric": {
+                    "type": "string",
+                    "enum": metric_names("valuation"),
+                    "description": "Valuation metric.",
+                },
+                "period": {
+                    "type": "string",
+                    "description": "'latest' or 'asof:YYYY-MM-DD'. Default 'latest'.",
+                },
+                "sort": {
+                    "type": "string", "enum": ["asc", "desc"],
+                    "description": "'desc' = highest first (default). Use 'asc' for cheapest-first on P/E etc.",
+                },
+                "limit": {"type": "integer", "description": "Top N. Default 10, max 100."},
+            },
+            "required": ["metric"],
+        },
+        execute=_tool_screen_valuation,
     ),
     Tool(
         name="read_consensus",
@@ -1790,7 +1856,9 @@ Time references — resolve relative phrases against today's date:
 Tool-selection playbook:
 - Headline numbers (revenue, margins, FCF, ROIC for ONE company-period): get_metrics.
 - Multiple periods of one company: call get_metrics once per year. For 5-year windows, fetch all 5.
-- Cross-company ranking ('highest/lowest X', 'top N by X', 'rank by X'): call screen_companies ONCE — do NOT iterate get_metrics, do NOT call list_companies first.
+- Cross-company ranking by a financial metric ('highest/lowest revenue', 'top N by margin', 'rank by ROIC', 'fastest improving / declining X'): call screen_financials ONCE. Pass period='latest' / 'FY2024' / 'last_3y_avg' / 'last_12q'; agg='delta' or 'relative_change' (with a windowed period like 'last_12q') for fastest-improving / declining questions. Do NOT iterate get_metrics across tickers.
+- Cross-company ranking by a forward consensus estimate ('highest forward EPS growth', 'rank by next-quarter revenue', 'lowest forward EBITDA growth', 'fastest forward growers'): call screen_estimates ONCE. Pass metric=revenue_growth / eps_growth / ebitda_growth (or *_avg for raw level), period='forward_4q_avg' (default) / 'next' / 'next_fy', period_kind='quarter' or 'annual'. Do NOT iterate read_consensus across tickers — it cannot rank.
+- Cross-company valuation snapshot ('cheapest P/E', 'highest FCF yield', 'biggest market cap'): call screen_valuation ONCE. Pass period='latest' or 'asof:YYYY-MM-DD'. For "cheapest" multiples use sort='asc'.
 - Universe discovery ('what tickers do we have'): list_companies. Otherwise skip it.
 - "What did management say about X in period P": search_transcripts with a SHORT FTS query.
 - "How did the discussion of X evolve over time" — counting/term-frequency framing only: compare_transcript_mentions with 1-4 high-signal terms.
