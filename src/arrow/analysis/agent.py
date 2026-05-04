@@ -1797,7 +1797,12 @@ Tool-selection playbook:
 - Synthesis-style reading ("read the call and tell me", "what was the tone", "narrative arc", "what was emphasized"): read_transcript for the full call. Prefer this over chained search_transcripts when the question wants holistic reading.
 - Multi-quarter NARRATIVE comparison ("compare commentary across the last N quarters", "what's consistent / different / strengthened / weakened", "how has management's view changed", "characterize the shift"): call read_transcript for EACH of the N quarters. compare_transcript_mentions alone gives only term-count tables, which are too thin for a narrative-comparison answer — a synthesizer cannot characterize tone, framing, conviction, or emphasis from frequency counts. The 8-iteration cap accommodates 5-6 read_transcript calls plus 1-2 supporting calls (resolve_company, get_metrics for context).
 - 10-K / 10-Q section text: read_filing_sections (currently kind='mda').
+- Forward consensus / analyst estimates ('what does the street expect', 'forward revenue / EBITDA / EBIT / operating income / net income / EPS', 'next quarter', 'next FY', 'why are forward estimates X', 'are the forward numbers reliable', 'consensus forecast'): read_consensus. Defaults to QUARTERLY; pass period_kind='annual' for FY-grain. Each row carries a `warnings` array — when populated, the period's EBIT/EBITDA estimate is flagged as unreliable by the steward; surface that in the answer rather than reasoning around it.
+- Price target vs current price ('upside to consensus target', 'how much room', 'analyst target', 'PT upside'): read_target_gap.
+- Earnings beat / miss history ('does X usually beat?', 'how big a surprise last quarter', 'EPS / revenue surprise pattern'): read_surprise_history.
+- Recent analyst actions ('who upgraded / downgraded', 'recent PT changes', 'analyst sentiment shift this week / month'): recent_analyst_actions.
 - Always resolve tickers via resolve_company FIRST when the ticker is named.
+- Tickers may appear lowercase or mixed-case in user input ('lite', 'nvda', 'Aapl') — recognize them as tickers and uppercase them when calling tools. Common short tickers that look like English words ('lite', 'meta', 'nice', 'alle', 'rare') are still tickers — resolve them rather than dismissing the question.
 
 FTS query hints (for search_transcripts):
 - Use 1-3 keywords. Postgres FTS treats them as required terms — long phrases like "guidance outlook expectations revenue growth margin forecast" return ZERO rows.
