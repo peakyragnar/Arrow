@@ -5,6 +5,7 @@ Usage:
     uv run scripts/ingest_company.py --since 2018-01-01 --scoped NVDA
     uv run scripts/ingest_company.py --sec-limit 3 NVDA
     uv run scripts/ingest_company.py --no-xbrl-audit NVDA   # skip Layer 5 audit
+    uv run scripts/ingest_company.py --no-period-canonicalization NVDA  # skip 52/53-week date snap
     uv run scripts/ingest_company.py --no-steward NVDA      # skip post-ingest steward
 
 Normal flow:
@@ -12,13 +13,20 @@ Normal flow:
   2. backfill baseline FMP financials
   3. ingest FMP revenue segments
   4. ingest FMP employee counts
-  5. ingest FMP earnings-call transcripts
-  6. audit FMP vs SEC XBRL anchors; auto-promote safe corruption-bucket
+  5. canonicalize period_end across endpoints (52/53-week filer fix):
+     a. snap IS/BS/CF annual + Q4 quarter rows to the trusted
+        (employees/segments) date for the same fiscal period
+     b. snap Q4 quarter rows to the same-statement FY annual date
+     This must run before transcripts — `ingest_transcripts` aborts
+     on `AmbiguousFiscalAnchor` when a fiscal period has multiple
+     `period_end` values in `financial_facts`.
+  6. ingest FMP earnings-call transcripts
+  7. audit FMP vs SEC XBRL anchors; auto-promote safe corruption-bucket
      divergences. Unsafe divergences surface via the
      ``xbrl_audit_unresolved`` steward check for analyst review.
-  7. backfill SEC `10-K` / `10-Q` qualitative filings
+  8. backfill SEC `10-K` / `10-Q` qualitative filings
      (5 fiscal years, complete first FY, primary docs only)
-  8. POST-INGEST STEWARD PASS: run all deterministic checks scoped to
+  9. POST-INGEST STEWARD PASS: run all deterministic checks scoped to
      the just-ingested tickers; auto-resolve cleared findings; surface
      anything that needs human triage. Drops a pending_triage record
      under data/pending_triage/ if any new findings appeared, so the
@@ -46,6 +54,10 @@ from arrow.normalize.financials.load import (
     BSVerificationFailed,
     CFVerificationFailed,
     VerificationFailed,
+)
+from arrow.normalize.periods.canonicalize import (
+    canonicalize_cross_endpoint,
+    canonicalize_q4_to_annual,
 )
 from arrow.steward.registry import Scope
 from arrow.steward.runner import run_steward
@@ -115,6 +127,11 @@ def main() -> int:
         skip_xbrl_audit = True
         args = [a for a in args if a != "--no-xbrl-audit"]
 
+    skip_period_canonicalization = False
+    if "--no-period-canonicalization" in args:
+        skip_period_canonicalization = True
+        args = [a for a in args if a != "--no-period-canonicalization"]
+
     skip_steward = False
     if "--no-steward" in args:
         skip_steward = True
@@ -160,6 +177,18 @@ def main() -> int:
             fmp_counts = backfill_fmp_statements(conn, tickers, **fmp_kwargs)
             segment_counts = backfill_fmp_segments(conn, tickers, **fmp_kwargs)
             employee_counts = backfill_fmp_employees(conn, tickers)
+            if not skip_period_canonicalization:
+                cross_endpoint_canon = canonicalize_cross_endpoint(
+                    conn, tickers=tickers, apply=True,
+                    actor="operator:ingest_company",
+                )
+                q4_canon = canonicalize_q4_to_annual(
+                    conn, tickers=tickers, apply=True,
+                    actor="operator:ingest_company",
+                )
+            else:
+                cross_endpoint_canon = None
+                q4_canon = None
             transcript_counts = ingest_transcripts(conn, tickers, actor="operator:ingest_company")
             xbrl_audit_counts = (
                 audit_and_promote_xbrl(conn, tickers, actor="operator:ingest_company")
@@ -221,6 +250,20 @@ def main() -> int:
             "facts_written": employee_counts["facts_written"],
         },
     )
+    if cross_endpoint_canon is not None or q4_canon is not None:
+        _print_section(
+            "Period-end canonicalization",
+            {
+                "cross_endpoint_run_id": (
+                    cross_endpoint_canon.ingest_run_id if cross_endpoint_canon else None
+                ),
+                "cross_endpoint_rows_processed": (
+                    cross_endpoint_canon.rows_processed if cross_endpoint_canon else 0
+                ),
+                "q4_run_id": q4_canon.ingest_run_id if q4_canon else None,
+                "q4_rows_processed": q4_canon.rows_processed if q4_canon else 0,
+            },
+        )
     if xbrl_audit_counts is not None:
         _print_section(
             "FMP-vs-XBRL audit",

@@ -15,12 +15,13 @@ within the same statement. Phase 2 handles cross-endpoint splits: the
 FY annual itself is sometimes wrong on the IS/BS/CF side, while
 employees/segments are reliably stamped to the real fiscal date.
 
-Trusted endpoints: ``fmp-employees-v1``, ``fmp-segments-v1``.
-Targets to update: ``fmp-is-v1``, ``fmp-bs-v1``, ``fmp-cf-v1``.
-
 Idempotent. Skips fiscal periods where the trusted endpoints disagree
 with each other (no clean canonical) — those surface as steward
 findings instead.
+
+The body of this script is now a library function in
+``arrow.normalize.periods.canonicalize`` so it can be invoked from the
+``ingest_company.py`` orchestrator. The CLI here is the operator entry.
 
 Usage:
     uv run scripts/backfill_cross_endpoint_period_end.py            # dry run
@@ -32,89 +33,10 @@ from __future__ import annotations
 import argparse
 
 from arrow.db.connection import get_conn
-from arrow.ingest.common.runs import close_succeeded, open_run
-
-
-TRUSTED_VERSIONS = ("fmp-employees-v1", "fmp-segments-v1")
-TARGET_VERSIONS = ("fmp-is-v1", "fmp-bs-v1", "fmp-cf-v1")
-
-
-PREVIEW_SQL = """
-WITH trusted_dates AS (
-  SELECT company_id, fiscal_year, fiscal_quarter, period_type,
-         period_end
-  FROM financial_facts
-  WHERE superseded_at IS NULL
-    AND extraction_version = ANY(%s)
-  GROUP BY company_id, fiscal_year, fiscal_quarter, period_type, period_end
-),
-canonical AS (
-  -- Only canonicalize when trusted endpoints unambiguously agree on one date.
-  SELECT company_id, fiscal_year, fiscal_quarter, period_type,
-         MIN(period_end) AS canon_pe
-  FROM trusted_dates
-  GROUP BY company_id, fiscal_year, fiscal_quarter, period_type
-  HAVING COUNT(DISTINCT period_end) = 1
+from arrow.normalize.periods.canonicalize import (
+    _cross_endpoint_sql,
+    canonicalize_cross_endpoint,
 )
-SELECT c.ticker, ff.fiscal_year, ff.fiscal_quarter, ff.period_type,
-       ff.statement, ff.extraction_version,
-       ff.period_end AS old_pe, can.canon_pe AS new_pe,
-       COUNT(*) AS rows
-FROM financial_facts ff
-JOIN canonical can
-  ON can.company_id = ff.company_id
- AND can.fiscal_year = ff.fiscal_year
- AND COALESCE(can.fiscal_quarter, -1) = COALESCE(ff.fiscal_quarter, -1)
- AND can.period_type = ff.period_type
-JOIN companies c ON c.id = ff.company_id
-WHERE ff.superseded_at IS NULL
-  AND ff.dimension_type IS NULL
-  AND ff.extraction_version = ANY(%s)
-  AND ff.period_end <> can.canon_pe
-GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
-ORDER BY 1, 2, 3, 4, 5;
-"""
-
-
-UPDATE_SQL = """
-WITH trusted_dates AS (
-  SELECT company_id, fiscal_year, fiscal_quarter, period_type,
-         period_end
-  FROM financial_facts
-  WHERE superseded_at IS NULL
-    AND extraction_version = ANY(%s)
-  GROUP BY company_id, fiscal_year, fiscal_quarter, period_type, period_end
-),
-canonical AS (
-  SELECT company_id, fiscal_year, fiscal_quarter, period_type,
-         MIN(period_end) AS canon_pe
-  FROM trusted_dates
-  GROUP BY company_id, fiscal_year, fiscal_quarter, period_type
-  HAVING COUNT(DISTINCT period_end) = 1
-),
-mismatched AS (
-  SELECT ff.id, can.canon_pe AS new_pe
-  FROM financial_facts ff
-  JOIN canonical can
-    ON can.company_id = ff.company_id
-   AND can.fiscal_year = ff.fiscal_year
-   AND COALESCE(can.fiscal_quarter, -1) = COALESCE(ff.fiscal_quarter, -1)
-   AND can.period_type = ff.period_type
-  WHERE ff.superseded_at IS NULL
-    AND ff.dimension_type IS NULL
-    AND ff.extraction_version = ANY(%s)
-    AND ff.period_end <> can.canon_pe
-)
-UPDATE financial_facts ff
-SET period_end            = m.new_pe,
-    calendar_year         = EXTRACT(YEAR FROM m.new_pe)::int,
-    calendar_quarter      = EXTRACT(QUARTER FROM m.new_pe)::int,
-    calendar_period_label = 'CY' || EXTRACT(YEAR FROM m.new_pe)::int
-                            || ' Q' || EXTRACT(QUARTER FROM m.new_pe)::int
-FROM mismatched m
-WHERE ff.id = m.id
-RETURNING ff.id;
-"""
 
 
 def main() -> None:
@@ -126,9 +48,12 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    with get_conn() as conn, conn.cursor() as cur:
-        cur.execute(PREVIEW_SQL, (list(TRUSTED_VERSIONS), list(TARGET_VERSIONS)))
-        preview = cur.fetchall()
+    with get_conn() as conn:
+        # Print the per-group preview table for operator visibility.
+        preview_sql, _, params = _cross_endpoint_sql(tickers=None)
+        with conn.cursor() as cur:
+            cur.execute(preview_sql, params)
+            preview = cur.fetchall()
 
         if not preview:
             print("No cross-endpoint period_end mismatches. Nothing to fix.")
@@ -152,27 +77,13 @@ def main() -> None:
             print("\nDry run. Pass --apply to write.")
             return
 
-        tickers_in_scope = sorted({row[0] for row in preview})
-        run_id = open_run(
-            conn,
-            run_kind="manual",
-            vendor="arrow",
-            ticker_scope=tickers_in_scope,
+        result = canonicalize_cross_endpoint(
+            conn, tickers=None, apply=True, actor="operator"
         )
-        cur.execute(UPDATE_SQL, (list(TRUSTED_VERSIONS), list(TARGET_VERSIONS)))
-        updated = cur.rowcount
-        conn.commit()
-        close_succeeded(
-            conn,
-            run_id,
-            counts={
-                "action_kind": "backfill_cross_endpoint_period_end",
-                "tickers": tickers_in_scope,
-                "rows_updated": updated,
-                "groups_updated": len(preview),
-            },
+        print(
+            f"\nUpdated {result.rows_processed} rows. "
+            f"ingest_run_id={result.ingest_run_id}"
         )
-        print(f"\nUpdated {updated} rows. ingest_run_id={run_id}")
 
 
 if __name__ == "__main__":

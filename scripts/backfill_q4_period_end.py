@@ -8,6 +8,10 @@ while the annual endpoint carries the actual fiscal year-end.
 
 Idempotent. Re-running after the fix is a no-op.
 
+The body of this script is now a library function in
+``arrow.normalize.periods.canonicalize`` so it can be invoked from the
+``ingest_company.py`` orchestrator. The CLI here is the operator entry.
+
 Usage:
     uv run scripts/backfill_q4_period_end.py            # dry run
     uv run scripts/backfill_q4_period_end.py --apply    # write
@@ -18,79 +22,7 @@ from __future__ import annotations
 import argparse
 
 from arrow.db.connection import get_conn
-
-
-# Phase 1: align IS/BS/CF Q4 quarter rows to the SAME-statement FY annual row.
-# Cross-endpoint date splits (employees/segments vs IS/BS/CF) are out of scope
-# here — they produce duplicate v_metrics_fy rows for old years, but don't
-# affect the current dashboard view, and deserve a separate backfill.
-TARGET_VERSIONS = ("fmp-is-v1", "fmp-bs-v1", "fmp-cf-v1")
-
-
-PREVIEW_SQL = """
-WITH annual_pe AS (
-  SELECT company_id, fiscal_year, statement, extraction_version,
-         period_end AS fy_pe
-  FROM financial_facts
-  WHERE period_type = 'annual'
-    AND superseded_at IS NULL
-    AND dimension_type IS NULL
-    AND extraction_version = ANY(%s)
-  GROUP BY company_id, fiscal_year, statement, extraction_version, period_end
-)
-SELECT c.ticker, q.fiscal_year, q.statement,
-       q.period_end AS old_pe, a.fy_pe AS new_pe,
-       COUNT(*) AS rows
-FROM financial_facts q
-JOIN annual_pe a
-  ON a.company_id = q.company_id
- AND a.fiscal_year = q.fiscal_year
- AND a.statement = q.statement
- AND a.extraction_version = q.extraction_version
-JOIN companies c ON c.id = q.company_id
-WHERE q.period_type = 'quarter'
-  AND q.fiscal_quarter = 4
-  AND q.superseded_at IS NULL
-  AND q.dimension_type IS NULL
-  AND q.extraction_version = ANY(%s)
-  AND q.period_end <> a.fy_pe
-GROUP BY 1, 2, 3, 4, 5
-ORDER BY 1, 2, 3;
-"""
-
-
-UPDATE_SQL = """
-WITH annual_pe AS (
-  SELECT company_id, fiscal_year, statement, extraction_version,
-         period_end AS fy_pe
-  FROM financial_facts
-  WHERE period_type = 'annual'
-    AND superseded_at IS NULL
-    AND dimension_type IS NULL
-    AND extraction_version = ANY(%s)
-  GROUP BY company_id, fiscal_year, statement, extraction_version, period_end
-),
-mismatched AS (
-  SELECT q.id, a.fy_pe AS new_pe
-  FROM financial_facts q
-  JOIN annual_pe a
-    ON a.company_id = q.company_id
-   AND a.fiscal_year = q.fiscal_year
-   AND a.statement = q.statement
-   AND a.extraction_version = q.extraction_version
-  WHERE q.period_type = 'quarter'
-    AND q.fiscal_quarter = 4
-    AND q.superseded_at IS NULL
-    AND q.dimension_type IS NULL
-    AND q.extraction_version = ANY(%s)
-    AND q.period_end <> a.fy_pe
-)
-UPDATE financial_facts ff
-SET period_end = m.new_pe
-FROM mismatched m
-WHERE ff.id = m.id
-RETURNING ff.id;
-"""
+from arrow.normalize.periods.canonicalize import _q4_sql, canonicalize_q4_to_annual
 
 
 def main() -> None:
@@ -102,9 +34,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    with get_conn() as conn, conn.cursor() as cur:
-        cur.execute(PREVIEW_SQL, (list(TARGET_VERSIONS), list(TARGET_VERSIONS)))
-        preview = cur.fetchall()
+    with get_conn() as conn:
+        preview_sql, _, params = _q4_sql(tickers=None)
+        with conn.cursor() as cur:
+            cur.execute(preview_sql, params)
+            preview = cur.fetchall()
 
         if not preview:
             print("No mismatched Q4 period_ends. Nothing to fix.")
@@ -121,10 +55,13 @@ def main() -> None:
             print("\nDry run. Pass --apply to write.")
             return
 
-        cur.execute(UPDATE_SQL, (list(TARGET_VERSIONS), list(TARGET_VERSIONS)))
-        updated = cur.rowcount
-        conn.commit()
-        print(f"\nUpdated {updated} rows.")
+        result = canonicalize_q4_to_annual(
+            conn, tickers=None, apply=True, actor="operator"
+        )
+        print(
+            f"\nUpdated {result.rows_processed} rows. "
+            f"ingest_run_id={result.ingest_run_id}"
+        )
 
 
 if __name__ == "__main__":
