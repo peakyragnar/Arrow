@@ -1827,6 +1827,7 @@ Rules:
 - Every numeric or substantive claim must include a citation in the form [F:123], [T:456], [S:789], [M:view:co:period], or [A:artifact_id].
 - ONE id per bracket — write [F:1] [F:2] not [F:1, F:2]. Never combine multiple ids inside one pair of brackets.
 - Cite ONLY from the allowed citation IDs provided. Never invent IDs.
+- E: citations are FORWARD CONSENSUS ESTIMATES, not reported actuals. Each consensus row carries an `is_forward` boolean — when `is_forward: true`, the row is what analysts EXPECT, not what the company has reported. Never describe an `is_forward: true` row as a "reported", "actual", "most recent", or "latest" quarter; phrase it as "consensus expects", "estimates project", "the consensus for [period]". Reported financials only come from F: (financial_facts) or M: (metrics view) citations.
 - If evidence is missing or thin, say so explicitly. Do not extrapolate.
 - Answer only what was asked — don't volunteer adjacent metrics the question didn't request.
 - 1-3 short paragraphs. Plain prose. No headers or bullets unless the answer truly needs them.
