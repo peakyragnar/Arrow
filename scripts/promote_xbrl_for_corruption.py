@@ -155,9 +155,16 @@ def main() -> None:
     parser.add_argument("--ticker", help="Limit to one ticker.")
     parser.add_argument("--apply", action="store_true",
                         help="Write the supersessions; default is a dry-run preview.")
+    parser.add_argument(
+        "--force", action="store_true",
+        help=("Bypass passes_safety_filters for an operator-verified divergence. "
+              "Use only after reading the actual filing; the supersession_reason "
+              "will record that the override was applied."),
+    )
     args = parser.parse_args()
 
     ticker_filter = args.ticker.upper() if args.ticker else None
+    force = args.force
 
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute("""
@@ -185,9 +192,10 @@ def main() -> None:
             bucket, reason = classify(d2)
             if bucket != "CORRUPTION":
                 continue
-            ok, why = passes_safety_filters(d2)
-            if not ok:
-                continue
+            if not force:
+                ok, why = passes_safety_filters(d2)
+                if not ok:
+                    continue
             d2["bucket"] = bucket
             d2["bucket_reason"] = reason
             out.append(d2)
@@ -195,6 +203,8 @@ def main() -> None:
             corruption_by_ticker[ticker] = out
 
     total = sum(len(v) for v in corruption_by_ticker.values())
+    if force:
+        print("--force in effect: passes_safety_filters bypassed (operator override).")
     print(f"Corruption divergences in scope: {total} across {len(corruption_by_ticker)} tickers")
     for t in sorted(corruption_by_ticker):
         print(f"  {t}: {len(corruption_by_ticker[t])}")
@@ -259,6 +269,8 @@ def main() -> None:
                     )
                     accn = d.get("xbrl_accn", "?")
                     reason = f"xbrl-disagrees: accn {accn}, filed {xbrl_filed}; FMP={d['fmp_value']} XBRL={d['xbrl_value']}"
+                    if force:
+                        reason += " [force-applied by operator]"
 
                     # Supersede the FMP row
                     cur.execute(
