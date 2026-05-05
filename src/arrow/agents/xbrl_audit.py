@@ -209,7 +209,54 @@ def _promote_one(
     )
     amendment_version = STATEMENT_TO_AMENDMENT_VERSION[divergence["statement"]]
 
+    new_xbrl_value = Decimal(divergence["xbrl_value"])
+
     with conn.cursor() as cur:
+        # Idempotency: if a current xbrl-amendment row already exists for this
+        # business identity, either no-op (same value, audit re-ran cleanly) or
+        # supersede the stale amendment first (newer audit reports a different
+        # XBRL value because the filing itself was amended). Without this
+        # check, re-running the audit fails with UniqueViolation on the
+        # one-current-row constraint.
+        cur.execute(
+            """
+            SELECT id, value FROM financial_facts
+            WHERE company_id = %s
+              AND statement = %s
+              AND concept = %s
+              AND period_end = %s
+              AND period_type = %s
+              AND extraction_version = %s
+              AND dimension_type IS NULL
+              AND superseded_at IS NULL
+            LIMIT 1
+            """,
+            (
+                company_id, divergence["statement"], divergence["concept"],
+                fmp_row["period_end"], divergence["period_type"], amendment_version,
+            ),
+        )
+        existing = cur.fetchone()
+        if existing is not None:
+            existing_id, existing_value = existing
+            if Decimal(str(existing_value)) == new_xbrl_value:
+                # Already promoted with the same value; audit re-ran without changes.
+                return False
+            cur.execute(
+                """
+                UPDATE financial_facts
+                SET superseded_at = %s,
+                    supersession_reason = %s
+                WHERE id = %s AND superseded_at IS NULL
+                """,
+                (
+                    published_at,
+                    f"xbrl-amendment-superseded-by-newer-audit: prior XBRL value "
+                    f"{existing_value} replaced by {new_xbrl_value} (accn {accn})",
+                    existing_id,
+                ),
+            )
+
         cur.execute(
             """
             UPDATE financial_facts
@@ -238,7 +285,7 @@ def _promote_one(
             """,
             (
                 promotion_run_id, company_id, divergence["statement"], divergence["concept"],
-                Decimal(divergence["xbrl_value"]), fmp_row["unit"],
+                new_xbrl_value, fmp_row["unit"],
                 fmp_row["fiscal_year"], fmp_row["fiscal_quarter"], fmp_row["fiscal_period_label"],
                 fmp_row["period_end"], divergence["period_type"],
                 fmp_row["calendar_year"], fmp_row["calendar_quarter"], fmp_row["calendar_period_label"],

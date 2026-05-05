@@ -155,6 +155,43 @@ def fetch_annual_and_priors(
     return annual, sums, annual_raw_response_id
 
 
+def find_blocking_xbrl_findings(
+    conn: psycopg.Connection,
+    *,
+    ticker: str,
+    fiscal_year: int,
+    target_quarter: int,
+) -> list[dict]:
+    """Return open xbrl_audit_unresolved findings on this (ticker, FY) where
+    the divergent quarter is NOT the target quarter.
+
+    Why this matters: this script derives Q_target = annual − sum(other 3 quarters).
+    The math only produces a sane value if the OTHER three quarters are correct.
+    If XBRL audit has flagged a non-target quarter as divergent (FMP value
+    differs materially from SEC XBRL), the "other 3 quarters sum" is built from
+    a corrupt input — derived target_q is wrong.
+
+    Real case (LITE FY2024): FMP Q2 = $308.3M, XBRL Q2 = $366.8M (gap $58.5M);
+    FMP Q3 = $336.9M, XBRL Q3 = $366.5M (gap $29.6M). Standard derivation
+    produced Q4 revenue = -$336.9M (negative — nonsense). The pre-check
+    catches this and refuses to apply.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, evidence
+            FROM data_quality_findings
+            WHERE ticker = %s
+              AND source_check = 'xbrl_audit_unresolved'
+              AND status = 'open'
+              AND (evidence->>'fiscal_year')::int = %s
+              AND COALESCE((evidence->>'fiscal_quarter')::int, 0) <> %s
+            """,
+            (ticker, fiscal_year, target_quarter),
+        )
+        return [{"id": r[0], "evidence": r[1]} for r in cur.fetchall()]
+
+
 def fetch_current_target_q_rows(
     conn: psycopg.Connection,
     *,
@@ -193,6 +230,14 @@ def main() -> None:
                         help="Quarter to derive (default 4).")
     parser.add_argument("--apply", action="store_true",
                         help="Write the corrections; default is a dry-run preview.")
+    parser.add_argument(
+        "--force", action="store_true",
+        help=(
+            "Bypass the xbrl_audit_unresolved pre-check. Use only when the "
+            "operator has manually verified that non-target quarters are clean "
+            "(or the divergences are definitional, not corruption)."
+        ),
+    )
     args = parser.parse_args()
 
     ticker = args.ticker.upper()
@@ -202,6 +247,36 @@ def main() -> None:
 
     with get_conn() as conn:
         company_id, fye_md = fetch_company(conn, ticker)
+
+        # Refuse to derive when XBRL audit has flagged a non-target quarter
+        # as corrupt. Standard derivation builds target_q = annual − sum(others)
+        # and falls apart if "others" includes a corrupt FMP value. See
+        # find_blocking_xbrl_findings() docstring.
+        blocking = find_blocking_xbrl_findings(
+            conn, ticker=ticker, fiscal_year=fiscal_year, target_quarter=target_q,
+        )
+        if blocking and not args.force:
+            print(f"REFUSING TO DERIVE Q{target_q} for {ticker} FY{fiscal_year}.")
+            print(f"  {len(blocking)} open xbrl_audit_unresolved finding(s) on non-Q{target_q} quarters:")
+            for b in blocking[:10]:
+                ev = b["evidence"] or {}
+                fq = ev.get("fiscal_quarter")
+                fq_label = f"Q{fq}" if fq else "annual"
+                print(
+                    f"    finding {b['id']}: {ev.get('concept'):>20} {fq_label} "
+                    f"FMP={ev.get('fmp_value')} vs XBRL={ev.get('xbrl_value')}"
+                )
+            print()
+            print("Why: this script derives Q{q} from annual − sum(other 3 quarters).".format(q=target_q))
+            print("If a non-target quarter is corrupt per XBRL, the derived Q{q} is wrong.".format(q=target_q))
+            print()
+            print("Options:")
+            print(f"  1. Promote XBRL for the corrupt quarter(s) first via")
+            print(f"     `uv run scripts/promote_xbrl_for_corruption.py --ticker {ticker} --apply` (or --force)")
+            print(f"  2. Re-run this script — the pre-check will pass and Q{target_q} derivation will work.")
+            print(f"  3. Bypass with --force if you have manually verified the non-Q{target_q} divergences are definitional.")
+            raise SystemExit(2)
+
         annual, sums, annual_raw = fetch_annual_and_priors(
             conn, company_id=company_id, fiscal_year=fiscal_year, target_quarter=target_q,
         )

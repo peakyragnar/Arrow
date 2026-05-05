@@ -428,18 +428,26 @@ def load_fmp_is_rows(
             result.period_labels.append(fiscal.fiscal_period_label)
 
             for fact in mapped:
-                # Supersede any existing current row for this business identity
-                # (different source_raw_response_id -> old payload; this is a
-                # fresh re-ingest).
+                # Supersede any existing current row for this fiscal period
+                # regardless of period_end. Keying on fiscal_year/fiscal_quarter
+                # (not period_end) is required because prior canonicalization
+                # may have moved the existing row from FMP raw date to the
+                # trusted segments/employees date — keying on period_end would
+                # miss it and the new INSERT would create a duplicate at a
+                # different period_end. Different source_raw_response_id =
+                # fresh re-ingest payload.
                 cur.execute(
                     """
                     UPDATE financial_facts
-                    SET superseded_at = %s
+                    SET superseded_at = %s,
+                        supersession_reason = COALESCE(supersession_reason, 'fmp_reingest_replaces_prior')
                     WHERE company_id = %s
                       AND concept = %s
-                      AND period_end = %s
+                      AND fiscal_year = %s
+                      AND COALESCE(fiscal_quarter, -1) = COALESCE(%s, -1)
                       AND period_type = %s
                       AND extraction_version = %s
+                      AND dimension_type IS NULL
                       AND superseded_at IS NULL
                       AND source_raw_response_id <> %s;
                     """,
@@ -447,7 +455,8 @@ def load_fmp_is_rows(
                         published_at,
                         company_id,
                         fact.concept,
-                        period_end,
+                        fiscal.fiscal_year,
+                        fiscal.fiscal_quarter,
                         fiscal.period_type,
                         EXTRACTION_VERSION,
                         source_raw_response_id,
@@ -583,15 +592,20 @@ def load_fmp_bs_rows(
             result.period_labels.append(fiscal.fiscal_period_label)
 
             for fact in mapped:
+                # See income_statement supersede block for the rationale on
+                # keying by fiscal_year/fiscal_quarter rather than period_end.
                 cur.execute(
                     """
                     UPDATE financial_facts
-                    SET superseded_at = %s
+                    SET superseded_at = %s,
+                        supersession_reason = COALESCE(supersession_reason, 'fmp_reingest_replaces_prior')
                     WHERE company_id = %s
                       AND concept = %s
-                      AND period_end = %s
+                      AND fiscal_year = %s
+                      AND COALESCE(fiscal_quarter, -1) = COALESCE(%s, -1)
                       AND period_type = %s
                       AND extraction_version = %s
+                      AND dimension_type IS NULL
                       AND superseded_at IS NULL
                       AND source_raw_response_id <> %s;
                     """,
@@ -599,7 +613,8 @@ def load_fmp_bs_rows(
                         published_at,
                         company_id,
                         fact.concept,
-                        period_end,
+                        fiscal.fiscal_year,
+                        fiscal.fiscal_quarter,
                         fiscal.period_type,
                         BS_EXTRACTION_VERSION,
                         source_raw_response_id,
@@ -740,15 +755,20 @@ def load_fmp_cf_rows(
             result.period_labels.append(fiscal.fiscal_period_label)
 
             for fact in mapped:
+                # See income_statement supersede block for the rationale on
+                # keying by fiscal_year/fiscal_quarter rather than period_end.
                 cur.execute(
                     """
                     UPDATE financial_facts
-                    SET superseded_at = %s
+                    SET superseded_at = %s,
+                        supersession_reason = COALESCE(supersession_reason, 'fmp_reingest_replaces_prior')
                     WHERE company_id = %s
                       AND concept = %s
-                      AND period_end = %s
+                      AND fiscal_year = %s
+                      AND COALESCE(fiscal_quarter, -1) = COALESCE(%s, -1)
                       AND period_type = %s
                       AND extraction_version = %s
+                      AND dimension_type IS NULL
                       AND superseded_at IS NULL
                       AND source_raw_response_id <> %s;
                     """,
@@ -756,7 +776,8 @@ def load_fmp_cf_rows(
                         published_at,
                         company_id,
                         fact.concept,
-                        period_end,
+                        fiscal.fiscal_year,
+                        fiscal.fiscal_quarter,
                         fiscal.period_type,
                         CF_EXTRACTION_VERSION,
                         source_raw_response_id,
