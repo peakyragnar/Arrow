@@ -32,15 +32,8 @@ from dotenv import load_dotenv
 from arrow.retrieval.companies import resolve_company_by_ticker, suggest_tickers_near
 from arrow.retrieval.documents import get_section_chunks, list_documents
 from arrow.retrieval.facts import get_financial_facts, get_segment_facts
-from arrow.retrieval.metrics import (
-    get_metrics,
-    get_quarterly_metrics_series,
-    metrics_view_name,
-)
-from arrow.retrieval.screens import (
-    get_latest_roic,
-    list_companies,
-)
+from arrow.retrieval.multi_metric import get_metric_values
+from arrow.retrieval.screens import list_companies
 from arrow.retrieval.registry import METRICS, list_metrics, metric_names
 from arrow.retrieval.screener import ScreenRow, screen, universe_size
 from arrow.retrieval.transcripts import (
@@ -218,76 +211,83 @@ def _tool_resolve_company(conn: psycopg.Connection, params: dict[str, Any]) -> T
 
 
 def _tool_get_metrics(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
-    """Period metrics for one ticker.
+    """Single-ticker, multi-metric retrieval driven by the metric registry.
 
-    - Single period (default): pass fiscal_year (and optionally fiscal_quarter).
-      Returns one row from v_metrics_fy / v_metrics_q + most-recent ROIC.
-    - Quarterly series: pass n_quarters > 1. Returns the latest N quarters with
-      revenue, margins, CFO, CapEx, FCF, D&A, capex_to_dna_ratio. Replaces the
-      standalone read_quarterly_metrics_series tool. fiscal_year/fiscal_quarter
-      are ignored when n_quarters > 1.
+    Reads ``arrow.retrieval.registry.METRICS`` so any registered metric —
+    revenue, ROIC, ROIIC, sbc_pct_revenue, P/E, forward EPS, etc. — is
+    queryable via this one tool. Period semantics come from
+    ``arrow.retrieval.period_spec``: ``latest``, ``FYNNNN``, ``YYYY-QN``,
+    ``last_Nq``, ``last_Ny``, ``next``, ``next_fy``, ``forward_Nq[_avg|_sum]``,
+    or ``asof:YYYY-MM-DD``. All metrics in one call must share a vertical.
     """
-    n_quarters = int(params.get("n_quarters") or 1)
-    if n_quarters > 1:
-        return _get_quarterly_series_tool(conn, params=params, n=n_quarters)
+    ticker_raw = params.get("ticker")
+    if not ticker_raw:
+        return ToolResult(rows=[], evidence_ids=[], summary="ticker required.", error="ticker required")
+    ticker, ticker_note = _normalize_ticker(conn, ticker_raw)
 
-    company = _resolve_company(conn, params["ticker"])
-    if company is None:
-        return ToolResult(rows=[], evidence_ids=[], summary=f"No company found for {params['ticker']}.")
-    if params.get("fiscal_year") is None:
-        return ToolResult(
-            rows=[], evidence_ids=[],
-            summary="fiscal_year is required when n_quarters is omitted (single-period mode).",
-            error="fiscal_year required for single-period mode",
-        )
-    fiscal_quarter = params.get("fiscal_quarter")
-    period_type = _period_type(fiscal_quarter)
-    metric = get_metrics(
-        conn,
-        company_id=company.id,
-        fiscal_year=params["fiscal_year"],
-        fiscal_quarter=fiscal_quarter,
-        period_type=period_type,
-    )
-    if metric is None:
-        period_label = (
-            f"FY{params['fiscal_year']} Q{fiscal_quarter}" if fiscal_quarter else f"FY{params['fiscal_year']}"
-        )
+    metric_names_arg = params.get("metrics") or []
+    if not isinstance(metric_names_arg, list) or not metric_names_arg:
         return ToolResult(
             rows=[],
             evidence_ids=[],
-            summary=f"No metrics row for {company.ticker} {period_label}.",
+            summary="metrics must be a non-empty list of registry metric names.",
+            error="metrics required",
         )
-    row = {
-        "ticker": metric.ticker,
-        "fiscal_period": metric.fiscal_period_label,
-        "period_end": str(metric.fy_end),
-        "revenue": _money(metric.revenue_fy),
-        "gross_margin": _money(metric.gross_margin_fy),
-        "operating_margin": _money(metric.operating_margin_fy),
-        "cfo": _money(metric.cfo_fy),
-        "capital_expenditures": _money(metric.capital_expenditures_fy),
-        "fcf": _money(metric.fcf_fy),
-    }
-    cite = f"M:{metrics_view_name(period_type)}:{company.id}:{metric.fiscal_period_label}"
-    evidence_ids = [cite]
+    period = params.get("period") or "latest"
+    period_kind = params.get("period_kind")
 
-    # Attach the most-recent-at-or-before ROIC for annual metrics. Quarterly
-    # metrics already have their own period_end; the ROIC view is quarterly,
-    # so pulling latest at or before fy_end gives the year-end snapshot.
-    if metric.fy_end is not None:
-        roic, roic_period = get_latest_roic(
-            conn, company_id=company.id, on_or_before=metric.fy_end
+    try:
+        metric_rows = get_metric_values(
+            conn,
+            ticker=ticker,
+            metric_names=list(metric_names_arg),
+            period=period,
+            period_kind=period_kind,
         )
-        if roic is not None:
-            row["roic"] = _money(roic)
-            row["roic_period_end"] = roic_period
-            evidence_ids.append(f"M:v_metrics_roic:{company.id}:{roic_period}")
+    except ValueError as exc:
+        return ToolResult(
+            rows=[],
+            evidence_ids=[],
+            summary=str(exc),
+            error=str(exc),
+        )
 
-    return ToolResult(
-        rows=[row],
-        evidence_ids=evidence_ids,
-        summary=f"{company.ticker} {metric.fiscal_period_label} metrics from {metrics_view_name(period_type)}.",
+    if not metric_rows:
+        return _with_ticker_note(
+            ToolResult(
+                rows=[],
+                evidence_ids=[],
+                summary=(
+                    f"No {','.join(metric_names_arg)} rows for {ticker} at period {period!r}."
+                ),
+            ),
+            ticker_note,
+        )
+
+    rows: list[dict[str, Any]] = []
+    evidence_ids: list[str] = []
+    seen_evidence: set[str] = set()
+    for mr in metric_rows:
+        row = {
+            "ticker": ticker,
+            "period_label": mr.period_label,
+            "period_end": mr.period_end,
+            "values": {k: _money(v) for k, v in mr.values.items()},
+            "citations": dict(mr.citations),
+        }
+        rows.append(row)
+        for cite in mr.citations.values():
+            if cite not in seen_evidence:
+                seen_evidence.add(cite)
+                evidence_ids.append(cite)
+
+    summary = (
+        f"{ticker} {','.join(metric_names_arg)} for period {period!r}: "
+        f"{len(rows)} row(s) ({metric_rows[-1].period_label}..{metric_rows[0].period_label})."
+    )
+    return _with_ticker_note(
+        ToolResult(rows=rows, evidence_ids=evidence_ids, summary=summary),
+        ticker_note,
     )
 
 
@@ -852,56 +852,6 @@ def _valuation_percentile_tool(
     return ToolResult(rows=[row], evidence_ids=[cite], summary=summary)
 
 
-def _get_quarterly_series_tool(
-    conn: psycopg.Connection, *, params: dict[str, Any], n: int
-) -> ToolResult:
-    """Latest N quarters with D&A and capex_to_dna_ratio. Internal helper for
-    get_metrics's series mode."""
-    ticker = params["ticker"]
-    if n < 1 or n > 40:
-        return ToolResult(rows=[], evidence_ids=[], summary="n_quarters must be 1..40", error="n_quarters out of range")
-    company = _resolve_company(conn, ticker)
-    if company is None:
-        return ToolResult(rows=[], evidence_ids=[], summary=f"No company found for {ticker}.")
-
-    rows_raw = get_quarterly_metrics_series(conn, company_id=company.id, n=n)
-    if not rows_raw:
-        return ToolResult(
-            rows=[], evidence_ids=[],
-            summary=f"No quarterly metrics for {ticker}.",
-        )
-
-    rows = []
-    evidence_ids: list[str] = []
-    for r in rows_raw:
-        cite = f"M:v_metrics_q:{company.id}:{r['fiscal_period_label']}"
-        rows.append({
-            "fiscal_period": r["fiscal_period_label"],
-            "period_end": str(r["period_end"]),
-            "revenue": _money(r["revenue"]),
-            "gross_margin": _money(r["gross_margin"]),
-            "operating_margin": _money(r["operating_margin"]),
-            "net_margin": _money(r["net_margin"]),
-            "cfo": _money(r["cfo"]),
-            "capital_expenditures": _money(r["capital_expenditures"]),
-            "fcf": _money(r["fcf"]),
-            "dna_cf": _money(r.get("dna_cf")),
-            "capex_to_dna_ratio": _money(r.get("capex_to_dna_ratio")),
-            "evidence_id": cite,
-        })
-        evidence_ids.append(cite)
-    return ToolResult(
-        rows=rows,
-        evidence_ids=evidence_ids,
-        summary=(
-            f"{company.ticker}: last {len(rows)} quarter(s) of metrics, "
-            f"{rows[-1]['fiscal_period']}..{rows[0]['fiscal_period']}. "
-            f"capex_to_dna_ratio surfaces capex-cycle vs structural-compression: "
-            f">1.5x sustained = structural; ~1.0x = replacement-only."
-        ),
-    )
-
-
 def _tool_compare_transcript_mentions(conn: psycopg.Connection, params: dict[str, Any]) -> ToolResult:
     ticker, _ticker_note = _normalize_ticker(conn, params["ticker"])
     terms = params.get("terms") or []
@@ -1355,33 +1305,48 @@ REGISTRY: list[Tool] = [
     Tool(
         name="get_metrics",
         description=(
-            "Canonical period metrics from the v_metrics_fy / v_metrics_q views: "
-            "revenue, gross_margin, operating_margin, cfo, capital_expenditures, fcf.\n"
-            "Two shapes:\n"
-            "  - SINGLE PERIOD (default): pass fiscal_year (and optionally "
-            "fiscal_quarter). Returns one row + most-recent ROIC. Use for "
-            "headline numbers like 'DELL FY2024 revenue'.\n"
-            "  - SERIES: pass n_quarters > 1 (max 40). Returns the latest N "
-            "quarters with revenue, margins, CFO, CapEx, FCF, **D&A** (dna_cf), "
-            "and **capex_to_dna_ratio**. Use for trajectory questions ('is "
-            "margin accelerating?', '8-quarter FCF trend') AND for capex-cycle "
-            "vs structural-compression analysis: capex_to_dna_ratio sustained "
-            ">1.5x = structural compression; ~1.0x = replacement-only. ONE call "
-            "replaces 8+ single-period get_metrics calls. fiscal_year/fiscal_"
-            "quarter are ignored when n_quarters > 1."
+            "Single-ticker, multi-metric retrieval over the metric registry. ONE "
+            "call returns any registered metric — revenue, ROIC, ROIIC, "
+            "sbc_pct_revenue, P/E, forward EPS, etc. — at any supported period. "
+            "Replaces all per-question metric plugs.\n"
+            "  metrics: list of registry names. Same-vertical only.\n"
+            f"    financials: {', '.join(metric_names('financials'))}.\n"
+            f"    valuation:  {', '.join(metric_names('valuation'))}.\n"
+            f"    estimates:  {', '.join(metric_names('estimates'))} "
+            "(growth metrics blocked here — use screen_estimates or read_consensus).\n"
+            "  period: 'latest' (default), 'FYNNNN', 'YYYY-QN', 'last_Nq', 'last_Ny' "
+            "(financials); 'next', 'next_fy', 'forward_Nq[_avg|_sum]', 'forward_Ny' "
+            "(estimates); 'latest' or 'asof:YYYY-MM-DD' (valuation).\n"
+            "  period_kind: 'quarter' (default) | 'annual' — estimates only.\n"
+            "Returns rows ordered period_end DESC, each carrying values:{metric:value} "
+            "and citations:{metric:[M:view:co:period]}. Cross-vertical mixes (e.g. "
+            "revenue + pe_ttm) are rejected — split into separate calls."
         ),
         input_schema={
             "type": "object",
             "properties": {
-                "ticker": {"type": "string"},
-                "fiscal_year": {"type": "integer", "description": "Required for single-period mode."},
-                "fiscal_quarter": {"type": "integer", "description": "1-4. Omit for full-year."},
-                "n_quarters": {
-                    "type": "integer",
-                    "description": "Series length (2-40). When set, returns latest N quarters and ignores fiscal_year/fiscal_quarter.",
+                "ticker": {"type": "string", "description": "Stock ticker."},
+                "metrics": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Registry metric names. All must share a vertical.",
+                },
+                "period": {
+                    "type": "string",
+                    "description": (
+                        "Period spec. financials: 'latest'|'FYNNNN'|'YYYY-QN'|"
+                        "'last_Nq'|'last_Ny'. valuation: 'latest'|'asof:YYYY-MM-DD'. "
+                        "estimates: 'latest'|'next'|'next_fy'|'forward_Nq[_avg|_sum]'|"
+                        "'forward_Ny'. Default 'latest'."
+                    ),
+                },
+                "period_kind": {
+                    "type": "string",
+                    "enum": ["annual", "quarter"],
+                    "description": "Estimates only; default 'quarter'.",
                 },
             },
-            "required": ["ticker"],
+            "required": ["ticker", "metrics"],
         },
         execute=_tool_get_metrics,
     ),
@@ -2017,13 +1982,12 @@ Time references — resolve relative phrases against today's date:
     AAPL late September
     MSFT late June
     ORCL late May
-- If unsure what the latest available FY is for a ticker, fetch get_metrics for the year that matches today's date AND the prior year — both succeeding tells you the latest available; the more-recent failing tells you to step back.
+- If unsure what the latest available FY is for a ticker, call get_metrics with period='FYNNNN' for both the year that matches today's date AND the prior year — both succeeding tells you the latest available; the more-recent failing tells you to step back.
 - For "last 3 years" with today = 2026: NVDA -> FY2024/FY2025/FY2026; AAPL -> FY2023/FY2024/FY2025 (FY2026 not yet reported until late October); a December filer -> FY2023/FY2024/FY2025.
 
 Tool-selection playbook:
-- Headline numbers (revenue, margins, FCF, ROIC for ONE company-period): get_metrics with fiscal_year (and optionally fiscal_quarter).
-- Multi-quarter trajectory of one company ('8-quarter trend', 'is margin accelerating?', 'capex cycle vs structural compression'): get_metrics with n_quarters=N (one call returns the series).
-- Multi-year of one company: call get_metrics once per year. For 5-year windows, fetch all 5.
+- Headline numbers / any registered metric (revenue, margins, FCF, ROIC, ROIIC, sbc_pct_revenue, P/E, etc.) for ONE ticker: get_metrics with metrics=[...] and period= 'FYNNNN' / 'YYYY-QN' / 'latest' / 'asof:YYYY-MM-DD'. Mix multiple metrics from the same vertical in one call. ROIIC at a specific quarter -> metrics=['roiic'], period='YYYY-QN'.
+- Multi-quarter / multi-year trajectory of one ticker ('8-quarter trend', 'last 5 years revenue', 'is margin accelerating?'): get_metrics with metrics=[...] and period='last_8q' or 'last_5y'. ONE call returns the windowed series.
 - Cross-company ranking by a financial metric ('highest/lowest revenue', 'top N by margin', 'rank by ROIC', 'fastest improving / declining X'): call screen_financials ONCE. Pass period='latest' / 'FY2024' / 'last_3y_avg' / 'last_12q'; agg='delta' or 'relative_change' (with a windowed period like 'last_12q') for fastest-improving / declining questions. Do NOT iterate get_metrics across tickers.
 - Cross-company ranking by a forward consensus estimate ('highest forward EPS growth', 'rank by next-quarter revenue', 'lowest forward EBITDA growth', 'fastest forward growers'): call screen_estimates ONCE. Pass metric=revenue_growth / eps_growth / ebitda_growth (or *_avg for raw level), period='forward_4q_avg' (default) / 'next' / 'next_fy', period_kind='quarter' or 'annual'. Do NOT iterate read_consensus across tickers — it cannot rank.
 - Cross-company valuation snapshot ('cheapest P/E', 'highest FCF yield', 'biggest market cap'): call screen_valuation ONCE. Pass period='latest' or 'asof:YYYY-MM-DD'. For "cheapest" multiples use sort='asc'.
