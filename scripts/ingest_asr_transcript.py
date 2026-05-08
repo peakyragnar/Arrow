@@ -52,6 +52,7 @@ def main() -> int:
     parser.add_argument("--call-date", required=True, help="YYYY-MM-DD")
     parser.add_argument("--q4-event-id", help="Q4 event_id for Playwright discovery")
     parser.add_argument("--audio-url", help="Manual paste fallback")
+    parser.add_argument("--youtube-id", help="YouTube video_id (for encrypted-HLS fallback)")
     parser.add_argument("--no-headless", action="store_true",
                         help="Run Playwright in headed mode (visible browser)")
     parser.add_argument("--keep-audio", action="store_true",
@@ -60,8 +61,8 @@ def main() -> int:
                         help="Override the Whisper initial-prompt (vocabulary hint)")
     args = parser.parse_args()
 
-    if not args.q4_event_id and not args.audio_url:
-        parser.error("Provide either --q4-event-id (auto) or --audio-url (manual)")
+    if not (args.q4_event_id or args.audio_url or args.youtube_id):
+        parser.error("Provide one of: --q4-event-id, --audio-url, --youtube-id")
 
     ticker = args.ticker.upper()
     fiscal_year, fiscal_quarter = args.fiscal
@@ -77,6 +78,7 @@ def main() -> int:
             call_date=call_date,
             q4_event_id=args.q4_event_id,
             audio_url=args.audio_url,
+            youtube_id=args.youtube_id,
             headless=not args.no_headless,
             keep_audio=args.keep_audio,
             initial_prompt=args.initial_prompt,

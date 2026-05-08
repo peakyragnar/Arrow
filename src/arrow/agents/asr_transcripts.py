@@ -35,7 +35,12 @@ import psycopg
 
 from arrow.ingest.audio.contracts import AudioFetch, AudioRef
 from arrow.ingest.audio.download import download_audio
+from arrow.ingest.audio.generic import accept_pasted_url as accept_generic_pasted_url
 from arrow.ingest.audio.q4inc import accept_pasted_url, discover_audio_url
+from arrow.ingest.audio.youtube import (
+    accept_video as accept_youtube_video,
+    download_youtube_audio,
+)
 from arrow.ingest.common.artifacts import write_artifact
 from arrow.ingest.common.runs import close_failed, close_succeeded, open_run
 from arrow.ingest.sec.qualitative import (
@@ -69,22 +74,39 @@ class ASRIngestResult:
 
 # ---- Audio acquisition --------------------------------------------------
 
-def acquire_q4_audio(
+def acquire_audio(
     *,
     ticker: str,
     fiscal_period_key: str,
     q4_event_id: str | None,
     pasted_url: str | None,
+    youtube_id: str | None,
     scratch_dir: Path,
     headless: bool = False,
 ) -> AudioFetch:
-    """Resolve audio URL (Playwright → manual paste fallback) and download."""
-    audio_ref: AudioRef | None = None
+    """Resolve audio source and download. Vendor-aware:
 
+    1. youtube_id → YouTube via yt-dlp (encrypted-HLS fallback)
+    2. q4_event_id → Q4 player via Playwright (auto-discover .mp4 URL)
+    3. pasted_url → operator-grabbed URL (Q4 strict, else generic)
+    """
+    if youtube_id:
+        audio_ref = accept_youtube_video(youtube_id)
+        dest = (scratch_dir / "audio" / "youtube" / ticker
+                / f"{fiscal_period_key.replace(' ', '-')}")
+        print(f"  [audio] downloading YouTube video {audio_ref.event_id} via yt-dlp...")
+        fetch = download_youtube_audio(audio_ref, dest_path=dest)
+        print(f"  [audio] {fetch.audio_size_bytes/1e6:.1f} MB, sha256={fetch.audio_hash_sha256[:16]}...")
+        return fetch
+
+    audio_ref: AudioRef | None = None
     if pasted_url:
-        # Operator-provided URL takes precedence; explicit input wins.
-        audio_ref = accept_pasted_url(pasted_url, expected_event_id=q4_event_id)
-        print(f"  [audio] using operator-pasted URL (event_id={audio_ref.event_id})")
+        try:
+            audio_ref = accept_pasted_url(pasted_url, expected_event_id=q4_event_id)
+            print(f"  [audio] using Q4-pasted URL (event_id={audio_ref.event_id})")
+        except ValueError:
+            audio_ref = accept_generic_pasted_url(pasted_url, vendor="manual")
+            print(f"  [audio] non-Q4 URL accepted as vendor=manual")
     elif q4_event_id:
         print(f"  [audio] discovering URL via Playwright (event_id={q4_event_id})...")
         audio_ref = discover_audio_url(q4_event_id, headless=headless)
@@ -95,13 +117,20 @@ def acquire_q4_audio(
             )
         print(f"  [audio] discovered {audio_ref.source_url}")
     else:
-        raise ValueError("Provide either --q4-event-id or --audio-url")
+        raise ValueError("Provide --q4-event-id, --audio-url, or --youtube-id")
 
-    dest = scratch_dir / "audio" / "q4inc" / ticker / f"{fiscal_period_key.replace(' ', '-')}.mp4"
+    url_lower = audio_ref.source_url.split("?", 1)[0].lower()
+    ext = "ts" if url_lower.endswith(".ts") else "mp4"
+    dest = (scratch_dir / "audio" / audio_ref.vendor / ticker
+            / f"{fiscal_period_key.replace(' ', '-')}.{ext}")
     print(f"  [audio] downloading to {dest}")
     fetch = download_audio(audio_ref, dest_path=dest)
     print(f"  [audio] {fetch.audio_size_bytes/1e6:.1f} MB, sha256={fetch.audio_hash_sha256[:16]}...")
     return fetch
+
+
+# Back-compat alias (callers used acquire_q4_audio in earlier commits)
+acquire_q4_audio = acquire_audio
 
 
 # ---- ASR ----------------------------------------------------------------
@@ -116,9 +145,14 @@ def run_whisper_local(
     """Invoke mlx_whisper as a subprocess; return (json_path, parsed_data)."""
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # mlx_whisper writes <basename>.json under --output-dir
+    # mlx_whisper ships a console-script in .venv/bin/, not a __main__ module
+    mlx_bin = Path(sys.executable).parent / "mlx_whisper"
+    if not mlx_bin.exists():
+        raise RuntimeError(
+            f"mlx_whisper binary not found at {mlx_bin} — pip install mlx-whisper"
+        )
     cmd = [
-        sys.executable, "-m", "mlx_whisper",
+        str(mlx_bin),
         str(audio_path),
         "--model", ASR_MODEL_VERSION,
         "--output-format", "json",
@@ -246,6 +280,60 @@ def fuse_whisper_diarize(whisper: dict, diar: dict) -> list[dict]:
 
 # ---- Speaker identification --------------------------------------------
 
+_HANDOFF_RE = re.compile(
+    r"\b(?:turn|hand|give|pass)\s+(?:it|the\s+call|things|the\s+conference|over)?"
+    r"\s*(?:over)?\s+to\s+([A-Z][a-zA-Z]+)",
+    re.IGNORECASE,
+)
+
+# IR introductions take many forms across issuers:
+#   AMD:  "Participants on today's conference call are Dr. Lisa Su, our
+#          Chair and CEO, and Jean Hu, Executive Vice President, CFO,
+#          and Treasurer."
+#   CRWV: "Joining the call today to discuss our results are Mike Intrator,
+#          CEO and Nitin Agrawal, CFO."
+# Strategy: locate the "CEO"/"CFO" title literal, then take the closest
+# preceding 1-3-token capitalized name (stripping a "Dr." prefix). The
+# bounded interstitial allows for "our Chair and", "Executive Vice
+# President,", etc. without bleeding into the previous person's name.
+
+_EXEC_NAME_TOKEN = r"(?:[A-Z][a-z]+)"
+_EXEC_NAME = rf"(?:Dr\.\s+)?({_EXEC_NAME_TOKEN}(?:\s+{_EXEC_NAME_TOKEN}){{1,3}})"
+_EXEC_INTERSTITIAL = r"(?:[a-zA-Z][\w,\s\-]{0,80}?)?"
+
+_CEO_PAT = re.compile(
+    rf"{_EXEC_NAME}\s*,\s*"                                         # name + comma
+    rf"(?:our\s+)?(?:Chair\s+(?:and|&)\s+)?(?:Co-?)?"                # optional qualifier
+    rf"(?:CEO|Chief\s+Executive\s+Officer)\b",
+    # Deliberately not IGNORECASE: in IGNORECASE mode [A-Z][a-z] also
+    # matches lowercase words, which makes the name capture run away.
+    # Whisper reliably emits "CEO"/"CFO" in caps.
+)
+_CFO_PAT = re.compile(
+    rf"{_EXEC_NAME}\s*,\s*"                                         # name + comma
+    rf"{_EXEC_INTERSTITIAL}\s*"                                     # title qualifiers
+    rf"(?:CFO|Chief\s+Financial\s+Officer)\b",
+)
+
+
+def _extract_exec_names(ir_text: str) -> dict[str, str]:
+    """Pull (CEO, name) and (CFO, name) out of IR's intro text.
+
+    CFO search starts after the CEO match end position, so the CFO regex
+    can't trample the CEO's name through a long interstitial.
+    """
+    out: dict[str, str] = {}
+    m_ceo = _CEO_PAT.search(ir_text)
+    cfo_start = 0
+    if m_ceo:
+        out["ceo"] = m_ceo.group(1).strip()
+        cfo_start = m_ceo.end()
+    m_cfo = _CFO_PAT.search(ir_text, cfo_start)
+    if m_cfo:
+        out["cfo"] = m_cfo.group(1).strip()
+    return out
+
+
 def identify_speakers(
     fused_segments: list[dict],
     *,
@@ -253,72 +341,92 @@ def identify_speakers(
     conn: psycopg.Connection,
     voiceprint_embeddings: dict[str, list[float]],
 ) -> dict[str, dict]:
-    """Auto-resolve speaker labels into named roles.
+    """Auto-resolve pyannote speaker labels into named roles.
 
-    Strategy:
-      1. The operator opens (segment 0) → SPEAKER_NN at start = Operator
-      2. The IR person introduces names + reads safe-harbor before saying
-         "now I'd like to turn the call over to Mike/insert-name" →
-         SPEAKER_NN immediately before that handoff = IR
-      3. The first speaker AFTER IR's handoff = CEO. Check by self-name
-         match if speaker says "thank you" + the name in the first ~30s.
-      4. The next exec introduced via "I'll turn it over to <Name>" =
-         that name's SPEAKER_NN.
-      5. Operator phrases "next question comes from <Name> from <Bank>"
-         introduce the next analyst's SPEAKER_NN.
-      6. For execs (CEO/CFO): voiceprint-match against any existing
-         speaker_voiceprints rows for this company. Override label with
-         the matched person if cosine ≥ 0.55.
+    State-machine traversal of the conversation:
+      1. First speaker = Operator
+      2. After operator's "now I will hand the conference over to..." → IR
+      3. After IR's handoff phrase ("hand/turn the call over to <Name>") → CEO
+      4. After CEO's handoff phrase ("now I'll turn it over to <Name>") → CFO
+      5. Operator's "next question comes from <Name>" → analyst label
+
+    Names are extracted from IR's intro text using regex on AMD-style
+    ("Participants on today's call are Dr. Lisa Su, CEO, and Jean Hu, CFO")
+    and CRWV-style ("Joining the call today are Mike Intrator, CEO and
+    Nitin Agrawal, CFO") patterns.
+
+    Voiceprint match (cosine vs. enrolled embeddings) overrides structural
+    if confidence ≥ 0.55.
 
     Returns {SPEAKER_NN: {role, name, source: 'structural'|'voiceprint'|'unknown'}}
     """
-    text_lower_by_seg = [(s, s["text"].lower()) for s in fused_segments]
     speaker_label_to_info: dict[str, dict] = {}
 
     # 1. Operator = first speaker
-    if fused_segments:
-        op = fused_segments[0]["speaker"]
-        speaker_label_to_info[op] = {"role": "operator", "name": "Operator", "source": "structural"}
+    if not fused_segments:
+        return speaker_label_to_info
+    op_label = fused_segments[0]["speaker"]
+    speaker_label_to_info[op_label] = {
+        "role": "operator", "name": "Operator", "source": "structural",
+    }
 
-    # 2 + 3. IR + CEO via the "turn the call over to" handoff
-    for i, (s, tl) in enumerate(text_lower_by_seg):
-        if "turn the call over to" in tl or "turn it over to" in tl:
-            ir_label = s["speaker"]
-            if speaker_label_to_info.get(ir_label, {}).get("role") not in ("ceo", "cfo"):
-                speaker_label_to_info.setdefault(
-                    ir_label, {"role": "ir", "name": "Investor Relations", "source": "structural"},
-                )
-            # Look for the next non-operator/non-IR speaker block
-            for j in range(i + 1, min(i + 30, len(fused_segments))):
-                next_label = fused_segments[j]["speaker"]
-                if next_label not in (ir_label, op):
-                    if next_label not in speaker_label_to_info:
-                        speaker_label_to_info[next_label] = {
-                            "role": "ceo", "name": "<unknown CEO>", "source": "structural",
-                        }
-                    break
-            break
+    # Build per-label first-block-of-text snapshots so we can detect the
+    # IR's intro by looking at each label's first long block.
+    text_by_label_in_order: list[tuple[str, str]] = []  # (label, full_text_until_speaker_change)
+    cur_label, cur_text = None, []
+    for s in fused_segments:
+        if s["speaker"] == cur_label:
+            cur_text.append(s["text"])
+        else:
+            if cur_label is not None:
+                text_by_label_in_order.append((cur_label, " ".join(cur_text)))
+            cur_label = s["speaker"]
+            cur_text = [s["text"]]
+    if cur_label is not None:
+        text_by_label_in_order.append((cur_label, " ".join(cur_text)))
 
-    # 4. CFO from "I'll turn it over to <First Name>" (case-insensitive,
-    #    look for the recipient label — the speaker who says "thanks <CEO_name>"
-    #    after this phrase)
-    for i, (s, tl) in enumerate(text_lower_by_seg):
-        if re.search(r"\bturn (it|the call|things) over to\b", tl):
-            for j in range(i + 1, min(i + 5, len(fused_segments))):
-                cand_label = fused_segments[j]["speaker"]
-                if cand_label not in speaker_label_to_info or \
-                   speaker_label_to_info[cand_label].get("role") in (None, "unknown"):
-                    cand_text = fused_segments[j]["text"].lower()
-                    if "thank" in cand_text or "good afternoon" in cand_text or "good morning" in cand_text:
-                        speaker_label_to_info[cand_label] = {
-                            "role": "cfo", "name": "<unknown CFO>", "source": "structural",
-                        }
-                        break
-            break
+    # 2-4. State machine: operator → IR → CEO → CFO
+    state = "after_operator"  # next non-operator label is IR
+    extracted_names: dict[str, str] = {}
+    for label, text in text_by_label_in_order:
+        if label == op_label:
+            continue
+        text_lower = text.lower()
+
+        if state == "after_operator":
+            # This label is IR. Try to extract CEO/CFO names from their text.
+            speaker_label_to_info.setdefault(label, {
+                "role": "ir", "name": "Investor Relations", "source": "structural",
+            })
+            extracted_names = _extract_exec_names(text)
+            # Move state if IR did a handoff
+            if _HANDOFF_RE.search(text_lower):
+                state = "after_ir"
+
+        elif state == "after_ir":
+            # First non-operator/non-IR after IR's handoff = CEO
+            ceo_name = extracted_names.get("ceo", "<unknown CEO>")
+            speaker_label_to_info.setdefault(label, {
+                "role": "ceo", "name": ceo_name, "source": "structural",
+            })
+            if _HANDOFF_RE.search(text_lower):
+                state = "after_ceo"
+
+        elif state == "after_ceo":
+            # CEO handed off → next non-operator/non-prior-label = CFO
+            already = speaker_label_to_info.get(label)
+            if already is None or already.get("role") in (None, "unknown"):
+                cfo_name = extracted_names.get("cfo", "<unknown CFO>")
+                speaker_label_to_info[label] = {
+                    "role": "cfo", "name": cfo_name, "source": "structural",
+                }
+            state = "in_qa"
+            # Any further text from this point is Q&A; analyst name pass below
+            break  # done with linear pass; remaining labels handled by Q&A pass
 
     # 5. Analysts from "next question comes from"
     analyst_intros: list[tuple[int, str]] = []  # (seg_idx, name)
-    for i, (s, tl) in enumerate(text_lower_by_seg):
+    for i, s in enumerate(fused_segments):
         m = re.search(
             r"(?:next|first) question comes from (?:the line of )?([A-Z][a-zA-Z]+ [A-Z][a-zA-Z]+(?:\s+(?:from|of)\s+[A-Z][\w\s&\.]+)?)",
             s["text"],
@@ -328,16 +436,22 @@ def identify_speakers(
     for intro_i, analyst_name in analyst_intros:
         for j in range(intro_i + 1, min(intro_i + 8, len(fused_segments))):
             cand_label = fused_segments[j]["speaker"]
-            if cand_label not in speaker_label_to_info:
+            existing = speaker_label_to_info.get(cand_label)
+            if existing is None:
                 speaker_label_to_info[cand_label] = {
                     "role": "analyst", "name": analyst_name, "source": "structural",
                 }
                 break
-            elif speaker_label_to_info[cand_label].get("role") == "analyst" and \
-                 speaker_label_to_info[cand_label].get("name", "").startswith("<"):
+            elif existing.get("role") == "analyst" and existing.get("name", "").startswith("<"):
                 speaker_label_to_info[cand_label] = {
                     "role": "analyst", "name": analyst_name, "source": "structural",
                 }
+                break
+            elif existing.get("role") in ("operator", "ir", "ceo", "cfo"):
+                # Skip — known exec/operator label, even if pyannote confused
+                # this with an analyst's brief turn.
+                continue
+            else:
                 break
 
     # 6. Voiceprint match for each speaker — overrides structural where confident
@@ -562,7 +676,7 @@ def persist_asr_transcript(
     }
     body_bytes = json.dumps(body_obj, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
-    source_document_id = f"asr:q4inc-edited-recording:{ticker}:FY{fiscal_year}-Q{fiscal_quarter}"
+    source_document_id = f"asr:{audio_fetch.audio_ref.vendor}:{ticker}:FY{fiscal_year}-Q{fiscal_quarter}"
 
     # 1. audio_artifacts row
     audio_hash_bytes = bytes.fromhex(audio_fetch.audio_hash_sha256)
@@ -829,6 +943,7 @@ def ingest_asr_transcript(
     call_date: date,
     q4_event_id: str | None = None,
     audio_url: str | None = None,
+    youtube_id: str | None = None,
     headless: bool = False,
     keep_audio: bool = False,
     initial_prompt: str | None = None,
@@ -867,9 +982,10 @@ def ingest_asr_transcript(
 
     try:
         # 1. Audio
-        audio_fetch = acquire_q4_audio(
+        audio_fetch = acquire_audio(
             ticker=ticker, fiscal_period_key=fiscal_period_key,
             q4_event_id=q4_event_id, pasted_url=audio_url,
+            youtube_id=youtube_id,
             scratch_dir=scratch, headless=headless,
         )
         audio_path_for_cleanup = audio_fetch.local_path

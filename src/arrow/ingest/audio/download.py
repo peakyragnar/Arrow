@@ -20,10 +20,20 @@ from .contracts import AudioFetch, AudioRef
 def _format_from_url(url: str) -> str:
     """Best-effort format inference from URL extension."""
     lower = url.split("?", 1)[0].lower()
-    for ext in ("mp4", "mp3", "m4a", "wav", "webm"):
+    for ext in ("mp4", "mp3", "m4a", "wav", "webm", "ts"):
         if lower.endswith("." + ext):
             return ext
     return "mp4"
+
+
+def _remux_ts_to_mp4(src: Path, dst: Path) -> None:
+    """ffmpeg -c copy MPEG-TS -> MP4 container. No re-encoding (instant)."""
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", str(src), "-c", "copy", str(dst)],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
 
 def _sha256_file(path: Path) -> str:
@@ -81,6 +91,19 @@ def download_audio(
     subprocess.run(cmd, check=True)
 
     fmt = _format_from_url(audio_ref.source_url)
+
+    # MPEG-TS isn't in the audio_artifacts.audio_format CHECK list (mp3/mp4/m4a/wav/webm).
+    # Remux to an MP4 container in place — no re-encoding, just a different
+    # container around the same audio bytes. Hash + size shift after remux,
+    # which is correct: the canonical artifact we keep on disk + reference
+    # by sha256 is the post-remux file.
+    if fmt == "ts":
+        mp4_path = dest_path.with_suffix(".mp4")
+        _remux_ts_to_mp4(dest_path, mp4_path)
+        dest_path.unlink()
+        dest_path = mp4_path
+        fmt = "mp4"
+
     return AudioFetch(
         audio_ref=audio_ref,
         local_path=dest_path,
