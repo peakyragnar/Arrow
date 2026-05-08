@@ -69,8 +69,16 @@ def ingest_transcripts(
     actor: str = "operator",
     limit_per_ticker: int | None = None,
     client: FMPClient | None = None,
+    allow_derived_anchor: bool = False,
 ) -> dict[str, Any]:
-    """Fetch and normalize FMP earnings-call transcripts for tickers."""
+    """Fetch and normalize FMP earnings-call transcripts for tickers.
+
+    ``allow_derived_anchor=True`` lets the ingest accept transcripts for
+    fiscal periods that have no matching ``financial_facts`` row, by
+    deriving period_end from the company's fiscal_year_end_md. Used by
+    the bulk-seed-transcripts path where we ingest transcripts wider than
+    the financial backfill window.
+    """
     normalized_tickers = [ticker.upper() for ticker in tickers]
     run_id = open_run(
         conn,
@@ -143,6 +151,7 @@ def ingest_transcripts(
                             company=company,
                             fetched=fetched,
                             ingest_run_id=run_id,
+                            allow_derived_anchor=allow_derived_anchor,
                         )
                     except MissingFiscalAnchor:
                         # FMP shipped a transcript for a period we don't have
@@ -240,12 +249,18 @@ def _normalize_one(
     company: CompanyRow,
     fetched: TranscriptFetch,
     ingest_run_id: int,
+    allow_derived_anchor: bool = False,
 ) -> NormalizeResult:
     transcript = fetched.transcript
     if transcript is None:
         raise ValueError("_normalize_one requires a non-empty transcript fetch")
 
-    period_end = _resolve_period_end(conn, company=company, transcript=transcript)
+    period_end = _resolve_period_end(
+        conn,
+        company=company,
+        transcript=transcript,
+        allow_derived_anchor=allow_derived_anchor,
+    )
     calendar = derive_calendar_period(period_end)
     fiscal_period_key = _fiscal_period_label(
         transcript.fiscal_year,
@@ -317,6 +332,7 @@ def _resolve_period_end(
     *,
     company: CompanyRow,
     transcript: Transcript,
+    allow_derived_anchor: bool = False,
 ):
     with conn.cursor() as cur:
         cur.execute(
@@ -336,17 +352,60 @@ def _resolve_period_end(
         rows = cur.fetchall()
 
     label = _fiscal_period_label(transcript.fiscal_year, transcript.fiscal_quarter)
-    if not rows:
-        raise MissingFiscalAnchor(
-            f"Run `uv run scripts/backfill_fmp.py {company.ticker}` before "
-            f"ingesting transcripts for {company.ticker} {label}."
+    if rows:
+        if len(rows) > 1:
+            raise AmbiguousFiscalAnchor(
+                f"{company.ticker} {label} has multiple current financial_facts "
+                f"period_end values: {[r[0].isoformat() for r in rows]}"
+            )
+        return rows[0][0]
+
+    if allow_derived_anchor and company.fiscal_year_end_md:
+        return _derive_period_end_from_fiscal_calendar(
+            transcript.fiscal_year,
+            transcript.fiscal_quarter,
+            company.fiscal_year_end_md,
         )
-    if len(rows) > 1:
-        raise AmbiguousFiscalAnchor(
-            f"{company.ticker} {label} has multiple current financial_facts "
-            f"period_end values: {[r[0].isoformat() for r in rows]}"
-        )
-    return rows[0][0]
+
+    raise MissingFiscalAnchor(
+        f"Run `uv run scripts/backfill_fmp.py {company.ticker}` before "
+        f"ingesting transcripts for {company.ticker} {label}."
+    )
+
+
+def _derive_period_end_from_fiscal_calendar(
+    fiscal_year: int, fiscal_quarter: int, fye_md: str
+):
+    """Approximate fiscal-quarter end given the company's FYE.
+
+    Used as a fallback when no `financial_facts` anchor exists (typical for
+    bulk transcript ingest where financials weren't backfilled). Result is
+    `fye - (4 - Qn) * 3 months`, day-of-month preserved (or month-end if the
+    target month doesn't have that day).
+
+    Approximate for 52/53-week filers (off by up to 6 days); exact for
+    standard calendar-aligned filers. Good enough as a transcript anchor —
+    period_end on transcripts is used for date-range queries, not exact joins.
+    """
+    from datetime import date as _date
+    import calendar as _cal
+
+    parts = fye_md.split("-")
+    if len(parts) != 2:
+        raise ValueError(f"unexpected fiscal_year_end_md: {fye_md!r}")
+    fye_month = int(parts[0])
+    fye_day = int(parts[1])
+
+    months_back = (4 - fiscal_quarter) * 3
+    target_month = fye_month - months_back
+    target_year = fiscal_year
+    while target_month <= 0:
+        target_month += 12
+        target_year -= 1
+
+    last_day = _cal.monthrange(target_year, target_month)[1]
+    day = min(fye_day, last_day)
+    return _date(target_year, target_month, day)
 
 
 def _fiscal_period_label(fiscal_year: int, fiscal_quarter: int) -> str:
