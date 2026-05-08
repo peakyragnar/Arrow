@@ -194,7 +194,7 @@
 </div>
 
 <h2>Per-table detail</h2>
-<nav class="toc"><a href='#tbl-analyst_estimates'>analyst_estimates</a> · <a href='#tbl-analyst_grades'>analyst_grades</a> · <a href='#tbl-analyst_price_targets'>analyst_price_targets</a> · <a href='#tbl-artifact_section_chunks'>artifact_section_chunks</a> · <a href='#tbl-artifact_sections'>artifact_sections</a> · <a href='#tbl-artifact_text_chunks'>artifact_text_chunks</a> · <a href='#tbl-artifact_text_units'>artifact_text_units</a> · <a href='#tbl-artifacts'>artifacts</a> · <a href='#tbl-companies'>companies</a> · <a href='#tbl-data_quality_findings'>data_quality_findings</a> · <a href='#tbl-data_quality_flags'>data_quality_flags</a> · <a href='#tbl-earnings_surprises'>earnings_surprises</a> · <a href='#tbl-financial_facts'>financial_facts</a> · <a href='#tbl-historical_market_cap'>historical_market_cap</a> · <a href='#tbl-ingest_runs'>ingest_runs</a> · <a href='#tbl-price_target_consensus'>price_target_consensus</a> · <a href='#tbl-prices_daily'>prices_daily</a> · <a href='#tbl-raw_responses'>raw_responses</a> · <a href='#tbl-securities'>securities</a> · <a href='#tbl-triage_session'>triage_session</a></nav>
+<nav class="toc"><a href='#tbl-analyst_estimates'>analyst_estimates</a> · <a href='#tbl-analyst_grades'>analyst_grades</a> · <a href='#tbl-analyst_price_targets'>analyst_price_targets</a> · <a href='#tbl-artifact_section_chunks'>artifact_section_chunks</a> · <a href='#tbl-artifact_sections'>artifact_sections</a> · <a href='#tbl-artifact_text_chunks'>artifact_text_chunks</a> · <a href='#tbl-artifact_text_units'>artifact_text_units</a> · <a href='#tbl-artifacts'>artifacts</a> · <a href='#tbl-asr_transcripts'>asr_transcripts</a> · <a href='#tbl-audio_artifacts'>audio_artifacts</a> · <a href='#tbl-companies'>companies</a> · <a href='#tbl-data_quality_findings'>data_quality_findings</a> · <a href='#tbl-data_quality_flags'>data_quality_flags</a> · <a href='#tbl-earnings_surprises'>earnings_surprises</a> · <a href='#tbl-financial_facts'>financial_facts</a> · <a href='#tbl-historical_market_cap'>historical_market_cap</a> · <a href='#tbl-ingest_runs'>ingest_runs</a> · <a href='#tbl-price_target_consensus'>price_target_consensus</a> · <a href='#tbl-prices_daily'>prices_daily</a> · <a href='#tbl-raw_responses'>raw_responses</a> · <a href='#tbl-securities'>securities</a> · <a href='#tbl-speaker_segments'>speaker_segments</a> · <a href='#tbl-speaker_voiceprints'>speaker_voiceprints</a> · <a href='#tbl-triage_session'>triage_session</a></nav>
 <div class="cards">
 
     <section class="table-card" id="tbl-analyst_estimates">
@@ -1441,7 +1441,241 @@
         <h4>Foreign keys</h4><ul><li><code>(amends_artifact_id)</code> → <code>artifacts(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(artifacts_amends_artifact_id_fkey)</span></li><li><code>(company_id)</code> → <code>companies(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(artifacts_company_id_fkey)</span></li><li><code>(ingest_run_id)</code> → <code>ingest_runs(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(artifacts_ingest_run_id_fkey)</span></li><li><code>(supersedes)</code> → <code>artifacts(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(artifacts_supersedes_fkey)</span></li></ul>
 
         <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK (((amends_artifact_id IS NULL) OR (amends_artifact_id &lt;&gt; id)))</code> <span class='cname'>(artifacts_amends_not_self)</span></li><li><code class='check-def'>CHECK (((calendar_period_label IS NULL) OR (calendar_period_label ~ &#x27;^CY[0-9]{4} Q[1-4]$&#x27;::text)))</code> <span class='cname'>(artifacts_calendar_period_label_format)</span></li><li><code class='check-def'>CHECK (((calendar_quarter IS NULL) OR ((calendar_quarter &gt;= 1) AND (calendar_quarter &lt;= 4))))</code> <span class='cname'>(artifacts_calendar_quarter_range)</span></li><li><code class='check-def'>CHECK ((octet_length(canonical_hash) = 32))</code> <span class='cname'>(artifacts_canonical_hash_len)</span></li><li><code class='check-def'>CHECK (((fiscal_period_label IS NULL) OR (fiscal_period_label ~ &#x27;^FY[0-9]{4}( Q[1-4])?$&#x27;::text)))</code> <span class='cname'>(artifacts_fiscal_period_label_format)</span></li><li><code class='check-def'>CHECK (((fiscal_quarter IS NULL) OR ((fiscal_quarter &gt;= 1) AND (fiscal_quarter &lt;= 4))))</code> <span class='cname'>(artifacts_fiscal_quarter_range)</span></li><li><code class='check-def'>CHECK (((form_family IS NULL) OR (form_family = ANY (ARRAY[&#x27;10-K&#x27;::text, &#x27;10-Q&#x27;::text]))))</code> <span class='cname'>(artifacts_form_family_check)</span></li><li><code class='check-def'>CHECK ((((artifact_type = &#x27;10k&#x27;::text) AND (form_family = &#x27;10-K&#x27;::text)) OR ((artifact_type = &#x27;10q&#x27;::text) AND (form_family = &#x27;10-Q&#x27;::text)) OR ((artifact_type &lt;&gt; ALL (ARRAY[&#x27;10k&#x27;::text, &#x27;10q&#x27;::text])) AND (form_family IS NULL))))</code> <span class='cname'>(artifacts_form_family_matches_type)</span></li><li><code class='check-def'>CHECK (((period_type IS NULL) OR (period_type = ANY (ARRAY[&#x27;quarter&#x27;::text, &#x27;annual&#x27;::text, &#x27;stub&#x27;::text]))))</code> <span class='cname'>(artifacts_period_type_check)</span></li><li><code class='check-def'>CHECK (((period_type IS NULL) OR ((period_type = ANY (ARRAY[&#x27;annual&#x27;::text, &#x27;stub&#x27;::text])) AND (fiscal_quarter IS NULL)) OR ((period_type = &#x27;quarter&#x27;::text) AND (fiscal_quarter IS NOT NULL))))</code> <span class='cname'>(artifacts_period_type_quarter_iff)</span></li><li><code class='check-def'>CHECK ((octet_length(raw_hash) = 32))</code> <span class='cname'>(artifacts_raw_hash_len)</span></li><li><code class='check-def'>CHECK (((supersedes IS NULL) OR (supersedes &lt;&gt; id)))</code> <span class='cname'>(artifacts_supersedes_not_self)</span></li><li><code class='check-def'>CHECK ((artifact_type = ANY (ARRAY[&#x27;10k&#x27;::text, &#x27;10q&#x27;::text, &#x27;8k&#x27;::text, &#x27;transcript&#x27;::text, &#x27;press_release&#x27;::text, &#x27;news_article&#x27;::text, &#x27;presentation&#x27;::text, &#x27;video_transcript&#x27;::text, &#x27;research_note&#x27;::text, &#x27;industry_primer&#x27;::text, &#x27;product_primer&#x27;::text, &#x27;macro_primer&#x27;::text, &#x27;macro_release&#x27;::text])))</code> <span class='cname'>(artifacts_type_check)</span></li></ul>
-        <h4>Indexes</h4><ul><li><b>artifacts_amends_artifact_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_amends_artifact_idx ON public.artifacts USING btree (amends_artifact_id) WHERE (amends_artifact_id IS NOT NULL)</code></li><li><b>artifacts_calendar_period_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_calendar_period_idx ON public.artifacts USING btree (calendar_year, calendar_quarter, artifact_type) WHERE (calendar_year IS NOT NULL)</code></li><li><b>artifacts_canonical_hash_idx</b> <br><code class='index-def'>CREATE INDEX artifacts_canonical_hash_idx ON public.artifacts USING btree (canonical_hash)</code></li><li><b>artifacts_company_period_family_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_company_period_family_idx ON public.artifacts USING btree (company_id, fiscal_period_key, form_family, published_at DESC) WHERE ((company_id IS NOT NULL) AND (fiscal_period_key IS NOT NULL) AND (form_family IS NOT NULL))</code></li><li><b>artifacts_company_type_published_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_company_type_published_idx ON public.artifacts USING btree (company_id, artifact_type, published_at DESC) WHERE (company_id IS NOT NULL)</code></li><li><b>artifacts_current_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_current_idx ON public.artifacts USING btree (ticker, artifact_type, published_at DESC) WHERE ((superseded_at IS NULL) AND (ticker IS NOT NULL))</code></li><li><b>artifacts_fiscal_period_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_fiscal_period_idx ON public.artifacts USING btree (ticker, fiscal_year, fiscal_quarter) WHERE ((ticker IS NOT NULL) AND (fiscal_year IS NOT NULL))</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_raw_hash_idx</b> <br><code class='index-def'>CREATE INDEX artifacts_raw_hash_idx ON public.artifacts USING btree (raw_hash)</code></li><li><b>artifacts_research_freshness_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_research_freshness_idx ON public.artifacts USING btree (artifact_type, last_reviewed_at DESC) WHERE (artifact_type = ANY (ARRAY[&#x27;research_note&#x27;::text, &#x27;industry_primer&#x27;::text, &#x27;product_primer&#x27;::text, &#x27;macro_primer&#x27;::text]))</code></li><li><b>artifacts_sec_accession_uniq</b> <span class="badge uk">UNIQUE</span> <span class="badge partial">partial</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_sec_accession_uniq ON public.artifacts USING btree (cik, accession_number) WHERE ((cik IS NOT NULL) AND (accession_number IS NOT NULL) AND (artifact_type = ANY (ARRAY[&#x27;10k&#x27;::text, &#x27;10q&#x27;::text, &#x27;8k&#x27;::text])))</code></li><li><b>artifacts_source_doc_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_source_doc_idx ON public.artifacts USING btree (source, source_document_id) WHERE (source_document_id IS NOT NULL)</code></li><li><b>artifacts_supersedes_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_supersedes_idx ON public.artifacts USING btree (supersedes) WHERE (supersedes IS NOT NULL)</code></li><li><b>artifacts_ticker_type_published_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_ticker_type_published_idx ON public.artifacts USING btree (ticker, artifact_type, published_at DESC) WHERE (ticker IS NOT NULL)</code></li></ul>
+        <h4>Indexes</h4><ul><li><b>artifacts_amends_artifact_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_amends_artifact_idx ON public.artifacts USING btree (amends_artifact_id) WHERE (amends_artifact_id IS NOT NULL)</code></li><li><b>artifacts_calendar_period_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_calendar_period_idx ON public.artifacts USING btree (calendar_year, calendar_quarter, artifact_type) WHERE (calendar_year IS NOT NULL)</code></li><li><b>artifacts_canonical_hash_idx</b> <br><code class='index-def'>CREATE INDEX artifacts_canonical_hash_idx ON public.artifacts USING btree (canonical_hash)</code></li><li><b>artifacts_company_period_family_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_company_period_family_idx ON public.artifacts USING btree (company_id, fiscal_period_key, form_family, published_at DESC) WHERE ((company_id IS NOT NULL) AND (fiscal_period_key IS NOT NULL) AND (form_family IS NOT NULL))</code></li><li><b>artifacts_company_type_published_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_company_type_published_idx ON public.artifacts USING btree (company_id, artifact_type, published_at DESC) WHERE (company_id IS NOT NULL)</code></li><li><b>artifacts_current_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_current_idx ON public.artifacts USING btree (ticker, artifact_type, published_at DESC) WHERE ((superseded_at IS NULL) AND (ticker IS NOT NULL))</code></li><li><b>artifacts_fiscal_period_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_fiscal_period_idx ON public.artifacts USING btree (ticker, fiscal_year, fiscal_quarter) WHERE ((ticker IS NOT NULL) AND (fiscal_year IS NOT NULL))</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_pkey ON public.artifacts USING btree (id)</code></li><li><b>artifacts_raw_hash_idx</b> <br><code class='index-def'>CREATE INDEX artifacts_raw_hash_idx ON public.artifacts USING btree (raw_hash)</code></li><li><b>artifacts_research_freshness_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_research_freshness_idx ON public.artifacts USING btree (artifact_type, last_reviewed_at DESC) WHERE (artifact_type = ANY (ARRAY[&#x27;research_note&#x27;::text, &#x27;industry_primer&#x27;::text, &#x27;product_primer&#x27;::text, &#x27;macro_primer&#x27;::text]))</code></li><li><b>artifacts_sec_accession_uniq</b> <span class="badge uk">UNIQUE</span> <span class="badge partial">partial</span><br><code class='index-def'>CREATE UNIQUE INDEX artifacts_sec_accession_uniq ON public.artifacts USING btree (cik, accession_number) WHERE ((cik IS NOT NULL) AND (accession_number IS NOT NULL) AND (artifact_type = ANY (ARRAY[&#x27;10k&#x27;::text, &#x27;10q&#x27;::text, &#x27;8k&#x27;::text])))</code></li><li><b>artifacts_source_doc_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_source_doc_idx ON public.artifacts USING btree (source, source_document_id) WHERE (source_document_id IS NOT NULL)</code></li><li><b>artifacts_supersedes_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_supersedes_idx ON public.artifacts USING btree (supersedes) WHERE (supersedes IS NOT NULL)</code></li><li><b>artifacts_ticker_type_published_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX artifacts_ticker_type_published_idx ON public.artifacts USING btree (ticker, artifact_type, published_at DESC) WHERE (ticker IS NOT NULL)</code></li></ul>
+    </section>
+
+
+    <section class="table-card" id="tbl-asr_transcripts">
+        <h3>asr_transcripts</h3>
+        <table class="cols">
+            <thead>
+                <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
+            </thead>
+            <tbody>
+
+            <tr>
+                <td class="col-name">id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>nextval(&#x27;asr_transcripts_id_seq&#x27;::regclass)</code></td>
+                <td class="col-keys"><span class="badge pk">PK</span></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">audio_artifact_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→audio_artifacts.id</span></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">artifact_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→artifacts.id</span></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">backend</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">model</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">model_version</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">language</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>&#x27;en&#x27;::text</code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">word_timestamps</td>
+                <td class="col-type"><code>boolean</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>false</code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">raw_payload_hash</td>
+                <td class="col-type"><code>bytea</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">transcribed_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>now()</code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            </tbody>
+        </table>
+        <h4>Foreign keys</h4><ul><li><code>(artifact_id)</code> → <code>artifacts(id)</code> <span class='badge on-delete'>ON DELETE SET NULL</span> <span class='cname'>(asr_transcripts_artifact_id_fkey)</span></li><li><code>(audio_artifact_id)</code> → <code>audio_artifacts(id)</code> <span class='badge on-delete'>ON DELETE CASCADE</span> <span class='cname'>(asr_transcripts_audio_artifact_id_fkey)</span></li></ul>
+        <h4>Unique constraints</h4><ul><li><code>UNIQUE (audio_artifact_id, model, model_version)</code> <span class='cname'>(asr_transcripts_unique_per_model)</span></li></ul>
+        <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK ((backend = ANY (ARRAY[&#x27;whisper_local&#x27;::text, &#x27;whisper_hosted&#x27;::text, &#x27;deepgram_hosted&#x27;::text, &#x27;gpt_4o_transcribe&#x27;::text, &#x27;other&#x27;::text])))</code> <span class='cname'>(asr_transcripts_backend_check)</span></li><li><code class='check-def'>CHECK ((octet_length(raw_payload_hash) = 32))</code> <span class='cname'>(asr_transcripts_payload_hash_len)</span></li></ul>
+        <h4>Indexes</h4><ul><li><b>asr_transcripts_artifact_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX asr_transcripts_artifact_idx ON public.asr_transcripts USING btree (artifact_id) WHERE (artifact_id IS NOT NULL)</code></li><li><b>asr_transcripts_audio_idx</b> <br><code class='index-def'>CREATE INDEX asr_transcripts_audio_idx ON public.asr_transcripts USING btree (audio_artifact_id)</code></li><li><b>asr_transcripts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX asr_transcripts_pkey ON public.asr_transcripts USING btree (id)</code></li><li><b>asr_transcripts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX asr_transcripts_pkey ON public.asr_transcripts USING btree (id)</code></li><li><b>asr_transcripts_unique_per_model</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX asr_transcripts_unique_per_model ON public.asr_transcripts USING btree (audio_artifact_id, model, model_version)</code></li></ul>
+    </section>
+
+
+    <section class="table-card" id="tbl-audio_artifacts">
+        <h3>audio_artifacts</h3>
+        <table class="cols">
+            <thead>
+                <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
+            </thead>
+            <tbody>
+
+            <tr>
+                <td class="col-name">id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>nextval(&#x27;audio_artifacts_id_seq&#x27;::regclass)</code></td>
+                <td class="col-keys"><span class="badge pk">PK</span></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">company_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→companies.id</span></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">fiscal_year</td>
+                <td class="col-type"><code>smallint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">fiscal_quarter</td>
+                <td class="col-type"><code>smallint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">fiscal_period_key</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">source_vendor</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">source_url</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">source_event_id</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">source_uuid</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">audio_hash</td>
+                <td class="col-type"><code>bytea</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">audio_format</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">audio_size_bytes</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">duration_sec</td>
+                <td class="col-type"><code>integer</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">captured_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>now()</code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">deleted_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            </tbody>
+        </table>
+        <h4>Foreign keys</h4><ul><li><code>(company_id)</code> → <code>companies(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(audio_artifacts_company_id_fkey)</span></li></ul>
+        <h4>Unique constraints</h4><ul><li><code>UNIQUE (company_id, fiscal_period_key, source_url)</code> <span class='cname'>(audio_artifacts_unique_per_period)</span></li></ul>
+        <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK ((audio_format = ANY (ARRAY[&#x27;mp3&#x27;::text, &#x27;mp4&#x27;::text, &#x27;m4a&#x27;::text, &#x27;wav&#x27;::text, &#x27;webm&#x27;::text])))</code> <span class='cname'>(audio_artifacts_format_check)</span></li><li><code class='check-def'>CHECK ((octet_length(audio_hash) = 32))</code> <span class='cname'>(audio_artifacts_hash_len)</span></li><li><code class='check-def'>CHECK (((fiscal_quarter &gt;= 1) AND (fiscal_quarter &lt;= 4)))</code> <span class='cname'>(audio_artifacts_quarter_range)</span></li><li><code class='check-def'>CHECK ((source_vendor = ANY (ARRAY[&#x27;q4inc&#x27;::text, &#x27;youtube&#x27;::text, &#x27;manual&#x27;::text, &#x27;other&#x27;::text])))</code> <span class='cname'>(audio_artifacts_vendor_check)</span></li></ul>
+        <h4>Indexes</h4><ul><li><b>audio_artifacts_company_period_idx</b> <br><code class='index-def'>CREATE INDEX audio_artifacts_company_period_idx ON public.audio_artifacts USING btree (company_id, fiscal_year, fiscal_quarter)</code></li><li><b>audio_artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX audio_artifacts_pkey ON public.audio_artifacts USING btree (id)</code></li><li><b>audio_artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX audio_artifacts_pkey ON public.audio_artifacts USING btree (id)</code></li><li><b>audio_artifacts_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX audio_artifacts_pkey ON public.audio_artifacts USING btree (id)</code></li><li><b>audio_artifacts_undeleted_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX audio_artifacts_undeleted_idx ON public.audio_artifacts USING btree (captured_at DESC) WHERE (deleted_at IS NULL)</code></li><li><b>audio_artifacts_unique_per_period</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX audio_artifacts_unique_per_period ON public.audio_artifacts USING btree (company_id, fiscal_period_key, source_url)</code></li></ul>
     </section>
 
 
@@ -1530,7 +1764,7 @@
         <h4>Foreign keys</h4><ul><li><code>(primary_security_id)</code> → <code>securities(id)</code> <span class='badge on-delete'>ON DELETE SET NULL</span> <span class='cname'>(companies_primary_security_id_fkey)</span></li></ul>
         <h4>Unique constraints</h4><ul><li><code>UNIQUE (cik)</code> <span class='cname'>(companies_cik_key)</span></li></ul>
         <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK ((cik &gt; 0))</code> <span class='cname'>(companies_cik_positive)</span></li><li><code class='check-def'>CHECK ((fiscal_year_end_md ~ &#x27;^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$&#x27;::text))</code> <span class='cname'>(companies_fiscal_year_end_md_format)</span></li><li><code class='check-def'>CHECK ((status = ANY (ARRAY[&#x27;active&#x27;::text, &#x27;delisted&#x27;::text, &#x27;merged&#x27;::text, &#x27;acquired&#x27;::text, &#x27;private&#x27;::text])))</code> <span class='cname'>(companies_status_check)</span></li></ul>
-        <h4>Indexes</h4><ul><li><b>companies_active_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX companies_active_idx ON public.companies USING btree (ticker) WHERE (status = &#x27;active&#x27;::text)</code></li><li><b>companies_cik_key</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_cik_key ON public.companies USING btree (cik)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_ticker_idx</b> <br><code class='index-def'>CREATE INDEX companies_ticker_idx ON public.companies USING btree (ticker)</code></li></ul>
+        <h4>Indexes</h4><ul><li><b>companies_active_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX companies_active_idx ON public.companies USING btree (ticker) WHERE (status = &#x27;active&#x27;::text)</code></li><li><b>companies_cik_key</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_cik_key ON public.companies USING btree (cik)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX companies_pkey ON public.companies USING btree (id)</code></li><li><b>companies_ticker_idx</b> <br><code class='index-def'>CREATE INDEX companies_ticker_idx ON public.companies USING btree (ticker)</code></li></ul>
     </section>
 
 
@@ -2808,6 +3042,216 @@
     </section>
 
 
+    <section class="table-card" id="tbl-speaker_segments">
+        <h3>speaker_segments</h3>
+        <table class="cols">
+            <thead>
+                <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
+            </thead>
+            <tbody>
+
+            <tr>
+                <td class="col-name">id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>nextval(&#x27;speaker_segments_id_seq&#x27;::regclass)</code></td>
+                <td class="col-keys"><span class="badge pk">PK</span></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">asr_transcript_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→asr_transcripts.id</span></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">ordinal</td>
+                <td class="col-type"><code>integer</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">start_ms</td>
+                <td class="col-type"><code>integer</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">end_ms</td>
+                <td class="col-type"><code>integer</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">raw_speaker_label</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">voiceprint_match_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→speaker_voiceprints.id</span></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">voiceprint_confidence</td>
+                <td class="col-type"><code>numeric(5,4)</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">text_offset_start</td>
+                <td class="col-type"><code>integer</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">text_offset_end</td>
+                <td class="col-type"><code>integer</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            </tbody>
+        </table>
+        <h4>Foreign keys</h4><ul><li><code>(asr_transcript_id)</code> → <code>asr_transcripts(id)</code> <span class='badge on-delete'>ON DELETE CASCADE</span> <span class='cname'>(speaker_segments_asr_transcript_id_fkey)</span></li><li><code>(voiceprint_match_id)</code> → <code>speaker_voiceprints(id)</code> <span class='badge on-delete'>ON DELETE SET NULL</span> <span class='cname'>(speaker_segments_voiceprint_match_id_fkey)</span></li></ul>
+        <h4>Unique constraints</h4><ul><li><code>UNIQUE (asr_transcript_id, ordinal)</code> <span class='cname'>(speaker_segments_unique_ordinal)</span></li></ul>
+        <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK (((voiceprint_confidence IS NULL) OR ((voiceprint_confidence &gt;= (0)::numeric) AND (voiceprint_confidence &lt;= (1)::numeric))))</code> <span class='cname'>(speaker_segments_confidence_range)</span></li><li><code class='check-def'>CHECK (((text_offset_start &gt;= 0) AND (text_offset_end &gt;= 0)))</code> <span class='cname'>(speaker_segments_offsets_nonneg)</span></li><li><code class='check-def'>CHECK ((text_offset_end &gt;= text_offset_start))</code> <span class='cname'>(speaker_segments_offsets_ordered)</span></li><li><code class='check-def'>CHECK (((start_ms &gt;= 0) AND (end_ms &gt;= 0)))</code> <span class='cname'>(speaker_segments_time_nonneg)</span></li><li><code class='check-def'>CHECK ((end_ms &gt;= start_ms))</code> <span class='cname'>(speaker_segments_time_ordered)</span></li></ul>
+        <h4>Indexes</h4><ul><li><b>speaker_segments_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX speaker_segments_pkey ON public.speaker_segments USING btree (id)</code></li><li><b>speaker_segments_transcript_idx</b> <br><code class='index-def'>CREATE INDEX speaker_segments_transcript_idx ON public.speaker_segments USING btree (asr_transcript_id)</code></li><li><b>speaker_segments_unique_ordinal</b> <span class="badge uk">UNIQUE</span> <span class="badge cons">from constraint</span><br><code class='index-def'>CREATE UNIQUE INDEX speaker_segments_unique_ordinal ON public.speaker_segments USING btree (asr_transcript_id, ordinal)</code></li><li><b>speaker_segments_voiceprint_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX speaker_segments_voiceprint_idx ON public.speaker_segments USING btree (voiceprint_match_id) WHERE (voiceprint_match_id IS NOT NULL)</code></li></ul>
+    </section>
+
+
+    <section class="table-card" id="tbl-speaker_voiceprints">
+        <h3>speaker_voiceprints</h3>
+        <table class="cols">
+            <thead>
+                <tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Keys</th></tr>
+            </thead>
+            <tbody>
+
+            <tr>
+                <td class="col-name">id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>nextval(&#x27;speaker_voiceprints_id_seq&#x27;::regclass)</code></td>
+                <td class="col-keys"><span class="badge pk">PK</span></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">company_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→companies.id</span></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">person_name</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">role</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">embedding</td>
+                <td class="col-type"><code>double precision[]</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">embedding_dim</td>
+                <td class="col-type"><code>smallint</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">embedding_model</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">source_audio_artifact_id</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→audio_artifacts.id</span></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">source_clip_path</td>
+                <td class="col-type"><code>text</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">enrolled_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null notnull">NOT NULL</span></td>
+                <td class="col-default"><code>now()</code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">superseded_at</td>
+                <td class="col-type"><code>timestamp with time zone</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"></td>
+            </tr>
+
+            <tr>
+                <td class="col-name">superseded_by</td>
+                <td class="col-type"><code>bigint</code></td>
+                <td class="col-null"><span class="null nullable">nullable</span></td>
+                <td class="col-default"><code></code></td>
+                <td class="col-keys"><span class="badge fk">FK→speaker_voiceprints.id</span></td>
+            </tr>
+
+            </tbody>
+        </table>
+        <h4>Foreign keys</h4><ul><li><code>(company_id)</code> → <code>companies(id)</code> <span class='badge on-delete'>ON DELETE RESTRICT</span> <span class='cname'>(speaker_voiceprints_company_id_fkey)</span></li><li><code>(source_audio_artifact_id)</code> → <code>audio_artifacts(id)</code> <span class='badge on-delete'>ON DELETE SET NULL</span> <span class='cname'>(speaker_voiceprints_source_audio_artifact_id_fkey)</span></li><li><code>(superseded_by)</code> → <code>speaker_voiceprints(id)</code> <span class='badge on-delete'>ON DELETE NO ACTION</span> <span class='cname'>(speaker_voiceprints_superseded_by_fkey)</span></li></ul>
+
+        <h4>Check constraints</h4><ul><li><code class='check-def'>CHECK (((embedding_dim &gt;= 64) AND (embedding_dim &lt;= 1024)))</code> <span class='cname'>(speaker_voiceprints_dim_range)</span></li><li><code class='check-def'>CHECK ((array_length(embedding, 1) = embedding_dim))</code> <span class='cname'>(speaker_voiceprints_embedding_dim_match)</span></li><li><code class='check-def'>CHECK ((array_length(embedding, 1) IS NOT NULL))</code> <span class='cname'>(speaker_voiceprints_embedding_nonempty)</span></li><li><code class='check-def'>CHECK ((role = ANY (ARRAY[&#x27;ceo&#x27;::text, &#x27;cfo&#x27;::text, &#x27;coo&#x27;::text, &#x27;president&#x27;::text, &#x27;ir&#x27;::text, &#x27;operator&#x27;::text, &#x27;analyst&#x27;::text, &#x27;other&#x27;::text])))</code> <span class='cname'>(speaker_voiceprints_role_check)</span></li></ul>
+        <h4>Indexes</h4><ul><li><b>speaker_voiceprints_company_role_idx</b> <span class="badge partial">partial</span><br><code class='index-def'>CREATE INDEX speaker_voiceprints_company_role_idx ON public.speaker_voiceprints USING btree (company_id, role) WHERE (superseded_at IS NULL)</code></li><li><b>speaker_voiceprints_one_active_per_person</b> <span class="badge uk">UNIQUE</span> <span class="badge partial">partial</span><br><code class='index-def'>CREATE UNIQUE INDEX speaker_voiceprints_one_active_per_person ON public.speaker_voiceprints USING btree (company_id, person_name) WHERE (superseded_at IS NULL)</code></li><li><b>speaker_voiceprints_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX speaker_voiceprints_pkey ON public.speaker_voiceprints USING btree (id)</code></li><li><b>speaker_voiceprints_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX speaker_voiceprints_pkey ON public.speaker_voiceprints USING btree (id)</code></li><li><b>speaker_voiceprints_pkey</b> <span class="badge pk">PK</span><br><code class='index-def'>CREATE UNIQUE INDEX speaker_voiceprints_pkey ON public.speaker_voiceprints USING btree (id)</code></li></ul>
+    </section>
+
+
     <section class="table-card" id="tbl-triage_session">
         <h3>triage_session</h3>
         <table class="cols">
@@ -2952,10 +3396,10 @@ mermaid.initialize({
     },
 });
 
-const src = "erDiagram\n  SECURITIES ||--o{ ANALYST_ESTIMATES : \"analyst_estimates_security_id_fkey\"\n  RAW_RESPONSES ||--o{ ANALYST_ESTIMATES : \"analyst_estimates_source_raw_response_id_fkey\"\n  SECURITIES ||--o{ ANALYST_GRADES : \"analyst_grades_security_id_fkey\"\n  RAW_RESPONSES ||--o{ ANALYST_GRADES : \"analyst_grades_source_raw_response_id_fkey\"\n  SECURITIES ||--o{ ANALYST_PRICE_TARGETS : \"analyst_price_targets_security_id_fkey\"\n  RAW_RESPONSES ||--o{ ANALYST_PRICE_TARGETS : \"analyst_price_targets_source_raw_response_id_fkey\"\n  ARTIFACT_SECTIONS ||--o{ ARTIFACT_SECTION_CHUNKS : \"artifact_section_chunks_section_id_fkey\"\n  ARTIFACTS ||--o{ ARTIFACT_SECTIONS : \"artifact_sections_artifact_id_fkey\"\n  COMPANIES ||--o{ ARTIFACT_SECTIONS : \"artifact_sections_company_id_fkey\"\n  ARTIFACT_TEXT_UNITS ||--o{ ARTIFACT_TEXT_CHUNKS : \"artifact_text_chunks_text_unit_id_fkey\"\n  ARTIFACTS ||--o{ ARTIFACT_TEXT_UNITS : \"artifact_text_units_artifact_id_fkey\"\n  COMPANIES ||--o{ ARTIFACT_TEXT_UNITS : \"artifact_text_units_company_id_fkey\"\n  ARTIFACTS |o--o{ ARTIFACTS : \"artifacts_amends_artifact_id_fkey\"\n  COMPANIES |o--o{ ARTIFACTS : \"artifacts_company_id_fkey\"\n  INGEST_RUNS |o--o{ ARTIFACTS : \"artifacts_ingest_run_id_fkey\"\n  ARTIFACTS |o--o{ ARTIFACTS : \"artifacts_supersedes_fkey\"\n  SECURITIES |o--o{ COMPANIES : \"companies_primary_security_id_fkey\"\n  COMPANIES |o--o{ DATA_QUALITY_FINDINGS : \"data_quality_findings_company_id_fkey\"\n  COMPANIES ||--o{ DATA_QUALITY_FLAGS : \"data_quality_flags_company_id_fkey\"\n  INGEST_RUNS |o--o{ DATA_QUALITY_FLAGS : \"data_quality_flags_source_run_id_fkey\"\n  SECURITIES ||--o{ EARNINGS_SURPRISES : \"earnings_surprises_security_id_fkey\"\n  RAW_RESPONSES ||--o{ EARNINGS_SURPRISES : \"earnings_surprises_source_raw_response_id_fkey\"\n  COMPANIES ||--o{ FINANCIAL_FACTS : \"financial_facts_company_id_fkey\"\n  INGEST_RUNS |o--o{ FINANCIAL_FACTS : \"financial_facts_ingest_run_id_fkey\"\n  ARTIFACTS |o--o{ FINANCIAL_FACTS : \"financial_facts_source_artifact_id_fkey\"\n  RAW_RESPONSES ||--o{ FINANCIAL_FACTS : \"financial_facts_source_raw_response_id_fkey\"\n  FINANCIAL_FACTS |o--o{ FINANCIAL_FACTS : \"financial_facts_supersedes_fact_id_fkey\"\n  SECURITIES ||--o{ HISTORICAL_MARKET_CAP : \"historical_market_cap_security_id_fkey\"\n  RAW_RESPONSES ||--o{ HISTORICAL_MARKET_CAP : \"historical_market_cap_source_raw_response_id_fkey\"\n  SECURITIES ||--o{ PRICE_TARGET_CONSENSUS : \"price_target_consensus_security_id_fkey\"\n  RAW_RESPONSES ||--o{ PRICE_TARGET_CONSENSUS : \"price_target_consensus_source_raw_response_id_fkey\"\n  SECURITIES ||--o{ PRICES_DAILY : \"prices_daily_security_id_fkey\"\n  RAW_RESPONSES ||--o{ PRICES_DAILY : \"prices_daily_source_raw_response_id_fkey\"\n  INGEST_RUNS ||--o{ RAW_RESPONSES : \"raw_responses_ingest_run_id_fkey\"\n  COMPANIES |o--o{ SECURITIES : \"securities_company_id_fkey\"\n  ANALYST_ESTIMATES {\n    bigint security_id PK FK \"NOT NULL\"\n    text period_kind PK \"NOT NULL\"\n    date period_end PK \"NOT NULL\"\n    numeric_28_2 revenue_low \"nullable\"\n    numeric_28_2 revenue_avg \"nullable\"\n    numeric_28_2 revenue_high \"nullable\"\n    numeric_28_2 ebitda_low \"nullable\"\n    numeric_28_2 ebitda_avg \"nullable\"\n    numeric_28_2 ebitda_high \"nullable\"\n    numeric_28_2 ebit_low \"nullable\"\n    numeric_28_2 ebit_avg \"nullable\"\n    numeric_28_2 ebit_high \"nullable\"\n    numeric_28_2 net_income_low \"nullable\"\n    numeric_28_2 net_income_avg \"nullable\"\n    numeric_28_2 net_income_high \"nullable\"\n    numeric_28_2 sga_expense_low \"nullable\"\n    numeric_28_2 sga_expense_avg \"nullable\"\n    numeric_28_2 sga_expense_high \"nullable\"\n    numeric_18_6 eps_low \"nullable\"\n    numeric_18_6 eps_avg \"nullable\"\n    numeric_18_6 eps_high \"nullable\"\n    integer num_analysts_revenue \"nullable\"\n    integer num_analysts_eps \"nullable\"\n    timestamp_with_time_zone fetched_at \"NOT NULL\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n  }\n  ANALYST_GRADES {\n    bigint id PK \"NOT NULL, default nextval('analyst_grades_id_seq'::regclass)\"\n    bigint security_id FK \"NOT NULL\"\n    date action_date \"NOT NULL\"\n    text grading_company \"NOT NULL\"\n    text previous_grade \"nullable\"\n    text new_grade \"nullable\"\n    text action \"NOT NULL\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n  }\n  ANALYST_PRICE_TARGETS {\n    bigint id PK \"NOT NULL, default nextval('analyst_price_targets_id_seq'::regclass)\"\n    bigint security_id FK \"NOT NULL\"\n    timestamp_with_time_zone published_at \"NOT NULL\"\n    text analyst_name \"nullable\"\n    text analyst_company \"nullable\"\n    numeric_18_6 price_target \"nullable\"\n    numeric_18_6 adj_price_target \"nullable\"\n    numeric_18_6 price_when_posted \"nullable\"\n    text news_url \"nullable\"\n    text news_title \"nullable\"\n    text news_publisher \"nullable\"\n    text news_base_url \"nullable\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n  }\n  ARTIFACT_SECTION_CHUNKS {\n    bigint id PK \"NOT NULL, default nextval('artifact_section_chunks_id_seq'::regclass)\"\n    bigint section_id FK \"NOT NULL\"\n    integer chunk_ordinal \"NOT NULL\"\n    text text \"NOT NULL\"\n    text search_text \"NOT NULL\"\n    text[] heading_path \"NOT NULL, default '{}'::text[]\"\n    integer start_offset \"NOT NULL\"\n    integer end_offset \"NOT NULL\"\n    text chunker_version \"NOT NULL\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    tsvector tsv \"nullable, default to_tsvector('english'::regconfig, search_text)\"\n  }\n  ARTIFACT_SECTIONS {\n    bigint id PK \"NOT NULL, default nextval('artifact_sections_id_seq'::regclass)\"\n    bigint artifact_id FK \"NOT NULL\"\n    bigint company_id FK \"NOT NULL\"\n    text fiscal_period_key \"NOT NULL\"\n    text form_family \"NOT NULL\"\n    text section_key \"NOT NULL\"\n    text section_title \"NOT NULL\"\n    text part_label \"nullable\"\n    text item_label \"nullable\"\n    text text \"NOT NULL\"\n    integer start_offset \"NOT NULL\"\n    integer end_offset \"NOT NULL\"\n    text extractor_version \"NOT NULL\"\n    double_precision confidence \"NOT NULL\"\n    text extraction_method \"NOT NULL\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    tsvector tsv \"nullable, default to_tsvector('english'::regconfig, text)\"\n  }\n  ARTIFACT_TEXT_CHUNKS {\n    bigint id PK \"NOT NULL, default nextval('artifact_text_chunks_id_seq'::regclass)\"\n    bigint text_unit_id FK \"NOT NULL\"\n    integer chunk_ordinal \"NOT NULL\"\n    text text \"NOT NULL\"\n    text search_text \"NOT NULL\"\n    text[] heading_path \"NOT NULL, default '{}'::text[]\"\n    integer start_offset \"NOT NULL\"\n    integer end_offset \"NOT NULL\"\n    text chunker_version \"NOT NULL\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    tsvector tsv \"nullable, default to_tsvector('english'::regconfig, search_text)\"\n  }\n  ARTIFACT_TEXT_UNITS {\n    bigint id PK \"NOT NULL, default nextval('artifact_text_units_id_seq'::regclass)\"\n    bigint artifact_id FK \"NOT NULL\"\n    bigint company_id FK \"NOT NULL\"\n    text fiscal_period_key \"nullable\"\n    integer unit_ordinal \"NOT NULL\"\n    text unit_type \"NOT NULL\"\n    text unit_key \"NOT NULL\"\n    text unit_title \"NOT NULL\"\n    text text \"NOT NULL\"\n    integer start_offset \"NOT NULL\"\n    integer end_offset \"NOT NULL\"\n    text extractor_version \"NOT NULL\"\n    double_precision confidence \"NOT NULL\"\n    text extraction_method \"NOT NULL\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    tsvector tsv \"nullable, default to_tsvector('english'::regconfig, text)\"\n  }\n  ARTIFACTS {\n    bigint id PK \"NOT NULL, default nextval('artifacts_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"nullable\"\n    text artifact_type \"NOT NULL\"\n    text source \"NOT NULL\"\n    text source_document_id \"nullable\"\n    bytea raw_hash \"NOT NULL\"\n    bytea canonical_hash \"NOT NULL\"\n    text ticker \"nullable\"\n    smallint fiscal_year \"nullable\"\n    smallint fiscal_quarter \"nullable\"\n    text fiscal_period_label \"nullable\"\n    date period_end \"nullable\"\n    text period_type \"nullable\"\n    smallint calendar_year \"nullable\"\n    smallint calendar_quarter \"nullable\"\n    text calendar_period_label \"nullable\"\n    text title \"nullable\"\n    text url \"nullable\"\n    text content_type \"nullable\"\n    text language \"nullable\"\n    timestamp_with_time_zone published_at \"nullable\"\n    timestamp_with_time_zone effective_at \"nullable\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n    bigint supersedes FK \"nullable\"\n    timestamp_with_time_zone superseded_at \"nullable\"\n    text authored_by \"nullable\"\n    timestamp_with_time_zone last_reviewed_at \"nullable\"\n    date asserted_valid_through \"nullable\"\n    jsonb artifact_metadata \"NOT NULL, default '{}'::jsonb\"\n    bigint company_id FK \"nullable\"\n    text fiscal_period_key \"nullable\"\n    text form_family \"nullable\"\n    text cik \"nullable\"\n    text accession_number \"nullable\"\n    text raw_primary_doc_path \"nullable\"\n    bigint amends_artifact_id FK \"nullable\"\n  }\n  COMPANIES {\n    bigint id PK \"NOT NULL, default nextval('companies_id_seq'::regclass)\"\n    bigint cik UK \"NOT NULL\"\n    text ticker \"NOT NULL\"\n    text name \"NOT NULL\"\n    text fiscal_year_end_md \"NOT NULL\"\n    text status \"NOT NULL, default 'active'::text\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone updated_at \"NOT NULL, default now()\"\n    bigint primary_security_id FK \"nullable\"\n  }\n  DATA_QUALITY_FINDINGS {\n    bigint id PK \"NOT NULL, default nextval('data_quality_findings_id_seq'::regclass)\"\n    text fingerprint \"NOT NULL\"\n    text finding_type \"NOT NULL\"\n    text severity \"NOT NULL\"\n    bigint company_id FK \"nullable\"\n    text ticker \"nullable\"\n    text vertical \"nullable\"\n    text fiscal_period_key \"nullable\"\n    text source_check \"NOT NULL\"\n    jsonb evidence \"NOT NULL, default '{}'::jsonb\"\n    text summary \"NOT NULL\"\n    jsonb suggested_action \"nullable\"\n    text status \"NOT NULL, default 'open'::text\"\n    text closed_reason \"nullable\"\n    timestamp_with_time_zone closed_at \"nullable\"\n    text closed_by \"nullable\"\n    text closed_note \"nullable\"\n    timestamp_with_time_zone suppressed_until \"nullable\"\n    jsonb history \"NOT NULL, default '[]'::jsonb\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    text created_by \"NOT NULL\"\n    timestamp_with_time_zone last_seen_at \"NOT NULL, default now()\"\n  }\n  DATA_QUALITY_FLAGS {\n    bigint id PK \"NOT NULL, default nextval('data_quality_flags_id_seq'::regclass)\"\n    bigint company_id FK \"NOT NULL\"\n    text statement \"nullable\"\n    text concept \"nullable\"\n    integer fiscal_year \"nullable\"\n    integer fiscal_quarter \"nullable\"\n    date period_end \"nullable\"\n    text period_type \"nullable\"\n    text flag_type \"NOT NULL\"\n    text severity \"NOT NULL\"\n    numeric expected_value \"nullable\"\n    numeric computed_value \"nullable\"\n    numeric delta \"nullable\"\n    numeric tolerance \"nullable\"\n    numeric suggested_value \"nullable\"\n    text reason \"NOT NULL\"\n    jsonb context \"nullable\"\n    bigint source_run_id FK \"nullable\"\n    timestamp_with_time_zone flagged_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone resolved_at \"nullable\"\n    text resolution \"nullable\"\n    numeric resolution_value \"nullable\"\n    text resolution_source \"nullable\"\n    text resolution_note \"nullable\"\n  }\n  EARNINGS_SURPRISES {\n    bigint security_id PK FK \"NOT NULL\"\n    date announcement_date PK \"NOT NULL\"\n    numeric_18_6 eps_actual \"nullable\"\n    numeric_18_6 eps_estimated \"nullable\"\n    numeric_28_2 revenue_actual \"nullable\"\n    numeric_28_2 revenue_estimated \"nullable\"\n    date last_updated \"nullable\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n  }\n  FINANCIAL_FACTS {\n    bigint id PK \"NOT NULL, default nextval('financial_facts_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"nullable\"\n    bigint company_id FK \"NOT NULL\"\n    text statement \"NOT NULL\"\n    text concept \"NOT NULL\"\n    numeric_28_4 value \"NOT NULL\"\n    text unit \"NOT NULL\"\n    smallint fiscal_year \"NOT NULL\"\n    smallint fiscal_quarter \"nullable\"\n    text fiscal_period_label \"NOT NULL\"\n    date period_end \"NOT NULL\"\n    text period_type \"NOT NULL\"\n    smallint calendar_year \"NOT NULL\"\n    smallint calendar_quarter \"NOT NULL\"\n    text calendar_period_label \"NOT NULL\"\n    timestamp_with_time_zone published_at \"NOT NULL\"\n    timestamp_with_time_zone effective_at \"nullable\"\n    timestamp_with_time_zone superseded_at \"nullable\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n    bigint source_artifact_id FK \"nullable\"\n    text extraction_version \"NOT NULL\"\n    bigint supersedes_fact_id FK \"nullable\"\n    text supersession_reason \"nullable\"\n    text dimension_type \"nullable\"\n    text dimension_key \"nullable\"\n    text dimension_label \"nullable\"\n    text dimension_source \"nullable\"\n  }\n  HISTORICAL_MARKET_CAP {\n    bigint security_id PK FK \"NOT NULL\"\n    date date PK \"NOT NULL\"\n    numeric_28_2 market_cap \"NOT NULL\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n  }\n  INGEST_RUNS {\n    bigint id PK \"NOT NULL, default nextval('ingest_runs_id_seq'::regclass)\"\n    text run_kind \"NOT NULL\"\n    text vendor \"NOT NULL\"\n    text[] ticker_scope \"nullable\"\n    text status \"NOT NULL, default 'started'::text\"\n    timestamp_with_time_zone started_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone finished_at \"nullable\"\n    jsonb counts \"NOT NULL, default '{}'::jsonb\"\n    text error_message \"nullable\"\n    jsonb error_details \"nullable\"\n    text code_version \"nullable\"\n  }\n  PRICE_TARGET_CONSENSUS {\n    bigint security_id PK FK \"NOT NULL\"\n    numeric_18_6 target_high \"nullable\"\n    numeric_18_6 target_low \"nullable\"\n    numeric_18_6 target_median \"nullable\"\n    numeric_18_6 target_consensus \"nullable\"\n    timestamp_with_time_zone fetched_at \"NOT NULL\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n  }\n  PRICES_DAILY {\n    bigint security_id PK FK \"NOT NULL\"\n    date date PK \"NOT NULL\"\n    numeric_18_6 open \"NOT NULL\"\n    numeric_18_6 high \"NOT NULL\"\n    numeric_18_6 low \"NOT NULL\"\n    numeric_18_6 close \"NOT NULL\"\n    numeric_18_6 adj_close \"NOT NULL\"\n    bigint volume \"NOT NULL\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n  }\n  RAW_RESPONSES {\n    bigint id PK \"NOT NULL, default nextval('raw_responses_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"NOT NULL\"\n    text vendor \"NOT NULL\"\n    text endpoint \"NOT NULL\"\n    jsonb params \"NOT NULL, default '{}'::jsonb\"\n    bytea params_hash \"NOT NULL\"\n    text request_url \"nullable\"\n    smallint http_status \"NOT NULL\"\n    text content_type \"NOT NULL\"\n    jsonb response_headers \"nullable\"\n    jsonb body_jsonb \"nullable\"\n    bytea body_raw \"nullable\"\n    bytea raw_hash \"NOT NULL\"\n    bytea canonical_hash \"NOT NULL\"\n    timestamp_with_time_zone fetched_at \"NOT NULL, default now()\"\n  }\n  SECURITIES {\n    bigint id PK \"NOT NULL, default nextval('securities_id_seq'::regclass)\"\n    bigint company_id FK \"nullable\"\n    text ticker \"NOT NULL\"\n    text kind \"NOT NULL\"\n    text status \"NOT NULL, default 'active'::text\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone updated_at \"NOT NULL, default now()\"\n  }\n  TRIAGE_SESSION {\n    bigint id PK \"NOT NULL, default nextval('triage_session_id_seq'::regclass)\"\n    timestamp_with_time_zone started_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone finished_at \"nullable\"\n    text harness \"NOT NULL\"\n    text intent \"NOT NULL\"\n    bigint[] finding_ids \"NOT NULL, default '{}'::bigint[]\"\n    jsonb operator_quotes \"NOT NULL, default '[]'::jsonb\"\n    jsonb investigations \"NOT NULL, default '[]'::jsonb\"\n    jsonb actions_taken \"NOT NULL, default '[]'::jsonb\"\n    jsonb outcomes \"NOT NULL, default '{}'::jsonb\"\n    text captured_pattern \"nullable\"\n    text session_ref \"nullable\"\n    text created_by \"NOT NULL\"\n  }";
+const src = "erDiagram\n  SECURITIES ||--o{ ANALYST_ESTIMATES : \"analyst_estimates_security_id_fkey\"\n  RAW_RESPONSES ||--o{ ANALYST_ESTIMATES : \"analyst_estimates_source_raw_response_id_fkey\"\n  SECURITIES ||--o{ ANALYST_GRADES : \"analyst_grades_security_id_fkey\"\n  RAW_RESPONSES ||--o{ ANALYST_GRADES : \"analyst_grades_source_raw_response_id_fkey\"\n  SECURITIES ||--o{ ANALYST_PRICE_TARGETS : \"analyst_price_targets_security_id_fkey\"\n  RAW_RESPONSES ||--o{ ANALYST_PRICE_TARGETS : \"analyst_price_targets_source_raw_response_id_fkey\"\n  ARTIFACT_SECTIONS ||--o{ ARTIFACT_SECTION_CHUNKS : \"artifact_section_chunks_section_id_fkey\"\n  ARTIFACTS ||--o{ ARTIFACT_SECTIONS : \"artifact_sections_artifact_id_fkey\"\n  COMPANIES ||--o{ ARTIFACT_SECTIONS : \"artifact_sections_company_id_fkey\"\n  ARTIFACT_TEXT_UNITS ||--o{ ARTIFACT_TEXT_CHUNKS : \"artifact_text_chunks_text_unit_id_fkey\"\n  ARTIFACTS ||--o{ ARTIFACT_TEXT_UNITS : \"artifact_text_units_artifact_id_fkey\"\n  COMPANIES ||--o{ ARTIFACT_TEXT_UNITS : \"artifact_text_units_company_id_fkey\"\n  ARTIFACTS |o--o{ ARTIFACTS : \"artifacts_amends_artifact_id_fkey\"\n  COMPANIES |o--o{ ARTIFACTS : \"artifacts_company_id_fkey\"\n  INGEST_RUNS |o--o{ ARTIFACTS : \"artifacts_ingest_run_id_fkey\"\n  ARTIFACTS |o--o{ ARTIFACTS : \"artifacts_supersedes_fkey\"\n  ARTIFACTS |o--o{ ASR_TRANSCRIPTS : \"asr_transcripts_artifact_id_fkey\"\n  AUDIO_ARTIFACTS ||--o{ ASR_TRANSCRIPTS : \"asr_transcripts_audio_artifact_id_fkey\"\n  COMPANIES ||--o{ AUDIO_ARTIFACTS : \"audio_artifacts_company_id_fkey\"\n  SECURITIES |o--o{ COMPANIES : \"companies_primary_security_id_fkey\"\n  COMPANIES |o--o{ DATA_QUALITY_FINDINGS : \"data_quality_findings_company_id_fkey\"\n  COMPANIES ||--o{ DATA_QUALITY_FLAGS : \"data_quality_flags_company_id_fkey\"\n  INGEST_RUNS |o--o{ DATA_QUALITY_FLAGS : \"data_quality_flags_source_run_id_fkey\"\n  SECURITIES ||--o{ EARNINGS_SURPRISES : \"earnings_surprises_security_id_fkey\"\n  RAW_RESPONSES ||--o{ EARNINGS_SURPRISES : \"earnings_surprises_source_raw_response_id_fkey\"\n  COMPANIES ||--o{ FINANCIAL_FACTS : \"financial_facts_company_id_fkey\"\n  INGEST_RUNS |o--o{ FINANCIAL_FACTS : \"financial_facts_ingest_run_id_fkey\"\n  ARTIFACTS |o--o{ FINANCIAL_FACTS : \"financial_facts_source_artifact_id_fkey\"\n  RAW_RESPONSES ||--o{ FINANCIAL_FACTS : \"financial_facts_source_raw_response_id_fkey\"\n  FINANCIAL_FACTS |o--o{ FINANCIAL_FACTS : \"financial_facts_supersedes_fact_id_fkey\"\n  SECURITIES ||--o{ HISTORICAL_MARKET_CAP : \"historical_market_cap_security_id_fkey\"\n  RAW_RESPONSES ||--o{ HISTORICAL_MARKET_CAP : \"historical_market_cap_source_raw_response_id_fkey\"\n  SECURITIES ||--o{ PRICE_TARGET_CONSENSUS : \"price_target_consensus_security_id_fkey\"\n  RAW_RESPONSES ||--o{ PRICE_TARGET_CONSENSUS : \"price_target_consensus_source_raw_response_id_fkey\"\n  SECURITIES ||--o{ PRICES_DAILY : \"prices_daily_security_id_fkey\"\n  RAW_RESPONSES ||--o{ PRICES_DAILY : \"prices_daily_source_raw_response_id_fkey\"\n  INGEST_RUNS ||--o{ RAW_RESPONSES : \"raw_responses_ingest_run_id_fkey\"\n  COMPANIES |o--o{ SECURITIES : \"securities_company_id_fkey\"\n  ASR_TRANSCRIPTS ||--o{ SPEAKER_SEGMENTS : \"speaker_segments_asr_transcript_id_fkey\"\n  SPEAKER_VOICEPRINTS |o--o{ SPEAKER_SEGMENTS : \"speaker_segments_voiceprint_match_id_fkey\"\n  COMPANIES ||--o{ SPEAKER_VOICEPRINTS : \"speaker_voiceprints_company_id_fkey\"\n  AUDIO_ARTIFACTS |o--o{ SPEAKER_VOICEPRINTS : \"speaker_voiceprints_source_audio_artifact_id_fkey\"\n  SPEAKER_VOICEPRINTS |o--o{ SPEAKER_VOICEPRINTS : \"speaker_voiceprints_superseded_by_fkey\"\n  ANALYST_ESTIMATES {\n    bigint security_id PK FK \"NOT NULL\"\n    text period_kind PK \"NOT NULL\"\n    date period_end PK \"NOT NULL\"\n    numeric_28_2 revenue_low \"nullable\"\n    numeric_28_2 revenue_avg \"nullable\"\n    numeric_28_2 revenue_high \"nullable\"\n    numeric_28_2 ebitda_low \"nullable\"\n    numeric_28_2 ebitda_avg \"nullable\"\n    numeric_28_2 ebitda_high \"nullable\"\n    numeric_28_2 ebit_low \"nullable\"\n    numeric_28_2 ebit_avg \"nullable\"\n    numeric_28_2 ebit_high \"nullable\"\n    numeric_28_2 net_income_low \"nullable\"\n    numeric_28_2 net_income_avg \"nullable\"\n    numeric_28_2 net_income_high \"nullable\"\n    numeric_28_2 sga_expense_low \"nullable\"\n    numeric_28_2 sga_expense_avg \"nullable\"\n    numeric_28_2 sga_expense_high \"nullable\"\n    numeric_18_6 eps_low \"nullable\"\n    numeric_18_6 eps_avg \"nullable\"\n    numeric_18_6 eps_high \"nullable\"\n    integer num_analysts_revenue \"nullable\"\n    integer num_analysts_eps \"nullable\"\n    timestamp_with_time_zone fetched_at \"NOT NULL\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n  }\n  ANALYST_GRADES {\n    bigint id PK \"NOT NULL, default nextval('analyst_grades_id_seq'::regclass)\"\n    bigint security_id FK \"NOT NULL\"\n    date action_date \"NOT NULL\"\n    text grading_company \"NOT NULL\"\n    text previous_grade \"nullable\"\n    text new_grade \"nullable\"\n    text action \"NOT NULL\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n  }\n  ANALYST_PRICE_TARGETS {\n    bigint id PK \"NOT NULL, default nextval('analyst_price_targets_id_seq'::regclass)\"\n    bigint security_id FK \"NOT NULL\"\n    timestamp_with_time_zone published_at \"NOT NULL\"\n    text analyst_name \"nullable\"\n    text analyst_company \"nullable\"\n    numeric_18_6 price_target \"nullable\"\n    numeric_18_6 adj_price_target \"nullable\"\n    numeric_18_6 price_when_posted \"nullable\"\n    text news_url \"nullable\"\n    text news_title \"nullable\"\n    text news_publisher \"nullable\"\n    text news_base_url \"nullable\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n  }\n  ARTIFACT_SECTION_CHUNKS {\n    bigint id PK \"NOT NULL, default nextval('artifact_section_chunks_id_seq'::regclass)\"\n    bigint section_id FK \"NOT NULL\"\n    integer chunk_ordinal \"NOT NULL\"\n    text text \"NOT NULL\"\n    text search_text \"NOT NULL\"\n    text[] heading_path \"NOT NULL, default '{}'::text[]\"\n    integer start_offset \"NOT NULL\"\n    integer end_offset \"NOT NULL\"\n    text chunker_version \"NOT NULL\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    tsvector tsv \"nullable, default to_tsvector('english'::regconfig, search_text)\"\n  }\n  ARTIFACT_SECTIONS {\n    bigint id PK \"NOT NULL, default nextval('artifact_sections_id_seq'::regclass)\"\n    bigint artifact_id FK \"NOT NULL\"\n    bigint company_id FK \"NOT NULL\"\n    text fiscal_period_key \"NOT NULL\"\n    text form_family \"NOT NULL\"\n    text section_key \"NOT NULL\"\n    text section_title \"NOT NULL\"\n    text part_label \"nullable\"\n    text item_label \"nullable\"\n    text text \"NOT NULL\"\n    integer start_offset \"NOT NULL\"\n    integer end_offset \"NOT NULL\"\n    text extractor_version \"NOT NULL\"\n    double_precision confidence \"NOT NULL\"\n    text extraction_method \"NOT NULL\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    tsvector tsv \"nullable, default to_tsvector('english'::regconfig, text)\"\n  }\n  ARTIFACT_TEXT_CHUNKS {\n    bigint id PK \"NOT NULL, default nextval('artifact_text_chunks_id_seq'::regclass)\"\n    bigint text_unit_id FK \"NOT NULL\"\n    integer chunk_ordinal \"NOT NULL\"\n    text text \"NOT NULL\"\n    text search_text \"NOT NULL\"\n    text[] heading_path \"NOT NULL, default '{}'::text[]\"\n    integer start_offset \"NOT NULL\"\n    integer end_offset \"NOT NULL\"\n    text chunker_version \"NOT NULL\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    tsvector tsv \"nullable, default to_tsvector('english'::regconfig, search_text)\"\n  }\n  ARTIFACT_TEXT_UNITS {\n    bigint id PK \"NOT NULL, default nextval('artifact_text_units_id_seq'::regclass)\"\n    bigint artifact_id FK \"NOT NULL\"\n    bigint company_id FK \"NOT NULL\"\n    text fiscal_period_key \"nullable\"\n    integer unit_ordinal \"NOT NULL\"\n    text unit_type \"NOT NULL\"\n    text unit_key \"NOT NULL\"\n    text unit_title \"NOT NULL\"\n    text text \"NOT NULL\"\n    integer start_offset \"NOT NULL\"\n    integer end_offset \"NOT NULL\"\n    text extractor_version \"NOT NULL\"\n    double_precision confidence \"NOT NULL\"\n    text extraction_method \"NOT NULL\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    tsvector tsv \"nullable, default to_tsvector('english'::regconfig, text)\"\n  }\n  ARTIFACTS {\n    bigint id PK \"NOT NULL, default nextval('artifacts_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"nullable\"\n    text artifact_type \"NOT NULL\"\n    text source \"NOT NULL\"\n    text source_document_id \"nullable\"\n    bytea raw_hash \"NOT NULL\"\n    bytea canonical_hash \"NOT NULL\"\n    text ticker \"nullable\"\n    smallint fiscal_year \"nullable\"\n    smallint fiscal_quarter \"nullable\"\n    text fiscal_period_label \"nullable\"\n    date period_end \"nullable\"\n    text period_type \"nullable\"\n    smallint calendar_year \"nullable\"\n    smallint calendar_quarter \"nullable\"\n    text calendar_period_label \"nullable\"\n    text title \"nullable\"\n    text url \"nullable\"\n    text content_type \"nullable\"\n    text language \"nullable\"\n    timestamp_with_time_zone published_at \"nullable\"\n    timestamp_with_time_zone effective_at \"nullable\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n    bigint supersedes FK \"nullable\"\n    timestamp_with_time_zone superseded_at \"nullable\"\n    text authored_by \"nullable\"\n    timestamp_with_time_zone last_reviewed_at \"nullable\"\n    date asserted_valid_through \"nullable\"\n    jsonb artifact_metadata \"NOT NULL, default '{}'::jsonb\"\n    bigint company_id FK \"nullable\"\n    text fiscal_period_key \"nullable\"\n    text form_family \"nullable\"\n    text cik \"nullable\"\n    text accession_number \"nullable\"\n    text raw_primary_doc_path \"nullable\"\n    bigint amends_artifact_id FK \"nullable\"\n  }\n  ASR_TRANSCRIPTS {\n    bigint id PK \"NOT NULL, default nextval('asr_transcripts_id_seq'::regclass)\"\n    bigint audio_artifact_id FK \"NOT NULL\"\n    bigint artifact_id FK \"nullable\"\n    text backend \"NOT NULL\"\n    text model \"NOT NULL\"\n    text model_version \"NOT NULL\"\n    text language \"NOT NULL, default 'en'::text\"\n    boolean word_timestamps \"NOT NULL, default false\"\n    bytea raw_payload_hash \"NOT NULL\"\n    timestamp_with_time_zone transcribed_at \"NOT NULL, default now()\"\n  }\n  AUDIO_ARTIFACTS {\n    bigint id PK \"NOT NULL, default nextval('audio_artifacts_id_seq'::regclass)\"\n    bigint company_id FK \"NOT NULL\"\n    smallint fiscal_year \"NOT NULL\"\n    smallint fiscal_quarter \"NOT NULL\"\n    text fiscal_period_key \"NOT NULL\"\n    text source_vendor \"NOT NULL\"\n    text source_url \"NOT NULL\"\n    text source_event_id \"nullable\"\n    text source_uuid \"nullable\"\n    bytea audio_hash \"NOT NULL\"\n    text audio_format \"NOT NULL\"\n    bigint audio_size_bytes \"nullable\"\n    integer duration_sec \"nullable\"\n    timestamp_with_time_zone captured_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone deleted_at \"nullable\"\n  }\n  COMPANIES {\n    bigint id PK \"NOT NULL, default nextval('companies_id_seq'::regclass)\"\n    bigint cik UK \"NOT NULL\"\n    text ticker \"NOT NULL\"\n    text name \"NOT NULL\"\n    text fiscal_year_end_md \"NOT NULL\"\n    text status \"NOT NULL, default 'active'::text\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone updated_at \"NOT NULL, default now()\"\n    bigint primary_security_id FK \"nullable\"\n  }\n  DATA_QUALITY_FINDINGS {\n    bigint id PK \"NOT NULL, default nextval('data_quality_findings_id_seq'::regclass)\"\n    text fingerprint \"NOT NULL\"\n    text finding_type \"NOT NULL\"\n    text severity \"NOT NULL\"\n    bigint company_id FK \"nullable\"\n    text ticker \"nullable\"\n    text vertical \"nullable\"\n    text fiscal_period_key \"nullable\"\n    text source_check \"NOT NULL\"\n    jsonb evidence \"NOT NULL, default '{}'::jsonb\"\n    text summary \"NOT NULL\"\n    jsonb suggested_action \"nullable\"\n    text status \"NOT NULL, default 'open'::text\"\n    text closed_reason \"nullable\"\n    timestamp_with_time_zone closed_at \"nullable\"\n    text closed_by \"nullable\"\n    text closed_note \"nullable\"\n    timestamp_with_time_zone suppressed_until \"nullable\"\n    jsonb history \"NOT NULL, default '[]'::jsonb\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    text created_by \"NOT NULL\"\n    timestamp_with_time_zone last_seen_at \"NOT NULL, default now()\"\n  }\n  DATA_QUALITY_FLAGS {\n    bigint id PK \"NOT NULL, default nextval('data_quality_flags_id_seq'::regclass)\"\n    bigint company_id FK \"NOT NULL\"\n    text statement \"nullable\"\n    text concept \"nullable\"\n    integer fiscal_year \"nullable\"\n    integer fiscal_quarter \"nullable\"\n    date period_end \"nullable\"\n    text period_type \"nullable\"\n    text flag_type \"NOT NULL\"\n    text severity \"NOT NULL\"\n    numeric expected_value \"nullable\"\n    numeric computed_value \"nullable\"\n    numeric delta \"nullable\"\n    numeric tolerance \"nullable\"\n    numeric suggested_value \"nullable\"\n    text reason \"NOT NULL\"\n    jsonb context \"nullable\"\n    bigint source_run_id FK \"nullable\"\n    timestamp_with_time_zone flagged_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone resolved_at \"nullable\"\n    text resolution \"nullable\"\n    numeric resolution_value \"nullable\"\n    text resolution_source \"nullable\"\n    text resolution_note \"nullable\"\n  }\n  EARNINGS_SURPRISES {\n    bigint security_id PK FK \"NOT NULL\"\n    date announcement_date PK \"NOT NULL\"\n    numeric_18_6 eps_actual \"nullable\"\n    numeric_18_6 eps_estimated \"nullable\"\n    numeric_28_2 revenue_actual \"nullable\"\n    numeric_28_2 revenue_estimated \"nullable\"\n    date last_updated \"nullable\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n  }\n  FINANCIAL_FACTS {\n    bigint id PK \"NOT NULL, default nextval('financial_facts_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"nullable\"\n    bigint company_id FK \"NOT NULL\"\n    text statement \"NOT NULL\"\n    text concept \"NOT NULL\"\n    numeric_28_4 value \"NOT NULL\"\n    text unit \"NOT NULL\"\n    smallint fiscal_year \"NOT NULL\"\n    smallint fiscal_quarter \"nullable\"\n    text fiscal_period_label \"NOT NULL\"\n    date period_end \"NOT NULL\"\n    text period_type \"NOT NULL\"\n    smallint calendar_year \"NOT NULL\"\n    smallint calendar_quarter \"NOT NULL\"\n    text calendar_period_label \"NOT NULL\"\n    timestamp_with_time_zone published_at \"NOT NULL\"\n    timestamp_with_time_zone effective_at \"nullable\"\n    timestamp_with_time_zone superseded_at \"nullable\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n    bigint source_artifact_id FK \"nullable\"\n    text extraction_version \"NOT NULL\"\n    bigint supersedes_fact_id FK \"nullable\"\n    text supersession_reason \"nullable\"\n    text dimension_type \"nullable\"\n    text dimension_key \"nullable\"\n    text dimension_label \"nullable\"\n    text dimension_source \"nullable\"\n  }\n  HISTORICAL_MARKET_CAP {\n    bigint security_id PK FK \"NOT NULL\"\n    date date PK \"NOT NULL\"\n    numeric_28_2 market_cap \"NOT NULL\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n  }\n  INGEST_RUNS {\n    bigint id PK \"NOT NULL, default nextval('ingest_runs_id_seq'::regclass)\"\n    text run_kind \"NOT NULL\"\n    text vendor \"NOT NULL\"\n    text[] ticker_scope \"nullable\"\n    text status \"NOT NULL, default 'started'::text\"\n    timestamp_with_time_zone started_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone finished_at \"nullable\"\n    jsonb counts \"NOT NULL, default '{}'::jsonb\"\n    text error_message \"nullable\"\n    jsonb error_details \"nullable\"\n    text code_version \"nullable\"\n  }\n  PRICE_TARGET_CONSENSUS {\n    bigint security_id PK FK \"NOT NULL\"\n    numeric_18_6 target_high \"nullable\"\n    numeric_18_6 target_low \"nullable\"\n    numeric_18_6 target_median \"nullable\"\n    numeric_18_6 target_consensus \"nullable\"\n    timestamp_with_time_zone fetched_at \"NOT NULL\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n  }\n  PRICES_DAILY {\n    bigint security_id PK FK \"NOT NULL\"\n    date date PK \"NOT NULL\"\n    numeric_18_6 open \"NOT NULL\"\n    numeric_18_6 high \"NOT NULL\"\n    numeric_18_6 low \"NOT NULL\"\n    numeric_18_6 close \"NOT NULL\"\n    numeric_18_6 adj_close \"NOT NULL\"\n    bigint volume \"NOT NULL\"\n    bigint source_raw_response_id FK \"NOT NULL\"\n    timestamp_with_time_zone ingested_at \"NOT NULL, default now()\"\n  }\n  RAW_RESPONSES {\n    bigint id PK \"NOT NULL, default nextval('raw_responses_id_seq'::regclass)\"\n    bigint ingest_run_id FK \"NOT NULL\"\n    text vendor \"NOT NULL\"\n    text endpoint \"NOT NULL\"\n    jsonb params \"NOT NULL, default '{}'::jsonb\"\n    bytea params_hash \"NOT NULL\"\n    text request_url \"nullable\"\n    smallint http_status \"NOT NULL\"\n    text content_type \"NOT NULL\"\n    jsonb response_headers \"nullable\"\n    jsonb body_jsonb \"nullable\"\n    bytea body_raw \"nullable\"\n    bytea raw_hash \"NOT NULL\"\n    bytea canonical_hash \"NOT NULL\"\n    timestamp_with_time_zone fetched_at \"NOT NULL, default now()\"\n  }\n  SECURITIES {\n    bigint id PK \"NOT NULL, default nextval('securities_id_seq'::regclass)\"\n    bigint company_id FK \"nullable\"\n    text ticker \"NOT NULL\"\n    text kind \"NOT NULL\"\n    text status \"NOT NULL, default 'active'::text\"\n    timestamp_with_time_zone created_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone updated_at \"NOT NULL, default now()\"\n  }\n  SPEAKER_SEGMENTS {\n    bigint id PK \"NOT NULL, default nextval('speaker_segments_id_seq'::regclass)\"\n    bigint asr_transcript_id FK \"NOT NULL\"\n    integer ordinal \"NOT NULL\"\n    integer start_ms \"NOT NULL\"\n    integer end_ms \"NOT NULL\"\n    text raw_speaker_label \"NOT NULL\"\n    bigint voiceprint_match_id FK \"nullable\"\n    numeric_5_4 voiceprint_confidence \"nullable\"\n    integer text_offset_start \"NOT NULL\"\n    integer text_offset_end \"NOT NULL\"\n  }\n  SPEAKER_VOICEPRINTS {\n    bigint id PK \"NOT NULL, default nextval('speaker_voiceprints_id_seq'::regclass)\"\n    bigint company_id FK \"NOT NULL\"\n    text person_name \"NOT NULL\"\n    text role \"NOT NULL\"\n    double_precision[] embedding \"NOT NULL\"\n    smallint embedding_dim \"NOT NULL\"\n    text embedding_model \"NOT NULL\"\n    bigint source_audio_artifact_id FK \"nullable\"\n    text source_clip_path \"nullable\"\n    timestamp_with_time_zone enrolled_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone superseded_at \"nullable\"\n    bigint superseded_by FK \"nullable\"\n  }\n  TRIAGE_SESSION {\n    bigint id PK \"NOT NULL, default nextval('triage_session_id_seq'::regclass)\"\n    timestamp_with_time_zone started_at \"NOT NULL, default now()\"\n    timestamp_with_time_zone finished_at \"nullable\"\n    text harness \"NOT NULL\"\n    text intent \"NOT NULL\"\n    bigint[] finding_ids \"NOT NULL, default '{}'::bigint[]\"\n    jsonb operator_quotes \"NOT NULL, default '[]'::jsonb\"\n    jsonb investigations \"NOT NULL, default '[]'::jsonb\"\n    jsonb actions_taken \"NOT NULL, default '[]'::jsonb\"\n    jsonb outcomes \"NOT NULL, default '{}'::jsonb\"\n    text captured_pattern \"nullable\"\n    text session_ref \"nullable\"\n    text created_by \"NOT NULL\"\n  }";
 const { svg } = await mermaid.render('erd-svg', src);
 document.getElementById('erd').innerHTML = svg;
-const tableNames = ["analyst_estimates", "analyst_grades", "analyst_price_targets", "artifact_section_chunks", "artifact_sections", "artifact_text_chunks", "artifact_text_units", "artifacts", "companies", "data_quality_findings", "data_quality_flags", "earnings_surprises", "financial_facts", "historical_market_cap", "ingest_runs", "price_target_consensus", "prices_daily", "raw_responses", "securities", "triage_session"];
+const tableNames = ["analyst_estimates", "analyst_grades", "analyst_price_targets", "artifact_section_chunks", "artifact_sections", "artifact_text_chunks", "artifact_text_units", "artifacts", "asr_transcripts", "audio_artifacts", "companies", "data_quality_findings", "data_quality_flags", "earnings_surprises", "financial_facts", "historical_market_cap", "ingest_runs", "price_target_consensus", "prices_daily", "raw_responses", "securities", "speaker_segments", "speaker_voiceprints", "triage_session"];
 const viewport = document.getElementById('erd-viewport');
 const svgEl = document.querySelector('#erd svg.erDiagram');
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));

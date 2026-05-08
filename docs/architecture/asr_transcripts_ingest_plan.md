@@ -1,6 +1,6 @@
 # ASR Transcripts Ingest Plan
 
-Status: active plan; pre-implementation. Design discussion captured 2026-05-08.
+Status: active plan. Commit 0 (CRWV proof, scripts/proof_*.py) shipped 2026-05-08; commit 1 (schema migration 025 + Q4Inc Playwright adapter + orchestrator skeleton) shipped same day. See § Build Sequence for the plan-vs-reality reconciliation.
 
 This document is the v1 plan to **replace FMP earnings-call transcripts** with a self-owned ASR pipeline that downloads audio from company IR webcasts, transcribes locally with open-source models, diarizes speakers, and stores the result on Arrow's existing artifact substrate.
 
@@ -444,12 +444,20 @@ Steps:
 
 Output: one JSON file. No DB writes. No Python module structure yet. Pure script.
 
-### Commit 1 — schema + Q4Inc adapter
+### Commit 1 — schema + Q4Inc adapter [SHIPPED 2026-05-08]
 
-- Migration `db/schema/021_asr_transcripts.sql` (4 new tables).
-- Regenerate `arrow_db_schema.html`.
-- `src/arrow/ingest/audio/q4inc.py` adapter implementing `AudioSource`.
-- Tests for IR-page parsing on at least 2 Q4Inc-hosted IR sites.
+What landed:
+
+- ✅ Migration `db/schema/025_asr_transcripts.sql` — 4 new tables: `audio_artifacts`, `asr_transcripts`, `speaker_voiceprints`, `speaker_segments`. Migration was originally numbered 021 in this plan; renumbered because 021-024 were already taken by other unrelated migrations.
+- ✅ `arrow_db_schema.html` regenerated; `docs/architecture/system.md` v1 Tables updated.
+- ✅ `src/arrow/ingest/audio/q4inc.py` — Playwright-based UUID discovery + manual-paste fallback. Scope **narrower than originally planned**: the adapter does NOT scrape the IR events page or download audio. Q4's `static.events.q4inc.com/edited-recordings/{event_id}/{uuid}.mp4` URL is publicly reachable from any machine with no auth and no Cloudflare challenge — verified empirically. The adapter only needs to discover the per-recording UUID, which is the one piece exposed only by the player JS.
+- ✅ `src/arrow/ingest/audio/contracts.py` (AudioRef, AudioFetch).
+- ✅ `src/arrow/ingest/audio/download.py` — vendor-agnostic curl-based downloader.
+- ✅ `src/arrow/agents/asr_transcripts.py::ingest_asr_transcript(...)` — top-level orchestrator. (Was originally scoped for commit 4; pulled forward because the pieces are interlocked enough that splitting them across multiple commits would mean either dead code or stub coupling.)
+- ✅ `scripts/ingest_asr_transcript.py` — thin CLI wrapper.
+- ✅ `tests/unit/test_audio_q4inc.py` — 8 tests covering URL parsing + the manual-paste fallback validator.
+
+Manual-paste fallback is **first-class**, not a last resort. The CLI accepts either `--q4-event-id` (Playwright) or `--audio-url` (paste). Both feed the same downstream pipeline. Auto-discovery is best-effort; when it fails the operator does the same 30-second DevTools paste they did for the CRWV proof.
 
 ### Commit 2 — local ASR backend
 
