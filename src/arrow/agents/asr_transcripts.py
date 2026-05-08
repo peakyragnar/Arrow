@@ -316,11 +316,13 @@ _CFO_PAT = re.compile(
 )
 
 
-def _extract_exec_names(ir_text: str) -> dict[str, str]:
-    """Pull (CEO, name) and (CFO, name) out of IR's intro text.
+def _extract_exec_names_regex(ir_text: str) -> dict[str, str]:
+    """Pull (CEO, name) and (CFO, name) via regex. Best-effort — handles
+    common patterns (CRWV/AMD/verbose) but NOT every phrasing variation.
 
-    CFO search starts after the CEO match end position, so the CFO regex
-    can't trample the CEO's name through a long interstitial.
+    Used as fallback when the LLM extractor is unavailable (no API key)
+    or returns no match. CFO search starts after CEO match end so the
+    interstitial can't trample the CEO's name.
     """
     out: dict[str, str] = {}
     m_ceo = _CEO_PAT.search(ir_text)
@@ -332,6 +334,64 @@ def _extract_exec_names(ir_text: str) -> dict[str, str]:
     if m_cfo:
         out["cfo"] = m_cfo.group(1).strip()
     return out
+
+
+def _extract_exec_names_llm(ir_text: str, *, api_key: str | None = None) -> dict[str, str] | None:
+    """Use Claude Haiku to extract CEO/CFO names from IR's intro text.
+
+    Universal — handles every phrasing variation (Dr. titles, parenthetical
+    titles, Co-CEO, Chairman/President/CEO combinations, reordered
+    "CEO, Lisa Su", non-Western name spellings, etc.).
+
+    Cost: ~$0.001 per call (a few hundred tokens through Haiku 4.5).
+    Returns None if API key missing or call fails — caller falls back
+    to regex.
+    """
+    if api_key is None:
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return None
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=200,
+            messages=[{"role": "user", "content": (
+                "This is an Investor Relations person's opening of a public-company "
+                "earnings call. Extract the CEO and CFO names exactly as the IR person "
+                "introduces them.\n\n"
+                "Return ONLY JSON in the format:\n"
+                "{\"ceo\": \"Full Name\", \"cfo\": \"Full Name\"}\n\n"
+                "Use null for any role not introduced. Strip honorifics (Dr., Mr., Mrs., "
+                "Ms., Jr., Sr.) but keep all parts of the name.\n\n"
+                "Do NOT include titles, the company name, or commentary. Output JSON only.\n\n"
+                f"Text:\n{ir_text}"
+            )}],
+        )
+        text = msg.content[0].text.strip()
+        # Strip markdown code fences if Haiku adds them
+        if text.startswith("```"):
+            text = text.split("\n", 1)[1] if "\n" in text else text
+            text = text.rsplit("```", 1)[0] if "```" in text else text
+            text = text.replace("json\n", "", 1).strip()
+        parsed = json.loads(text)
+        out: dict[str, str] = {}
+        if parsed.get("ceo"):
+            out["ceo"] = parsed["ceo"].strip()
+        if parsed.get("cfo"):
+            out["cfo"] = parsed["cfo"].strip()
+        return out
+    except Exception:
+        return None
+
+
+def _extract_exec_names(ir_text: str) -> dict[str, str]:
+    """Try LLM first (universal), fall back to regex (free, brittle)."""
+    llm_result = _extract_exec_names_llm(ir_text)
+    if llm_result:
+        return llm_result
+    return _extract_exec_names_regex(ir_text)
 
 
 def identify_speakers(
