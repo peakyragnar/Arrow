@@ -394,6 +394,91 @@ def _extract_exec_names(ir_text: str) -> dict[str, str]:
     return _extract_exec_names_regex(ir_text)
 
 
+def _identify_speakers_llm(
+    blocks_by_label: list[tuple[str, str, int]],
+    *,
+    api_key: str | None = None,
+) -> dict[str, dict] | None:
+    """Use Claude Haiku to map every pyannote-labeled speaker block to a role + name.
+
+    Replaces the regex/state-machine path for the rare cases where IR
+    phrasing or call structure don't match standard US-public patterns
+    (e.g., NVIDIA's CFO-then-CEO order, or "I'm joined by" style intros).
+
+    Input: list of (raw_speaker_label, first_500_chars, total_char_count).
+    Output: {label: {role, name, source: 'llm'}} or None on failure.
+
+    Cost: ~$0.001-0.005 per call (a few thousand tokens through Haiku 4.5).
+    """
+    if api_key is None:
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return None
+
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=api_key)
+        blocks_str = "\n\n".join(
+            f"### {label}  ({total} chars total)\n{snippet}"
+            for label, snippet, total in blocks_by_label
+        )
+        prompt = (
+            "You are analyzing an earnings call transcript. Each block below is text "
+            "from one speaker, anonymized by automatic diarization as SPEAKER_NN. "
+            "Some blocks include short text from another speaker that leaked across "
+            "the diarization boundary — focus on the dominant voice in each block to "
+            "identify it.\n\n"
+            "Identify each speaker's role and name. Return ONLY JSON:\n"
+            "{\n"
+            '  "SPEAKER_00": {"role": "operator", "name": null},\n'
+            '  "SPEAKER_01": {"role": "ir", "name": "Simona Jankowski"},\n'
+            '  "SPEAKER_02": {"role": "cfo", "name": "Colette Kress"},\n'
+            '  "SPEAKER_03": {"role": "ceo", "name": "Jensen Huang"},\n'
+            '  "SPEAKER_04": {"role": "analyst", "name": "Joe Moore (Morgan Stanley)"}\n'
+            "}\n\n"
+            "Rules:\n"
+            "- role must be one of: operator, ir, ceo, cfo, coo, president, analyst, other\n"
+            "- name should be the full name as introduced in the call (strip Dr./Mr./Mrs./Ms.)\n"
+            "- For analysts, append the bank in parens if known: \"Joe Moore (Morgan Stanley)\"\n"
+            "- For operator, name should be null\n"
+            "- If a label's role is ambiguous, use \"other\" with name null\n"
+            "- Look for cues like \"I'll turn it over to X\" (X is the next speaker) and "
+            "\"Thanks, X\" (Y is thanking the previous speaker X)\n"
+            "- Some companies have CFO speak before CEO (NVIDIA), others CEO before CFO — "
+            "don't assume order; use the actual text\n\n"
+            "Output JSON only, no commentary.\n\n"
+            f"{blocks_str}"
+        )
+        msg = client.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = msg.content[0].text.strip()
+        if text.startswith("```"):
+            text = text.split("\n", 1)[1] if "\n" in text else text
+            text = text.rsplit("```", 1)[0] if "```" in text else text
+            text = text.replace("json\n", "", 1).strip()
+        parsed = json.loads(text)
+        out: dict[str, dict] = {}
+        for label, info in parsed.items():
+            if not isinstance(info, dict):
+                continue
+            role = info.get("role", "other")
+            name = info.get("name")
+            if role == "operator" and not name:
+                name = "Operator"
+            elif role == "ir" and not name:
+                name = "Investor Relations"
+            elif not name:
+                name = label  # fall back to raw label
+            out[label] = {"role": role, "name": name, "source": "llm"}
+        return out if out else None
+    except Exception as e:
+        print(f"  [identify] LLM identification failed: {e!r}")
+        return None
+
+
 def identify_speakers(
     fused_segments: list[dict],
     *,
@@ -418,71 +503,104 @@ def identify_speakers(
     Voiceprint match (cosine vs. enrolled embeddings) overrides structural
     if confidence ≥ 0.55.
 
-    Returns {SPEAKER_NN: {role, name, source: 'structural'|'voiceprint'|'unknown'}}
+    Returns {SPEAKER_NN: {role, name, source: 'llm'|'structural'|'voiceprint'|'unknown'}}
+
+    Strategy: try LLM-based whole-call identification first (Haiku, universal
+    across phrasing variations). Fall back to regex/state-machine if LLM
+    is unavailable. Then layer voiceprint match on top.
     """
     speaker_label_to_info: dict[str, dict] = {}
-
-    # 1. Operator = first speaker
     if not fused_segments:
         return speaker_label_to_info
-    op_label = fused_segments[0]["speaker"]
-    speaker_label_to_info[op_label] = {
-        "role": "operator", "name": "Operator", "source": "structural",
-    }
 
-    # Build per-label first-block-of-text snapshots so we can detect the
-    # IR's intro by looking at each label's first long block.
-    text_by_label_in_order: list[tuple[str, str]] = []  # (label, full_text_until_speaker_change)
-    cur_label, cur_text = None, []
+    op_label = fused_segments[0]["speaker"]
+
+    # Try LLM identification first — collect per-label snippets
+    blocks_by_label: list[tuple[str, str, int]] = []
+    cur_label, cur_chunks = None, []
     for s in fused_segments:
         if s["speaker"] == cur_label:
-            cur_text.append(s["text"])
+            cur_chunks.append(s["text"])
         else:
             if cur_label is not None:
-                text_by_label_in_order.append((cur_label, " ".join(cur_text)))
+                blocks_by_label.append((cur_label, " ".join(cur_chunks)))
             cur_label = s["speaker"]
-            cur_text = [s["text"]]
+            cur_chunks = [s["text"]]
     if cur_label is not None:
-        text_by_label_in_order.append((cur_label, " ".join(cur_text)))
+        blocks_by_label.append((cur_label, " ".join(cur_chunks)))
 
-    # 2-4. State machine: operator → IR → CEO → CFO
-    state = "after_operator"  # next non-operator label is IR
-    extracted_names: dict[str, str] = {}
-    for label, text in text_by_label_in_order:
-        if label == op_label:
-            continue
-        text_lower = text.lower()
+    # Aggregate all text per label (a label may recur multiple times in the call)
+    text_by_label: dict[str, list[str]] = {}
+    for label, text in blocks_by_label:
+        text_by_label.setdefault(label, []).append(text)
+    label_snippets: list[tuple[str, str, int]] = []
+    for label, parts in text_by_label.items():
+        full = " ".join(parts).strip()
+        snippet = full[:500] + ("..." if len(full) > 500 else "")
+        label_snippets.append((label, snippet, len(full)))
 
-        if state == "after_operator":
-            # This label is IR. Try to extract CEO/CFO names from their text.
-            speaker_label_to_info.setdefault(label, {
-                "role": "ir", "name": "Investor Relations", "source": "structural",
-            })
-            extracted_names = _extract_exec_names(text)
-            # Move state if IR did a handoff
-            if _HANDOFF_RE.search(text_lower):
+    llm_result = _identify_speakers_llm(label_snippets)
+    if llm_result:
+        speaker_label_to_info.update(llm_result)
+        print(f"  [identify] LLM mapped {len(llm_result)} speaker labels")
+    else:
+        # Fallback path: structural state-machine (the previous logic)
+        speaker_label_to_info[op_label] = {
+            "role": "operator", "name": "Operator", "source": "structural",
+        }
+
+    # Structural state-machine fallback (only runs if LLM identification failed)
+    if not llm_result:
+        # Build per-label first-block-of-text snapshots
+        text_by_label_in_order: list[tuple[str, str]] = []
+        cur_label, cur_text = None, []
+        for s in fused_segments:
+            if s["speaker"] == cur_label:
+                cur_text.append(s["text"])
+            else:
+                if cur_label is not None:
+                    text_by_label_in_order.append((cur_label, " ".join(cur_text)))
+                cur_label = s["speaker"]
+                cur_text = [s["text"]]
+        if cur_label is not None:
+            text_by_label_in_order.append((cur_label, " ".join(cur_text)))
+
+        # 2-4. State machine: operator → IR → CEO → CFO
+        state = "after_operator"
+        extracted_names: dict[str, str] = {}
+        for label, text in text_by_label_in_order:
+            if label == op_label:
+                continue
+            text_lower = text.lower()
+
+            if state == "after_operator":
+                speaker_label_to_info.setdefault(label, {
+                    "role": "ir", "name": "Investor Relations", "source": "structural",
+                })
+                extracted_names = _extract_exec_names(text)
+                # ALWAYS advance after first non-operator block — don't depend
+                # on handoff phrase being on the right side of the diarization
+                # boundary (NVIDIA case: Whisper put "to colette" at start of
+                # Colette's block, not end of Simona's)
                 state = "after_ir"
 
-        elif state == "after_ir":
-            # First non-operator/non-IR after IR's handoff = CEO
-            ceo_name = extracted_names.get("ceo", "<unknown CEO>")
-            speaker_label_to_info.setdefault(label, {
-                "role": "ceo", "name": ceo_name, "source": "structural",
-            })
-            if _HANDOFF_RE.search(text_lower):
-                state = "after_ceo"
+            elif state == "after_ir":
+                ceo_name = extracted_names.get("ceo", "<unknown CEO>")
+                speaker_label_to_info.setdefault(label, {
+                    "role": "ceo", "name": ceo_name, "source": "structural",
+                })
+                if _HANDOFF_RE.search(text_lower):
+                    state = "after_ceo"
 
-        elif state == "after_ceo":
-            # CEO handed off → next non-operator/non-prior-label = CFO
-            already = speaker_label_to_info.get(label)
-            if already is None or already.get("role") in (None, "unknown"):
-                cfo_name = extracted_names.get("cfo", "<unknown CFO>")
-                speaker_label_to_info[label] = {
-                    "role": "cfo", "name": cfo_name, "source": "structural",
-                }
-            state = "in_qa"
-            # Any further text from this point is Q&A; analyst name pass below
-            break  # done with linear pass; remaining labels handled by Q&A pass
+            elif state == "after_ceo":
+                already = speaker_label_to_info.get(label)
+                if already is None or already.get("role") in (None, "unknown"):
+                    cfo_name = extracted_names.get("cfo", "<unknown CFO>")
+                    speaker_label_to_info[label] = {
+                        "role": "cfo", "name": cfo_name, "source": "structural",
+                    }
+                state = "in_qa"
+                break
 
     # 5. Analysts from "next question comes from"
     analyst_intros: list[tuple[int, str]] = []  # (seg_idx, name)
@@ -929,12 +1047,14 @@ def persist_asr_transcript(
     # 7. speaker_voiceprints — enroll any newly named exec
     voiceprints_enrolled = 0
     for label, info in speaker_map.items():
-        if info.get("source") != "structural":
+        # Accept structural (regex/state-machine) OR llm-based identification.
+        # Skip voiceprint-based matches (those are already enrolled) and unknowns.
+        if info.get("source") not in ("structural", "llm"):
             continue
         if info["role"] not in ("ceo", "cfo", "coo", "president"):
             continue
         name = info.get("name", "")
-        if name.startswith("<"):  # placeholder name like "<unknown CEO>"
+        if not name or name.startswith("<") or name.startswith("SPEAKER_"):
             continue
         embedding = diar["embeddings_by_speaker"].get(label)
         if not embedding:
