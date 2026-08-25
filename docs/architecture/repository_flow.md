@@ -111,6 +111,7 @@ Present:
 - `scripts/db_ping.py` — smoke-test the DB connection
 - `scripts/apply_schema.py` — apply pending migrations under `db/schema/`
 - `scripts/gen_schema_viz.py` — introspect the live DB and regenerate `arrow_db_schema.html` (the visual source of truth for the schema)
+- `scripts/export_transcripts.py` — read-only FMP transcript export bundle (`arrow-transcript-export-v1`); migration boundary, not FMP fetch. Seals raw+canonical hashes and payload metadata; CLI requires `--expect-count` (FN: 20).
 
 Examples (future):
 - `scripts/ingest_company.py NVDA` — normal company flow: seed + FMP facts + revenue segments + employees + SEC documents

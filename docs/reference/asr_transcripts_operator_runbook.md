@@ -19,6 +19,33 @@ After a company in your active universe reports earnings:
    transcript end-to-end into the database, alongside (or eventually superseding)
    any FMP version.
 
+## Historical FMP export (migration only)
+
+To hand already-held FMP transcripts to another system, use the read-only
+export. This is not how new calls are ingested and does not call FMP.
+Postgres and `data/raw/` are not mutated (SELECT + cache read only).
+
+FN rollout (20 expected records):
+
+```bash
+uv run scripts/export_transcripts.py FN --since 2021-08-01 --out /tmp/fn-transcripts --expect-count 20
+```
+
+The bundle is `manifest.json` plus `raw/FY{year}-Q{n}.json` under contract
+`arrow-transcript-export-v1`. Each cache file is sealed before publish:
+
+- SHA-256 of the raw bytes must equal `artifacts.raw_hash`
+- Canonical bytes are recomputed as the artifact writer does
+  (`json.loads(raw)` then `json.dumps(..., sort_keys=True, separators=(',', ':')).encode('utf-8')`)
+  and that SHA-256 must equal `artifacts.canonical_hash`
+- The cached JSON must be a singleton array whose `symbol`/`year`/`period`/`date`
+  match the artifact ticker, fiscal year, fiscal quarter, and call date;
+  `content` is required
+
+`--expect-count` is required. A count mismatch, including zero records,
+prints `Status: FAIL` and does not publish a bundle. A failed export does
+not leave a complete-looking directory.
+
 ## Quick start
 
 A single CLI command runs the entire pipeline for one call. Pick the audio source

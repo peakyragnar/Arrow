@@ -125,6 +125,7 @@ Important:
 - `scripts/triage_xbrl_divergences.py` — classify divergences from past audit runs into definitional / corruption / ambiguous buckets; supports filtering by ticker or bucket.
 - `scripts/correct_corrupted_q4_is.py` — manual override for FMP Q-fabrication corruption that auto-promote can't safely fix (e.g., entire Q row corrupt, derive from `annual − sum(other quarters)`).
 - `scripts/backfill_q4_period_end.py`, `scripts/backfill_cross_endpoint_period_end.py` — one-shot backfills for the date-stamping classes of bug; idempotent.
+- `scripts/export_transcripts.py` — read-only FMP transcript bundle for downstream migration (`arrow-transcript-export-v1`). Copies already-cached raw JSON after verifying `artifacts.raw_hash`, recomputing the canonical SHA-256, and binding payload symbol/year/period/date; CLI requires `--expect-count` (FN invocation: `--expect-count 20`). Does not fetch from FMP.
 
 ## Foundational Schema Rule: Two Clocks Always
 
@@ -1021,7 +1022,21 @@ Preserve:
 - calendar date
 
 #### 2B. Transcripts
-v1 source: FMP earnings transcript endpoints.
+Historical source: FMP earnings transcript endpoints, stored as
+`artifacts` (`source='fmp'`). Going-forward calls use the ASR path
+(`docs/architecture/asr_transcripts_ingest_plan.md`).
+
+Held FMP transcript artifacts can be emitted as a read-only directory
+bundle (`scripts/export_transcripts.py`, contract
+`arrow-transcript-export-v1`) for downstream migration. That export
+copies cached raw JSON after verifying `artifacts.raw_hash`, recomputing
+canonical SHA-256 (`json.loads` then sorted compact JSON, matching the
+artifact writer), and binding each singleton payload's
+symbol/year/period/date to the artifact row. The operator CLI requires
+`--expect-count` (FN: `--expect-count 20`); a mismatch, including zero
+records, is FAIL and publishes no bundle. It is a migration boundary,
+not a return to FMP fetching and not a new ingest path. Postgres and
+`data/raw/` are not mutated.
 
 Store:
 - full transcript artifact
