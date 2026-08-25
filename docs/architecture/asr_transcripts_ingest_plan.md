@@ -28,6 +28,15 @@ Own the transcription path end-to-end. Concretely:
 
 We control the new pipeline. We also keep all 818 historical FMP transcript-periods in `artifacts` (`source='fmp'`) — the pipeline change is **forward-looking only**.
 
+Historical FMP rows stay in Arrow as an immutable cache. The read-only
+exporter (`scripts/export_transcripts.py`, library
+`src/arrow/export/transcripts.py`, contract `arrow-transcript-export-v1`)
+is a one-way migration boundary for downstream systems. It copies
+already-held raw JSON after verifying `artifacts.raw_hash`, recomputing
+the canonical SHA-256, and binding payload symbol/year/period/date.
+Operator invocation for FN is `--expect-count 20`. It is **not** a
+return to FMP fetching and does not change the forward ASR cutover.
+
 ## What's In v1
 
 | Component | Why it earns its keep |
